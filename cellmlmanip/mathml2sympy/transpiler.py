@@ -3,7 +3,7 @@ Parses Content MathML and returns equivalent SymPy expressions
 
 Content Markup specification: https://www.w3.org/TR/MathML2/chapter4.html
 """
-from xml.dom import minidom, Node
+from xml.dom import Node, minidom
 
 import sympy
 
