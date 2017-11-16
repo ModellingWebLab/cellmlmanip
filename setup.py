@@ -17,4 +17,3 @@ setup(
     license=license_,
     find_packages=find_packages(exclude=('tests', 'docs'))
 )
-
