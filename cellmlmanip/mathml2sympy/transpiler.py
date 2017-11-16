@@ -23,12 +23,9 @@ def parse_dom(math_dom_element):
     Accepts a <math> node of DOM structure and returns equivalent SymPy expressions.
     Note: math_dom_element must point the <math> XmlNode, not the root XmlDocument
 
-    TODO: adding cellml namespace here, but really should be provided by caller
-
     :param math_dom_element: <math> XmlNode object of a MathML DOM structure
     :return: List of SymPy expression(s)
     """
-    math_dom_element.setAttributeNS('cellml', 'xmlns:cellml', 'http://www.cellml.org/cellml/1.0#')
     return transpile(math_dom_element)
 
 
@@ -65,7 +62,7 @@ def transpile(xml_node):
             else:
                 # MathML handler function not found for this tag!
                 raise NotImplementedError('No handler for element <%s>' % child_node.tagName)
-        else:
+        elif child_node.nodeType not in [Node.COMMENT_NODE, Node.PROCESSING_INSTRUCTION_NODE]:
             raise NotImplementedError('Unknown node type %d' % child_node.nodeType)
     return sympy_expressions
 

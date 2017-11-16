@@ -28,6 +28,12 @@ class TestParser(object):
         self.assert_equal('<cn>1</cn>',
                           [sympy.Number(1)])
 
+    def test_ignore_comment(self):
+        self.assert_equal('<!-- ignore this -->', [])
+
+    def test_ignore_processing(self):
+        self.assert_equal('<?PITarget PIContent?>', [])
+
     def test_plus(self):
         self.assert_equal('<apply><plus/><ci>x</ci><ci>y</ci><ci>z</ci></apply>',
                           [sympy.Symbol('x') + sympy.Symbol('y') + sympy.Symbol('z')])
