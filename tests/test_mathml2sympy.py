@@ -154,7 +154,7 @@ class TestParser(object):
                           '></apply>',
                           [sympy.Eq(sympy.Derivative(V(t), t), -(i_Stim+i_Na+i_K+i_L) / Cm)])
 
-    def test_nobel_1962(self):
+    def test_noble_1962(self):
         cellml_path = os.path.join(os.path.dirname(__file__), "noble_model_1962.cellml")
 
         document = pulldom.parse(cellml_path)
