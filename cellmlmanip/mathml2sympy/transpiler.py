@@ -261,8 +261,8 @@ def diff_handler():
         if isinstance(x_symbol, list) and len(x_symbol) == 2:
             bound_variable = x_symbol[0]
             order = int(x_symbol[1])
-            return sympy.Derivative(y_function(bound_variable), bound_variable,
-                                    int(order), evaluate=evaluate)
+            return sympy.Derivative(y_function(bound_variable), bound_variable, order,
+                                    evaluate=evaluate)
 
         return sympy.Derivative(y_function(x_symbol), x_symbol, evaluate=evaluate)
     return __wrapped_diff
