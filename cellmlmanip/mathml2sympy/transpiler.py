@@ -55,8 +55,8 @@ def transpile(xml_node):
                     # We want to pass the node to the handler, and it will deal with children
                     sympy_expressions.append(HANDLERS[tag_name](child_node))
                 else:
-                    # The tag has no children
-                    # Trigonometric functions are wrapped in single handler, needs tag name
+                    # Tags which are simple mappings to Sypmy classes use the same handler,
+                    # which only needs the tag name as argument
                     if HANDLERS[tag_name] == simple_operator_handler:
                         sympy_expressions.append(simple_operator_handler(tag_name))
                     else:
@@ -322,8 +322,7 @@ def logbase_handler(node):
 def simple_operator_handler(tag_name):
     """
     This function handles simple MathML <tagName> to sympy.Class operators, where no unique handling
-    of tag children etc. is required. The mappings of tagName to sympy class names is in
-
+    of tag children etc. is required.
     """
     return getattr(sympy, SIMPLE_MATHML_TO_SYMPY_NAMES[tag_name])
 
