@@ -157,10 +157,28 @@ class TestParser(object):
                           '</piecewise>',
                           [sympy.Piecewise((0, x < 0.0), (x, True))])
 
-    def test_multiple_equalities(self):
-        self.assert_equal('<apply><eq/><ci>x</ci><cn>1</cn></apply>'
-                          '<apply><eq/><ci>y</ci><cn>2</cn></apply>',
-                          [sympy.Eq(sympy.Symbol('x'), 1), sympy.Eq(sympy.Symbol('y'), 2)])
+        self.assert_equal('<piecewise>'
+                          '<piece><cn>10</cn><apply><gt/><ci>x</ci><cn>0</cn></apply></piece>'
+                          '<piece><cn>20</cn><apply><gt/><ci>x</ci><cn>1</cn></apply></piece>'
+                          '<piece><cn>30</cn><apply><gt/><ci>x</ci><cn>2</cn></apply></piece>'
+                          '<otherwise><cn>0</cn></otherwise>'
+                          '</piecewise>',
+                          [sympy.Piecewise((10, x > 0), (20, x > 1), (30, x > 2), (0, True))])
+
+    def test_multiple_relations(self):
+        from sympy.abc import a, b, c, x, y, z
+        eq_xml = '<apply><eq/><ci>x</ci><ci>y</ci><ci>z</ci><cn>2.0</cn></apply>'
+        lt_xml = '<apply><lt/><ci>a</ci><ci>b</ci><ci>c</ci><cn>2.0</cn></apply>'
+        ge_xml = '<apply><geq/><ci>x</ci><ci>y</ci><ci>z</ci><cn>2.0</cn></apply>'
+
+        self.assert_equal(eq_xml, [sympy.And(sympy.Eq(x, y), sympy.Eq(y, z), sympy.Eq(z, 2.0))])
+        self.assert_equal(lt_xml, [sympy.And(sympy.Lt(a, b), sympy.Lt(b, c), sympy.Lt(c, 2.0))])
+        self.assert_equal(ge_xml, [sympy.And(sympy.Ge(x, y), sympy.Ge(y, z), sympy.Ge(z, 2.0))])
+        self.assert_equal('<apply><and/>%s%s</apply>' % (eq_xml, lt_xml),
+                          [sympy.And(
+                              sympy.And(sympy.Eq(x, y), sympy.Eq(y, z), sympy.Eq(z, 2.0)),
+                              sympy.And(sympy.Lt(a, b), sympy.Lt(b, c), sympy.Lt(c, 2.0))
+                          )])
 
     def test_cellml_namespace(self):
         mathml_xml = '<math xmlns="http://www.w3.org/1998/Math/MathML" ' \

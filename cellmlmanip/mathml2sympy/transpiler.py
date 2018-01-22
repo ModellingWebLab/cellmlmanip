@@ -3,6 +3,7 @@ Parses Content MathML and returns equivalent SymPy expressions
 
 Content Markup specification: https://www.w3.org/TR/MathML2/chapter4.html
 """
+import logging
 from xml.dom import Node, minidom
 
 import sympy
@@ -45,12 +46,13 @@ def transpile(xml_node):
             # (see cn_handler for an example), show a message
             text = child_node.data.strip()
             if text:
-                print('Hit text node with text "' + text + '"')
+                logging.warning('Unhandled text node in <%s>: "%s"', child_node.tagName, text)
         elif child_node.nodeType == child_node.ELEMENT_NODE:
             # Call the appropriate MathML handler function for this tag
             tag_name = child_node.tagName
             if tag_name in HANDLERS:
                 sympy_expressions.append(HANDLERS[tag_name](child_node))
+                logging.debug('Transpiled node %s ⟶ %s', child_node.toxml(), sympy_expressions[-1])
             else:
                 # MathML handler function not found for this tag!
                 raise NotImplementedError('No handler for element <%s>' % tag_name)
@@ -115,6 +117,9 @@ def apply_handler(node):
     https://www.w3.org/TR/MathML2/chapter4.html#contm.apply
     """
     result = transpile(node)
+
+    logging.debug('Result of <apply>:\n\t%s\t⟶\t%s', node.toxml(), result)
+
     if len(result) > 1:
         expression = result[0](*(result[1:]))
     else:
@@ -170,13 +175,13 @@ def minus_handler(node):
     * Negation (-a) is equivalent to sympy.Mul(sympy.S.NegativeOne, a)
     * Subtraction (a - b) is equivalent to sympy.Add(a, sympy.Mul(sympy.S.NegativeOne, b))
     """
-    def wrapped_minus(left_operand, right_operand=None):
+    def _wrapped_minus(left_operand, right_operand=None):
         if right_operand is None:
             # unary arithmetic operator => negation
             return -left_operand
         # otherwise, binary arithmetic operator => subtraction
         return left_operand - right_operand
-    return wrapped_minus
+    return _wrapped_minus
 
 
 def divide_handler(node):
@@ -187,9 +192,9 @@ def divide_handler(node):
 
     Equivalent to sympy.Mul(a, sympy.Pow(b, sympy.S.NegativeOne))
     """
-    def wrapped_divide(dividend, divisor):
+    def _wrapped_divide(dividend, divisor):
         return dividend / divisor
-    return wrapped_divide
+    return _wrapped_divide
 
 
 def power_handler(node):
@@ -198,9 +203,9 @@ def power_handler(node):
     binary arithmetic operator
     equivalent to sympy.Pow(a, b)
     """
-    def wrapped_power(base, exponent):
+    def _wrapped_power(base, exponent):
         return base ** exponent
-    return wrapped_power
+    return _wrapped_power
 
 
 def root_handler(node):
@@ -214,12 +219,12 @@ def root_handler(node):
     root element. Thus, square roots correspond to the case where degree contains the value 2, cube
     roots correspond to 3, and so on. If no degree is present, a default value of 2 is used.
     """
-    def wrapped_root(first_argument, second_argument=None):
+    def _wrapped_root(first_argument, second_argument=None):
         # if no <degree> given, it's sqrt
         if second_argument is None:
             return sympy.root(first_argument, 2)
         return sympy.root(second_argument, first_argument)
-    return wrapped_root
+    return _wrapped_root
 
 
 def degree_handler(node):
@@ -242,7 +247,7 @@ def diff_handler(node):
     https://www.w3.org/TR/MathML2/chapter4.html#contm.diff
     operator taking qualifiers
     """
-    def wrapped_diff(x_symbol, y_symbol, evaluate=False):
+    def _wrapped_diff(x_symbol, y_symbol, evaluate=False):
         # dx / dy
         y_function = sympy.Function(y_symbol.name)
 
@@ -255,7 +260,7 @@ def diff_handler(node):
                                     evaluate=evaluate)
 
         return sympy.Derivative(y_function(x_symbol), x_symbol, evaluate=evaluate)
-    return wrapped_diff
+    return _wrapped_diff
 
 
 def bvar_handler(node):
@@ -284,14 +289,14 @@ def log_handler(node):
     https://www.w3.org/TR/MathML2/chapter4.html#contm.log
     operator taking qualifiers or a unary calculus operator
     """
-    def wrapped_log(first_element, second_element=None):
+    def _wrapped_log(first_element, second_element=None):
         if second_element is None:
             # if no <logbase> element is present, the base is assumed to be 10
             return sympy.log(first_element, 10)
 
         # Has <logbase> element, which is the first_element after <log/>
         return sympy.log(second_element, first_element)
-    return wrapped_log
+    return _wrapped_log
 
 
 def logbase_handler(node):
@@ -309,12 +314,39 @@ def logbase_handler(node):
     return transpile(node)[0]
 
 
+def get_nary_relation_callback(sympy_relation):
+    """
+    Wraps the Sympy binary relation to handle n-ary MathML relations
+
+    :param sympy_relation: handle to binary Sympy relation (Eq, Le, Lt, Ge, Gt)
+    :return: callback used by the apply_handler to handle n-ary relations
+    """
+    def _wrapper_relational(*expressions):
+        # If the MathML relation is chaining more than 2 expressions
+        if len(expressions) > 2:
+            # Convert to multiple Sympy binary relations bundled in an 'And' boolean
+            equalities = []
+            for first, second in zip(expressions, expressions[1:]):
+                equalities.append(sympy_relation(first, second))
+            return sympy.And(*equalities)
+        return sympy_relation(*expressions)
+    return _wrapper_relational
+
+
 def simple_operator_handler(node):
     """
     This function handles simple MathML <tagName> to sympy.Class operators, where no unique handling
     of tag children etc. is required.
     """
-    return getattr(sympy, SIMPLE_MATHML_TO_SYMPY_NAMES[node.tagName])
+    tag_name = node.tagName
+
+    handler = getattr(sympy, SIMPLE_MATHML_TO_SYMPY_NAMES[tag_name])
+
+    # Some MathML relations allow chaining but Synpy relations are binary
+    if tag_name in MATHML_NARY_RELATIONS:
+        return get_nary_relation_callback(handler)
+
+    return handler
 
 
 # END OF MATHML HANDLERS #######################################################################
@@ -372,6 +404,9 @@ SIMPLE_MATHML_TO_SYMPY_NAMES = {
     'true': 'true',
     'xor': 'Xor',
 }
+
+# MathML relation elements that are n-ary operators
+MATHML_NARY_RELATIONS = ['eq', 'leq', 'lt', 'geq', 'gt']
 
 # Mapping MathML tag element names (keys) to appropriate handler for SymPy output (values)
 # These tags require explicit handling because they have children or context etc.
