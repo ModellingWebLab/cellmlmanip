@@ -325,10 +325,10 @@ def get_nary_relation_callback(sympy_relation):
         # If the MathML relation is chaining more than 2 expressions
         if len(expressions) > 2:
             # Convert to multiple Sympy binary relations bundled in an 'And' boolean
-            equalities = []
+            relations = []
             for first, second in zip(expressions[:-1], expressions[1:]):
-                equalities.append(sympy_relation(first, second))
-            return sympy.And(*equalities)
+                relations.append(sympy_relation(first, second))
+            return sympy.And(*relations)
         return sympy_relation(*expressions)
     return _wrapper_relational
 
@@ -406,7 +406,7 @@ SIMPLE_MATHML_TO_SYMPY_NAMES = {
 }
 
 # MathML relation elements that are n-ary operators
-MATHML_NARY_RELATIONS = ['eq', 'leq', 'lt', 'geq', 'gt']
+MATHML_NARY_RELATIONS = {'eq', 'leq', 'lt', 'geq', 'gt'}
 
 # Mapping MathML tag element names (keys) to appropriate handler for SymPy output (values)
 # These tags require explicit handling because they have children or context etc.
