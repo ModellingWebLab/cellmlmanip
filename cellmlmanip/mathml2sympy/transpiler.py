@@ -318,7 +318,7 @@ def get_nary_relation_callback(sympy_relation):
     """
     Wraps the Sympy binary relation to handle n-ary MathML relations
 
-    :param sympy_relation: handle to binary Sympy relation (Eq, Le, Lt, Ge, Gt)
+    :param sympy_relation: handle for binary Sympy relation (Eq, Le, Lt, Ge, Gt)
     :return: callback used by the apply_handler to handle n-ary relations
     """
     def _wrapper_relational(*expressions):
@@ -326,7 +326,7 @@ def get_nary_relation_callback(sympy_relation):
         if len(expressions) > 2:
             # Convert to multiple Sympy binary relations bundled in an 'And' boolean
             equalities = []
-            for first, second in zip(expressions, expressions[1:]):
+            for first, second in zip(expressions[:-1], expressions[1:]):
                 equalities.append(sympy_relation(first, second))
             return sympy.And(*equalities)
         return sympy_relation(*expressions)
@@ -342,7 +342,7 @@ def simple_operator_handler(node):
 
     handler = getattr(sympy, SIMPLE_MATHML_TO_SYMPY_NAMES[tag_name])
 
-    # Some MathML relations allow chaining but Synpy relations are binary
+    # Some MathML relations allow chaining but Sympy relations are binary operations
     if tag_name in MATHML_NARY_RELATIONS:
         return get_nary_relation_callback(handler)
 
