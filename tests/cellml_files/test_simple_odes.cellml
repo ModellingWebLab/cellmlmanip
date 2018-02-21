@@ -35,6 +35,14 @@ We will also check some connection features (units conversions, encapsulation) a
       <unit units="mV" exponent="1"/>
       <unit units="ms" exponent="-1"/>
    </units>
+   <units name="mM">
+      <unit prefix="milli" units="mole"/>
+      <unit units="litre" exponent="-1"/>
+   </units>
+   <units name="mM_per_ms">
+      <unit units="mM"/>
+      <unit units="ms" exponent="-1"/>
+   </units>
 
    <component name="environment">
       <variable name="time" public_interface="out" units="ms" cmeta:id="time">
@@ -122,14 +130,78 @@ We will also check some connection features (units conversions, encapsulation) a
          </apply>
          <apply><eq/>
             <ci>a</ci>
-            <cn cellml:units="millivolt_per_millisecond">-1</cn>
+            <cn cellml:units="mV_per_ms">-1</cn>
          </apply>
       </math>
    </component>
 
-   <!-- Encapsulation hierarchy - empty at present - all components top-level -->
+   <!--
+      This trio of components define a coupled pair of ODEs, encapsulated within a parent:
+      dx/dt = -y, dy/dt = x, x(0) = 0, y(0) = 1
+    -->
+   <component name="circle_parent">
+      <variable name="time" public_interface="in" private_interface="out" units="ms"/>
+      <variable name="x" units="mM" private_interface="in"/>
+      <variable name="y" units="mM" private_interface="in"/>
+   </component>
+   <component name="circle_x">
+      <variable name="time" public_interface="in" units="ms"/>
+      <variable name="x" units="mM" cmeta:id="x1" initial_value="0" public_interface="out">
+      <variable name="y" units="mM" public_interface="in">
+         <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:bqbiol="http://biomodels.net/biology-qualifiers/">
+            <rdf:Description rdf:about="#x1">
+               <bqbiol:is rdf:resource="https://chaste.comlab.ox.ac.uk/cellml/ns/oxford-metadata#cytosolic_calcium_concentration"/>
+            </rdf:Description>
+         </rdf:RDF>
+      </variable>
+      <math xmlns="http://www.w3.org/1998/Math/MathML">
+         <apply>
+            <eq/>
+            <apply>
+               <diff/>
+               <bvar>
+                  <ci>time</ci>
+               </bvar>
+               <ci>x</ci>
+            </apply>
+            <apply><minus/>
+               <ci>y</ci>
+            </apply>
+         </apply>
+      </math>
+   </component>
+   <component name="circle_y">
+      <variable name="time" public_interface="in" units="ms"/>
+      <variable name="y" units="mM" cmeta:id="y1" initial_value="1" public_interface="out">
+      <variable name="x" units="mM" public_interface="in">
+         <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:bqbiol="http://biomodels.net/biology-qualifiers/">
+            <rdf:Description rdf:about="#y1">
+               <bqbiol:is rdf:resource="https://chaste.comlab.ox.ac.uk/cellml/ns/oxford-metadata#extracellular_calcium_concentration"/>
+            </rdf:Description>
+         </rdf:RDF>
+      </variable>
+      <math xmlns="http://www.w3.org/1998/Math/MathML">
+         <apply>
+            <eq/>
+            <apply>
+               <diff/>
+               <bvar>
+                  <ci>time</ci>
+               </bvar>
+               <ci>y</ci>
+            </apply>
+            <ci>x</ci>
+         </apply>
+      </math>
+   </component>
+
+   <!-- Encapsulation hierarchy - non-mentioned components are top-level -->
    <group>
       <relationship_ref relationship="encapsulation"/>
+      <component_ref component="circle_parent">
+         <component_ref component="circle_x"/>
+         <component_ref component="circle_y"/>
+      </component_ref>
    </group>
 
    <connection>
@@ -143,6 +215,26 @@ We will also check some connection features (units conversions, encapsulation) a
    <connection>
       <map_components component_1="single_ode_rhs_computed_var" component_2="environment"/>
       <map_variables variable_1="time" variable_2="time"/>
+   </connection>
+
+   <connection>
+      <map_components component_1="circle_parent" component_2="environment"/>
+      <map_variables variable_1="time" variable_2="time"/>
+   </connection>
+   <connection>
+      <map_components component_1="circle_parent" component_2="circle_x"/>
+      <map_variables variable_1="time" variable_2="time"/>
+      <map_variables variable_1="x" variable_2="x"/>
+   </connection>
+   <connection>
+      <map_components component_1="circle_parent" component_2="circle_y"/>
+      <map_variables variable_1="time" variable_2="time"/>
+      <map_variables variable_1="y" variable_2="y"/>
+   </connection>
+   <connection>
+      <map_components component_1="circle_x" component_2="circle_y"/>
+      <map_variables variable_1="x" variable_2="x"/>
+      <map_variables variable_1="y" variable_2="y"/>
    </connection>
 
    <!-- RDF can appear outside components too -->
