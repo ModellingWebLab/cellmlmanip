@@ -14,7 +14,10 @@ The last case checks whether connecting 'time' across components will work natur
 We will also check some connection features (units conversions, encapsulation) and annotations.
 
 -->
-<model name="test_simple_odes" cmeta:id="test_simple_odes" xmlns="http://www.cellml.org/cellml/1.0#" xmlns:cellml="http://www.cellml.org/cellml/1.0#" xmlns:cmeta="http://www.cellml.org/metadata/1.0#">
+<model name="test_simple_odes" cmeta:id="test_simple_odes"
+   xmlns="http://www.cellml.org/cellml/1.0#"
+   xmlns:cellml="http://www.cellml.org/cellml/1.0#"
+   xmlns:cmeta="http://www.cellml.org/metadata/1.0#">
 
    <units name="millisecond">
       <unit units="second" prefix="milli"/>
@@ -46,9 +49,9 @@ We will also check some connection features (units conversions, encapsulation) a
    <component name="single_independent_ode">
       <!-- d(sv1)/d(time) = 1, sv1(0) = 1 -->
       <variable name="time" public_interface="in" units="millisecond"/>
-      <variable name="sv1" units="millivolt" cmeta:id="sv1" initial_value="1">
+      <variable name="sv1" units="millivolt" cmeta:id="sv11" initial_value="1">
          <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:bqbiol="http://biomodels.net/biology-qualifiers/">
-            <rdf:Description rdf:about="#sv1">
+            <rdf:Description rdf:about="#sv11">
                <bqbiol:is rdf:resource="https://chaste.comlab.ox.ac.uk/cellml/ns/oxford-metadata#sodium_reversal_potential"/>
             </rdf:Description>
          </rdf:RDF>
@@ -68,4 +71,68 @@ We will also check some connection features (units conversions, encapsulation) a
       </math>
    </component>
 
+   <component name="single_ode_rhs_const_var">
+      <!-- d(sv1)/d(time) = a, sv1(0) = 1 -->
+      <variable name="time" public_interface="in" units="millisecond"/>
+      <variable name="sv1" units="millivolt" cmeta:id="sv12" initial_value="1">
+         <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:bqbiol="http://biomodels.net/biology-qualifiers/">
+            <rdf:Description rdf:about="#sv12">
+               <bqbiol:is rdf:resource="https://chaste.comlab.ox.ac.uk/cellml/ns/oxford-metadata#potassium_reversal_potential"/>
+            </rdf:Description>
+         </rdf:RDF>
+      </variable>
+      <variable name="a" units="millivolt_per_millisecond" initial_value="1" cmeta:id="a1"/>
+      <math xmlns="http://www.w3.org/1998/Math/MathML">
+         <apply>
+            <eq/>
+            <apply>
+               <diff/>
+               <bvar>
+                  <ci>time</ci>
+               </bvar>
+               <ci>sv1</ci>
+            </apply>
+            <ci>a</ci>
+         </apply>
+      </math>
+   </component>
+
+   <component name="single_ode_rhs_computed_var">
+      <!-- d(sv1)/d(time) = a, sv1(0) = 1 -->
+      <variable name="time" public_interface="in" units="millisecond"/>
+      <variable name="sv1" units="millivolt" cmeta:id="sv13" initial_value="1">
+         <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:bqbiol="http://biomodels.net/biology-qualifiers/">
+            <rdf:Description rdf:about="#sv13">
+               <bqbiol:is rdf:resource="https://chaste.comlab.ox.ac.uk/cellml/ns/oxford-metadata#calcium_reversal_potential"/>
+            </rdf:Description>
+         </rdf:RDF>
+      </variable>
+      <variable name="a" units="millivolt_per_millisecond" cmeta:id="a2"/>
+      <math xmlns="http://www.w3.org/1998/Math/MathML">
+         <apply>
+            <eq/>
+            <apply>
+               <diff/>
+               <bvar>
+                  <ci>time</ci>
+               </bvar>
+               <ci>sv1</ci>
+            </apply>
+            <ci>a</ci>
+         </apply>
+         <apply><eq/>
+            <ci>a</ci>
+            <cn cellml:units="millivolt_per_millisecond">-1</cn>
+         </apply>
+      </math>
+   </component>
+
+   <!-- RDF can appear outside components too -->
+   <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+            xmlns:bqbiol="http://biomodels.net/biology-qualifiers/">
+      <rdf:Description rdf:about="#a1">
+         <bqbiol:is rdf:resource="urn:test-ns#parameter_a1"/>
+      </rdf:Description>
+   </rdf:RDF>
+    
 </model>
