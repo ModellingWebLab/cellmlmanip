@@ -127,6 +127,24 @@ We will also check some connection features (units conversions, encapsulation) a
       </math>
    </component>
 
+   <!-- Encapsulation hierarchy - empty at present - all components top-level -->
+   <group>
+      <relationship_ref relationship="encapsulation"/>
+   </group>
+
+   <connection>
+      <map_components component_1="single_independent_ode" component_2="environment"/>
+      <map_variables variable_1="time" variable_2="time"/>
+   </connection>
+   <connection>
+      <map_components component_1="single_ode_rhs_const_var" component_2="environment"/>
+      <map_variables variable_1="time" variable_2="time"/>
+   </connection>
+   <connection>
+      <map_components component_1="single_ode_rhs_computed_var" component_2="environment"/>
+      <map_variables variable_1="time" variable_2="time"/>
+   </connection>
+
    <!-- RDF can appear outside components too -->
    <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
             xmlns:bqbiol="http://biomodels.net/biology-qualifiers/">
