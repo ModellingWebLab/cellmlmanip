@@ -19,25 +19,25 @@ We will also check some connection features (units conversions, encapsulation) a
    xmlns:cellml="http://www.cellml.org/cellml/1.0#"
    xmlns:cmeta="http://www.cellml.org/metadata/1.0#">
 
-   <units name="millisecond">
+   <units name="ms">
       <unit units="second" prefix="milli"/>
    </units>
-   <units name="per_millisecond">
-      <unit units="millisecond" exponent="-1"/>
+   <units name="per_ms">
+      <unit units="ms" exponent="-1"/>
    </units>
-   <units name="millivolt">
+   <units name="mV">
       <unit units="volt" prefix="milli"/>
    </units>
-   <units name="per_millivolt">
+   <units name="per_mV">
       <unit units="volt" prefix="milli" exponent="-1"/>
    </units>
-   <units name="millivolt_per_millisecond">
-      <unit units="millivolt" exponent="1"/>
-      <unit units="millisecond" exponent="-1"/>
+   <units name="mV_per_ms">
+      <unit units="mV" exponent="1"/>
+      <unit units="ms" exponent="-1"/>
    </units>
 
    <component name="environment">
-      <variable name="time" public_interface="out" units="millisecond" cmeta:id="time">
+      <variable name="time" public_interface="out" units="ms" cmeta:id="time">
          <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:bqbiol="http://biomodels.net/biology-qualifiers/">
             <rdf:Description rdf:about="#time">
                <bqbiol:is rdf:resource="https://chaste.comlab.ox.ac.uk/cellml/ns/oxford-metadata#time"/>
@@ -48,8 +48,8 @@ We will also check some connection features (units conversions, encapsulation) a
 
    <component name="single_independent_ode">
       <!-- d(sv1)/d(time) = 1, sv1(0) = 1 -->
-      <variable name="time" public_interface="in" units="millisecond"/>
-      <variable name="sv1" units="millivolt" cmeta:id="sv11" initial_value="1">
+      <variable name="time" public_interface="in" units="ms"/>
+      <variable name="sv1" units="mV" cmeta:id="sv11" initial_value="1">
          <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:bqbiol="http://biomodels.net/biology-qualifiers/">
             <rdf:Description rdf:about="#sv11">
                <bqbiol:is rdf:resource="https://chaste.comlab.ox.ac.uk/cellml/ns/oxford-metadata#sodium_reversal_potential"/>
@@ -66,22 +66,22 @@ We will also check some connection features (units conversions, encapsulation) a
                </bvar>
                <ci>sv1</ci>
             </apply>
-            <cn cellml:units="millivolt_per_millisecond">1</cn>
+            <cn cellml:units="mV_per_ms">1</cn>
          </apply>
       </math>
    </component>
 
    <component name="single_ode_rhs_const_var">
       <!-- d(sv1)/d(time) = a, sv1(0) = 1 -->
-      <variable name="time" public_interface="in" units="millisecond"/>
-      <variable name="sv1" units="millivolt" cmeta:id="sv12" initial_value="1">
+      <variable name="time" public_interface="in" units="ms"/>
+      <variable name="sv1" units="mV" cmeta:id="sv12" initial_value="1">
          <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:bqbiol="http://biomodels.net/biology-qualifiers/">
             <rdf:Description rdf:about="#sv12">
                <bqbiol:is rdf:resource="https://chaste.comlab.ox.ac.uk/cellml/ns/oxford-metadata#potassium_reversal_potential"/>
             </rdf:Description>
          </rdf:RDF>
       </variable>
-      <variable name="a" units="millivolt_per_millisecond" initial_value="1" cmeta:id="a1"/>
+      <variable name="a" units="mV_per_ms" initial_value="1" cmeta:id="a1"/>
       <math xmlns="http://www.w3.org/1998/Math/MathML">
          <apply>
             <eq/>
@@ -99,15 +99,15 @@ We will also check some connection features (units conversions, encapsulation) a
 
    <component name="single_ode_rhs_computed_var">
       <!-- d(sv1)/d(time) = a, sv1(0) = 1 -->
-      <variable name="time" public_interface="in" units="millisecond"/>
-      <variable name="sv1" units="millivolt" cmeta:id="sv13" initial_value="1">
+      <variable name="time" public_interface="in" units="ms"/>
+      <variable name="sv1" units="mV" cmeta:id="sv13" initial_value="1">
          <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:bqbiol="http://biomodels.net/biology-qualifiers/">
             <rdf:Description rdf:about="#sv13">
                <bqbiol:is rdf:resource="https://chaste.comlab.ox.ac.uk/cellml/ns/oxford-metadata#calcium_reversal_potential"/>
             </rdf:Description>
          </rdf:RDF>
       </variable>
-      <variable name="a" units="millivolt_per_millisecond" cmeta:id="a2"/>
+      <variable name="a" units="mV_per_ms" cmeta:id="a2"/>
       <math xmlns="http://www.w3.org/1998/Math/MathML">
          <apply>
             <eq/>
