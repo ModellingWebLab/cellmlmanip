@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+This model is designed to test the following kinds of equations:
+
+    dV/dt = 1, V(0) = 1
+    dx/dt = 1, dy/dt = -1, x(0) = y(0) = 1
+    dx/dt = -y, dy/dt = x, x(0) = 0, y(0) = 1
+    dx/dt1 = -y, dy/dt2 = x, t1 = t2, x(0) = 0, y(0) = 1
+
+The last case checks whether connecting 'time' across components will work naturally. To check connecting V we could use:
+
+    dV/dt = 1, derived = V1 * 2, V1 = V, V(0) = 1
+
+We will also check some connection features (units conversions, encapsulation) and annotations.
+
+-->
+<model name="test_simple_odes" cmeta:id="test_simple_odes" xmlns="http://www.cellml.org/cellml/1.0#" xmlns:cellml="http://www.cellml.org/cellml/1.0#" xmlns:cmeta="http://www.cellml.org/metadata/1.0#">
+
+   <units name="millisecond">
+      <unit units="second" prefix="milli"/>
+   </units>
+   <units name="per_millisecond">
+      <unit units="millisecond" exponent="-1"/>
+   </units>
+   <units name="millivolt">
+      <unit units="volt" prefix="milli"/>
+   </units>
+   <units name="per_millivolt">
+      <unit units="volt" prefix="milli" exponent="-1"/>
+   </units>
+   <units name="millivolt_per_millisecond">
+      <unit units="millivolt" exponent="1"/>
+      <unit units="millisecond" exponent="-1"/>
+   </units>
+
+   <component name="environment">
+      <variable name="time" public_interface="out" units="millisecond" cmeta:id="time">
+         <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:bqbiol="http://biomodels.net/biology-qualifiers/">
+            <rdf:Description rdf:about="#time">
+               <bqbiol:is rdf:resource="https://chaste.comlab.ox.ac.uk/cellml/ns/oxford-metadata#time"/>
+            </rdf:Description>
+         </rdf:RDF>
+      </variable>
+   </component>
+
+   <component name="single_independent_ode">
+      <!-- d(sv1)/d(time) = 1, sv1(0) = 1 -->
+      <variable name="time" public_interface="in" units="millisecond"/>
+      <variable name="sv1" units="millivolt" cmeta:id="sv1" initial_value="1">
+         <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:bqbiol="http://biomodels.net/biology-qualifiers/">
+            <rdf:Description rdf:about="#sv1">
+               <bqbiol:is rdf:resource="https://chaste.comlab.ox.ac.uk/cellml/ns/oxford-metadata#sodium_reversal_potential"/>
+            </rdf:Description>
+         </rdf:RDF>
+      </variable>
+      <math xmlns="http://www.w3.org/1998/Math/MathML">
+         <apply>
+            <eq/>
+            <apply>
+               <diff/>
+               <bvar>
+                  <ci>time</ci>
+               </bvar>
+               <ci>sv1</ci>
+            </apply>
+            <cn cellml:units="millivolt_per_millisecond">1</cn>
+         </apply>
+      </math>
+   </component>
+
+</model>
