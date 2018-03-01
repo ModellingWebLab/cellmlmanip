@@ -146,7 +146,7 @@ We will also check some connection features (units conversions, encapsulation) a
    </component>
    <component name="circle_x">
       <variable name="time" public_interface="in" units="ms"/>
-      <variable name="x" units="mM" cmeta:id="x1" initial_value="0" public_interface="out">
+      <variable name="x" units="mM" cmeta:id="x1" initial_value="0" public_interface="out"/>
       <variable name="y" units="mM" public_interface="in">
          <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:bqbiol="http://biomodels.net/biology-qualifiers/">
             <rdf:Description rdf:about="#x1">
@@ -165,21 +165,23 @@ We will also check some connection features (units conversions, encapsulation) a
                <ci>x</ci>
             </apply>
             <apply><minus/>
-               <ci>y</ci>
+               <apply><times/>
+                  <ci>y</ci>
+                  <cn cellml:units="per_ms">1</cn>
+               </apply>
             </apply>
          </apply>
       </math>
    </component>
    <component name="circle_y">
       <variable name="time" public_interface="in" units="ms"/>
-      <variable name="y" units="mM" cmeta:id="y1" initial_value="1" public_interface="out">
-      <variable name="x" units="mM" public_interface="in">
-         <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:bqbiol="http://biomodels.net/biology-qualifiers/">
-            <rdf:Description rdf:about="#y1">
-               <bqbiol:is rdf:resource="https://chaste.comlab.ox.ac.uk/cellml/ns/oxford-metadata#extracellular_calcium_concentration"/>
-            </rdf:Description>
-         </rdf:RDF>
-      </variable>
+      <variable name="y" units="mM" cmeta:id="y1" initial_value="1" public_interface="out"/>
+      <variable name="x" units="mM" public_interface="in"/>
+      <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:bqbiol="http://biomodels.net/biology-qualifiers/">
+         <rdf:Description rdf:about="#y1">
+            <bqbiol:is rdf:resource="https://chaste.comlab.ox.ac.uk/cellml/ns/oxford-metadata#extracellular_calcium_concentration"/>
+         </rdf:Description>
+      </rdf:RDF>
       <math xmlns="http://www.w3.org/1998/Math/MathML">
          <apply>
             <eq/>
@@ -190,7 +192,10 @@ We will also check some connection features (units conversions, encapsulation) a
                </bvar>
                <ci>y</ci>
             </apply>
-            <ci>x</ci>
+            <apply><times/>
+               <ci>x</ci>
+               <cn cellml:units="per_ms">1</cn>
+            </apply>
          </apply>
       </math>
    </component>
