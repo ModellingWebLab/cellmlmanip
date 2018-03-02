@@ -120,7 +120,7 @@ For annotations, we check:
    <component name="single_ode_rhs_computed_var">
       <!-- d(sv1)/d(time) = a, sv1(0) = 1 -->
       <variable name="time" public_interface="in" units="ms"/>
-      <variable name="sv1" units="mV" cmeta:id="sv13" initial_value="1">
+      <variable name="sv1" units="mV" cmeta:id="sv13" initial_value="1" public_interface="out">
          <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:bqbiol="http://biomodels.net/biology-qualifiers/">
             <rdf:Description rdf:about="#sv13">
                <bqbiol:is rdf:resource="https://chaste.comlab.ox.ac.uk/cellml/ns/oxford-metadata#calcium_reversal_potential"/>
