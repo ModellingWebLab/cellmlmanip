@@ -147,6 +147,28 @@ For annotations, we check:
       </math>
    </component>
 
+   <component name="derived_from_state_var">
+      <!-- dbl_sv1 = sv1 * 2, where sv1 is connected to single_ode_rhs_computed_var -->
+      <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:bqbiol="http://biomodels.net/biology-qualifiers/">
+         <rdf:Description rdf:about="#dbl_sv1">
+            <bqbiol:is rdf:resource="https://chaste.comlab.ox.ac.uk/cellml/ns/oxford-metadata#chloride_reversal_potential"/>
+         </rdf:Description>
+      </rdf:RDF>
+      <!-- Here the RDF comes *before* the annotated variable, just for fun! -->
+      <variable name="time" public_interface="in" units="ms"/>
+      <variable name="sv1" units="mV" public_interface="in"/>
+      <variable name="dbl_sv1" units="mV" cmeta:id="dbl_sv1"/>
+      <math xmlns="http://www.w3.org/1998/Math/MathML">
+         <apply><eq/>
+            <ci>dbl_sv1</ci>
+            <apply><times/>
+               <ci>sv1</ci>
+               <cn cellml:units="dimensionless">2</cn>
+            </apply>
+         </apply>
+      </math>
+   </component>
+
    <!--
       This trio of components define a coupled pair of ODEs, encapsulated within a parent:
       dx/dt = -y, dy/dt = x, x(0) = 0, y(0) = 1
@@ -232,6 +254,15 @@ For annotations, we check:
    <connection>
       <map_components component_1="single_ode_rhs_computed_var" component_2="environment"/>
       <map_variables variable_1="time" variable_2="time"/>
+   </connection>
+
+   <connection>
+      <map_components component_1="derived_from_state_var" component_2="environment"/>
+      <map_variables variable_1="time" variable_2="time"/>
+   </connection>
+   <connection>
+      <map_components component_1="single_ode_rhs_computed_var" component_2="derived_from_state_var"/>
+      <map_variables variable_1="sv1" variable_2="sv1"/>
    </connection>
 
    <connection>
