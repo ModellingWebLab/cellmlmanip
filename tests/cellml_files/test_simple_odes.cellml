@@ -11,9 +11,9 @@ This model is designed to test the following kinds of equations:
 * circle_parent: dx/dt = -y, dy/dt = x, x(0) = 0, y(0) = 1
   This one also checks encapsulation: x and y ODEs are within child components.
   All information flow directions are covered.
-* time_units_conversion1: d(sv1)/d(time) = 0.0001, sv1(0) = 1, time in seconds locally
+* time_units_conversion1: d(sv1)/d(time) = 0.001, sv1(0) = 1, time in seconds locally
 * time_units_conversion2: d(sv1)/d(time) = 1000, sv1(0) = 1, time in microseconds locally
-* state_units_conversion1: d(sv1)/d(time) = 0.0001, sv1(0) = 1, sv1 in volts locally, exported to proto in mV
+* state_units_conversion1: d(sv1)/d(time) = 0.001, sv1(0) = 1, sv1 in volts locally, exported to proto in mV
 * state_units_conversion2: d(sv1)/d(time) = 1000, sv1(0) = 1, sv1 in microvolts locally, exported to proto in mV
 * deriv_on_rhs1a: sv1_rate = d(sv1)/d(time), where sv1 & time are connected to parent time_units_conversion1
 * deriv_on_rhs2a: sv1_rate = d(sv1)/d(time), where sv1 & time are connected to parent time_units_conversion2
@@ -37,11 +37,17 @@ For annotations, we check:
    <units name="per_ms">
       <unit units="ms" exponent="-1"/>
    </units>
+   <units name="usec">
+      <unit units="second" prefix="micro"/>
+   </units>
    <units name="mV">
       <unit units="volt" prefix="milli"/>
    </units>
    <units name="per_mV">
       <unit units="volt" prefix="milli" exponent="-1"/>
+   </units>
+   <units name="uV">
+      <unit units="volt" prefix="micro"/>
    </units>
    <units name="mV_per_ms">
       <unit units="mV" exponent="1"/>
@@ -292,11 +298,61 @@ For annotations, we check:
 
    <component name="time_units_conversion2">
       <!-- d(sv1)/d(time) = 1000, sv1(0) = 1, time in microseconds locally -->
-      <variable name="time" public_interface="in" units="second" private_interface="out"/>
+      <variable name="time" public_interface="in" units="usec" private_interface="out"/>
       <variable name="sv1" units="mV" cmeta:id="sv1_time2" initial_value="1" private_interface="out">
          <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:bqbiol="http://biomodels.net/biology-qualifiers/">
             <rdf:Description rdf:about="#sv1_time2">
                <bqbiol:is rdf:resource="https://chaste.comlab.ox.ac.uk/cellml/ns/oxford-metadata#membrane_plateau_potassium_current_conductance"/>
+            </rdf:Description>
+         </rdf:RDF>
+      </variable>
+      <math xmlns="http://www.w3.org/1998/Math/MathML">
+         <apply>
+            <eq/>
+            <apply>
+               <diff/>
+               <bvar>
+                  <ci>time</ci>
+               </bvar>
+               <ci>sv1</ci>
+            </apply>
+            <cn cellml:units="mV_per_usec">1000</cn>
+         </apply>
+      </math>
+   </component>
+
+   <component name="state_units_conversion1">
+      <!-- d(sv1)/d(time) = 0.001, sv1(0) = 1, sv1 in volts locally, exported to proto in mV -->
+      <variable name="time" public_interface="in" units="ms" private_interface="out"/>
+      <variable name="sv1" units="volt" cmeta:id="sv1_state1" initial_value="1" private_interface="out">
+         <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:bqbiol="http://biomodels.net/biology-qualifiers/">
+            <rdf:Description rdf:about="#sv1_state1">
+               <bqbiol:is rdf:resource="https://chaste.comlab.ox.ac.uk/cellml/ns/oxford-metadata#membrane_delayed_rectifier_potassium_current"/>
+            </rdf:Description>
+         </rdf:RDF>
+      </variable>
+      <math xmlns="http://www.w3.org/1998/Math/MathML">
+         <apply>
+            <eq/>
+            <apply>
+               <diff/>
+               <bvar>
+                  <ci>time</ci>
+               </bvar>
+               <ci>sv1</ci>
+            </apply>
+            <cn cellml:units="mV_per_s">0.001</cn>
+         </apply>
+      </math>
+   </component>
+
+   <component name="state_units_conversion2">
+      <!-- d(sv1)/d(time) = 1000, sv1(0) = 1, sv1 in microvolts locally, exported to proto in mV -->
+      <variable name="time" public_interface="in" units="ms" private_interface="out"/>
+      <variable name="sv1" units="uV" cmeta:id="sv1_state2" initial_value="1" private_interface="out">
+         <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:bqbiol="http://biomodels.net/biology-qualifiers/">
+            <rdf:Description rdf:about="#sv1_state2">
+               <bqbiol:is rdf:resource="https://chaste.comlab.ox.ac.uk/cellml/ns/oxford-metadata#membrane_delayed_rectifier_potassium_current_conductance"/>
             </rdf:Description>
          </rdf:RDF>
       </variable>
@@ -381,6 +437,15 @@ For annotations, we check:
    </connection>
    <connection>
       <map_components component_1="time_units_conversion2" component_2="environment"/>
+      <map_variables variable_1="time" variable_2="time"/>
+   </connection>
+
+   <connection>
+      <map_components component_1="state_units_conversion1" component_2="environment"/>
+      <map_variables variable_1="time" variable_2="time"/>
+   </connection>
+   <connection>
+      <map_components component_1="state_units_conversion2" component_2="environment"/>
       <map_variables variable_1="time" variable_2="time"/>
    </connection>
 
