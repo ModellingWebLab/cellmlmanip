@@ -169,6 +169,29 @@ For annotations, we check:
       </math>
    </component>
 
+   <component name="deriv_on_rhs">
+      <!-- sv1_rate = d(sv1)/d(time), where sv1 & time are connected to single_ode_rhs_computed_var -->
+      <variable name="time" public_interface="in" units="ms"/>
+      <variable name="sv1" units="mV" public_interface="in"/>
+      <variable name="sv1_rate" units="mV_per_ms" cmeta:id="sv1_rate"/>
+      <math xmlns="http://www.w3.org/1998/Math/MathML">
+         <apply><eq/>
+            <ci>sv1_rate</ci>
+            <apply><diff/>
+               <bvar>
+                  <ci>time</ci>
+               </bvar>
+               <ci>sv1</ci>
+            </apply>
+         </apply>
+      </math>
+      <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:bqbiol="http://biomodels.net/biology-qualifiers/">
+         <rdf:Description rdf:about="#sv1_rate">
+            <bqbiol:is rdf:resource="https://chaste.comlab.ox.ac.uk/cellml/ns/oxford-metadata#membrane_potassium_current"/>
+         </rdf:Description>
+      </rdf:RDF>
+   </component>
+
    <!--
       This trio of components define a coupled pair of ODEs, encapsulated within a parent:
       dx/dt = -y, dy/dt = x, x(0) = 0, y(0) = 1
@@ -262,6 +285,15 @@ For annotations, we check:
    </connection>
    <connection>
       <map_components component_1="single_ode_rhs_computed_var" component_2="derived_from_state_var"/>
+      <map_variables variable_1="sv1" variable_2="sv1"/>
+   </connection>
+
+   <connection>
+      <map_components component_1="deriv_on_rhs" component_2="environment"/>
+      <map_variables variable_1="time" variable_2="time"/>
+   </connection>
+   <connection>
+      <map_components component_1="single_ode_rhs_computed_var" component_2="deriv_on_rhs"/>
       <map_variables variable_1="sv1" variable_2="sv1"/>
    </connection>
 
