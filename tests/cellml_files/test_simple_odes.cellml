@@ -47,6 +47,14 @@ For annotations, we check:
       <unit units="mV" exponent="1"/>
       <unit units="ms" exponent="-1"/>
    </units>
+   <units name="mV_per_s">
+      <unit units="mV" exponent="1"/>
+      <unit units="second" exponent="-1"/>
+   </units>
+   <units name="mV_per_usec">
+      <unit units="mV" exponent="1"/>
+      <unit prefix="micro" units="second" exponent="-1"/>
+   </units>
    <units name="mM">
       <unit prefix="milli" units="mole"/>
       <unit units="litre" exponent="-1"/>
@@ -257,6 +265,56 @@ For annotations, we check:
       </math>
    </component>
 
+   <component name="time_units_conversion1">
+      <!-- d(sv1)/d(time) = 0.001, sv1(0) = 1, time in seconds locally -->
+      <variable name="time" public_interface="in" units="second" private_interface="out"/>
+      <variable name="sv1" units="mV" cmeta:id="sv1_time1" initial_value="1" private_interface="out">
+         <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:bqbiol="http://biomodels.net/biology-qualifiers/">
+            <rdf:Description rdf:about="#sv1_time1">
+               <bqbiol:is rdf:resource="https://chaste.comlab.ox.ac.uk/cellml/ns/oxford-metadata#membrane_potassium_current_conductance"/>
+            </rdf:Description>
+         </rdf:RDF>
+      </variable>
+      <math xmlns="http://www.w3.org/1998/Math/MathML">
+         <apply>
+            <eq/>
+            <apply>
+               <diff/>
+               <bvar>
+                  <ci>time</ci>
+               </bvar>
+               <ci>sv1</ci>
+            </apply>
+            <cn cellml:units="mV_per_s">0.001</cn>
+         </apply>
+      </math>
+   </component>
+
+   <component name="time_units_conversion2">
+      <!-- d(sv1)/d(time) = 1000, sv1(0) = 1, time in microseconds locally -->
+      <variable name="time" public_interface="in" units="second" private_interface="out"/>
+      <variable name="sv1" units="mV" cmeta:id="sv1_time2" initial_value="1" private_interface="out">
+         <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:bqbiol="http://biomodels.net/biology-qualifiers/">
+            <rdf:Description rdf:about="#sv1_time2">
+               <bqbiol:is rdf:resource="https://chaste.comlab.ox.ac.uk/cellml/ns/oxford-metadata#membrane_plateau_potassium_current_conductance"/>
+            </rdf:Description>
+         </rdf:RDF>
+      </variable>
+      <math xmlns="http://www.w3.org/1998/Math/MathML">
+         <apply>
+            <eq/>
+            <apply>
+               <diff/>
+               <bvar>
+                  <ci>time</ci>
+               </bvar>
+               <ci>sv1</ci>
+            </apply>
+            <cn cellml:units="mV_per_usec">1000</cn>
+         </apply>
+      </math>
+   </component>
+
    <!-- Encapsulation hierarchy - non-mentioned components are top-level -->
    <group>
       <relationship_ref relationship="encapsulation"/>
@@ -315,6 +373,15 @@ For annotations, we check:
       <map_components component_1="circle_x" component_2="circle_y"/>
       <map_variables variable_1="x" variable_2="x"/>
       <map_variables variable_1="y" variable_2="y"/>
+   </connection>
+
+   <connection>
+      <map_components component_1="time_units_conversion1" component_2="environment"/>
+      <map_variables variable_1="time" variable_2="time"/>
+   </connection>
+   <connection>
+      <map_components component_1="time_units_conversion2" component_2="environment"/>
+      <map_variables variable_1="time" variable_2="time"/>
    </connection>
 
    <!-- RDF can appear outside components too -->
