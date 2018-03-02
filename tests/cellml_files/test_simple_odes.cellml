@@ -1,17 +1,29 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
 This model is designed to test the following kinds of equations:
+* single_independent_ode: d(sv1)/d(time) = 1, sv1(0) = 1
+* single_ode_rhs_const_var: d(sv1)/d(time) = a, sv1(0) = 1, a=1 set by initial_value
+  Note that sv1 here is not the same as sv1 elsewhere! Similarly below.
+  This means we're also testing multiple independent ODEs.
+* single_ode_rhs_computed_var: d(sv1)/d(time) = a, sv1(0) = 1, a=-1 set by equation
+* derived_from_state_var: dbl_sv1 = sv1 * 2, where sv1 is connected to single_ode_rhs_computed_var
+* deriv_on_rhs: sv1_rate = d(sv1)/d(time), where sv1 & time are connected to single_ode_rhs_computed_var
+* circle_parent: dx/dt = -y, dy/dt = x, x(0) = 0, y(0) = 1
+  This one also checks encapsulation: x and y ODEs are within child components.
+  All information flow directions are covered.
+* time_units_conversion1: d(sv1)/d(time) = 0.0001, sv1(0) = 1, time in seconds locally
+* time_units_conversion2: d(sv1)/d(time) = 1000, sv1(0) = 1, time in microseconds locally
+* state_units_conversion1: d(sv1)/d(time) = 0.0001, sv1(0) = 1, sv1 in volts locally, exported to proto in mV
+* state_units_conversion2: d(sv1)/d(time) = 1000, sv1(0) = 1, sv1 in microvolts locally, exported to proto in mV
+* deriv_on_rhs1a: sv1_rate = d(sv1)/d(time), where sv1 & time are connected to parent time_units_conversion1
+* deriv_on_rhs2a: sv1_rate = d(sv1)/d(time), where sv1 & time are connected to parent time_units_conversion2
+* deriv_on_rhs1b: sv1_rate = d(sv1)/d(time), where sv1 & time are connected to parent state_units_conversion1
+* deriv_on_rhs2b: sv1_rate = d(sv1)/d(time), where sv1 & time are connected to parent state_units_conversion2
 
-    dV/dt = 1, V(0) = 1
-    dx/dt = 1, dy/dt = -1, x(0) = y(0) = 1
-    dx/dt = -y, dy/dt = x, x(0) = 0, y(0) = 1
-    dx/dt1 = -y, dy/dt2 = x, t1 = t2, x(0) = 0, y(0) = 1
-
-The last case checks whether connecting 'time' across components will work naturally. To check connecting V we could use:
-
-    dV/dt = 1, derived = V1 * 2, V1 = V, V(0) = 1
-
-We will also check some connection features (units conversions, encapsulation) and annotations.
+For annotations, we check:
+* RDF within <variable> elements
+* RDF within a <component> but not inside a <variable>
+* RDF directly within <model>
 
 -->
 <model name="test_simple_odes" cmeta:id="test_simple_odes"
