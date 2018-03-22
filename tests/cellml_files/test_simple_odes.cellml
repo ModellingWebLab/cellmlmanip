@@ -296,6 +296,31 @@ For annotations, we check:
       </math>
    </component>
 
+   <component name="deriv_on_rhs1a">
+      <!-- sv1_rate = d(sv1)/d(time), where sv1 & time are connected to parent time_units_conversion1 -->
+      <variable name="time" public_interface="in" units="second"/>
+      <variable name="sv1" units="mV" public_interface="in"/>
+      <variable name="sv1_rate" units="mV_per_s" cmeta:id="sv1_rate1a"/>
+      <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:bqbiol="http://biomodels.net/biology-qualifiers/">
+         <rdf:Description rdf:about="#sv1_rate1a">
+            <bqbiol:is rdf:resource="https://chaste.comlab.ox.ac.uk/cellml/ns/oxford-metadata#rapid_time_dependent_potassium_current_Xr1_gate"/>
+         </rdf:Description>
+      </rdf:RDF>
+      <math xmlns="http://www.w3.org/1998/Math/MathML">
+         <apply>
+            <eq/>
+            <ci>sv1_rate</ci>
+            <apply>
+               <diff/>
+               <bvar>
+                  <ci>time</ci>
+               </bvar>
+               <ci>sv1</ci>
+            </apply>
+         </apply>
+      </math>
+   </component>
+
    <component name="time_units_conversion2">
       <!-- d(sv1)/d(time) = 1000, sv1(0) = 1, time in microseconds locally -->
       <variable name="time" public_interface="in" units="usec" private_interface="out"/>
@@ -317,6 +342,31 @@ For annotations, we check:
                <ci>sv1</ci>
             </apply>
             <cn cellml:units="mV_per_usec">1000</cn>
+         </apply>
+      </math>
+   </component>
+
+   <component name="deriv_on_rhs2a">
+      <!-- sv1_rate = d(sv1)/d(time), where sv1 & time are connected to parent time_units_conversion2 -->
+      <variable name="time" public_interface="in" units="usec"/>
+      <variable name="sv1" units="mV" public_interface="in"/>
+      <variable name="sv1_rate" units="mV_per_usec" cmeta:id="sv1_rate2a"/>
+      <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:bqbiol="http://biomodels.net/biology-qualifiers/">
+         <rdf:Description rdf:about="#sv1_rate2a">
+            <bqbiol:is rdf:resource="https://chaste.comlab.ox.ac.uk/cellml/ns/oxford-metadata#rapid_time_dependent_potassium_current_Xr2_gate"/>
+         </rdf:Description>
+      </rdf:RDF>
+      <math xmlns="http://www.w3.org/1998/Math/MathML">
+         <apply>
+            <eq/>
+            <ci>sv1_rate</ci>
+            <apply>
+               <diff/>
+               <bvar>
+                  <ci>time</ci>
+               </bvar>
+               <ci>sv1</ci>
+            </apply>
          </apply>
       </math>
    </component>
@@ -346,6 +396,31 @@ For annotations, we check:
       </math>
    </component>
 
+   <component name="deriv_on_rhs1b">
+      <!-- sv1_rate = d(sv1)/d(time), where sv1 & time are connected to parent state_units_conversion1 -->
+      <variable name="time" public_interface="in" units="ms"/>
+      <variable name="sv1" units="volt" public_interface="in"/>
+      <variable name="sv1_rate" units="mV_per_s" cmeta:id="sv1_rate1b"/>
+      <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:bqbiol="http://biomodels.net/biology-qualifiers/">
+         <rdf:Description rdf:about="#sv1_rate1b">
+            <bqbiol:is rdf:resource="https://chaste.comlab.ox.ac.uk/cellml/ns/oxford-metadata#slow_time_dependent_potassium_current_conductance"/>
+         </rdf:Description>
+      </rdf:RDF>
+      <math xmlns="http://www.w3.org/1998/Math/MathML">
+         <apply>
+            <eq/>
+            <ci>sv1_rate</ci>
+            <apply>
+               <diff/>
+               <bvar>
+                  <ci>time</ci>
+               </bvar>
+               <ci>sv1</ci>
+            </apply>
+         </apply>
+      </math>
+   </component>
+
    <component name="state_units_conversion2">
       <!-- d(sv1)/d(time) = 1000, sv1(0) = 1, sv1 in microvolts locally, exported to proto in mV -->
       <variable name="time" public_interface="in" units="ms" private_interface="out"/>
@@ -371,12 +446,49 @@ For annotations, we check:
       </math>
    </component>
 
+   <component name="deriv_on_rhs2b">
+      <!-- sv1_rate = d(sv1)/d(time), where sv1 & time are connected to parent state_units_conversion2 -->
+      <variable name="time" public_interface="in" units="ms"/>
+      <variable name="sv1" units="uV" public_interface="in"/>
+      <variable name="sv1_rate" units="mV_per_usec" cmeta:id="sv1_rate2b"/>
+      <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:bqbiol="http://biomodels.net/biology-qualifiers/">
+         <rdf:Description rdf:about="#sv1_rate2b">
+            <bqbiol:is rdf:resource="https://chaste.comlab.ox.ac.uk/cellml/ns/oxford-metadata#rapid_time_dependent_potassium_current_conductance"/>
+         </rdf:Description>
+      </rdf:RDF>
+      <math xmlns="http://www.w3.org/1998/Math/MathML">
+         <apply>
+            <eq/>
+            <ci>sv1_rate</ci>
+            <apply>
+               <diff/>
+               <bvar>
+                  <ci>time</ci>
+               </bvar>
+               <ci>sv1</ci>
+            </apply>
+         </apply>
+      </math>
+   </component>
+
    <!-- Encapsulation hierarchy - non-mentioned components are top-level -->
    <group>
       <relationship_ref relationship="encapsulation"/>
       <component_ref component="circle_parent">
          <component_ref component="circle_x"/>
          <component_ref component="circle_y"/>
+      </component_ref>
+      <component_ref component="time_units_conversion1">
+         <component_ref component="deriv_on_rhs1a"/>
+      </component_ref>
+      <component_ref component="time_units_conversion2">
+         <component_ref component="deriv_on_rhs2a"/>
+      </component_ref>
+      <component_ref component="state_units_conversion1">
+         <component_ref component="deriv_on_rhs1b"/>
+      </component_ref>
+      <component_ref component="state_units_conversion2">
+         <component_ref component="deriv_on_rhs2b"/>
       </component_ref>
    </group>
 
@@ -448,6 +560,28 @@ For annotations, we check:
       <map_components component_1="state_units_conversion2" component_2="environment"/>
       <map_variables variable_1="time" variable_2="time"/>
    </connection>
+
+   <connection>
+      <map_components component_1="time_units_conversion1" component_2="deriv_on_rhs1a"/>
+      <map_variables variable_1="time" variable_2="time"/>
+      <map_variables variable_1="sv1" variable_2="sv1"/>
+   </connection>
+   <connection>
+      <map_components component_1="time_units_conversion2" component_2="deriv_on_rhs2a"/>
+      <map_variables variable_1="time" variable_2="time"/>
+      <map_variables variable_1="sv1" variable_2="sv1"/>
+   </connection>
+   <connection>
+      <map_components component_1="state_units_conversion1" component_2="deriv_on_rhs1b"/>
+      <map_variables variable_1="time" variable_2="time"/>
+      <map_variables variable_1="sv1" variable_2="sv1"/>
+   </connection>
+   <connection>
+      <map_components component_1="state_units_conversion2" component_2="deriv_on_rhs2b"/>
+      <map_variables variable_1="time" variable_2="time"/>
+      <map_variables variable_1="sv1" variable_2="sv1"/>
+   </connection>
+
 
    <!-- RDF can appear outside components too -->
    <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
