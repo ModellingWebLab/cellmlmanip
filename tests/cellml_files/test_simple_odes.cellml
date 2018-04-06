@@ -1,0 +1,594 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+This model is designed to test the following kinds of equations:
+* single_independent_ode: d(sv1)/d(time) = 1, sv1(0) = 1
+* single_ode_rhs_const_var: d(sv1)/d(time) = a, sv1(0) = 1, a=1 set by initial_value
+  Note that sv1 here is not the same as sv1 elsewhere! Similarly below.
+  This means we're also testing multiple independent ODEs.
+* single_ode_rhs_computed_var: d(sv1)/d(time) = a, sv1(0) = 1, a=-1 set by equation
+* derived_from_state_var: dbl_sv1 = sv1 * 2, where sv1 is connected to single_ode_rhs_computed_var
+* deriv_on_rhs: sv1_rate = d(sv1)/d(time), where sv1 & time are connected to single_ode_rhs_computed_var
+* circle_parent: dx/dt = -y, dy/dt = x, x(0) = 0, y(0) = 1
+  This one also checks encapsulation: x and y ODEs are within child components.
+  All information flow directions are covered.
+* time_units_conversion1: d(sv1)/d(time) = 0.001, sv1(0) = 1, time in seconds locally
+* time_units_conversion2: d(sv1)/d(time) = 1000, sv1(0) = 1, time in microseconds locally
+* state_units_conversion1: d(sv1)/d(time) = 0.001, sv1(0) = 1, sv1 in volts locally, exported to proto in mV
+* state_units_conversion2: d(sv1)/d(time) = 1000, sv1(0) = 1, sv1 in microvolts locally, exported to proto in mV
+* deriv_on_rhs1a: sv1_rate = d(sv1)/d(time), where sv1 & time are connected to parent time_units_conversion1
+* deriv_on_rhs2a: sv1_rate = d(sv1)/d(time), where sv1 & time are connected to parent time_units_conversion2
+* deriv_on_rhs1b: sv1_rate = d(sv1)/d(time), where sv1 & time are connected to parent state_units_conversion1
+* deriv_on_rhs2b: sv1_rate = d(sv1)/d(time), where sv1 & time are connected to parent state_units_conversion2
+
+For annotations, we check:
+* RDF within <variable> elements
+* RDF within a <component> but not inside a <variable>
+* RDF directly within <model>
+
+-->
+<model name="test_simple_odes" cmeta:id="test_simple_odes"
+   xmlns="http://www.cellml.org/cellml/1.0#"
+   xmlns:cellml="http://www.cellml.org/cellml/1.0#"
+   xmlns:cmeta="http://www.cellml.org/metadata/1.0#">
+
+   <units name="ms">
+      <unit units="second" prefix="milli"/>
+   </units>
+   <units name="per_ms">
+      <unit units="ms" exponent="-1"/>
+   </units>
+   <units name="usec">
+      <unit units="second" prefix="micro"/>
+   </units>
+   <units name="mV">
+      <unit units="volt" prefix="milli"/>
+   </units>
+   <units name="per_mV">
+      <unit units="volt" prefix="milli" exponent="-1"/>
+   </units>
+   <units name="uV">
+      <unit units="volt" prefix="micro"/>
+   </units>
+   <units name="mV_per_ms">
+      <unit units="mV" exponent="1"/>
+      <unit units="ms" exponent="-1"/>
+   </units>
+   <units name="mV_per_s">
+      <unit units="mV" exponent="1"/>
+      <unit units="second" exponent="-1"/>
+   </units>
+   <units name="mV_per_usec">
+      <unit units="mV" exponent="1"/>
+      <unit prefix="micro" units="second" exponent="-1"/>
+   </units>
+   <units name="mM">
+      <unit prefix="milli" units="mole"/>
+      <unit units="litre" exponent="-1"/>
+   </units>
+   <units name="mM_per_ms">
+      <unit units="mM"/>
+      <unit units="ms" exponent="-1"/>
+   </units>
+
+   <component name="environment">
+      <variable name="time" public_interface="out" units="ms" cmeta:id="time">
+         <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:bqbiol="http://biomodels.net/biology-qualifiers/">
+            <rdf:Description rdf:about="#time">
+               <bqbiol:is rdf:resource="https://chaste.comlab.ox.ac.uk/cellml/ns/oxford-metadata#time"/>
+            </rdf:Description>
+         </rdf:RDF>
+      </variable>
+   </component>
+
+   <component name="single_independent_ode">
+      <!-- d(sv1)/d(time) = 1, sv1(0) = 1 -->
+      <variable name="time" public_interface="in" units="ms"/>
+      <variable name="sv1" units="mV" cmeta:id="sv11" initial_value="1">
+         <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:bqbiol="http://biomodels.net/biology-qualifiers/">
+            <rdf:Description rdf:about="#sv11">
+               <bqbiol:is rdf:resource="https://chaste.comlab.ox.ac.uk/cellml/ns/oxford-metadata#sodium_reversal_potential"/>
+            </rdf:Description>
+         </rdf:RDF>
+      </variable>
+      <math xmlns="http://www.w3.org/1998/Math/MathML">
+         <apply>
+            <eq/>
+            <apply>
+               <diff/>
+               <bvar>
+                  <ci>time</ci>
+               </bvar>
+               <ci>sv1</ci>
+            </apply>
+            <cn cellml:units="mV_per_ms">1</cn>
+         </apply>
+      </math>
+   </component>
+
+   <component name="single_ode_rhs_const_var">
+      <!-- d(sv1)/d(time) = a, sv1(0) = 1 -->
+      <variable name="time" public_interface="in" units="ms"/>
+      <variable name="sv1" units="mV" cmeta:id="sv12" initial_value="1">
+         <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:bqbiol="http://biomodels.net/biology-qualifiers/">
+            <rdf:Description rdf:about="#sv12">
+               <bqbiol:is rdf:resource="https://chaste.comlab.ox.ac.uk/cellml/ns/oxford-metadata#potassium_reversal_potential"/>
+            </rdf:Description>
+         </rdf:RDF>
+      </variable>
+      <variable name="a" units="mV_per_ms" initial_value="1" cmeta:id="a1"/>
+      <math xmlns="http://www.w3.org/1998/Math/MathML">
+         <apply>
+            <eq/>
+            <apply>
+               <diff/>
+               <bvar>
+                  <ci>time</ci>
+               </bvar>
+               <ci>sv1</ci>
+            </apply>
+            <ci>a</ci>
+         </apply>
+      </math>
+   </component>
+
+   <component name="single_ode_rhs_computed_var">
+      <!-- d(sv1)/d(time) = a, sv1(0) = 1 -->
+      <variable name="time" public_interface="in" units="ms"/>
+      <variable name="sv1" units="mV" cmeta:id="sv13" initial_value="1" public_interface="out">
+         <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:bqbiol="http://biomodels.net/biology-qualifiers/">
+            <rdf:Description rdf:about="#sv13">
+               <bqbiol:is rdf:resource="https://chaste.comlab.ox.ac.uk/cellml/ns/oxford-metadata#calcium_reversal_potential"/>
+            </rdf:Description>
+         </rdf:RDF>
+      </variable>
+      <variable name="a" units="mV_per_ms" cmeta:id="a2"/>
+      <math xmlns="http://www.w3.org/1998/Math/MathML">
+         <apply>
+            <eq/>
+            <apply>
+               <diff/>
+               <bvar>
+                  <ci>time</ci>
+               </bvar>
+               <ci>sv1</ci>
+            </apply>
+            <ci>a</ci>
+         </apply>
+         <apply><eq/>
+            <ci>a</ci>
+            <cn cellml:units="mV_per_ms">-1</cn>
+         </apply>
+      </math>
+   </component>
+
+   <component name="derived_from_state_var">
+      <!-- dbl_sv1 = sv1 * 2, where sv1 is connected to single_ode_rhs_computed_var -->
+      <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:bqbiol="http://biomodels.net/biology-qualifiers/">
+         <rdf:Description rdf:about="#dbl_sv1">
+            <bqbiol:is rdf:resource="https://chaste.comlab.ox.ac.uk/cellml/ns/oxford-metadata#chloride_reversal_potential"/>
+         </rdf:Description>
+      </rdf:RDF>
+      <!-- Here the RDF comes *before* the annotated variable, just for fun! -->
+      <variable name="time" public_interface="in" units="ms"/>
+      <variable name="sv1" units="mV" public_interface="in"/>
+      <variable name="dbl_sv1" units="mV" cmeta:id="dbl_sv1"/>
+      <math xmlns="http://www.w3.org/1998/Math/MathML">
+         <apply><eq/>
+            <ci>dbl_sv1</ci>
+            <apply><times/>
+               <ci>sv1</ci>
+               <cn cellml:units="dimensionless">2</cn>
+            </apply>
+         </apply>
+      </math>
+   </component>
+
+   <component name="deriv_on_rhs">
+      <!-- sv1_rate = d(sv1)/d(time), where sv1 & time are connected to single_ode_rhs_computed_var -->
+      <variable name="time" public_interface="in" units="ms"/>
+      <variable name="sv1" units="mV" public_interface="in"/>
+      <variable name="sv1_rate" units="mV_per_ms" cmeta:id="sv1_rate"/>
+      <math xmlns="http://www.w3.org/1998/Math/MathML">
+         <apply><eq/>
+            <ci>sv1_rate</ci>
+            <apply><diff/>
+               <bvar>
+                  <ci>time</ci>
+               </bvar>
+               <ci>sv1</ci>
+            </apply>
+         </apply>
+      </math>
+      <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:bqbiol="http://biomodels.net/biology-qualifiers/">
+         <rdf:Description rdf:about="#sv1_rate">
+            <bqbiol:is rdf:resource="https://chaste.comlab.ox.ac.uk/cellml/ns/oxford-metadata#membrane_potassium_current"/>
+         </rdf:Description>
+      </rdf:RDF>
+   </component>
+
+   <!--
+      This trio of components define a coupled pair of ODEs, encapsulated within a parent:
+      dx/dt = -y, dy/dt = x, x(0) = 0, y(0) = 1
+    -->
+   <component name="circle_parent">
+      <variable name="time" public_interface="in" private_interface="out" units="ms"/>
+      <variable name="x" units="mM" private_interface="in"/>
+      <variable name="y" units="mM" private_interface="in"/>
+   </component>
+   <component name="circle_x">
+      <variable name="time" public_interface="in" units="ms"/>
+      <variable name="x" units="mM" cmeta:id="x1" initial_value="0" public_interface="out"/>
+      <variable name="y" units="mM" public_interface="in">
+         <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:bqbiol="http://biomodels.net/biology-qualifiers/">
+            <rdf:Description rdf:about="#x1">
+               <bqbiol:is rdf:resource="https://chaste.comlab.ox.ac.uk/cellml/ns/oxford-metadata#cytosolic_calcium_concentration"/>
+            </rdf:Description>
+         </rdf:RDF>
+      </variable>
+      <math xmlns="http://www.w3.org/1998/Math/MathML">
+         <apply>
+            <eq/>
+            <apply>
+               <diff/>
+               <bvar>
+                  <ci>time</ci>
+               </bvar>
+               <ci>x</ci>
+            </apply>
+            <apply><minus/>
+               <apply><times/>
+                  <ci>y</ci>
+                  <cn cellml:units="per_ms">1</cn>
+               </apply>
+            </apply>
+         </apply>
+      </math>
+   </component>
+   <component name="circle_y">
+      <variable name="time" public_interface="in" units="ms"/>
+      <variable name="y" units="mM" cmeta:id="y1" initial_value="1" public_interface="out"/>
+      <variable name="x" units="mM" public_interface="in"/>
+      <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:bqbiol="http://biomodels.net/biology-qualifiers/">
+         <rdf:Description rdf:about="#y1">
+            <bqbiol:is rdf:resource="https://chaste.comlab.ox.ac.uk/cellml/ns/oxford-metadata#extracellular_calcium_concentration"/>
+         </rdf:Description>
+      </rdf:RDF>
+      <math xmlns="http://www.w3.org/1998/Math/MathML">
+         <apply>
+            <eq/>
+            <apply>
+               <diff/>
+               <bvar>
+                  <ci>time</ci>
+               </bvar>
+               <ci>y</ci>
+            </apply>
+            <apply><times/>
+               <ci>x</ci>
+               <cn cellml:units="per_ms">1</cn>
+            </apply>
+         </apply>
+      </math>
+   </component>
+
+   <component name="time_units_conversion1">
+      <!-- d(sv1)/d(time) = 0.001, sv1(0) = 1, time in seconds locally -->
+      <variable name="time" public_interface="in" units="second" private_interface="out"/>
+      <variable name="sv1" units="mV" cmeta:id="sv1_time1" initial_value="1" private_interface="out">
+         <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:bqbiol="http://biomodels.net/biology-qualifiers/">
+            <rdf:Description rdf:about="#sv1_time1">
+               <bqbiol:is rdf:resource="https://chaste.comlab.ox.ac.uk/cellml/ns/oxford-metadata#membrane_potassium_current_conductance"/>
+            </rdf:Description>
+         </rdf:RDF>
+      </variable>
+      <math xmlns="http://www.w3.org/1998/Math/MathML">
+         <apply>
+            <eq/>
+            <apply>
+               <diff/>
+               <bvar>
+                  <ci>time</ci>
+               </bvar>
+               <ci>sv1</ci>
+            </apply>
+            <cn cellml:units="mV_per_s">0.001</cn>
+         </apply>
+      </math>
+   </component>
+
+   <component name="deriv_on_rhs1a">
+      <!-- sv1_rate = d(sv1)/d(time), where sv1 & time are connected to parent time_units_conversion1 -->
+      <variable name="time" public_interface="in" units="second"/>
+      <variable name="sv1" units="mV" public_interface="in"/>
+      <variable name="sv1_rate" units="mV_per_s" cmeta:id="sv1_rate1a"/>
+      <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:bqbiol="http://biomodels.net/biology-qualifiers/">
+         <rdf:Description rdf:about="#sv1_rate1a">
+            <bqbiol:is rdf:resource="https://chaste.comlab.ox.ac.uk/cellml/ns/oxford-metadata#rapid_time_dependent_potassium_current_Xr1_gate"/>
+         </rdf:Description>
+      </rdf:RDF>
+      <math xmlns="http://www.w3.org/1998/Math/MathML">
+         <apply>
+            <eq/>
+            <ci>sv1_rate</ci>
+            <apply>
+               <diff/>
+               <bvar>
+                  <ci>time</ci>
+               </bvar>
+               <ci>sv1</ci>
+            </apply>
+         </apply>
+      </math>
+   </component>
+
+   <component name="time_units_conversion2">
+      <!-- d(sv1)/d(time) = 1000, sv1(0) = 1, time in microseconds locally -->
+      <variable name="time" public_interface="in" units="usec" private_interface="out"/>
+      <variable name="sv1" units="mV" cmeta:id="sv1_time2" initial_value="1" private_interface="out">
+         <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:bqbiol="http://biomodels.net/biology-qualifiers/">
+            <rdf:Description rdf:about="#sv1_time2">
+               <bqbiol:is rdf:resource="https://chaste.comlab.ox.ac.uk/cellml/ns/oxford-metadata#membrane_plateau_potassium_current_conductance"/>
+            </rdf:Description>
+         </rdf:RDF>
+      </variable>
+      <math xmlns="http://www.w3.org/1998/Math/MathML">
+         <apply>
+            <eq/>
+            <apply>
+               <diff/>
+               <bvar>
+                  <ci>time</ci>
+               </bvar>
+               <ci>sv1</ci>
+            </apply>
+            <cn cellml:units="mV_per_usec">1000</cn>
+         </apply>
+      </math>
+   </component>
+
+   <component name="deriv_on_rhs2a">
+      <!-- sv1_rate = d(sv1)/d(time), where sv1 & time are connected to parent time_units_conversion2 -->
+      <variable name="time" public_interface="in" units="usec"/>
+      <variable name="sv1" units="mV" public_interface="in"/>
+      <variable name="sv1_rate" units="mV_per_usec" cmeta:id="sv1_rate2a"/>
+      <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:bqbiol="http://biomodels.net/biology-qualifiers/">
+         <rdf:Description rdf:about="#sv1_rate2a">
+            <bqbiol:is rdf:resource="https://chaste.comlab.ox.ac.uk/cellml/ns/oxford-metadata#rapid_time_dependent_potassium_current_Xr2_gate"/>
+         </rdf:Description>
+      </rdf:RDF>
+      <math xmlns="http://www.w3.org/1998/Math/MathML">
+         <apply>
+            <eq/>
+            <ci>sv1_rate</ci>
+            <apply>
+               <diff/>
+               <bvar>
+                  <ci>time</ci>
+               </bvar>
+               <ci>sv1</ci>
+            </apply>
+         </apply>
+      </math>
+   </component>
+
+   <component name="state_units_conversion1">
+      <!-- d(sv1)/d(time) = 0.001, sv1(0) = 1, sv1 in volts locally, exported to proto in mV -->
+      <variable name="time" public_interface="in" units="ms" private_interface="out"/>
+      <variable name="sv1" units="volt" cmeta:id="sv1_state1" initial_value="1" private_interface="out">
+         <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:bqbiol="http://biomodels.net/biology-qualifiers/">
+            <rdf:Description rdf:about="#sv1_state1">
+               <bqbiol:is rdf:resource="https://chaste.comlab.ox.ac.uk/cellml/ns/oxford-metadata#membrane_delayed_rectifier_potassium_current"/>
+            </rdf:Description>
+         </rdf:RDF>
+      </variable>
+      <math xmlns="http://www.w3.org/1998/Math/MathML">
+         <apply>
+            <eq/>
+            <apply>
+               <diff/>
+               <bvar>
+                  <ci>time</ci>
+               </bvar>
+               <ci>sv1</ci>
+            </apply>
+            <cn cellml:units="mV_per_s">0.001</cn>
+         </apply>
+      </math>
+   </component>
+
+   <component name="deriv_on_rhs1b">
+      <!-- sv1_rate = d(sv1)/d(time), where sv1 & time are connected to parent state_units_conversion1 -->
+      <variable name="time" public_interface="in" units="ms"/>
+      <variable name="sv1" units="volt" public_interface="in"/>
+      <variable name="sv1_rate" units="mV_per_s" cmeta:id="sv1_rate1b"/>
+      <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:bqbiol="http://biomodels.net/biology-qualifiers/">
+         <rdf:Description rdf:about="#sv1_rate1b">
+            <bqbiol:is rdf:resource="https://chaste.comlab.ox.ac.uk/cellml/ns/oxford-metadata#slow_time_dependent_potassium_current_conductance"/>
+         </rdf:Description>
+      </rdf:RDF>
+      <math xmlns="http://www.w3.org/1998/Math/MathML">
+         <apply>
+            <eq/>
+            <ci>sv1_rate</ci>
+            <apply>
+               <diff/>
+               <bvar>
+                  <ci>time</ci>
+               </bvar>
+               <ci>sv1</ci>
+            </apply>
+         </apply>
+      </math>
+   </component>
+
+   <component name="state_units_conversion2">
+      <!-- d(sv1)/d(time) = 1000, sv1(0) = 1, sv1 in microvolts locally, exported to proto in mV -->
+      <variable name="time" public_interface="in" units="ms" private_interface="out"/>
+      <variable name="sv1" units="uV" cmeta:id="sv1_state2" initial_value="1" private_interface="out">
+         <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:bqbiol="http://biomodels.net/biology-qualifiers/">
+            <rdf:Description rdf:about="#sv1_state2">
+               <bqbiol:is rdf:resource="https://chaste.comlab.ox.ac.uk/cellml/ns/oxford-metadata#membrane_delayed_rectifier_potassium_current_conductance"/>
+            </rdf:Description>
+         </rdf:RDF>
+      </variable>
+      <math xmlns="http://www.w3.org/1998/Math/MathML">
+         <apply>
+            <eq/>
+            <apply>
+               <diff/>
+               <bvar>
+                  <ci>time</ci>
+               </bvar>
+               <ci>sv1</ci>
+            </apply>
+            <cn cellml:units="mV_per_usec">1000</cn>
+         </apply>
+      </math>
+   </component>
+
+   <component name="deriv_on_rhs2b">
+      <!-- sv1_rate = d(sv1)/d(time), where sv1 & time are connected to parent state_units_conversion2 -->
+      <variable name="time" public_interface="in" units="ms"/>
+      <variable name="sv1" units="uV" public_interface="in"/>
+      <variable name="sv1_rate" units="mV_per_usec" cmeta:id="sv1_rate2b"/>
+      <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:bqbiol="http://biomodels.net/biology-qualifiers/">
+         <rdf:Description rdf:about="#sv1_rate2b">
+            <bqbiol:is rdf:resource="https://chaste.comlab.ox.ac.uk/cellml/ns/oxford-metadata#rapid_time_dependent_potassium_current_conductance"/>
+         </rdf:Description>
+      </rdf:RDF>
+      <math xmlns="http://www.w3.org/1998/Math/MathML">
+         <apply>
+            <eq/>
+            <ci>sv1_rate</ci>
+            <apply>
+               <diff/>
+               <bvar>
+                  <ci>time</ci>
+               </bvar>
+               <ci>sv1</ci>
+            </apply>
+         </apply>
+      </math>
+   </component>
+
+   <!-- Encapsulation hierarchy - non-mentioned components are top-level -->
+   <group>
+      <relationship_ref relationship="encapsulation"/>
+      <component_ref component="circle_parent">
+         <component_ref component="circle_x"/>
+         <component_ref component="circle_y"/>
+      </component_ref>
+      <component_ref component="time_units_conversion1">
+         <component_ref component="deriv_on_rhs1a"/>
+      </component_ref>
+      <component_ref component="time_units_conversion2">
+         <component_ref component="deriv_on_rhs2a"/>
+      </component_ref>
+      <component_ref component="state_units_conversion1">
+         <component_ref component="deriv_on_rhs1b"/>
+      </component_ref>
+      <component_ref component="state_units_conversion2">
+         <component_ref component="deriv_on_rhs2b"/>
+      </component_ref>
+   </group>
+
+   <connection>
+      <map_components component_1="single_independent_ode" component_2="environment"/>
+      <map_variables variable_1="time" variable_2="time"/>
+   </connection>
+   <connection>
+      <map_components component_1="single_ode_rhs_const_var" component_2="environment"/>
+      <map_variables variable_1="time" variable_2="time"/>
+   </connection>
+   <connection>
+      <map_components component_1="single_ode_rhs_computed_var" component_2="environment"/>
+      <map_variables variable_1="time" variable_2="time"/>
+   </connection>
+
+   <connection>
+      <map_components component_1="derived_from_state_var" component_2="environment"/>
+      <map_variables variable_1="time" variable_2="time"/>
+   </connection>
+   <connection>
+      <map_components component_1="single_ode_rhs_computed_var" component_2="derived_from_state_var"/>
+      <map_variables variable_1="sv1" variable_2="sv1"/>
+   </connection>
+
+   <connection>
+      <map_components component_1="deriv_on_rhs" component_2="environment"/>
+      <map_variables variable_1="time" variable_2="time"/>
+   </connection>
+   <connection>
+      <map_components component_1="single_ode_rhs_computed_var" component_2="deriv_on_rhs"/>
+      <map_variables variable_1="sv1" variable_2="sv1"/>
+   </connection>
+
+   <connection>
+      <map_components component_1="circle_parent" component_2="environment"/>
+      <map_variables variable_1="time" variable_2="time"/>
+   </connection>
+   <connection>
+      <map_components component_1="circle_parent" component_2="circle_x"/>
+      <map_variables variable_1="time" variable_2="time"/>
+      <map_variables variable_1="x" variable_2="x"/>
+   </connection>
+   <connection>
+      <map_components component_1="circle_parent" component_2="circle_y"/>
+      <map_variables variable_1="time" variable_2="time"/>
+      <map_variables variable_1="y" variable_2="y"/>
+   </connection>
+   <connection>
+      <map_components component_1="circle_x" component_2="circle_y"/>
+      <map_variables variable_1="x" variable_2="x"/>
+      <map_variables variable_1="y" variable_2="y"/>
+   </connection>
+
+   <connection>
+      <map_components component_1="time_units_conversion1" component_2="environment"/>
+      <map_variables variable_1="time" variable_2="time"/>
+   </connection>
+   <connection>
+      <map_components component_1="time_units_conversion2" component_2="environment"/>
+      <map_variables variable_1="time" variable_2="time"/>
+   </connection>
+
+   <connection>
+      <map_components component_1="state_units_conversion1" component_2="environment"/>
+      <map_variables variable_1="time" variable_2="time"/>
+   </connection>
+   <connection>
+      <map_components component_1="state_units_conversion2" component_2="environment"/>
+      <map_variables variable_1="time" variable_2="time"/>
+   </connection>
+
+   <connection>
+      <map_components component_1="time_units_conversion1" component_2="deriv_on_rhs1a"/>
+      <map_variables variable_1="time" variable_2="time"/>
+      <map_variables variable_1="sv1" variable_2="sv1"/>
+   </connection>
+   <connection>
+      <map_components component_1="time_units_conversion2" component_2="deriv_on_rhs2a"/>
+      <map_variables variable_1="time" variable_2="time"/>
+      <map_variables variable_1="sv1" variable_2="sv1"/>
+   </connection>
+   <connection>
+      <map_components component_1="state_units_conversion1" component_2="deriv_on_rhs1b"/>
+      <map_variables variable_1="time" variable_2="time"/>
+      <map_variables variable_1="sv1" variable_2="sv1"/>
+   </connection>
+   <connection>
+      <map_components component_1="state_units_conversion2" component_2="deriv_on_rhs2b"/>
+      <map_variables variable_1="time" variable_2="time"/>
+      <map_variables variable_1="sv1" variable_2="sv1"/>
+   </connection>
+
+
+   <!-- RDF can appear outside components too -->
+   <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+            xmlns:bqbiol="http://biomodels.net/biology-qualifiers/">
+      <rdf:Description rdf:about="#a1">
+         <bqbiol:is rdf:resource="urn:test-ns#parameter_a1"/>
+      </rdf:Description>
+   </rdf:RDF>
+    
+</model>
