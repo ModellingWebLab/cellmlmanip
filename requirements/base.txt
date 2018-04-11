@@ -4,5 +4,10 @@
 #
 #    pip-compile --output-file base.txt base.in
 #
+isodate==0.6.0            # via rdflib
+lxml==4.2.1
 mpmath==1.0.0             # via sympy
+pyparsing==2.2.0          # via rdflib
+rdflib==4.2.2
+six==1.11.0               # via isodate
 sympy==1.1.1
