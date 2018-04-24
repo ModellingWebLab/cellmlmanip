@@ -5,6 +5,8 @@
 #    pip-compile --output-file test.txt test.in
 #
 mpmath==1.0.0             # via sympy
+numpy==1.13.3
 py==1.4.34                # via pytest
 pytest==3.2.0
+scipy==1.0.0
 sympy==1.1.1
