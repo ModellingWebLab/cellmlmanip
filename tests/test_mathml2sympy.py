@@ -11,12 +11,13 @@ class TestParser(object):
     @staticmethod
     def make_mathml(content_xml):
         xml = '<?xml version="1.0"?>' \
-              '<math xmlns="http://www.w3.org/1998/Math/MathML">%s</math>' % content_xml
+              '<math xmlns="http://www.w3.org/1998/Math/MathML" ' \
+              'xmlns:cellml="http://www.cellml.org/cellml/1.0#">%s</math>' % content_xml
         return xml
 
     def assert_equal(self, content_xml, sympy_expression):
         mathml_string = self.make_mathml(content_xml)
-        transpiled_sympy = mathml2sympy.parse_string(mathml_string)
+        transpiled_sympy = mathml2sympy.Transpiler().parse_string(mathml_string)
         assert transpiled_sympy == sympy_expression
 
     def test_symbol(self):
@@ -184,7 +185,7 @@ class TestParser(object):
         mathml_xml = '<math xmlns="http://www.w3.org/1998/Math/MathML" ' \
                      'xmlns:cellml="http://www.cellml.org/cellml/1.0#"> <apply><cn ' \
                      'cellml:units="dimensionless">3</cn></apply></math> '
-        transpiled_sympy = mathml2sympy.parse_string(mathml_xml)
+        transpiled_sympy = mathml2sympy.Transpiler().parse_string(mathml_xml)
         assert transpiled_sympy == [sympy.Number(3.0)]
 
     def test_diff_eq(self):
@@ -228,6 +229,20 @@ class TestParser(object):
         self.assert_equal('<apply><arctanh/><ci>x</ci></apply>',
                           [sympy.atanh(sympy.Symbol('x'))])
 
+    def test_cn_units(self):
+        mathml = self.make_mathml('<apply>'
+                                  '<eq/>'
+                                  '<cn cellml:units="s">2.0</cn>'
+                                  '<cn cellml:units="ms">2000.0</cn>'
+                                  '</apply>')
+        transpiler = mathml2sympy.Transpiler(dummify=True)
+        sympy_exprs = transpiler.parse_string(mathml)
+        metadata = transpiler.metadata
+        for number in sympy_exprs[0].free_symbols:
+            assert metadata[number]['sympy.Number'] == sympy.Number(float(number.name))
+            if float(number.name) == 2.0:
+                assert metadata[number]['cellml:units'] == 's'
+
     def test_noble_1962(self):
         cellml_path = os.path.join(os.path.dirname(__file__), "noble_model_1962.cellml")
 
@@ -238,7 +253,7 @@ class TestParser(object):
                 document.expandNode(node)
                 components.append(node)
         for component in components:
-            eqs = mathml2sympy.parse_dom(component)
+            eqs = mathml2sympy.Transpiler().parse_dom(component)
             for eq in eqs:
                 pass
                 # print(eq)
