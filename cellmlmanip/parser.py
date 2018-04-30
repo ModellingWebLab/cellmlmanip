@@ -97,10 +97,12 @@ class Parser(object):
         """ <model> <component> <math> </component> </model> """
         component_name = component.get(u'name')
 
-        # TODO: check spec. only ever one <math> element?
-        math_elements = component.findall(self.with_ns(XmlNs.MATH, u'math'))
-        for math in math_elements:
-            sympy_exprs = mathml2sympy.parse_string(etree.tostring(math, encoding=str))
+        # NOTE: Only looking for one <math> element
+        math_element = component.find(self.with_ns(XmlNs.MATH, u'math'))
+
+        if math_element:
+            transpiler = mathml2sympy.Transpiler(dummify=False)
+            sympy_exprs = transpiler.parse_string(etree.tostring(math_element, encoding=str))
             self.cellml_model.add_equations(sympy_exprs, component_name)
 
     def __add_variable(self, component):
