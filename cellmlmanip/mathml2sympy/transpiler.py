@@ -11,10 +11,11 @@ import sympy
 
 class Transpiler(object):
 
-    metadata = dict()
-    dummify = False
-
     def __init__(self, dummify=False):
+        self.metadata = dict()
+        self.dummify = False
+        self.dummy_symbol_cache = dict()
+
         # Mapping MathML tag element names (keys) to appropriate handler for SymPy output (values)
         # These tags require explicit handling because they have children or context etc.
         self.HANDLERS = {
@@ -57,24 +58,12 @@ class Transpiler(object):
         :param math_dom_element: <math> XmlNode object of a MathML DOM structure
         :return: List of SymPy expression(s)
         """
-        sympy_expressions = self.transpile(math_dom_element)
-
-        # If we should replace all sympy.Symbols with Dummy placeholders
-        if self.dummify:
-            # Get the set of symbols (numbers are already dummified) used across all equations
-            symbols = set().union(*[e.free_symbols
-                                    for e in sympy_expressions if isinstance(e, sympy.Symbol)])
-            # Create a dictionary of replacements from Symbol to Dummy
-            substitutions = dict(zip(symbols, [sympy.Dummy(s.name) for s in symbols]))
-            # Collect the list of dummified equations
-            sympy_expressions = [e.subs(substitutions) for e in sympy_expressions]
-
-        return sympy_expressions
+        return self.transpile(math_dom_element)
 
     def transpile(self, xml_node):
         """
-        Descends the given MathML element node and calls the corresponding handler for child elements.
-        Returns the SymPy expression of node
+        Descends the given MathML element node and calls the corresponding handler for child
+        elements. Returns the SymPy expression of node
         :param xml_node: a DOM element of parsed MathML
         :return: a list of SymPy expressions
         """
@@ -94,14 +83,9 @@ class Transpiler(object):
                 # Call the appropriate MathML handler function for this tag
                 tag_name = child_node.tagName
                 if tag_name in self.HANDLERS:
-                    if self.dummify and tag_name == 'cn':
-                        number, attributes = self.HANDLERS['cn'](child_node, True)
-                        dummified_number = sympy.Dummy(str(number))
-                        sympy_expressions.append(dummified_number)
-                        self.metadata[dummified_number] = {**(dict(attributes.items())), 'sympy.Number': number}
-                    else:
-                        sympy_expressions.append(self.HANDLERS[tag_name](child_node))
-                        logging.debug('Transpiled node %s ⟶ %s', child_node.toxml(), sympy_expressions[-1])
+                    sympy_expressions.append(self.HANDLERS[tag_name](child_node))
+                    logging.debug('Transpiled node %s ⟶ %s',
+                                  child_node.toxml(), sympy_expressions[-1])
                 else:
                     # MathML handler function not found for this tag!
                     raise NotImplementedError('No handler for element <%s>' % tag_name)
@@ -127,9 +111,12 @@ class Transpiler(object):
         SymPy: http://docs.sympy.org/latest/modules/core.html#id17
         """
         identifier = node.childNodes[0].data.strip()
+        if self.dummify:
+            # Return a dummified of this symbol, picking up from cache
+            return self.dummy_symbol_cache.setdefault(identifier, sympy.Dummy(identifier))
         return sympy.Symbol(identifier)
 
-    def cn_handler(self, node, attributes=False):
+    def cn_handler(self, node):
         """
         MathML: https://www.w3.org/TR/MathML2/chapter4.html#contm.cn
         SymPy: http://docs.sympy.org/latest/modules/core.html#number
@@ -139,25 +126,30 @@ class Transpiler(object):
         if 'type' in node.attributes:
             if node.attributes['type'].value == 'e-notation':
                 # A real number may also be presented in scientific notation. Such numbers have two
-                # parts (a mantissa and an exponent) separated by sep. The first part is a real number,
-                # while the second part is an integer exponent indicating a power of the base.
-                # For example, 12.3<sep/>5 represents 12.3 times 10^5. The default presentation of
-                # this example is 12.3e5.
+                # parts (a mantissa and an exponent) separated by sep. The first part is a real
+                # number, while the second part is an integer exponent indicating a power of the
+                # base.. For example, 12.3<sep/>5 represents 12.3 times 10^5. The default
+                # presentation of this example is 12.3e5.
                 if len(node.childNodes) == 3 and node.childNodes[1].tagName == 'sep':
                     mantissa = node.childNodes[0].data.strip()
                     exponent = int(node.childNodes[2].data.strip())
                     return sympy.Float('%se%d' % (mantissa, exponent))
                 else:
-                    raise SyntaxError('Expecting <cn type="e-notation">significand<sep/>exponent</cn>.'
+                    raise SyntaxError('Expecting '
+                                      '<cn type="e-notation">significand<sep/>exponent</cn>.'
                                       'Got: ' + node.toxml())
             raise NotImplementedError('Unimplemented type attribute for <cn>: '
                                       + node.attributes['type'].value)
 
         number = float(node.childNodes[0].data.strip())
-        if attributes:
-            return sympy.Number(number), node.attributes
-        else:
-            return sympy.Number(number)
+        number = sympy.Number(number)
+
+        if self.dummify:
+            dummified = sympy.Dummy(str(number))
+            self.metadata[dummified] = {**(dict(node.attributes.items())), 'sympy.Number': number}
+            return dummified
+
+        return number
 
     # BASIC CONTENT ELEMENTS #######################################################################
 
@@ -258,8 +250,8 @@ class Transpiler(object):
         Nasty:
         The root element is used to construct roots. The kind of root to be taken is specified by a
         degree element, which should be given as the second child of the apply element enclosing the
-        root element. Thus, square roots correspond to the case where degree contains the value 2, cube
-        roots correspond to 3, and so on. If no degree is present, a default value of 2 is used.
+        root element. Thus, square roots correspond to the case where degree contains the value 2,
+        cube roots correspond to 3, and so on. If no degree is present, a default value of 2 is used
         """
         def _wrapped_root(first_argument, second_argument=None):
             # if no <degree> given, it's sqrt
@@ -286,20 +278,45 @@ class Transpiler(object):
         """
         https://www.w3.org/TR/MathML2/chapter4.html#contm.diff
         operator taking qualifiers
+        TODO: clean up dummification if possible
         """
+        def dummify_diff(derivative):
+            dummified = 'diff_%s_%s' % (derivative.free_symbols.pop().name, derivative.variables[0].name)
+            if len(derivative.variables) > 1:
+                dummified = '%s_%d' % (dummified, len(derivative.variables))
+            return sympy.Dummy(dummified)
+
         def _wrapped_diff(x_symbol, y_symbol, evaluate=False):
             # dx / dy
-            y_function = sympy.Function(y_symbol.name)
+            if self.dummify:
+                y_function = y_symbol
+            else:
+                y_function = sympy.Function(y_symbol.name)
 
             # if bound variable element <bvar> contains <degree>, argument x_symbol is a list,
             # otherwise, it is a symbol
             if isinstance(x_symbol, list) and len(x_symbol) == 2:
                 bound_variable = x_symbol[0]
                 order = int(x_symbol[1])
-                return sympy.Derivative(y_function(bound_variable), bound_variable, order,
-                                        evaluate=evaluate)
 
-            return sympy.Derivative(y_function(x_symbol), x_symbol, evaluate=evaluate)
+                if self.dummify:
+                    deriv = sympy.Derivative(y_function, bound_variable, order, evaluate=evaluate)
+                    dummified = dummify_diff(deriv)
+                    self.metadata[dummified] = {'sympy.Derivative': deriv}
+                    return dummified
+
+                deriv = sympy.Derivative(y_function(bound_variable), bound_variable, order,
+                                         evaluate=evaluate)
+                return deriv
+
+            if self.dummify:
+                deriv = sympy.Derivative(y_function, x_symbol, evaluate=evaluate)
+                dummified = dummify_diff(deriv)
+                self.metadata[dummified] = {'sympy.Derivative': deriv}
+                return dummified
+
+            deriv = sympy.Derivative(y_function(x_symbol), x_symbol, evaluate=evaluate)
+            return deriv
         return _wrapped_diff
 
     def bvar_handler(self, node):
@@ -341,8 +358,8 @@ class Transpiler(object):
         Qualifier for <log>
 
         The log function accepts only the logbase schema. If present, the logbase schema denotes the
-        base with respect to which the logarithm is being taken. Otherwise, the log is assumed to be b
-        ase 10. When used with log, the logbase schema is expected to contain a single child schema;
+        base with respect to which the logarithm is being taken. Otherwise, the log is assumed to be
+        base 10. When used with log, the logbase schema is expected to contain a single child schema
         otherwise an error is generated.
 
         Should be the first element following log, i.e. the second child of the containing apply
@@ -370,8 +387,8 @@ class Transpiler(object):
 
     def simple_operator_handler(self, node):
         """
-        This function handles simple MathML <tagName> to sympy.Class operators, where no unique handling
-        of tag children etc. is required.
+        This function handles simple MathML <tagName> to sympy.Class operators, where no unique
+        handling of tag children etc. is required.
         """
         tag_name = node.tagName
 
@@ -440,4 +457,3 @@ SIMPLE_MATHML_TO_SYMPY_NAMES = {
 
 # MathML relation elements that are n-ary operators
 MATHML_NARY_RELATIONS = {'eq', 'leq', 'lt', 'geq', 'gt'}
-

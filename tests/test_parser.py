@@ -1,6 +1,10 @@
 import os
+import logging
 
 from cellmlmanip import parser
+
+logging.basicConfig()
+logging.getLogger().setLevel(logging.WARNING)
 
 
 class TestParser(object):

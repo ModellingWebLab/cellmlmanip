@@ -43,7 +43,7 @@ class Parser(object):
 
     def __init__(self, filepath):
         self.filepath = filepath
-        self.cellml_model = None
+        self.model = None
 
     def parse(self):
         """
@@ -54,19 +54,20 @@ class Parser(object):
         """
         tree = etree.parse(self.filepath)
 
-        # CellML <model> root node
-        model = tree.getroot()
-        self.cellml_model = Model(model.get(self.with_ns(XmlNs.CMETA, u'id')))
-        for rdf in model.findall(self.with_ns(XmlNs.RDF, u'RDF')):
-            self.cellml_model.add_rdf(etree.tostring(rdf, encoding=str))
+        # <model> root node - initialise the model object
+        model_xml = tree.getroot()
+        self.model = Model(model_xml.get(self.with_ns(XmlNs.CMETA, u'id')))
 
-        # model / units
-        self.__add_units(model)
+        # handle the child elements of <model>
+        self.__add_units(model_xml)
+        self.__add_components(model_xml)
+        self.__add_rdf(model_xml)
 
-        # model / components
-        self.__add_components(model)
+        return self.model
 
-        return self.cellml_model
+    def __add_rdf(self, element):
+        for rdf in element.findall(self.with_ns(XmlNs.RDF, u'RDF')):
+            self.model.add_rdf(etree.tostring(rdf, encoding=str))
 
     def __add_units(self, model):
         """  <model> <units> <unit /> </units> </model> """
@@ -74,56 +75,95 @@ class Parser(object):
         for units_element in units_elements:
             units_name = units_element.get(u'name')
             unit_elements = [dict(t.attrib) for t in units_element.getchildren()]
-            self.cellml_model.add_unit(units_name, unit_elements)
+            self.model.add_unit(units_name, unit_elements)
 
     def __add_components(self, model):
         """ <model> <component> </model> """
         component_elements = model.findall(self.with_ns(XmlNs.CML, u'component'))
+
+        # for each component defined in the model
         for component_element in component_elements:
-            component_name = component_element.get(u'name')
-            self.cellml_model.add_component(component_name)
+            # create an instance of Component
+            component = Component(component_element.get(u'name'))
 
-            # Add all <variable> in this component
-            self.__add_variable(component_element)
+            # Add the child elements under <component>
+            self.__add_variables(component, component_element)
+            self.__add_math(component, component_element)
+            self.__add_rdf(component_element)
 
-            # Add any maths for this component
-            self.__add_math(component_element)
+            # Add the component instance to the model
+            self.model.add_component(component)
 
-            # add any RDF for this component
-            for rdf in component_element.findall(self.with_ns(XmlNs.RDF, u'RDF')):
-                self.cellml_model.add_rdf(etree.tostring(rdf, encoding=str))
-
-    def __add_math(self, component):
+    def __add_math(self, component, component_element):
         """ <model> <component> <math> </component> </model> """
-        component_name = component.get(u'name')
-
         # NOTE: Only looking for one <math> element
-        math_element = component.find(self.with_ns(XmlNs.MATH, u'math'))
-
-        if math_element:
-            transpiler = mathml2sympy.Transpiler(dummify=False)
+        math_element = component_element.find(self.with_ns(XmlNs.MATH, u'math'))
+        if math_element is not None:
+            transpiler = mathml2sympy.Transpiler(dummify=True)
+            # TODO: check whether element can be passed directly without .tostring()
             sympy_exprs = transpiler.parse_string(etree.tostring(math_element, encoding=str))
-            self.cellml_model.add_equations(sympy_exprs, component_name)
+            component.equations = sympy_exprs
+            component.add_symbol_info(transpiler.metadata)
 
-    def __add_variable(self, component):
+    def __add_variables(self, component, component_element):
         """ <model> <component> <variable> </component> </model> """
-        component_name = component.get(u'name')
-
-        variable_elements = component.findall(self.with_ns(XmlNs.CML, u'variable'))
+        variable_elements = component_element.findall(self.with_ns(XmlNs.CML, u'variable'))
         for variable_element in variable_elements:
             attributes = dict(variable_element.attrib)
 
             # Rename key for cmeta_id (remove namespace from attribute)
             cmeta_id_attribute = self.with_ns(XmlNs.CMETA, 'id')
             if cmeta_id_attribute in attributes:
-                attributes['cmeta_id'] = attributes.pop(cmeta_id_attribute)
+                attributes['cmeta:id'] = attributes.pop(cmeta_id_attribute)
 
-            attributes['component_name'] = component_name
-            self.cellml_model.add_variable(**attributes)
+            component.variables[attributes['name']] = attributes
 
             # Add any RDF for this <variable>
-            for rdf in variable_element.findall(self.with_ns(XmlNs.RDF, u'RDF')):
-                self.cellml_model.add_rdf(etree.tostring(rdf, encoding=str))
+            self.__add_rdf(variable_element)
+
+
+class Component(object):
+
+    def __init__(self, name):
+        self.name = name
+        self.variables = dict()
+        self.equations = None
+        self.numbers = {}
+
+    def __str__(self):
+        return "%s\n\tequations: %s\n\tvariables: %s\n\tnumbers: %s" % (self.name, self.equations, self.variables, self.numbers)
+
+    def add_symbol_info(self, metadata):
+        """
+        Called after adding equations and variables from the CellML model
+        Collects the disparate bits of information about the equation into a single place
+        """
+        if not self.equations:
+            return
+
+        # Get all unique symbols in the equations
+        dummy_symbols = set().union(*[e.free_symbols for e in self.equations])
+
+        # For each symbol in these equations
+        for s in dummy_symbols:
+            # if the symbol is one that's defined as a <variable> in the component
+            if s.name in self.variables:
+                self.variables[s.name]['sympy.Dummy'] = s
+                if s in metadata:
+                    self.variables[s.name].update(metadata[s])
+
+            # create variable entry for dummified derivative
+            if s in metadata:
+                if 'sympy.Derivative' in metadata[s]:
+                    derivative = metadata[s]['sympy.Derivative']
+                    y_symbol = derivative.free_symbols.pop()
+                    x_symbol = derivative.variables[0]
+                    # the bound and wrt symbols should be <variable>s in the component
+                    self.variables[y_symbol.name]['sympy.Dummy'] = y_symbol
+                    self.variables[x_symbol.name]['sympy.Dummy'] = x_symbol
+                    self.variables[s.name] = metadata[s]
+                elif 'sympy.Number' in metadata[s]:
+                    self.numbers[s] = metadata[s]
 
 
 class Model(object):
@@ -131,58 +171,25 @@ class Model(object):
     Holds all information about a CellML model and exposes it for manipulation (intention!)
     """
     def __init__(self, identifier):
-        self.data = {'cmeta_id': str(identifier), 'units': {}, 'components': [], 'variables': []}
-        self.equations = []
+        self.name = identifier
+        self.units = {}
+        self.components = {}
         self.rdf = rdflib.Graph()
 
     def add_unit(self, units_name: str, unit_elements: dict):
         """
         Adds information about <units> in <model>
         """
-        self.data['units'][units_name] = unit_elements
+        self.units[units_name] = unit_elements
 
-    def add_component(self, name: str):
+    def add_component(self, component: Component):
         """
         Adds name to list of <component>s in the <model>
         """
-        self.data['components'].append(name)
-
-    def add_variable(self, name, component_name, units,
-                     initial_value=None, private_interface=None,
-                     public_interface=None, cmeta_id=None):
-        """
-        Adds a <variable> of <component> of <model>
-        """
-        # Create a dict from the method arguments but don't store None-s or self
-        # TODO: better way to do this?
-        attributes = {key: value for (key, value) in locals().items()
-                      if value is not None and key is not 'self'}
-        self.data['variables'].append(attributes)
+        self.components[component.name] = component
 
     def add_rdf(self, rdf: str):
         """
         Takes RDF string and stores it in an RDFlib.Graph for the model. Can be called repeatedly.
         """
         self.rdf.parse(StringIO(rdf))
-
-    def add_equations(self, sympy_exprs, component_name):
-        """
-        Adds <math> equation(s) for <component> for <model>. The equations are Sympy equality
-        expressions
-        """
-        for expr in sympy_exprs:
-            self.equations.append({'component_name': component_name, 'eqn': expr})
-
-    def __str__(self):
-        # Can be removed later - here for development
-        class _CustomEncoder(json.JSONEncoder):
-            """Converts Sympy expressions and RDF graphs to str"""
-            def default(self, o):
-                if isinstance(o, sympy.Eq):
-                    return str(o)
-                elif isinstance(o, rdflib.Graph):
-                    return [str(t) for t in o]
-                return json.JSONEncoder.default(self, o)
-
-        everything = {'data': self.data, 'equations': self.equations, 'rdf': self.rdf}
-        return json.dumps(everything, indent=4, cls=_CustomEncoder)
