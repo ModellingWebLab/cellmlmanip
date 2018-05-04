@@ -2,20 +2,12 @@
 This module contains the CellML parser. It reads CellML model and stores model information in a
 CellML Model class. MathML equations are translated to Sympy. RDF is handled by RDFLib.
 """
-import logging
-import sys
 from enum import Enum
 
 from lxml import etree
 
 from cellmlmanip import mathml2sympy
 from cellmlmanip.model import Component, Model
-
-
-logging.basicConfig(level=logging.DEBUG,
-                    format="%(name)s: %(levelname)s: %(message)s",
-                    stream=sys.stderr)
-logging.getLogger().handlers[0].setLevel(logging.DEBUG)
 
 
 class XmlNs(Enum):
@@ -89,8 +81,6 @@ class Parser(object):
             self.__add_variables(component, component_element)
             self.__add_maths(component, component_element)
             self.__add_rdf(component_element)
-
-            print(component)
 
             # Add the component instance to the model
             self.model.add_component(component)

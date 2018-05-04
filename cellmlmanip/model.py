@@ -1,9 +1,12 @@
 """
 Classes representing a CellML model and its components
 """
+import logging
+from collections import deque
 from io import StringIO
 
 import rdflib
+import sympy
 
 
 class Component(object):
@@ -16,10 +19,8 @@ class Component(object):
         self.numbers = {}
 
     def __str__(self):
-        return "%s\n\tequations: %s\n\tvariables: %s\n\tnumbers: %s" % (self.name,
-                                                                        self.equations,
-                                                                        self.variables,
-                                                                        self.numbers)
+        return "Component(\n\tname: %s\n\tequations: %s\n\tvariables: %s\n\tnumbers: %s\n)" % \
+               (self.name, self.equations, self.variables, self.numbers)
 
     def collect_variable_attributes(self, metadata):
         """
@@ -84,6 +85,106 @@ class Model(object):
         Takes RDF string and stores it in an RDFlib.Graph for the model. Can be called repeatedly.
         """
         self.rdf.parse(StringIO(rdf))
+
+    def make_connections(self):
+        """
+        Uses public/private interface attributes of variables and model connections to assign
+        target variables to their source
+        """
+
+        # At this stage we are going to assign variables to new sympy Dummy placeholders
+        # This may change in the future once we're confident that everything is working e.g.
+        # manipulate the equations directly
+
+        # First, we assign new sympy.Dummy variables for those CellML <variable>s that are only
+        # exposed to other components i.e. do not have an "in" value on public/private_interface
+        # For each component in the model
+        for _, component in self.components.items():
+            # For each CellML <variable> in the component
+            for _, var_attr in component.variables.items():
+                # If this variable does not get its value from another component. There are two
+                # possibilities. Either it has:
+                # (i) public_interface="out" or
+                # (ii) private_interface="out" without public_interface="in"
+                if (('public_interface', 'out') in var_attr.items()) or \
+                        (('private_interface', 'out') in var_attr.items()
+                         and ('public_interface', 'in') not in var_attr.items()):
+                    # If it doesn't have a dummy symbol
+                    if 'sympy.Dummy' not in var_attr:
+                        # This variable was not used in any equations - create a new dummy symbol
+                        var_attr['assignment'] = sympy.Dummy(var_attr['name'])
+                    else:
+                        # The variable is used in an equation & we use the same symbol
+                        var_attr['assignment'] = var_attr['sympy.Dummy']
+
+        # Second, we loop over all model connections and create connections between variables
+
+        # Put the connection in a LIFO queue
+        connections_to_process = deque(self.connections)
+
+        # For testing: shuffle the order of connections
+        # TODO: REMOVE!
+        from random import shuffle
+        shuffle(connections_to_process)
+
+        # While we still have connections left to process
+        while connections_to_process:
+            # Get connection at front of queue
+            connection = connections_to_process.popleft()
+            logging.info("Try to connect %s and %s", *connection)
+            success = self.__connect(connection)
+            if success:
+                logging.info('Connected.')
+            else:
+                logging.info('Cannot connect (source does not have assignment).')
+                connections_to_process.append(connection)
+            # TODO: track looping and break if we can't exit
+
+    def __get_connection_parts(self, connection):
+        ((component_1, variable_1), (component_2, variable_2)) = connection
+        variable_1_attributes = self.components[component_1].variables[variable_1]
+        variable_2_attributes = self.components[component_2].variables[variable_2]
+        return component_1, variable_1_attributes, component_2, variable_2_attributes
+
+    def __connect(self, connection):
+        comp_1_name, var_1_attr, comp_2_name, var_2_attr = self.__get_connection_parts(connection)
+        # Determine the source and target variables
+        if (('public_interface', 'out') in var_1_attr.items() or
+                ('private_interface', 'out') in var_1_attr.items()) and (
+                    ('public_interface', 'in') in var_2_attr.items() or
+                    ('private_interface', 'in') in var_2_attr.items()):
+            return self.__connect_with_direction(comp_1_name, var_1_attr, comp_2_name, var_2_attr)
+        elif (('public_interface', 'out') in var_2_attr.items() or
+              ('private_interface', 'out') in var_2_attr.items()) and (
+                  ('public_interface', 'in') in var_1_attr.items() or
+                  ('private_interface', 'in') in var_1_attr.items()):
+            return self.__connect_with_direction(comp_2_name, var_2_attr, comp_1_name, var_1_attr)
+        raise RuntimeError("Cannot determine the source & target for connection %s" % connection)
+
+    def __connect_with_direction(self, source_component, source_variable,
+                                 target_component, target_variable):
+        logging.info('    Source: %s -> %s', source_component, source_variable)
+        logging.info('    Target: %s -> %s', target_component, target_variable)
+        # If the source variable has already been assigned a final symbol
+        if 'assignment' in source_variable:
+            # If source/target variable is in the same unit
+            if source_variable['units'] == target_variable['units']:
+                # Direct substitution is possible
+                target_variable['assignment'] = source_variable['assignment']
+            else:
+                # Requires a conversion, so we add an equation to the component that assigns the
+                # target dummy variable to the source variable (unit conversion handled separately)
+                self.components[target_component].equations.append(
+                    sympy.Eq(target_variable['sympy.Dummy'], source_variable['assignment'])
+                )
+                logging.info('    New target eq: %s -> %s',
+                             target_component, self.components[target_component].equations[-1])
+
+                # The assigned symbol for this variable is itself
+                target_variable['assignment'] = target_variable['sympy.Dummy']
+            logging.info('    Updated target: %s -> %s', target_component, target_variable)
+            return True
+        return False
 
     def find_variable(self, search_dict):
         """
