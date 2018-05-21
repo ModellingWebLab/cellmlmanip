@@ -12,10 +12,11 @@ import sympy
 class Transpiler(object):
     """Transpiler class handles conversion of MathmL to Sympy exprerssions"""
 
-    def __init__(self, dummify=False):
+    def __init__(self, dummify=False, symbol_prefix=None):
         self.metadata = dict()
         self.dummy_symbol_cache = dict()
         self.dummify = dummify
+        self.symbol_prefix = symbol_prefix
 
         # Mapping MathML tag element names (keys) to appropriate handler for SymPy output (values)
         # These tags require explicit handling because they have children or context etc.
@@ -112,6 +113,8 @@ class Transpiler(object):
         SymPy: http://docs.sympy.org/latest/modules/core.html#id17
         """
         identifier = node.childNodes[0].data.strip()
+        if self.symbol_prefix:
+            identifier = self.symbol_prefix + identifier
         if self.dummify:
             # Return a dummified of this symbol, picking up from cache
             return self.dummy_symbol_cache.setdefault(identifier, sympy.Dummy(identifier))
@@ -281,13 +284,6 @@ class Transpiler(object):
         operator taking qualifiers
         TODO: clean up dummification if possible
         """
-        def _dummify_diff(derivative):
-            dummified = 'diff_%s_%s' % (derivative.free_symbols.pop().name,
-                                        derivative.variables[0].name)
-            if len(derivative.variables) > 1:
-                dummified = '%s_%d' % (dummified, len(derivative.variables))
-            return sympy.Dummy(dummified)
-
         def _wrapped_diff(x_symbol, y_symbol, evaluate=False):
             # dx / dy
             if self.dummify:
@@ -303,22 +299,22 @@ class Transpiler(object):
 
                 if self.dummify:
                     deriv = sympy.Derivative(y_function, bound_variable, order, evaluate=evaluate)
-                    dummified = _dummify_diff(deriv)
-                    self.metadata[dummified] = {'sympy.Derivative': deriv}
-                    return dummified
+                else:
+                    deriv = sympy.Derivative(y_function(bound_variable), bound_variable, order,
+                                             evaluate=evaluate)
+            # Otherwise, first degree derivative
+            else:
+                if self.dummify:
+                    deriv = sympy.Derivative(y_function, x_symbol, evaluate=evaluate)
+                else:
+                    deriv = sympy.Derivative(y_function(x_symbol), x_symbol, evaluate=evaluate)
 
-                deriv = sympy.Derivative(y_function(bound_variable), bound_variable, order,
-                                         evaluate=evaluate)
-                return deriv
-
-            if self.dummify:
-                deriv = sympy.Derivative(y_function, x_symbol, evaluate=evaluate)
-                dummified = _dummify_diff(deriv)
-                self.metadata[dummified] = {'sympy.Derivative': deriv}
-                return dummified
-
-            deriv = sympy.Derivative(y_function(x_symbol), x_symbol, evaluate=evaluate)
+            # Add the bound variables of the derivative to the metadata (because diff.free_symbols
+            # does not return the bound variable)
+            # TODO: handle derivatives of > 1 degree
+            self.metadata[deriv] = deriv.variables[0]
             return deriv
+
         return _wrapped_diff
 
     def __bvar_handler(self, node):
