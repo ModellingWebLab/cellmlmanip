@@ -38,7 +38,7 @@ class TestParser(object):
                                                               'public_interface': 'out',
                                                               'units': 'ms'}]
         matched = model.find_variable({'cmeta:id': 'sv12'})
-        assert len(matched) == 1 and matched[0]['sympy.Dummy'].name == 'sv1'
+        assert len(matched) == 1 and matched[0]['sympy.Dummy'].name == 'single_ode_rhs_const_var__sv1'
 
     def test_connections_loaded(self, model):
         assert len(model.connections) == 26  # grep -c '<map_variables ' test_simple_odes.cellml
@@ -59,7 +59,7 @@ class TestParser(object):
 
         # We're checking sympy.Dummy objects (same name != same hash)
         assert isinstance(environment__time, sympy.Dummy)
-        assert environment__time != sympy.Dummy('time')
+        assert environment__time != sympy.Dummy(environment__time.name)
 
         state_units_conversion2__time = \
             model.components['state_units_conversion2'].variables['time']['assignment']

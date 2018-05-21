@@ -90,7 +90,7 @@ class Parser(object):
         # NOTE: Only looking for one <math> element
         math_element = component_element.find(Parser.with_ns(XmlNs.MATHML, u'math'))
         if math_element is not None:
-            transpiler = mathml2sympy.Transpiler(dummify=True)
+            transpiler = mathml2sympy.Transpiler(dummify=True, symbol_prefix=component.name + '__')
             # TODO: check whether element can be passed directly without .tostring()
             sympy_exprs = transpiler.parse_string(etree.tostring(math_element, encoding=str))
             component.equations.extend(sympy_exprs)

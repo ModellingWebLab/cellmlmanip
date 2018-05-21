@@ -19,7 +19,7 @@ class Component(object):
         self.numbers = {}
 
     def __str__(self):
-        return "Component(\n\tname: %s\n\tequations: %s\n\tvariables: %s\n\tnumbers: %s\n)" % \
+        return "Component(\n  name: %s\n  equations: %s\n  variables: %s\n  numbers: %s\n)" % \
                (self.name, self.equations, self.variables, self.numbers)
 
     def collect_variable_attributes(self, metadata):
@@ -31,30 +31,28 @@ class Component(object):
             return
 
         # Get all unique symbols in the equations
-        dummy_symbols = set().union(*[e.free_symbols for e in self.equations])
+        dummy_symbols = set()
+        for equation in self.equations:
+            for free_symbol in equation.free_symbols:
+                dummy_symbols.add(free_symbol)
 
-        # For each symbol in these equations
+        # And collect bound variables for all derivatives (not returned by .free_symbols)
+        for key, value in metadata.items():
+            if isinstance(key, sympy.Derivative):
+                dummy_symbols.add(value)
+
+        # For each of the symbols in these equations
         for symbol in dummy_symbols:
-            # if the symbol is one that's defined as a <variable> in the component
-            if symbol.name in self.variables:
-                self.variables[symbol.name]['sympy.Dummy'] = symbol
-                if symbol in metadata:
-                    self.variables[symbol.name].update(metadata[symbol])
+            # If this symbol is a number
+            if symbol in metadata and 'sympy.Number' in metadata[symbol]:
+                # save the number metadata (units etc.) and skip variable
+                self.numbers[symbol] = metadata[symbol]
+                continue
 
-            # create variable entry for dummified derivative
-            if symbol in metadata:
-                if 'sympy.Derivative' in metadata[symbol]:
-                    derivative = metadata[symbol]['sympy.Derivative']
-                    y_symbol = derivative.free_symbols.pop()
-                    x_symbol = derivative.variables[0]
-                    # the bound and wrt symbols should be <variable>s in the component
-                    self.variables[y_symbol.name]['sympy.Dummy'] = y_symbol
-                    self.variables[x_symbol.name]['sympy.Dummy'] = x_symbol
-                    # add the dummified derivative symbol itself
-                    self.variables[symbol.name] = metadata[symbol]
-                    self.variables[symbol.name]['name'] = symbol.name
-                elif 'sympy.Number' in metadata[symbol]:
-                    self.numbers[symbol] = metadata[symbol]
+            # if the symbol is one that's defined as a <variable> in the component
+            variable_name = symbol.name.split('__')[1]
+            if symbol.name.split('__')[1] in self.variables:
+                self.variables[variable_name]['sympy.Dummy'] = symbol
 
 
 class Model(object):
@@ -67,6 +65,9 @@ class Model(object):
         self.components = {}
         self.connections = []
         self.rdf = rdflib.Graph()
+
+    def __str__(self):
+        return '\n'.join([str(v) for k, v in self.components.items()])
 
     def add_unit(self, units_name: str, unit_elements: dict):
         """
@@ -112,7 +113,8 @@ class Model(object):
                     # If it doesn't have a dummy symbol
                     if 'sympy.Dummy' not in var_attr:
                         # This variable was not used in any equations - create a new dummy symbol
-                        var_attr['assignment'] = sympy.Dummy(var_attr['name'])
+                        var_attr['sympy.Dummy'] = var_attr['assignment'] = sympy.Dummy(
+                            component.name + '__' + var_attr['name'])
                     else:
                         # The variable is used in an equation & we use the same symbol
                         var_attr['assignment'] = var_attr['sympy.Dummy']
@@ -140,25 +142,43 @@ class Model(object):
                 connections_to_process.append(connection)
             # TODO: track looping and break if we can't exit
 
-    def __get_connection_parts(self, connection):
+        # All connections have been made, now substitute the original dummy with new dummy
+        for _, component in self.components.items():
+            for _, variable in component.variables.items():
+                for index, equation in enumerate(component.equations):
+                    # If this variable is used in an equation, it will have been set a sympy.Dummy
+                    if 'sympy.Dummy' in variable:
+                        # If the variable has been assigned [a new dummy symbol]
+                        if 'assignment' in variable:
+                            # Replace the original dummy with the assign dummy symbol
+                            component.equations[index] = equation.subs(
+                                {variable['sympy.Dummy']: variable['assignment']})
+                        else:
+                            variable['assignment'] = variable['sympy.Dummy']
+                    # The variable does not have a sympy.Dummy variable set - why??
+                    else:
+                        logging.warning('Variable (%s) in component (%s) not assigned a dummy',
+                                        variable['name'], component.name)
+
+    def __get_connection_endpoints(self, connection):
         ((component_1, variable_1), (component_2, variable_2)) = connection
         variable_1_attributes = self.components[component_1].variables[variable_1]
         variable_2_attributes = self.components[component_2].variables[variable_2]
         return component_1, variable_1_attributes, component_2, variable_2_attributes
 
     def __connect(self, connection):
-        comp_1_name, var_1_attr, comp_2_name, var_2_attr = self.__get_connection_parts(connection)
+        cmp_name_1, var_att_1, cmp_name_2, var_att_2 = self.__get_connection_endpoints(connection)
         # Determine the source and target variables
-        if (('public_interface', 'out') in var_1_attr.items() or
-                ('private_interface', 'out') in var_1_attr.items()) and (
-                    ('public_interface', 'in') in var_2_attr.items() or
-                    ('private_interface', 'in') in var_2_attr.items()):
-            return self.__connect_with_direction(comp_1_name, var_1_attr, comp_2_name, var_2_attr)
-        elif (('public_interface', 'out') in var_2_attr.items() or
-              ('private_interface', 'out') in var_2_attr.items()) and (
-                  ('public_interface', 'in') in var_1_attr.items() or
-                  ('private_interface', 'in') in var_1_attr.items()):
-            return self.__connect_with_direction(comp_2_name, var_2_attr, comp_1_name, var_1_attr)
+        if (('public_interface', 'out') in var_att_1.items() or
+                ('private_interface', 'out') in var_att_1.items()) and (
+                    ('public_interface', 'in') in var_att_2.items() or
+                    ('private_interface', 'in') in var_att_2.items()):
+            return self.__connect_with_direction(cmp_name_1, var_att_1, cmp_name_2, var_att_2)
+        elif (('public_interface', 'out') in var_att_2.items() or
+              ('private_interface', 'out') in var_att_2.items()) and (
+                  ('public_interface', 'in') in var_att_1.items() or
+                  ('private_interface', 'in') in var_att_1.items()):
+            return self.__connect_with_direction(cmp_name_2, var_att_2, cmp_name_1, var_att_1)
         raise RuntimeError("Cannot determine the source & target for connection %s" % connection)
 
     def __connect_with_direction(self, source_component, source_variable,
@@ -184,6 +204,7 @@ class Model(object):
                 target_variable['assignment'] = target_variable['sympy.Dummy']
             logging.info('    Updated target: %s -> %s', target_component, target_variable)
             return True
+        # The source variable has not been assigned a symbol, so we can't make this connection
         return False
 
     def find_variable(self, search_dict):
