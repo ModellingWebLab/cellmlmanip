@@ -13,6 +13,7 @@ from sympy.physics.units.prefixes import kilo, milli, micro, nano, pico, deci, c
 
 # Dimensionless:
 
+dimensionless = Quantity("dimensionless", 1, Rational(1, 1))
 percent = percents = Quantity("percent", 1, Rational(1, 100))
 permille = Quantity("permille", 1, Rational(1, 1000))
 
@@ -25,7 +26,7 @@ mil = angular_mil = angular_mils = Quantity("angular_mil", 1, 2*pi/6400, "mil")
 
 # Base units:
 
-m = meter = meters = Quantity("meter", length, 1, abbrev="m")
+m = meter = meters = metre = metres = Quantity("meter", length, 1, abbrev="m")
 kg = kilogram = kilograms = Quantity("kilogram", mass, 1, abbrev="kg")
 s = second = seconds = Quantity("second", time, 1, abbrev="s")
 A = ampere = amperes = Quantity("ampere", current, 1, abbrev='A')
@@ -80,7 +81,7 @@ nmi = nautical_mile = nautical_miles = Quantity("nautical_mile", length, 6076*fe
 
 # Common volume and area units
 
-l = liter = liters = Quantity("liter", length**3, meter**3 / 1000)
+l = liter = liters = litre = litres = Quantity("liter", length**3, meter**3 / 1000)
 dl = deciliter = deciliters = Quantity("deciliter", length**3, liter / 10)
 cl = centiliter = centiliters = Quantity("centiliter", length**3, liter / 100)
 ml = milliliter = milliliters = Quantity("milliliter", length**3, liter / 1000)
