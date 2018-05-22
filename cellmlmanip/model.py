@@ -35,11 +35,9 @@ class Component(object):
         for equation in self.equations:
             for free_symbol in equation.free_symbols:
                 dummy_symbols.add(free_symbol)
-
-        # And collect bound variables for all derivatives (not returned by .free_symbols)
-        for key, value in metadata.items():
-            if isinstance(key, sympy.Derivative):
-                dummy_symbols.add(value)
+            # Collect bound variables for derivatives (not returned by .free_symbols)
+            for derivative in equation.atoms(sympy.Derivative):
+                dummy_symbols.add(derivative.variables[0])  # TODO: variables for degree > 1
 
         # For each of the symbols in these equations
         for symbol in dummy_symbols:

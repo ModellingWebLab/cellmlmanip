@@ -309,10 +309,6 @@ class Transpiler(object):
                 else:
                     deriv = sympy.Derivative(y_function(x_symbol), x_symbol, evaluate=evaluate)
 
-            # Add the bound variables of the derivative to the metadata (because diff.free_symbols
-            # does not return the bound variable)
-            # TODO: handle derivatives of > 1 degree
-            self.metadata[deriv] = deriv.variables[0]
             return deriv
 
         return _wrapped_diff
