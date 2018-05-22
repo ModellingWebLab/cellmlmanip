@@ -1,3 +1,7 @@
+"""
+Copied from https://github.com/sympy/sympy/blob/sympy-1.1.1/sympy/physics/units/definitions.py
+Once Sympy have fixed their definition of kilogram, we can remove this and use Sympy directly
+"""
 from sympy import pi, Rational, sqrt
 from sympy.physics.units import Quantity
 from sympy.physics.units.dimensions import length, mass, force, energy, power, pressure, frequency, time, velocity, \
@@ -22,7 +26,7 @@ mil = angular_mil = angular_mils = Quantity("angular_mil", 1, 2*pi/6400, "mil")
 # Base units:
 
 m = meter = meters = Quantity("meter", length, 1, abbrev="m")
-kg = kilogram = kilograms = Quantity("kilogram", mass, kilo, abbrev="g")
+kg = kilogram = kilograms = Quantity("kilogram", mass, 1, abbrev="kg")
 s = second = seconds = Quantity("second", time, 1, abbrev="s")
 A = ampere = amperes = Quantity("ampere", current, 1, abbrev='A')
 K = kelvin = kelvins = Quantity('kelvin', temperature, 1, 'K')
@@ -31,7 +35,7 @@ cd = candela = candelas = Quantity("candela", luminous_intensity, 1, "cd")
 
 # gram; used to define its prefixed units
 
-g = gram = grams = Quantity("gram", mass, 1, "g")
+g = gram = grams = Quantity("gram", mass, kilogram / 1000, "g")
 mg = milligram = milligrams = Quantity("milligram", mass, milli*gram, "mg")
 ug = microgram = micrograms = Quantity("microgram", mass, micro*gram, "ug")
 
@@ -151,7 +155,7 @@ kPa = kilopascal = Quantity("kilopascal", pressure, kilo*Pa, "kPa")
 bar = bars = Quantity("bar", pressure, 100*kPa, "bar")
 pound = pounds = Quantity("pound", mass, 0.45359237 * kg)  # exact
 psi = Quantity("psi", pressure, pound * gee / inch ** 2)
-dHg0 = 13.5951  # approx value at 0 C
+dHg0 = 13.5951 * 1000  # approx value at 0 C
 mmHg = torr = Quantity("mmHg", pressure, dHg0 * acceleration_due_to_gravity * kilogram / meter**2)
 mmu = mmus = milli_mass_unit = Quantity("milli_mass_unit", mass, atomic_mass_unit/1000)
 quart = quarts = Quantity("quart", length**3, Rational(231, 4) * inch**3)
