@@ -21,9 +21,6 @@ class TestParser(object):
         model = p.parse()
         return model
 
-    def test_unit_count(self, model):
-        assert len(model.units) == 11  # grep -c '<units ' test_simple_odes.cellml
-
     def test_component_count(self, model):
         assert len(model.components) == 17  # grep -c '<component ' test_simple_odes.cellml
 
@@ -76,32 +73,21 @@ class TestParser(object):
         equation = sympy.Eq(time_units_conversion2__time, environment__time)
         assert equation in model.components['time_units_conversion2'].equations
 
-    def test_quantity_translation(self):
+    def test_quantity_translation(self, model):
         import sympy.physics.units as u
 
-        unit_elements = {
-            'ms': [{'units': 'second', 'prefix': 'milli'}],
-            'per_ms': [{'units': 'ms', 'exponent': '-1'}],
-            'usec': [{'units': 'second', 'prefix': 'micro'}],
-            'mV': [{'units': 'volt', 'prefix': 'milli'}],
-            'per_mV': [{'units': 'volt', 'prefix': 'milli', 'exponent': '-1'}],
-            'uV': [{'units': 'volt', 'prefix': 'micro'}],
-            'mV_per_ms': [{'units': 'mV', 'exponent': '1'}, {'units': 'ms', 'exponent': '-1'}],
-            'mV_per_s': [{'units': 'mV', 'exponent': '1'}, {'units': 'second', 'exponent': '-1'}],
-            'mV_per_usec': [{'units': 'mV', 'exponent': '1'}, {'prefix': 'micro', 'units': 'second', 'exponent': '-1'}],
-            'mM': [{'prefix': 'milli', 'units': 'mole'}, {'units': 'litre', 'exponent': '-1'}],
-            'mM_per_ms': [{'units': 'mM'}, {'units': 'ms', 'exponent': '-1'}]
-        }
+        # Units defined in the test CellML <model>:
+        unit_names = ['ms', 'per_ms', 'usec', 'mV', 'per_mV', 'uV', 'mV_per_ms', 'mV_per_s', 'mV_per_usec', 'mM', 'mM_per_ms']
+        for name in unit_names:
+            model.units.get_quantity(name)
 
-        units = QuantityStore(unit_elements)
-        for unit in unit_elements.keys():
-            units.get_quantity(unit)
+        assert model.units.get_quantity('ms') == u.millisecond
+        assert u.convert_to(model.units.get_quantity('per_ms'), u.millisecond) == 1/u.millisecond
+        assert u.convert_to(model.units.get_quantity('usec'), u.microsecond) == u.microsecond
+        assert u.convert_to(model.units.get_quantity('mM_per_ms'), [u.mole, u.liter, u.millisecond]) == (u.mole / 1000) / (u.liter * u.millisecond)
 
-        assert units.get_quantity('ms') == u.millisecond
-        assert u.convert_to(units.get_quantity('per_ms'), u.millisecond) == 1/u.millisecond
-        assert u.convert_to(units.get_quantity('usec'), u.microsecond) == u.microsecond
-        assert u.convert_to(units.get_quantity('mM_per_ms'), [u.mole, u.liter, u.millisecond]) \
-               == (u.mole / 1000) / (u.liter * u.millisecond)
+        # A Sympy built-in unit
+        assert model.units.get_quantity('centimeter') == u.centimeter
 
     def test_print(self, model):
         # show equations

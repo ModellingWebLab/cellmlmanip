@@ -60,7 +60,7 @@ class Model(object):
     """
     def __init__(self, name):
         self.name = name
-        self.units = {}
+        self.units = None
         self.components = {}
         self.connections = []
         self.rdf = rdflib.Graph()
@@ -68,11 +68,11 @@ class Model(object):
     def __str__(self):
         return '\n'.join([str(v) for k, v in self.components.items()])
 
-    def add_unit(self, units_name: str, unit_elements: dict):
+    def add_unit(self, units_elements: dict):
         """
         Adds information about <units> in <model>
         """
-        self.units[units_name] = unit_elements
+        self.units = QuantityStore(units_elements)
 
     def add_component(self, component: Component):
         """

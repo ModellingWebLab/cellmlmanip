@@ -63,10 +63,12 @@ class Parser(object):
     def __add_units(self, model: etree.Element):
         """  <model> <units> <unit /> </units> </model> """
         units_elements = model.findall(Parser.with_ns(XmlNs.CELLML, u'units'))
+        units_collected = {}
         for units_element in units_elements:
             units_name = units_element.get(u'name')
             unit_elements = [dict(t.attrib) for t in units_element.getchildren()]
-            self.model.add_unit(units_name, unit_elements)
+            units_collected[units_name] = unit_elements
+        self.model.add_unit(units_collected)
 
     def __add_components(self, model: etree.Element):
         """ <model> <component> </model> """
