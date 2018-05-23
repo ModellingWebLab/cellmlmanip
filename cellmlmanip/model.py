@@ -7,6 +7,7 @@ from io import StringIO
 
 import rdflib
 import sympy
+import sympy.physics.units as units
 
 
 class Component(object):
@@ -230,3 +231,103 @@ class Model(object):
                     # All search (key: value)s were found in this variable
                     matches.append(variable_attr)
         return matches
+
+
+class QuantityStore(object):
+    """
+    Holds sympy.physics.unit.Quantity objects for the model. Can be initialised with <units>
+    definitions from the CellML <model>. The get_quantity() methods will find the right
+    quantity to return, given the name of the unit (from the internal store, Sympy built-in, or
+    constructed anew)
+    """
+
+    # Aliases for units to their Sympy equivalents
+    aliases = {
+        'litre': 'liter',
+        'litres': 'liters',
+        'metre': 'meter',
+        'metres': 'meters'
+    }
+
+    def __init__(self, cellml_def=None):
+        self.store = {}
+        self.cellml_definitions = cellml_def if cellml_def else {}
+        self.sympify_context = {}
+
+        from sympy.core.compatibility import exec_
+        exec_('from sympy.physics.units import *', self.sympify_context)
+
+    def get_quantity(self, unit_name):
+        """
+        Given the name of the unit, this will either (i) return a Quantity from the internal store
+        as its already been resolved previously (ii) return the Quantity from Sympy if it a built-in
+        name or (iii) construct and return a new Quantity object using the <units><unit></units>
+        definition in the CellML <model>
+        """
+        # This name is aliased to some other unit name (e.g. british -> american spelling)
+        if unit_name in QuantityStore.aliases:
+            unit_name = QuantityStore.aliases[unit_name]
+
+        # If we've already sourced the quantity for this name
+        if unit_name in self.store:
+            return self.store[unit_name]
+
+        # If this unit name is one of the built-in Sympy quantities
+        if hasattr(units, unit_name):
+            self.store[unit_name] = getattr(units, unit_name)
+            return self.store[unit_name]
+
+        # If this unit name is defined in the CellML model
+        if unit_name in self.cellml_definitions:
+            # Make a Sympy Quantity object for this unit definition
+            quantity = self._make_cellml_quantity(unit_name)
+            self.store[unit_name] = quantity
+            return self.store[unit_name]
+
+        raise RuntimeError('Cannot find the unit with name (%s)' % unit_name)
+
+    def _sympify(self, string):
+        # logging.info('sympy.sympify(%s)', string)
+        return sympy.sympify(string, locals=self.sympify_context)
+
+    def _make_cellml_quantity(self, name):
+        full_unit_expr = []
+        full_dimension = []
+
+        # For each of the <unit> elements for this unit definition
+        for unit_element in self.cellml_definitions[name]:
+            # Source the <unit units="XXX"> from our store
+            unit_as_quantity = self.get_quantity(unit_element['units'])
+
+            # Add this unit to the sympify context if necessary
+            if unit_element['units'] not in self.sympify_context:
+                self.sympify_context[unit_element['units']] = unit_as_quantity
+
+            # Construct a string representing the expression and dimensions for this <unit>
+            expr = str(unit_as_quantity.name)
+            dimension = str(unit_as_quantity.args[1].args[0])
+
+            if 'prefix' in unit_element:
+                expr = '%s * %s' % (unit_element['prefix'], expr)
+
+            expr = '(%s)' % expr
+
+            if 'exponent' in unit_element:
+                expr = '%s**%s' % (expr, unit_element['exponent'])
+                # Exponent of the <unit> also affects the dimension
+                dimension = '(%s)**%s' % (dimension, unit_element['exponent'])
+
+            expr = '(%s)' % expr
+
+            full_unit_expr.append(expr)
+            full_dimension.append('(%s)' % dimension)
+
+        # Have sympy evaluate the collected unit dimension and expression
+        full_dimension = self._sympify('*'.join(full_dimension))
+        full_unit_expr = self._sympify('*'.join(full_unit_expr))
+
+        # Create and return the Quantity object for this CellML <units>
+        quantity = units.Quantity(name, full_dimension, full_unit_expr)
+        logging.info('%s=Quantity("%s", %s, %s)',
+                     name, name, full_dimension.args[0], full_unit_expr)
+        return quantity
