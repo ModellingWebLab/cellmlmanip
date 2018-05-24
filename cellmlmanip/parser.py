@@ -23,8 +23,7 @@ class XmlNs(Enum):
 
 
 class Parser(object):
-    """
-    This class handles parsing of CellML files. It is instantiated with the CellML filepath.
+    """Handles parsing of CellML files
     """
     @staticmethod
     def with_ns(ns_enum, name):
@@ -32,12 +31,15 @@ class Parser(object):
         return u'{%s}%s' % (ns_enum.value, name)
 
     def __init__(self, filepath):
+        """Initialise an instance of Parser
+
+        :param filepath: the full filepath to the CellML model file
+        """
         self.filepath = filepath
         self.model = None
 
     def parse(self):
-        """
-        The main method that reads the XML file and extract the relevant parts of CellML model
+        """The main method that reads the XML file and extract the relevant parts of CellML model
         definition. Parser class should have been instantiated with the filepath.
 
         :return: a Model class holding CellML model definition, reading for manipulation
@@ -57,6 +59,10 @@ class Parser(object):
         return self.model
 
     def __add_rdf(self, element: etree.Element):
+        """Finds all <RDF> definitions under <element> and adds them to the model
+
+        :param element: the CellML parent element to search for children RDF tags
+        """
         for rdf in element.findall(Parser.with_ns(XmlNs.RDF, u'RDF')):
             self.model.add_rdf(etree.tostring(rdf, encoding=str))
 
@@ -77,7 +83,7 @@ class Parser(object):
         # for each component defined in the model
         for component_element in component_elements:
             # create an instance of Component
-            component = Component(component_element.get(u'name'))
+            component = Component(component_element.get(u'name'), self.model)
 
             # Add the child elements under <component>
             self.__add_variables(component, component_element)

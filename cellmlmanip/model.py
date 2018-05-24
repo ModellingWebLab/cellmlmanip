@@ -13,21 +13,33 @@ import sympy.physics.units as units
 class Component(object):
     """Represents a <component> element in CellML <model>"""
 
-    def __init__(self, name):
+    def __init__(self, name, model):
+        """Create a new Component object
+
+        :param name: the name of the component, usually from <component name="">
+        :param model: a reference to the parent Model
+        """
         self.name = name
+        self.model = model
         self.variables = {}
         self.equations = []
         self.numbers = {}
 
     def __str__(self):
+        """Pretty-print object"""
         return "Component(\n  name: %s\n  equations: %s\n  variables: %s\n  numbers: %s\n)" % \
                (self.name, self.equations, self.variables, self.numbers)
 
     def collect_variable_attributes(self, metadata):
+        """Called after adding equations and variables from the CellML model and collects the
+        disparate bits of information about the equation into a single place. Associates the
+        Sympy symbol for an object with its variable definition if possible.
+
+        :param metadata: returned by the mathml2sympy transpiler, containing information that cannot
+            be returned in a sympy expression (e.g. the unit of a number)
         """
-        Called after adding equations and variables from the CellML model
-        Collects the disparate bits of information about the equation into a single place
-        """
+
+        # Skip if this component doesn't have any equations
         if not self.equations:
             return
 
@@ -53,12 +65,100 @@ class Component(object):
             if symbol.name.split('__')[1] in self.variables:
                 self.variables[variable_name]['sympy.Dummy'] = symbol
 
+    def add_units_to_equations(self):
+        """Inserts unit attributes associated with symbols into equations
+        """
+        for index, equation in enumerate(self.equations):
+            unit_info = self._collect_units(equation)
+
+            # re-purpose the unit_info dict into a substitution dictionary
+            for key, value in unit_info.items():
+                # If this unit information is about a number
+                if key in self.numbers:
+                    unit_info[key] = self.numbers[key]['sympy.Number'] * value
+                else:
+                    unit_info[key] = key * value
+
+            # Replace "symbol" in the equation with "symbol*unit"
+            self.equations[index] = equation.subs(unit_info)
+
+    def _collect_units(self, expr):
+        # Find the unit information (if any) associated with this expression
+        expr_unit_info = self._find_unit_info(expr)
+        if expr_unit_info:
+            expr_unit_info = self.model.units.get_quantity(expr_unit_info)
+            unit_info = {expr: expr_unit_info}
+        else:
+            unit_info = {}
+
+        # Traverse down the arguments of this expression, and collect their unit information
+        for args in expr.args:
+            unit_info = {**unit_info, **self._collect_units(args)}
+
+        # Special handling for Derivatives
+        if isinstance(expr, sympy.Derivative):
+            unit_info = {expr: unit_info[expr.args[0]] / unit_info[expr.args[1]]}
+        return unit_info
+
+    def _find_unit_info(self, expr):
+        """Takes an expression (part of an equation) and searches in the component variables
+        and numbers to get the associated information about this expression/symbol
+
+        :param expr: a Sympy expression. The interesting ones are leaf nodes of the expression
+        """
+        variable_with_assigned = self.find_variable({'assignment': expr})
+        if variable_with_assigned:
+            return variable_with_assigned[0]['units']
+
+        variable_with_dummy = self.find_variable({'sympy.Dummy': expr})
+        if variable_with_dummy:
+            return variable_with_dummy[0]['units']
+
+        for dummy_number, number_info in self.numbers.items():
+            if dummy_number == expr:
+                return number_info['cellml:units']
+
+        # Not unit information about this expression in this component. It might be referring to
+        # a variable in a different component
+        variable_with_assigned = self.model.find_variable({'assignment': expr})
+        if variable_with_assigned:
+            return variable_with_assigned[0]['units']
+
+        # No information found about this
+        return None
+
+    def find_variable(self, search_dict):
+        """Finds variables in this model that match the given key: value pairs
+
+        :param search_dict:
+        :return: a dictionary of key: value pairs
+        """
+        # a list to collect all matched variables
+        matches = []
+
+        # for each defined variable in the component
+        for variable in self.variables.values():
+            # Every search (key, value) pair needs to be in the variable's attributes
+            matched = True
+            for search_key, search_value in search_dict.items():
+                # If the key is not in the variable or the value is different
+                if search_key not in variable or search_value != variable[search_key]:
+                    # This variable doesn't match, break
+                    matched = False
+                    break
+            if matched:
+                # All search (key: value)s were found in this variable
+                matches.append(variable)
+        return matches
+
 
 class Model(object):
-    """
-    Holds all information about a CellML model and exposes it for manipulation (intention!)
+    """Holds all information about a CellML model and exposes it for manipulation (intention!)
     """
     def __init__(self, name):
+        """Create a new instance of Model object
+        :param name: the name of the model e.g. from <model name="">
+        """
         self.name = name
         self.units = None
         self.components = {}
@@ -66,29 +166,27 @@ class Model(object):
         self.rdf = rdflib.Graph()
 
     def __str__(self):
+        """Pretty-print each of the components in this model"""
         return '\n'.join([str(v) for k, v in self.components.items()])
 
     def add_unit(self, units_elements: dict):
-        """
-        Adds information about <units> in <model>
+        """Adds information about <units> in <model>
         """
         self.units = QuantityStore(units_elements)
 
     def add_component(self, component: Component):
-        """
-        Adds name to list of <component>s in the <model>
+        """Adds name to list of <component>s in the <model>
         """
         self.components[component.name] = component
 
     def add_rdf(self, rdf: str):
-        """
-        Takes RDF string and stores it in an RDFlib.Graph for the model. Can be called repeatedly.
+        """ Takes RDF string and stores it in an RDFlib.Graph for the model. Can be called
+        repeatedly.
         """
         self.rdf.parse(StringIO(rdf))
 
     def make_connections(self):
-        """
-        Uses public/private interface attributes of variables and model connections to assign
+        """Uses public/private interface attributes of variables and model connections to assign
         target variables to their source
         """
 
@@ -120,7 +218,7 @@ class Model(object):
 
         # Second, we loop over all model connections and create connections between variables
 
-        # Put the connection in a LIFO queue
+        # Put the connections in a LIFO queue
         connections_to_process = deque(self.connections)
 
         # For testing: shuffle the order of connections
@@ -132,12 +230,12 @@ class Model(object):
         while connections_to_process:
             # Get connection at front of queue
             connection = connections_to_process.popleft()
-            logging.info("Try to connect %s and %s", *connection)
+            logging.debug("Try to connect %s and %s", *connection)
             success = self.__connect(connection)
             if success:
-                logging.info('Connected.')
+                logging.debug('Connected.')
             else:
-                logging.info('Cannot connect (source does not have assignment).')
+                logging.debug('Cannot connect (source does not have assignment).')
                 connections_to_process.append(connection)
             # TODO: track looping and break if we can't exit
 
@@ -160,14 +258,25 @@ class Model(object):
                                         variable['name'], component.name)
 
     def __get_connection_endpoints(self, connection):
+        """Pull out the variable dict of the component for the two endpoints of the connection
+
+        :param connection: single connection tuple as created by the parser
+        """
         ((component_1, variable_1), (component_2, variable_2)) = connection
         variable_1_attributes = self.components[component_1].variables[variable_1]
         variable_2_attributes = self.components[component_2].variables[variable_2]
         return component_1, variable_1_attributes, component_2, variable_2_attributes
 
     def __connect(self, connection):
+        """Takes a CellML connection and attempts to resolve the connect by assigning the target
+        variable to the assigned source variable
+
+        :param connection: a single connection tuple, created by the CellML parser
+            ((component_1, variable_1), (component_2, variable_2))
+        """
         cmp_name_1, var_att_1, cmp_name_2, var_att_2 = self.__get_connection_endpoints(connection)
-        # Determine the source and target variables
+
+        # Determine which are the source and target variables, and connect from->to
         if (('public_interface', 'out') in var_att_1.items() or
                 ('private_interface', 'out') in var_att_1.items()) and (
                     ('public_interface', 'in') in var_att_2.items() or
@@ -182,8 +291,18 @@ class Model(object):
 
     def __connect_with_direction(self, source_component, source_variable,
                                  target_component, target_variable):
-        logging.info('    Source: %s -> %s', source_component, source_variable)
-        logging.info('    Target: %s -> %s', target_component, target_variable)
+        """Given the source and target component and variable, create a connection by either
+        assigning the symbol from the source to the target. If units are not the same, it will
+        add an equation to the component reflection the relationship. If a symbol has not been
+        assigned the source variable, then return False.
+
+        :param source_component: dict of source component
+        :param source_variable: dict of source variables
+        :param target_component: dict of target component
+        :param target_variable: dict of target variables
+        """
+        logging.debug('    Source: %s -> %s', source_component, source_variable)
+        logging.debug('    Target: %s -> %s', target_component, target_variable)
         # If the source variable has already been assigned a final symbol
         if 'assignment' in source_variable:
             # If source/target variable is in the same unit
@@ -196,19 +315,19 @@ class Model(object):
                 self.components[target_component].equations.append(
                     sympy.Eq(target_variable['sympy.Dummy'], source_variable['assignment'])
                 )
-                logging.info('    New target eq: %s -> %s',
-                             target_component, self.components[target_component].equations[-1])
+                logging.debug('    New target eq: %s -> %s', target_component,
+                              self.components[target_component].equations[-1])
 
                 # The assigned symbol for this variable is itself
                 target_variable['assignment'] = target_variable['sympy.Dummy']
-            logging.info('    Updated target: %s -> %s', target_component, target_variable)
+            logging.debug('    Updated target: %s -> %s', target_component, target_variable)
             return True
         # The source variable has not been assigned a symbol, so we can't make this connection
         return False
 
     def find_variable(self, search_dict):
-        """
-        Finds variables in all components in this model that match the given key: value pairs
+        """Finds variables in all components in this model that match the given key: value pairs
+
         :param search_dict:
         :return: a dictionary of key: value pairs
         """
@@ -217,25 +336,12 @@ class Model(object):
 
         # for each component in this model
         for component in self.components.values():
-            # for each defined variable in the component
-            for variable_attr in component.variables.values():
-                # Every search (key, value) pair needs to be in the variable's attributes
-                matched = True
-                for search_key, search_value in search_dict.items():
-                    # If the key is not in the variable or the value is different
-                    if search_key not in variable_attr or search_value != variable_attr[search_key]:
-                        # This variable doesn't match, break
-                        matched = False
-                        break
-                if matched:
-                    # All search (key: value)s were found in this variable
-                    matches.append(variable_attr)
+            matches.extend(component.find_variable(search_dict))
         return matches
 
 
 class QuantityStore(object):
-    """
-    Holds sympy.physics.unit.Quantity objects for the model. Can be initialised with <units>
+    """Holds sympy.physics.unit.Quantity objects for the model. Can be initialised with <units>
     definitions from the CellML <model>. The get_quantity() methods will find the right
     quantity to return, given the name of the unit (from the internal store, Sympy built-in, or
     constructed anew)
@@ -250,19 +356,26 @@ class QuantityStore(object):
     }
 
     def __init__(self, cellml_def=None):
+        """Initialise a QuantityStore instance
+        :param cellml_def: a dictionary of <units> definitions from the CellML model. See parser
+        for format, essentially: {'name of unit': { [ unit attributes ], [ unit attributes ] } }
+        """
         self.store = {}
         self.cellml_definitions = cellml_def if cellml_def else {}
         self.sympify_context = {}
 
+        # Add the 'dimensionless' unit (not part of SI nor Sympy nor defined in CellML model)
+        self.store['dimensionless'] = units.Quantity('dimensionless', 1, sympy.Rational(1, 1))
+
+        # Setup the context with Sympy unit definitions for sympify
         from sympy.core.compatibility import exec_
         exec_('from sympy.physics.units import *', self.sympify_context)
 
     def get_quantity(self, unit_name):
-        """
-        Given the name of the unit, this will either (i) return a Quantity from the internal store
-        as its already been resolved previously (ii) return the Quantity from Sympy if it a built-in
-        name or (iii) construct and return a new Quantity object using the <units><unit></units>
-        definition in the CellML <model>
+        """Given the name of the unit, this will either (i) return a Quantity from the internal
+        store as its already been resolved previously (ii) return the Quantity from Sympy if it a
+        built-in name or (iii) construct and return a new Quantity object using the
+        <units><unit></units> definition in the CellML <model>
         """
         # This name is aliased to some other unit name (e.g. british -> american spelling)
         if unit_name in QuantityStore.aliases:
@@ -286,11 +399,32 @@ class QuantityStore(object):
 
         raise RuntimeError('Cannot find the unit with name (%s)' % unit_name)
 
+    @staticmethod
+    def summarise_units(expr):
+        """Given a Sympy expression, will get all the Quantity objects in the expression and
+        collected them together to give a single Sympy expression of the units
+        """
+        return sympy.Mul(*[x for x in expr.args if x.atoms(units.Quantity)])
+
+    @staticmethod
+    def is_equal(quantity_1, quantity_2):
+        """Converts one quantity into another to see if they are equal
+
+        :param quantity_1: a Sympy Quantity instance
+        :param quantity_2: a Sympy Quantity instance
+        """
+        return units.convert_to(quantity_1, quantity_2) == quantity_2
+
     def _sympify(self, string):
+        """Takes a string containing a Sympy expression and evaluates it using the required context
+        for handling our units
+        """
         # logging.info('sympy.sympify(%s)', string)
         return sympy.sympify(string, locals=self.sympify_context)
 
     def _make_cellml_quantity(self, name):
+        """Will use the CellML unit definition and construct a new Quantity object for that unit
+        """
         full_unit_expr = []
         full_dimension = []
 
@@ -319,6 +453,7 @@ class QuantityStore(object):
 
             expr = '(%s)' % expr
 
+            # Collect/add this particular <unit> definition
             full_unit_expr.append(expr)
             full_dimension.append('(%s)' % dimension)
 
@@ -328,6 +463,6 @@ class QuantityStore(object):
 
         # Create and return the Quantity object for this CellML <units>
         quantity = units.Quantity(name, full_dimension, full_unit_expr)
-        logging.info('%s=Quantity("%s", %s, %s)',
-                     name, name, full_dimension.args[0], full_unit_expr)
+        logging.debug('%s=Quantity("%s", %s, %s)',
+                      name, name, full_dimension.args[0], full_unit_expr)
         return quantity
