@@ -406,11 +406,33 @@ class QuantityStore(object):
         raise RuntimeError('Cannot find the unit with name (%s)' % unit_name)
 
     @staticmethod
-    def summarise_units(expr):
+    def summarise_units(expr: sympy.Expr):
         """Given a Sympy expression, will get all the Quantity objects in the expression and
         collected them together to give a single Sympy expression of the units
         """
-        return sympy.Mul(*[x for x in expr.args if x.atoms(units.Quantity)])
+        # If this expression is a Quantity itself
+        if isinstance(expr, units.Quantity):
+            # Return it as it is
+            return expr
+        # Don't descend into Derivative expression (there are no units within!)
+        if isinstance(expr, sympy.Derivative):
+            return None
+        # Units are always part of a Multiplicative expression
+        # TODO: check if units are always multiplicative!
+        if isinstance(expr, sympy.Mul):
+            # We only keep quantities
+            keep: List[units.Quantity] = []
+            # For each of the multiplication arguments that contain Quantity atoms
+            for arg in [x for x in expr.args if x.atoms(units.Quantity)]:
+                # Descend into the argument and get the Quantities within
+                should_keep = QuantityStore.summarise_units(arg)
+                # Keep anything we find (check - we always should!)
+                if should_keep:
+                    keep.append(should_keep)
+            # Perform the same mathematical function, but on the units alone (no symbols or numbers)
+            return expr.func(*keep)
+        # Otherwise, descend into the expression tree
+        return expr.func(*[QuantityStore.summarise_units(x) for x in expr.args])
 
     @staticmethod
     def is_equal(quantity_1, quantity_2):

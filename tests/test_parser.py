@@ -121,6 +121,17 @@ class TestParser(object):
         rhs_units = QuantityStore.summarise_units(test_equation.rhs)
         assert not QuantityStore.is_equal(lhs_units, rhs_units)
 
+    def test_unit_extraction(self):
+        import sympy.physics.units as units
+
+        eq = (5*units.mile/(2*units.hour + 10*units.minute))**(8*units.gram)
+        assert QuantityStore.summarise_units(eq) == (units.mile/(units.hour + units.minute))**units.gram
+
+        millivolts = Quantity('millivolts', units.voltage, units.milli * units.volts, 'mV')
+        x, y = sympy.symbols('x y')
+        eq = (millivolts / units.millisecond)*sympy.Derivative(x, y)
+        assert QuantityStore.summarise_units(eq) == (millivolts / units.milliseconds)
+
     def _test_print(self, model):
         # show equations
         for _, component in model.components.items():
