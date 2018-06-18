@@ -30,13 +30,13 @@ class Parser(object):
         """Returns an ElementTree-friendly name with namespace in brackets"""
         return u'{%s}%s' % (ns_enum.value, name)
 
-    def __init__(self, filepath):
+    def __init__(self, filepath: str):
         """Initialise an instance of Parser
 
         :param filepath: the full filepath to the CellML model file
         """
-        self.filepath = filepath
-        self.model = None
+        self.filepath: str = filepath
+        self.model: Model = None
 
     def parse(self):
         """The main method that reads the XML file and extract the relevant parts of CellML model
