@@ -243,6 +243,12 @@ class TestParser(object):
             if float(number.name) == 2.0:
                 assert metadata[number]['cellml:units'] == 's'
 
+    def test_prefix(self):
+        mathml = self.make_mathml('<apply><ci>x</ci></apply>')
+        transpiler = mathml2sympy.Transpiler(symbol_prefix="test__")
+        sympy_expr = transpiler.parse_string(mathml)
+        assert sympy_expr[0] == sympy.Symbol('test__x')
+
     def test_noble_1962(self):
         cellml_path = os.path.join(os.path.dirname(__file__), "noble_model_1962.cellml")
 
