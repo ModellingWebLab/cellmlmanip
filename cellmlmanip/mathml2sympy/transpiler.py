@@ -13,8 +13,8 @@ import sympy
 class Transpiler(object):
     """Transpiler class handles conversion of MathmL to Sympy exprerssions"""
 
-    def __init__(self, dummify: bool=False, symbol_prefix: str=None):
-        self.metadata = dict()
+    def __init__(self, dummify: bool=False, symbol_prefix: str=None) -> None:
+        self.metadata: Dict = dict()
         self.dummy_symbol_cache: Dict[str, sympy.Dummy] = dict()
         self.dummify: bool = dummify
         self.symbol_prefix = symbol_prefix
@@ -44,14 +44,14 @@ class Transpiler(object):
         for tag_name in SIMPLE_MATHML_TO_SYMPY_NAMES:
             self.handlers[tag_name] = self.__simple_operator_handler
 
-    def parse_string(self, xml_string):
+    def parse_string(self, xml_string) -> List[sympy.Expr]:
         """
         Reads MathML content from a string and returns equivalent SymPy expressions
         """
         dom = minidom.parseString(xml_string)
         return self.parse_dom(dom.childNodes[0])
 
-    def parse_dom(self, math_dom_element):
+    def parse_dom(self, math_dom_element) -> List[sympy.Expr]:
         """
         Accepts a <math> node of DOM structure and returns equivalent SymPy expressions.
         Note: math_dom_element must point the <math> XmlNode, not the root XmlDocument

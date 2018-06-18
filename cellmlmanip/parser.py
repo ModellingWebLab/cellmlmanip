@@ -3,6 +3,7 @@ This module contains the CellML parser. It reads CellML model and stores model i
 CellML Model class. MathML equations are translated to Sympy. RDF is handled by RDFLib.
 """
 from enum import Enum
+from typing import Dict
 
 from lxml import etree
 
@@ -30,7 +31,7 @@ class Parser(object):
         """Returns an ElementTree-friendly name with namespace in brackets"""
         return u'{%s}%s' % (ns_enum.value, name)
 
-    def __init__(self, filepath: str):
+    def __init__(self, filepath: str) -> None:
         """Initialise an instance of Parser
 
         :param filepath: the full filepath to the CellML model file
@@ -108,7 +109,7 @@ class Parser(object):
         """ <model> <component> <variable> </component> </model> """
         variable_elements = component_element.findall(Parser.with_ns(XmlNs.CELLML, u'variable'))
         for variable_element in variable_elements:
-            attributes = dict(variable_element.attrib)
+            attributes: Dict = dict(variable_element.attrib)
 
             # Rename key for cmeta_id (remove namespace from attribute)
             cmeta_id_attribute = Parser.with_ns(XmlNs.CMETA, 'id')

@@ -4,7 +4,7 @@ Classes representing a CellML model and its components
 import logging
 from collections import deque
 from io import StringIO
-from typing import Dict, List
+from typing import Dict, List, Tuple
 
 import rdflib
 import sympy
@@ -14,7 +14,7 @@ import sympy.physics.units as units
 class Component(object):
     """Represents a <component> element in CellML <model>"""
 
-    def __init__(self, name: str, model: 'Model'):
+    def __init__(self, name: str, model: 'Model') -> None:
         """Create a new Component object
 
         :param name: the name of the component, usually from <component name="">
@@ -22,9 +22,9 @@ class Component(object):
         """
         self.name: str = name
         self.model: 'Model' = model
-        self.variables = {}
+        self.variables: Dict[str, Dict] = {}
         self.equations: List[sympy.Expr] = []
-        self.numbers = {}
+        self.numbers: Dict[sympy.Dummy, Dict] = {}
 
     def __str__(self):
         """Pretty-print object"""
@@ -161,14 +161,14 @@ class Component(object):
 class Model(object):
     """Holds all information about a CellML model and exposes it for manipulation (intention!)
     """
-    def __init__(self, name: str):
+    def __init__(self, name: str) -> None:
         """Create a new instance of Model object
         :param name: the name of the model e.g. from <model name="">
         """
         self.name: str = name
         self.units: 'QuantityStore' = None
         self.components: Dict[str, Component] = {}
-        self.connections = []
+        self.connections: List[Tuple] = []
         self.rdf: rdflib.Graph = rdflib.Graph()
 
     def __str__(self):
