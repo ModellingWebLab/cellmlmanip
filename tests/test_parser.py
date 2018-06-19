@@ -3,10 +3,10 @@ import os
 
 import pytest
 import sympy
-from cellmlmanip.model import QuantityStore
-from sympy.physics.units import Quantity
+import sympy.physics.units as units
 
 from cellmlmanip import parser
+from cellmlmanip.model import QuantityStore
 
 logging.getLogger().setLevel(logging.INFO)
 
@@ -37,7 +37,8 @@ class TestParser(object):
                                                               'public_interface': 'out',
                                                               'units': 'ms'}]
         matched = model.find_variable({'cmeta:id': 'sv12'})
-        assert len(matched) == 1 and matched[0]['sympy.Dummy'].name == 'single_ode_rhs_const_var__sv1'
+        assert len(matched) == 1 and \
+            matched[0]['sympy.Dummy'].name == 'single_ode_rhs_const_var__sv1'
 
     def test_connections_loaded(self, model):
         assert len(model.connections) == 26  # grep -c '<map_variables ' test_simple_odes.cellml
@@ -75,8 +76,6 @@ class TestParser(object):
         assert equation in model.components['time_units_conversion2'].equations
 
     def test_quantity_translation(self, model):
-        import sympy.physics.units as u
-
         assert model.units.get_quantity('dimensionless').scale_factor == sympy.Rational(1, 1)
 
         # Units defined in the test CellML <model>:
@@ -86,28 +85,20 @@ class TestParser(object):
             model.units.get_quantity(name)
 
         # Sympy built-in units
-        assert model.units.get_quantity('ms') == u.millisecond
-        assert model.units.get_quantity('centimeter') == u.centimeter
+        assert model.units.get_quantity('ms') == units.millisecond
+        assert model.units.get_quantity('centimeter') == units.centimeter
 
         # Custom units defined in CellML example
-        assert u.convert_to(model.units.get_quantity('per_ms'), u.millisecond) == 1/u.millisecond
-        assert u.convert_to(model.units.get_quantity('usec'), u.microsecond) == u.microsecond
-        assert u.convert_to(
+        assert units.convert_to(model.units.get_quantity('per_ms'), 1/units.millisecond) == 1/units.millisecond
+        assert units.convert_to(model.units.get_quantity('usec'), units.microsecond) == units.microsecond
+        assert units.convert_to(
             model.units.get_quantity('mM_per_ms'),
-            [u.mole, u.liter, u.millisecond]) == (u.mole / 1000) / (u.liter * u.millisecond)
+            [units.mole, units.liter, units.millisecond]) == (units.mole / 1000) / (units.liter * units.millisecond)
 
     def test_add_units_to_equations(self, model):
-        for _, component in model.components.items():
+        # This is an irreversible operation # TODO: don't mutate?
+        for component in model.components.values():
             component.add_units_to_equations()
-
-            for equation in component.equations:
-                print(equation)
-                lhs_units = QuantityStore.summarise_units(equation.lhs)
-                rhs_units = QuantityStore.summarise_units(equation.rhs)
-                if QuantityStore.is_equal(lhs_units, rhs_units):
-                    print('\t', lhs_units, '==', rhs_units)
-                else:
-                    print('\t', lhs_units, '!=', rhs_units)
 
         # mV/millisecond == mV_per_ms
         test_equation = model.components['single_independent_ode'].equations[0]
@@ -121,13 +112,32 @@ class TestParser(object):
         rhs_units = QuantityStore.summarise_units(test_equation.rhs)
         assert not QuantityStore.is_equal(lhs_units, rhs_units)
 
+        # Check a specific RHS->LHS unit conversion
+        test_equation = model.components['deriv_on_rhs2b'].equations[0]
+        new_rhs = test_equation.rhs.subs({rhs_units: units.convert_to(rhs_units, lhs_units)})
+        new_rhs_units = QuantityStore.summarise_units(new_rhs)
+        assert QuantityStore.is_equal(lhs_units, new_rhs_units)
+
+        # Try fixing all units on the RHS so that they match the LHS
+        for _, component in model.components.items():
+            for index, equation in enumerate(component.equations):
+                lhs_units = QuantityStore.summarise_units(equation.lhs)
+                rhs_units = QuantityStore.summarise_units(equation.rhs)
+                if not QuantityStore.is_equal(lhs_units, rhs_units):
+                    print('\t{} != {} in {}'.format(lhs_units, rhs_units, equation))
+                    new_rhs = equation.rhs.subs({rhs_units: units.convert_to(rhs_units, lhs_units)})
+                    equation = sympy.Eq(equation.lhs, new_rhs)
+                    component.equations[index] = equation
+                    lhs_units = QuantityStore.summarise_units(equation.lhs)
+                    rhs_units = QuantityStore.summarise_units(equation.rhs)
+                    assert QuantityStore.is_equal(lhs_units, rhs_units)
+
     def test_unit_extraction(self):
-        import sympy.physics.units as units
-
         eq = (5*units.mile/(2*units.hour + 10*units.minute))**(8*units.gram)
-        assert QuantityStore.summarise_units(eq) == (units.mile/(units.hour + units.minute))**units.gram
+        assert QuantityStore.summarise_units(eq) == \
+            (units.mile/(units.hour + units.minute))**units.gram
 
-        millivolts = Quantity('millivolts', units.voltage, units.milli * units.volts, 'mV')
+        millivolts = units.Quantity('millivolts', units.voltage, units.milli * units.volts, 'mV')
         x, y = sympy.symbols('x y')
         eq = (millivolts / units.millisecond)*sympy.Derivative(x, y)
         assert QuantityStore.summarise_units(eq) == (millivolts / units.milliseconds)
