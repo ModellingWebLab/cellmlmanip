@@ -114,7 +114,7 @@ class TestParser(object):
 
         # Check a specific RHS->LHS unit conversion
         test_equation = model.components['deriv_on_rhs2b'].equations[0]
-        new_rhs = test_equation.rhs.subs({rhs_units: units.convert_to(rhs_units, lhs_units)})
+        new_rhs = units.convert_to(test_equation.rhs, lhs_units)
         new_rhs_units = QuantityStore.summarise_units(new_rhs)
         assert QuantityStore.is_equal(lhs_units, new_rhs_units)
 
@@ -125,11 +125,13 @@ class TestParser(object):
                 rhs_units = QuantityStore.summarise_units(equation.rhs)
                 if not QuantityStore.is_equal(lhs_units, rhs_units):
                     print('\t{} != {} in {}'.format(lhs_units, rhs_units, equation))
-                    new_rhs = equation.rhs.subs({rhs_units: units.convert_to(rhs_units, lhs_units)})
+                    new_rhs = units.convert_to(equation.rhs, lhs_units)
+                    # Create a new equality with the converted RHS and replace original
                     equation = sympy.Eq(equation.lhs, new_rhs)
                     component.equations[index] = equation
                     lhs_units = QuantityStore.summarise_units(equation.lhs)
                     rhs_units = QuantityStore.summarise_units(equation.rhs)
+                    print('\t\t{}'.format(equation))
                     assert QuantityStore.is_equal(lhs_units, rhs_units)
 
     def test_unit_extraction(self):
