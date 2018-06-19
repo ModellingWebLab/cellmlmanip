@@ -23,7 +23,7 @@ class Component(object):
         self.name: str = name
         self.model: 'Model' = model
         self.variables: Dict[str, Dict] = {}
-        self.equations: List[sympy.Expr] = []
+        self.equations: List[sympy.Eq] = []
         self.numbers: Dict[sympy.Dummy, Dict] = {}
 
     def __str__(self):
@@ -85,7 +85,7 @@ class Component(object):
                 else:
                     unit_info[key] = key * value
 
-            # Do the substitutions
+            # Do the substitutions (WARNING: irreversible!)
             self.equations[index] = equation.subs(unit_info)
 
     def _collect_units(self, expr):
@@ -99,7 +99,7 @@ class Component(object):
 
         # Traverse down the arguments of this expression, and collect their unit information
         for args in expr.args:
-            unit_info = {**unit_info, **self._collect_units(args)}
+            unit_info: Dict = {**unit_info, **self._collect_units(args)}
 
         # Special handling for Derivatives
         if isinstance(expr, sympy.Derivative):
@@ -191,6 +191,16 @@ class Model(object):
         """
         self.rdf.parse(StringIO(rdf))
 
+    def _is_free_variable(self, variables: Dict):
+        """Checks whether a variable gets its value for another component. There are two
+        possibilities. Either is has:
+            (i) public_interface="out" or
+            (ii) private_interface="out" without public_interface="in"
+        """
+        return (('public_interface', 'out') in variables.items()) or \
+               (('private_interface', 'out') in variables.items() and
+                ('public_interface', 'in') not in variables.items())
+
     def make_connections(self):
         """Uses public/private interface attributes of variables and model connections to assign
         target variables to their source
@@ -206,13 +216,8 @@ class Model(object):
         for _, component in self.components.items():
             # For each CellML <variable> in the component
             for _, var_attr in component.variables.items():
-                # If this variable does not get its value from another component. There are two
-                # possibilities. Either it has:
-                # (i) public_interface="out" or
-                # (ii) private_interface="out" without public_interface="in"
-                if (('public_interface', 'out') in var_attr.items()) or \
-                        (('private_interface', 'out') in var_attr.items()
-                         and ('public_interface', 'in') not in var_attr.items()):
+                # If this variable does not get its value from another component
+                if self._is_free_variable(var_attr):
                     # If it doesn't have a dummy symbol
                     if 'sympy.Dummy' not in var_attr:
                         # This variable was not used in any equations - create a new dummy symbol
@@ -321,8 +326,8 @@ class Model(object):
                 self.components[target_component].equations.append(
                     sympy.Eq(target_variable['sympy.Dummy'], source_variable['assignment'])
                 )
-                logging.debug('    New target eq: %s -> %s', target_component,
-                              self.components[target_component].equations[-1])
+                logging.info('    New target eq: %s -> %s', target_component,
+                             self.components[target_component].equations[-1])
 
                 # The assigned symbol for this variable is itself
                 target_variable['assignment'] = target_variable['sympy.Dummy']
