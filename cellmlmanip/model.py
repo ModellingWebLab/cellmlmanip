@@ -90,10 +90,13 @@ class Component(object):
 
     def _collect_units(self, expr):
         # Find the unit information (if any) associated with this expression
+        logging.debug("_collect_units(%s)", expr)
+
         expr_unit_info = self._find_unit_info(expr)
         if expr_unit_info:
             expr_unit_info = self.model.units.get_quantity(expr_unit_info)
             unit_info = {expr: expr_unit_info}
+            logging.debug('Found unit for "%s" ⟶ "%s"', expr, expr_unit_info)
         else:
             unit_info = {}
 
@@ -312,8 +315,8 @@ class Model(object):
         :param target_component: dict of target component
         :param target_variable: dict of target variables
         """
-        logging.debug('    Source: %s -> %s', source_component, source_variable)
-        logging.debug('    Target: %s -> %s', target_component, target_variable)
+        logging.debug('    Source: %s ⟶ %s', source_component, source_variable)
+        logging.debug('    Target: %s ⟶ %s', target_component, target_variable)
         # If the source variable has already been assigned a final symbol
         if 'assignment' in source_variable:
             # If source/target variable is in the same unit
@@ -326,12 +329,12 @@ class Model(object):
                 self.components[target_component].equations.append(
                     sympy.Eq(target_variable['sympy.Dummy'], source_variable['assignment'])
                 )
-                logging.info('    New target eq: %s -> %s', target_component,
+                logging.info('    New target eq: %s ⟶ %s', target_component,
                              self.components[target_component].equations[-1])
 
                 # The assigned symbol for this variable is itself
                 target_variable['assignment'] = target_variable['sympy.Dummy']
-            logging.debug('    Updated target: %s -> %s', target_component, target_variable)
+            logging.debug('    Updated target: %s ⟶ %s', target_component, target_variable)
             return True
         # The source variable has not been assigned a symbol, so we can't make this connection
         return False
@@ -408,7 +411,7 @@ class QuantityStore(object):
             self.store[unit_name] = quantity
             return self.store[unit_name]
 
-        raise RuntimeError('Cannot find the unit with name (%s)' % unit_name)
+        raise RuntimeError('Cannot find the unit with name "%s"' % unit_name)
 
     @staticmethod
     def summarise_units(expr: sympy.Expr):
