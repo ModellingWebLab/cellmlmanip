@@ -1,6 +1,7 @@
 import os
 from xml.dom import pulldom
 
+import pytest
 import sympy
 
 from cellmlmanip import mathml2sympy
@@ -46,6 +47,11 @@ class TestParser(object):
         self.assert_equal('<apply><minus/><ci>x</ci><ci>y</ci></apply>',
                           [sympy.Symbol('x') - sympy.Symbol('y')])
 
+    def test_minus_nary(self):
+        with pytest.raises(TypeError):
+            self.assert_equal('<apply><minus/><ci>x</ci><ci>y</ci><ci>z</ci></apply>',
+                              [sympy.Symbol('x') - sympy.Symbol('y') - sympy.Symbol('z')])
+
     def test_negative(self):
         self.assert_equal('<apply><minus/><ci>x</ci></apply>',
                           [-sympy.Symbol('x')])
@@ -53,6 +59,11 @@ class TestParser(object):
     def test_divide(self):
         self.assert_equal('<apply><divide/><ci>a</ci><ci>b</ci></apply>',
                           [sympy.Symbol('a') / sympy.Symbol('b')])
+
+    def test_divide_nary(self):
+        with pytest.raises(TypeError):
+            self.assert_equal('<apply><divide/><ci>a</ci><ci>b</ci><ci>c</ci></apply>',
+                              [sympy.Symbol('a') / sympy.Symbol('b') / sympy.Symbol('c')])
 
     def test_eq(self):
         self.assert_equal('<apply><eq/><ci>a</ci><ci>b</ci></apply>',
