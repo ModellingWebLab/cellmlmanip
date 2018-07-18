@@ -383,6 +383,50 @@ class QuantityStore(object):
         'metre': 'meter',
     }
 
+    # The full list of supported CellML units
+    # Taken from https://www.cellml.org/specifications/cellml_1.1/#sec_units
+    cellml_units = [
+        # Base SI units
+        'ampere',
+        'candela',
+        'kelvin',
+        'kilogram',
+        'meter',
+        # 'metre', - handled by self.aliases
+        'mole',
+        'second',
+
+        # Derived SI units
+        # TODO: 'becquerel',
+        # TODO: 'celsius',
+        'coulomb',
+        'farad',
+        # TODO: 'gray',
+        'henry',
+        'hertz',
+        'joule',
+        # TODO: 'katal',
+        # TODO: 'lumen',
+        'lux',
+        'newton',
+        'ohm',
+        'pascal',
+        'radian',
+        'siemens',
+        # TODO: 'sievert',
+        'steradian',
+        'tesla',
+        'volt',
+        'watt',
+        'weber',
+
+        # Convenience units
+        # 'dimensionless', - added to QuantityStore explicitly - see __init__
+        'gram',
+        'liter',
+        # 'litre', - handled by self.aliases
+    ]
+
     def __init__(self, cellml_def=None):
         """Initialise a QuantityStore instance
         :param cellml_def: a dictionary of <units> definitions from the CellML model. See parser
@@ -405,17 +449,11 @@ class QuantityStore(object):
         built-in name or (iii) construct and return a new Quantity object using the
         <units><unit></units> definition in the CellML <model>
         """
-        # This name is aliased to some other unit name (e.g. british -> american spelling)
-        if unit_name in QuantityStore.aliases:
-            unit_name = QuantityStore.aliases[unit_name]
+        # Correct any aliases (e.g. british -> american spelling)
+        unit_name = QuantityStore.aliases.get(unit_name, unit_name)
 
         # If we've already sourced the quantity for this name
         if unit_name in self.store:
-            return self.store[unit_name]
-
-        # If this unit name is one of the built-in Sympy quantities
-        if hasattr(units, unit_name):
-            self.store[unit_name] = getattr(units, unit_name)
             return self.store[unit_name]
 
         # If this unit name is defined in the CellML model
@@ -423,6 +461,11 @@ class QuantityStore(object):
             # Make a Sympy Quantity object for this unit definition
             quantity = self._make_cellml_quantity(unit_name)
             self.store[unit_name] = quantity
+            return self.store[unit_name]
+
+        # If this unit name is part of the CellML spec and available as built-in Sympy quantity
+        if unit_name in self.cellml_units and hasattr(units, unit_name):
+            self.store[unit_name] = getattr(units, unit_name)
             return self.store[unit_name]
 
         raise RuntimeError('Cannot find the unit with name "%s"' % unit_name)

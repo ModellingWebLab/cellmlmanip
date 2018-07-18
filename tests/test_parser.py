@@ -88,8 +88,7 @@ class TestParser(object):
             model.units.get_quantity(name)
 
         # Sympy built-in units
-        assert model.units.get_quantity('ms') == units.millisecond
-        assert model.units.get_quantity('centimeter') == units.centimeter
+        assert model.units.get_quantity('kilogram') == units.kilogram
 
         # Custom units defined in CellML example
         assert units.convert_to(model.units.get_quantity('per_ms'), 1/units.millisecond) == 1/units.millisecond
