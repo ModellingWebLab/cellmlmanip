@@ -28,8 +28,9 @@ class Component(object):
 
     def __str__(self):
         """Pretty-print object"""
-        return "Component(\n  name: %s\n  equations: %s\n  variables: %s\n  numbers: %s\n)" % \
-               (self.name, self.equations, self.variables, self.numbers)
+        return "Component(\n  name: %s\n  equations: %s\n  variables: %s\n  numbers: %s\n)" % (
+            self.name, self.equations, self.variables, self.numbers
+        )
 
     def collect_variable_attributes(self, metadata):
         """Called after adding equations and variables from the CellML model and collects the
@@ -63,11 +64,14 @@ class Component(object):
 
             # if the symbol is one that's defined as a <variable> in the component
             variable_name = symbol.name.split('__')[1]
-            if symbol.name.split('__')[1] in self.variables:
+            if variable_name in self.variables:
                 self.variables[variable_name]['sympy.Dummy'] = symbol
 
     def add_units_to_equations(self):
-        """Inserts unit attributes associated with symbols into equations
+        """Inserts unit attributes associated with symbols into equations.
+
+        WARNING: This method replaces/mutates the existing equations i.e. the original equations
+        are lost.
         """
         # For each equation in this component
         for index, equation in enumerate(self.equations):
@@ -89,7 +93,7 @@ class Component(object):
             self.equations[index] = equation.subs(unit_info)
 
     def _collect_units(self, expr):
-        # Find the unit information (if any) associated with this expression
+        """Descends into the given Sympy expression and returns the appropriate units (if any)"""
         logging.debug("_collect_units(%s)", expr)
 
         expr_unit_info = self._find_unit_info(expr)
@@ -98,11 +102,11 @@ class Component(object):
             unit_info = {expr: expr_unit_info}
             logging.debug('Found unit for "%s" ⟶ "%s"', expr, expr_unit_info)
         else:
-            unit_info = {}
+            unit_info: Dict = {}
 
         # Traverse down the arguments of this expression, and collect their unit information
         for args in expr.args:
-            unit_info: Dict = {**unit_info, **self._collect_units(args)}
+            unit_info.update(self._collect_units(args))
 
         # Special handling for Derivatives
         if isinstance(expr, sympy.Derivative):
@@ -137,11 +141,20 @@ class Component(object):
         return None
 
     def find_variable(self, search_dict):
-        """Finds variables in this model that match the given key: value pairs
+        """Finds variables in this model that fulfil the search criteria.
 
-        :param search_dict:
-        :return: a dictionary of key: value pairs
+        Each model variable has a number of attributes e.g. name, public_interface, assignment,
+        cmeta:id etc. Search criteria are described as key-value pairs in a dictionary. Those
+        model variables that fulfil _all_ key-value pairs in the search_dict are returned.
+
+        :param search_dict: a dictionary providing the search criteria
+        :return: a list of variables in the model matching the search criteria
         """
+
+        # throw error if empty search criteria given
+        if search_dict is None or not search_dict:
+            raise RuntimeError("Search criteria cannot be empty.")
+
         # a list to collect all matched variables
         matches = []
 
@@ -176,7 +189,7 @@ class Model(object):
 
     def __str__(self):
         """Pretty-print each of the components in this model"""
-        return '\n'.join([str(v) for k, v in self.components.items()])
+        return '\n'.join([str(v) for v in self.components.values()])
 
     def add_unit(self, units_elements: dict):
         """Adds information about <units> in <model>
@@ -186,6 +199,9 @@ class Model(object):
     def add_component(self, component: Component):
         """Adds name to list of <component>s in the <model>
         """
+        if component.name in self.components:
+            raise RuntimeError("%s already exists. Check CellML." % component.name)
+
         self.components[component.name] = component
 
     def add_rdf(self, rdf: str):
@@ -195,8 +211,8 @@ class Model(object):
         self.rdf.parse(StringIO(rdf))
 
     def _is_free_variable(self, variables: Dict):
-        """Checks whether a variable gets its value for another component. There are two
-        possibilities. Either is has:
+        """Checks whether a variable gets its value from another component. There are two
+        possibilities. Either it has:
             (i) public_interface="out" or
             (ii) private_interface="out" without public_interface="in"
         """
@@ -216,9 +232,9 @@ class Model(object):
         # First, we assign new sympy.Dummy variables for those CellML <variable>s that are only
         # exposed to other components i.e. do not have an "in" value on public/private_interface
         # For each component in the model
-        for _, component in self.components.items():
+        for component in self.components.values():
             # For each CellML <variable> in the component
-            for _, var_attr in component.variables.items():
+            for var_attr in component.variables.values():
                 # If this variable does not get its value from another component
                 if self._is_free_variable(var_attr):
                     # If it doesn't have a dummy symbol
@@ -305,15 +321,15 @@ class Model(object):
 
     def __connect_with_direction(self, source_component, source_variable,
                                  target_component, target_variable):
-        """Given the source and target component and variable, create a connection by either
-        assigning the symbol from the source to the target. If units are not the same, it will
-        add an equation to the component reflection the relationship. If a symbol has not been
-        assigned the source variable, then return False.
+        """Given the source and target component and variable, create a connection by assigning
+        the symbol from the source to the target. If units are not the same, it will add an equation
+        to the component reflecting the relationship. If a symbol has not been assigned to the
+        source variable, then return False.
 
-        :param source_component: dict of source component
-        :param source_variable: dict of source variables
-        :param target_component: dict of target component
-        :param target_variable: dict of target variables
+        :param source_component: name of source component
+        :param source_variable: name of source variable
+        :param target_component: name of target component
+        :param target_variable: name of target variable
         """
         logging.debug('    Source: %s ⟶ %s', source_component, source_variable)
         logging.debug('    Target: %s ⟶ %s', target_component, target_variable)
@@ -364,9 +380,7 @@ class QuantityStore(object):
     # Aliases for units to their Sympy equivalent
     aliases = {
         'litre': 'liter',
-        'litres': 'liters',
         'metre': 'meter',
-        'metres': 'meters'
     }
 
     def __init__(self, cellml_def=None):
@@ -416,7 +430,7 @@ class QuantityStore(object):
     @staticmethod
     def summarise_units(expr: sympy.Expr):
         """Given a Sympy expression, will get all the Quantity objects in the expression and
-        collected them together to give a single Sympy expression of the units
+        collect them together to give a single Sympy expression of the units
         """
         # If this expression is a Quantity itself
         if isinstance(expr, units.Quantity):
@@ -482,16 +496,12 @@ class QuantityStore(object):
             dimension = str(unit_as_quantity.args[1].args[0])
 
             if 'prefix' in unit_element:
-                expr = '%s * %s' % (unit_element['prefix'], expr)
-
-            expr = '(%s)' % expr
+                expr = '(%s * %s)' % (unit_element['prefix'], expr)
 
             if 'exponent' in unit_element:
-                expr = '%s**%s' % (expr, unit_element['exponent'])
+                expr = '((%s)**%s)' % (expr, unit_element['exponent'])
                 # Exponent of the <unit> also affects the dimension
                 dimension = '(%s)**%s' % (dimension, unit_element['exponent'])
-
-            expr = '(%s)' % expr
 
             # Collect/add this particular <unit> definition
             full_unit_expr.append(expr)

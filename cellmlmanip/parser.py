@@ -14,8 +14,6 @@ from cellmlmanip.model import Component, Model
 class XmlNs(Enum):
     """
     Standard namespaces present in CellML documents
-    TODO: Other common namespaces?
-    TODO: Should we be picking these up from somewhere else?
     """
     CELLML = 'http://www.cellml.org/cellml/1.0#'
     CMETA = 'http://www.cellml.org/metadata/1.0#'
@@ -96,7 +94,7 @@ class Parser(object):
 
     def __add_maths(self, component: Component, component_element: etree.Element):
         """ <model> <component> <math> </component> </model> """
-        # NOTE: Only looking for one <math> element
+        # TODO: Handle cases where there multiple <math> elements
         math_element = component_element.find(Parser.with_ns(XmlNs.MATHML, u'math'))
         if math_element is not None:
             transpiler = mathml2sympy.Transpiler(dummify=True, symbol_prefix=component.name + '__')

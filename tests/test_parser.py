@@ -12,13 +12,14 @@ logging.getLogger().setLevel(logging.INFO)
 
 
 class TestParser(object):
-    @staticmethod
-    def get_test_cellml_filepath():
-        return os.path.join(os.path.dirname(__file__), "cellml_files", "test_simple_odes.cellml")
 
     @pytest.fixture(scope="class")
     def model(self):
-        p = parser.Parser(TestParser.get_test_cellml_filepath())
+        """Parses example CellML and returns model"""
+        example_cellml = os.path.join(
+            os.path.dirname(__file__), "cellml_files", "test_simple_odes.cellml"
+        )
+        p = parser.Parser(example_cellml)
         model = p.parse()
         return model
 
@@ -43,14 +44,16 @@ class TestParser(object):
     def test_connections_loaded(self, model):
         assert len(model.connections) == 26  # grep -c '<map_variables ' test_simple_odes.cellml
         first, second = model.connections[0]
-        component_1, variable_1 = first[0], first[1]
-        component_2, variable_2 = second[0], second[1]
+        component_1, variable_1 = first
+        component_2, variable_2 = second
         var_one = model.components[component_1].variables[variable_1]
         var_two = model.components[component_2].variables[variable_2]
         assert component_1 == 'single_independent_ode'
-        assert var_one['name'] == 'time' and var_one['public_interface'] == 'in'
+        assert var_one['name'] == 'time'
+        assert var_one['public_interface'] == 'in'
         assert component_2 == 'environment'
-        assert var_two['name'] == 'time' and var_two['public_interface'] == 'out'
+        assert var_two['name'] == 'time'
+        assert var_two['public_interface'] == 'out'
 
     def test_connections(self, model):
         model.make_connections()
@@ -119,7 +122,7 @@ class TestParser(object):
         assert QuantityStore.is_equal(lhs_units, new_rhs_units)
 
         # Try fixing all units on the RHS so that they match the LHS
-        for _, component in model.components.items():
+        for component in model.components.values():
             for index, equation in enumerate(component.equations):
                 lhs_units = QuantityStore.summarise_units(equation.lhs)
                 rhs_units = QuantityStore.summarise_units(equation.rhs)
@@ -142,8 +145,11 @@ class TestParser(object):
         eq = (millivolts / units.millisecond)*sympy.Derivative(x, y)
         assert QuantityStore.summarise_units(eq) == (millivolts / units.milliseconds)
 
-    def _test_print(self, model):
-        # show equations
-        for _, component in model.components.items():
-            for equation in component.equations:
-                print(equation)
+    def test_print(self, model):
+        from os import environ
+        if "CMLM_TEST_PRINT" in environ:
+            # show equations
+            for name, component in model.components.items():
+                print(name)
+                for equation in component.equations:
+                    print('\t', equation)
