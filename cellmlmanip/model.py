@@ -378,14 +378,14 @@ class QuantityStore(object):
     """
 
     # Aliases for units to their Sympy equivalent
-    aliases = {
+    UNIT_ALIASES = {
         'litre': 'liter',
         'metre': 'meter',
     }
 
     # The full list of supported CellML units
     # Taken from https://www.cellml.org/specifications/cellml_1.1/#sec_units
-    cellml_units = [
+    CELLML_UNITS = [
         # Base SI units
         'ampere',
         'candela',
@@ -397,23 +397,23 @@ class QuantityStore(object):
         'second',
 
         # Derived SI units
-        # TODO: 'becquerel',
-        # TODO: 'celsius',
+        'becquerel',
+        'celsius',  # TODO: not defined by Sympy
         'coulomb',
         'farad',
-        # TODO: 'gray',
+        'gray',
         'henry',
         'hertz',
         'joule',
-        # TODO: 'katal',
-        # TODO: 'lumen',
+        'katal',
+        'lumen',
         'lux',
         'newton',
         'ohm',
         'pascal',
         'radian',
         'siemens',
-        # TODO: 'sievert',
+        'sievert',
         'steradian',
         'tesla',
         'volt',
@@ -432,16 +432,48 @@ class QuantityStore(object):
         :param cellml_def: a dictionary of <units> definitions from the CellML model. See parser
         for format, essentially: {'name of unit': { [ unit attributes ], [ unit attributes ] } }
         """
+        # Initialise the store
         self.store = {}
+
+        # Add required quantities not provided by Sympy
+        self.__add_custom_units()
+
         self.cellml_definitions = cellml_def if cellml_def else {}
         self.sympify_context = {}
-
-        # Add the 'dimensionless' unit (not part of SI nor Sympy nor defined in CellML model)
-        self.store['dimensionless'] = units.Quantity('dimensionless', 1, sympy.Rational(1, 1))
 
         # Setup the context with Sympy unit definitions for sympify
         from sympy.core.compatibility import exec_
         exec_('from sympy.physics.units import *', self.sympify_context)
+
+    def __add_custom_units(self):
+        """Adds custom Sympy dimensions and quantities that aren't provided by default but
+        required by the CellML specification
+        """
+        self.store['dimensionless'] = units.Quantity('dimensionless',
+                                                     units.Dimension(1),
+                                                     sympy.Rational(1, 1))
+
+        self.store['becquerel'] = units.Quantity('becquerel', units.Dimension('activity'), 1, 'Bq')
+
+        # Taken from https://github.com/sympy/sympy/pull/13658
+        # gray is a J/kg physical quantity
+        self.store['gray'] = units.Quantity('gray',
+                                            units.energy/units.mass,
+                                            units.meter**2/units.second**2)
+
+        self.store['katal'] = units.Quantity('katal',
+                                             units.amount_of_substance/units.time,
+                                             units.mol/units.second)
+
+        self.store['lumen'] = units.Quantity('lumen',
+                                             units.luminous_intensity * units.steradian.dimension,
+                                             units.candela * units.steradian)
+
+        # See https://en.wikipedia.org/wiki/Sievert#Definition for relationship with gray
+        # sievert is J/kg biological effect
+        self.store['sievert'] = units.Quantity('sievert',
+                                               units.energy/units.mass,
+                                               units.meter**2/units.second**2)
 
     def get_quantity(self, unit_name):
         """Given the name of the unit, this will either (i) return a Quantity from the internal
@@ -450,7 +482,7 @@ class QuantityStore(object):
         <units><unit></units> definition in the CellML <model>
         """
         # Correct any aliases (e.g. british -> american spelling)
-        unit_name = QuantityStore.aliases.get(unit_name, unit_name)
+        unit_name = QuantityStore.UNIT_ALIASES.get(unit_name, unit_name)
 
         # If we've already sourced the quantity for this name
         if unit_name in self.store:
@@ -464,7 +496,7 @@ class QuantityStore(object):
             return self.store[unit_name]
 
         # If this unit name is part of the CellML spec and available as built-in Sympy quantity
-        if unit_name in self.cellml_units and hasattr(units, unit_name):
+        if unit_name in QuantityStore.CELLML_UNITS and hasattr(units, unit_name):
             self.store[unit_name] = getattr(units, unit_name)
             return self.store[unit_name]
 
