@@ -385,6 +385,7 @@ class QuantityStore(object):
 
     # The full list of supported CellML units
     # Taken from https://www.cellml.org/specifications/cellml_1.1/#sec_units
+    # Some are not defined by Sympy, see comments
     CELLML_UNITS = [
         # Base SI units
         'ampere',
@@ -392,28 +393,28 @@ class QuantityStore(object):
         'kelvin',
         'kilogram',
         'meter',
-        # 'metre', - handled by self.aliases
+        'metre',  # in self.UNIT_ALIASES
         'mole',
         'second',
 
         # Derived SI units
-        'becquerel',
+        'becquerel',  # see __add_custom_units()
         'celsius',  # TODO: not defined by Sympy
         'coulomb',
         'farad',
-        'gray',
+        'gray',  # see __add_custom_units()
         'henry',
         'hertz',
         'joule',
-        'katal',
-        'lumen',
+        'katal',  # see __add_custom_units()
+        'lumen',  # see __add_custom_units()
         'lux',
         'newton',
         'ohm',
         'pascal',
         'radian',
         'siemens',
-        'sievert',
+        'sievert',  # see __add_custom_units()
         'steradian',
         'tesla',
         'volt',
@@ -421,10 +422,10 @@ class QuantityStore(object):
         'weber',
 
         # Convenience units
-        # 'dimensionless', - added to QuantityStore explicitly - see __init__
+        'dimensionless',  # see __add_custom_units()
         'gram',
         'liter',
-        # 'litre', - handled by self.aliases
+        'litre',  # in self.UNIT_ALIASES
     ]
 
     def __init__(self, cellml_def=None):
