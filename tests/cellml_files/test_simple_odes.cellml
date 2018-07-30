@@ -213,7 +213,7 @@ For annotations, we check:
    <component name="circle_parent">
       <variable name="time" public_interface="in" private_interface="out" units="ms"/>
       <variable name="x" units="mM" private_interface="in"/>
-      <variable name="y" units="mM" private_interface="in"/>
+      <variable name="y" units="mM" private_interface="in" public_interface="out"/>
    </component>
    <component name="circle_x">
       <variable name="time" public_interface="in" units="ms"/>
@@ -266,6 +266,38 @@ For annotations, we check:
             <apply><times/>
                <ci>x</ci>
                <cn cellml:units="per_ms">1</cn>
+            </apply>
+         </apply>
+      </math>
+   </component>
+   <!--
+      This component tests connecting a private=in, public=out variable, and nested applys:
+      local_complex_maths = y + (5 * (y/3)) + (1mM * exp(y / 2mM))
+   -->
+   <component name="circle_sibling">
+      <variable name="y" units="mM" public_interface="in"/>
+      <variable name="local_complex_maths" units="mM"/>
+      <math xmlns="http://www.w3.org/1998/Math/MathML">
+         <apply><eq/>
+            <ci>local_complex_maths</ci>
+            <apply><plus/>
+               <ci>y</ci>
+               <apply><times/>
+                  <cn cellml:units="dimensionless">5</cn>
+                  <apply><divide/>
+                     <ci>y</ci>
+                     <cn cellml:units="dimensionless">3</cn>
+                  </apply>
+               </apply>
+               <apply><times/>
+                 <cn cellml:units="mM">1</cn>
+                 <apply><exp/>
+                    <apply><divide/>
+                       <ci>y</ci>
+                       <cn cellml:units="mM">2</cn>
+                    </apply>
+                 </apply>
+               </apply>
             </apply>
          </apply>
       </math>
@@ -540,6 +572,10 @@ For annotations, we check:
    <connection>
       <map_components component_1="circle_x" component_2="circle_y"/>
       <map_variables variable_1="x" variable_2="x"/>
+      <map_variables variable_1="y" variable_2="y"/>
+   </connection>
+   <connection>
+      <map_components component_1="circle_parent" component_2="circle_sibling"/>
       <map_variables variable_1="y" variable_2="y"/>
    </connection>
 
