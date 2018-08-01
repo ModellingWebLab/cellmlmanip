@@ -69,6 +69,9 @@ For annotations, we check:
       <unit units="mM"/>
       <unit units="ms" exponent="-1"/>
    </units>
+   <units name="milli_mole">
+      <unit prefix="milli" units="mole"/>
+   </units>
 
    <component name="environment">
       <variable name="time" public_interface="out" units="ms" cmeta:id="time">
@@ -217,7 +220,7 @@ For annotations, we check:
    </component>
    <component name="circle_x">
       <variable name="time" public_interface="in" units="ms"/>
-      <variable name="x" units="mM" cmeta:id="x1" initial_value="0" public_interface="out"/>
+      <variable name="x" units="mM" public_interface="out" private_interface="in"/>
       <variable name="y" units="mM" public_interface="in">
          <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:bqbiol="http://biomodels.net/biology-qualifiers/">
             <rdf:Description rdf:about="#x1">
@@ -240,6 +243,24 @@ For annotations, we check:
                   <ci>y</ci>
                   <cn cellml:units="per_ms">1</cn>
                </apply>
+            </apply>
+         </apply>
+      </math>
+   </component>
+   <!-- Check a variable source can have no maths in its own component -->
+   <component name="circle_x_source">
+      <variable name="x" units="mM" cmeta:id="x1" initial_value="0" public_interface="out"/>
+   </component>
+   <!-- Check we can export a variable both sideways and upwards -->
+   <component name="circle_x_sibling">
+      <variable name="x" units="mM" public_interface="in"/>
+      <variable name="x2" units="milli_mole"/>
+      <math xmlns="http://www.w3.org/1998/Math/MathML">
+         <apply><eq/>
+            <ci>x2</ci>
+            <apply><times/>
+               <ci>x</ci>
+               <cn cellml:units="litre">2</cn>
             </apply>
          </apply>
       </math>
@@ -507,7 +528,10 @@ For annotations, we check:
    <group>
       <relationship_ref relationship="encapsulation"/>
       <component_ref component="circle_parent">
-         <component_ref component="circle_x"/>
+         <component_ref component="circle_x">
+            <component_ref component="circle_x_source"/>
+            <component_ref component="circle_x_sibling"/>
+         </component_ref>
          <component_ref component="circle_y"/>
       </component_ref>
       <component_ref component="time_units_conversion1">
@@ -577,6 +601,14 @@ For annotations, we check:
    <connection>
       <map_components component_1="circle_parent" component_2="circle_sibling"/>
       <map_variables variable_1="y" variable_2="y"/>
+   </connection>
+   <connection>
+      <map_components component_1="circle_x" component_2="circle_x_source"/>
+      <map_variables variable_1="x" variable_2="x"/>
+   </connection>
+   <connection>
+      <map_components component_1="circle_x_sibling" component_2="circle_x_source"/>
+      <map_variables variable_1="x" variable_2="x"/>
    </connection>
 
    <connection>
