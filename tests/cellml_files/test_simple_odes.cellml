@@ -69,6 +69,9 @@ For annotations, we check:
       <unit units="mM"/>
       <unit units="ms" exponent="-1"/>
    </units>
+   <units name="milli_mole">
+      <unit prefix="milli" units="mole"/>
+   </units>
 
    <component name="environment">
       <variable name="time" public_interface="out" units="ms" cmeta:id="time">
@@ -207,17 +210,17 @@ For annotations, we check:
    </component>
 
    <!--
-      This trio of components define a coupled pair of ODEs, encapsulated within a parent:
+      This group of components defines a coupled pair of ODEs, encapsulated within a parent:
       dx/dt = -y, dy/dt = x, x(0) = 0, y(0) = 1
     -->
    <component name="circle_parent">
       <variable name="time" public_interface="in" private_interface="out" units="ms"/>
       <variable name="x" units="mM" private_interface="in"/>
-      <variable name="y" units="mM" private_interface="in"/>
+      <variable name="y" units="mM" private_interface="in" public_interface="out"/>
    </component>
    <component name="circle_x">
       <variable name="time" public_interface="in" units="ms"/>
-      <variable name="x" units="mM" cmeta:id="x1" initial_value="0" public_interface="out"/>
+      <variable name="x" units="mM" public_interface="out" private_interface="in"/>
       <variable name="y" units="mM" public_interface="in">
          <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:bqbiol="http://biomodels.net/biology-qualifiers/">
             <rdf:Description rdf:about="#x1">
@@ -244,7 +247,31 @@ For annotations, we check:
          </apply>
       </math>
    </component>
+   <!-- Check a variable source can have no maths in its own component -->
+   <component name="circle_x_source">
+      <variable name="x" units="mM" cmeta:id="x1" initial_value="0" public_interface="out"/>
+   </component>
+   <!-- Check we can export a variable both sideways and upwards -->
+   <component name="circle_x_sibling">
+      <variable name="x" units="mM" public_interface="in"/>
+      <variable name="x2" units="milli_mole"/>
+      <math xmlns="http://www.w3.org/1998/Math/MathML">
+         <apply><eq/>
+            <ci>x2</ci>
+            <apply><times/>
+               <ci>x</ci>
+               <cn cellml:units="litre">2</cn>
+            </apply>
+         </apply>
+      </math>
+   </component>
+   <!-- A purely pass-through component, for checking connection handling -->
    <component name="circle_y">
+      <variable name="time" units="ms" public_interface="in" private_interface="out"/>
+      <variable name="y" units="mM" public_interface="out" private_interface="in"/>
+      <variable name="x" units="mM" public_interface="in" private_interface="out"/>
+   </component>
+   <component name="circle_y_implementation">
       <variable name="time" public_interface="in" units="ms"/>
       <variable name="y" units="mM" cmeta:id="y1" initial_value="1" public_interface="out"/>
       <variable name="x" units="mM" public_interface="in"/>
@@ -266,6 +293,38 @@ For annotations, we check:
             <apply><times/>
                <ci>x</ci>
                <cn cellml:units="per_ms">1</cn>
+            </apply>
+         </apply>
+      </math>
+   </component>
+   <!--
+      This component tests connecting a private=in, public=out variable, and nested applys:
+      local_complex_maths = y + (5 * (y/3)) + (1mM * exp(y / 2mM))
+   -->
+   <component name="circle_sibling">
+      <variable name="y" units="mM" public_interface="in"/>
+      <variable name="local_complex_maths" units="mM"/>
+      <math xmlns="http://www.w3.org/1998/Math/MathML">
+         <apply><eq/>
+            <ci>local_complex_maths</ci>
+            <apply><plus/>
+               <ci>y</ci>
+               <apply><times/>
+                  <cn cellml:units="dimensionless">5</cn>
+                  <apply><divide/>
+                     <ci>y</ci>
+                     <cn cellml:units="dimensionless">3</cn>
+                  </apply>
+               </apply>
+               <apply><times/>
+                 <cn cellml:units="mM">1</cn>
+                 <apply><exp/>
+                    <apply><divide/>
+                       <ci>y</ci>
+                       <cn cellml:units="mM">2</cn>
+                    </apply>
+                 </apply>
+               </apply>
             </apply>
          </apply>
       </math>
@@ -475,8 +534,13 @@ For annotations, we check:
    <group>
       <relationship_ref relationship="encapsulation"/>
       <component_ref component="circle_parent">
-         <component_ref component="circle_x"/>
-         <component_ref component="circle_y"/>
+         <component_ref component="circle_x">
+            <component_ref component="circle_x_source"/>
+            <component_ref component="circle_x_sibling"/>
+         </component_ref>
+         <component_ref component="circle_y">
+            <component_ref component="circle_y_implementation"/>
+         </component_ref>
       </component_ref>
       <component_ref component="time_units_conversion1">
          <component_ref component="deriv_on_rhs1a"/>
@@ -541,6 +605,24 @@ For annotations, we check:
       <map_components component_1="circle_x" component_2="circle_y"/>
       <map_variables variable_1="x" variable_2="x"/>
       <map_variables variable_1="y" variable_2="y"/>
+   </connection>
+   <connection>
+      <map_components component_1="circle_y" component_2="circle_y_implementation"/>
+      <map_variables variable_1="time" variable_2="time"/>
+      <map_variables variable_1="y" variable_2="y"/>
+      <map_variables variable_1="x" variable_2="x"/>
+   </connection>
+   <connection>
+      <map_components component_1="circle_parent" component_2="circle_sibling"/>
+      <map_variables variable_1="y" variable_2="y"/>
+   </connection>
+   <connection>
+      <map_components component_1="circle_x" component_2="circle_x_source"/>
+      <map_variables variable_1="x" variable_2="x"/>
+   </connection>
+   <connection>
+      <map_components component_1="circle_x_sibling" component_2="circle_x_source"/>
+      <map_variables variable_1="x" variable_2="x"/>
    </connection>
 
    <connection>
