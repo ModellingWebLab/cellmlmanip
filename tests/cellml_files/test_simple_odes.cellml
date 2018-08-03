@@ -210,7 +210,7 @@ For annotations, we check:
    </component>
 
    <!--
-      This trio of components define a coupled pair of ODEs, encapsulated within a parent:
+      This group of components defines a coupled pair of ODEs, encapsulated within a parent:
       dx/dt = -y, dy/dt = x, x(0) = 0, y(0) = 1
     -->
    <component name="circle_parent">
@@ -265,7 +265,13 @@ For annotations, we check:
          </apply>
       </math>
    </component>
+   <!-- A purely pass-through component, for checking connection handling -->
    <component name="circle_y">
+      <variable name="time" units="ms" public_interface="in" private_interface="out"/>
+      <variable name="y" units="mM" public_interface="out" private_interface="in"/>
+      <variable name="x" units="mM" public_interface="in" private_interface="out"/>
+   </component>
+   <component name="circle_y_implementation">
       <variable name="time" public_interface="in" units="ms"/>
       <variable name="y" units="mM" cmeta:id="y1" initial_value="1" public_interface="out"/>
       <variable name="x" units="mM" public_interface="in"/>
@@ -532,7 +538,9 @@ For annotations, we check:
             <component_ref component="circle_x_source"/>
             <component_ref component="circle_x_sibling"/>
          </component_ref>
-         <component_ref component="circle_y"/>
+         <component_ref component="circle_y">
+            <component_ref component="circle_y_implementation"/>
+         </component_ref>
       </component_ref>
       <component_ref component="time_units_conversion1">
          <component_ref component="deriv_on_rhs1a"/>
@@ -597,6 +605,12 @@ For annotations, we check:
       <map_components component_1="circle_x" component_2="circle_y"/>
       <map_variables variable_1="x" variable_2="x"/>
       <map_variables variable_1="y" variable_2="y"/>
+   </connection>
+   <connection>
+      <map_components component_1="circle_y" component_2="circle_y_implementation"/>
+      <map_variables variable_1="time" variable_2="time"/>
+      <map_variables variable_1="y" variable_2="y"/>
+      <map_variables variable_1="x" variable_2="x"/>
    </connection>
    <connection>
       <map_components component_1="circle_parent" component_2="circle_sibling"/>
