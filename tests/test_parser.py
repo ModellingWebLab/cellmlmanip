@@ -120,11 +120,21 @@ class TestParser(object):
         new_rhs_units = QuantityStore.summarise_units(new_rhs)
         assert QuantityStore.is_equal(lhs_units, new_rhs_units)
 
+        # TODO: work in progress...trying to understand what's going on here
+        def simplify_units_until_no_change(expr):
+            current_expression = expr
+            while True:
+                new_expression = QuantityStore.summarise_units(current_expression)
+                if current_expression == new_expression:
+                    break
+                current_expression = new_expression
+            return new_expression
+
         # Try fixing all units on the RHS so that they match the LHS
         for component in model.components.values():
             for index, equation in enumerate(component.equations):
                 lhs_units = QuantityStore.summarise_units(equation.lhs)
-                rhs_units = QuantityStore.summarise_units(equation.rhs)
+                rhs_units = simplify_units_until_no_change(equation.rhs)
                 if not QuantityStore.is_equal(lhs_units, rhs_units):
                     new_rhs = units.convert_to(equation.rhs, lhs_units)
                     # Create a new equality with the converted RHS and replace original
