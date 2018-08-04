@@ -24,13 +24,13 @@ class TestParser(object):
         return model
 
     def test_component_count(self, model):
-        assert len(model.components) == 17  # grep -c '<component ' test_simple_odes.cellml
+        assert len(model.components) == 21  # grep -c '<component ' test_simple_odes.cellml
 
     def test_equations_count(self, model):
         equation_count = 0
         for component in model.components.values():
             equation_count += len(component.equations)
-        assert equation_count == 16  # determined by hand
+        assert equation_count == 18  # determined by hand
 
     def test_variable_find(self, model):
         assert model.find_variable({'cmeta:id': 'time'}) == [{'cmeta:id': 'time',
@@ -42,7 +42,7 @@ class TestParser(object):
             matched[0]['sympy.Dummy'].name == 'single_ode_rhs_const_var__sv1'
 
     def test_connections_loaded(self, model):
-        assert len(model.connections) == 26  # grep -c '<map_variables ' test_simple_odes.cellml
+        assert len(model.connections) == 32  # grep -c '<map_variables ' test_simple_odes.cellml
         first, second = model.connections[0]
         component_1, variable_1 = first
         component_2, variable_2 = second
