@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/ModellingWebLab/cellmlmanip.svg?branch=develop)](https://travis-ci.org/ModellingWebLab/cellmlmanip)
+
 # cellmlmanip
 CellML loading and model equation manipulation
 
