@@ -8,7 +8,7 @@ from typing import Dict
 from lxml import etree
 
 from cellmlmanip import mathml2sympy
-from cellmlmanip.model import Component, Model, SYMPY_SYMBOL_DELIMITER
+from cellmlmanip.model import SYMPY_SYMBOL_DELIMITER, Component, Model
 
 
 class XmlNs(Enum):
@@ -24,6 +24,7 @@ class XmlNs(Enum):
 class Parser(object):
     """Handles parsing of CellML files
     """
+
     @staticmethod
     def with_ns(ns_enum, name):
         """Returns an ElementTree-friendly name with namespace in brackets"""
@@ -97,8 +98,9 @@ class Parser(object):
         # TODO: Handle cases where there multiple <math> elements
         math_element = component_element.find(Parser.with_ns(XmlNs.MATHML, u'math'))
         if math_element is not None:
-            transpiler = mathml2sympy.Transpiler(dummify=True,
-                                                 symbol_prefix=component.name + SYMPY_SYMBOL_DELIMITER)
+            transpiler = mathml2sympy.Transpiler(
+                dummify=True, symbol_prefix=component.name+SYMPY_SYMBOL_DELIMITER
+            )
             # TODO: check whether element can be passed directly without .tostring()
             sympy_exprs = transpiler.parse_string(etree.tostring(math_element, encoding=str))
             component.equations.extend(sympy_exprs)

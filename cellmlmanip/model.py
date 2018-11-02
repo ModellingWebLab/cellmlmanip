@@ -10,6 +10,7 @@ import rdflib
 import sympy
 import sympy.physics.units as units
 
+
 SYMPY_SYMBOL_DELIMITER = '$'
 
 
