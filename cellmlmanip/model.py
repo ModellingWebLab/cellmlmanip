@@ -399,7 +399,7 @@ class QuantityStore(object):
 
         # Derived SI units
         'becquerel',  # see __add_custom_units()
-        'celsius',  # TODO: not defined by Sympy
+        # 'celsius',  # Not supported in CellML 2.0 nor Sympy
         'coulomb',
         'farad',
         'gray',  # see __add_custom_units()
