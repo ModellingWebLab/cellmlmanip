@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<model name="error_model_example" cmeta:id="error_model_example"
+   xmlns="http://www.cellml.org/cellml/1.0#"
+   xmlns:cellml="http://www.cellml.org/cellml/1.0#"
+   xmlns:cmeta="http://www.cellml.org/metadata/1.0#">
+
+
+   <component name="parent">
+   </component>
+
+   <component name="child">
+      <variable name="time" public_interface="out" units="second"/>
+   </component>
+
+   <component name="other">
+      <variable name="time" public_interface="in" units="second"/>
+   </component>
+
+   <connection>
+      <map_components component_1="child" component_2="other"/>
+      <map_variables variable_1="time" variable_2="time"/>
+   </connection>
+
+   <group>
+      <relationship_ref relationship="encapsulation"/>
+      <component_ref component="parent">
+         <component_ref component="child"/>
+      </component_ref>
+  </group>
+
+</model>

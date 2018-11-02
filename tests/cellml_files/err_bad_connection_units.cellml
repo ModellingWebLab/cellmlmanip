@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<model name="error_model_example" cmeta:id="error_model_example"
+   xmlns="http://www.cellml.org/cellml/1.0#"
+   xmlns:cellml="http://www.cellml.org/cellml/1.0#"
+   xmlns:cmeta="http://www.cellml.org/metadata/1.0#">
+
+   <component name="a">
+      <variable name="time" public_interface="out" units="second"/>
+   </component>
+
+   <component name="b">
+      <variable name="time" public_interface="in" units="volt"/>
+   </component>
+
+   <connection>
+      <map_components component_1="a" component_2="b"/>
+      <map_variables variable_1="time" variable_2="time"/>
+   </connection>
+
+</model>
