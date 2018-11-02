@@ -515,6 +515,13 @@ class QuantityStore(object):
         # Don't descend into Derivative expression (there are no units within!)
         if isinstance(expr, sympy.Derivative):
             return None
+
+        # If this is an exponential statement and we can evaluate it to a number
+        # (i.e. all the units inside the exponential have dropped-out)
+        if isinstance(expr, sympy.exp) and isinstance(expr.evalf(), sympy.Number):
+            # We say this expression is dimensionless
+            return self.get_quantity('dimensionless')
+
         # Units are always part of a Multiplicative expression
         # TODO: check if all other units are always multiplicative!
         if isinstance(expr, sympy.Mul):
