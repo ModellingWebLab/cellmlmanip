@@ -10,6 +10,8 @@ import rdflib
 import sympy
 import sympy.physics.units as units
 
+SYMPY_SYMBOL_DELIMITER = '$'
+
 
 class Component(object):
     """Represents a <component> element in CellML <model>"""
@@ -63,7 +65,7 @@ class Component(object):
                 continue
 
             # if the symbol is one that's defined as a <variable> in the component
-            variable_name = symbol.name.split('__')[1]
+            variable_name = symbol.name.split(SYMPY_SYMBOL_DELIMITER)[1]
             if variable_name in self.variables:
                 self.variables[variable_name]['sympy.Dummy'] = symbol
 
