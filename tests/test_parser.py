@@ -153,13 +153,12 @@ class TestParser(object):
         millivolts = units.Quantity('millivolts', units.voltage, units.milli * units.volts, 'mV')
         x, y = sympy.symbols('x y')
         eq = (millivolts / units.millisecond)*sympy.Derivative(x, y)
-        assert QuantityStore.summarise_units(eq) == (millivolts / units.milliseconds)
+        assert model.units.summarise_units(eq) == (millivolts / units.milliseconds)
 
-    def test_print(self, model):
-        from os import environ
-        if "CMLM_TEST_PRINT" in environ:
-            # show equations
-            for name, component in model.components.items():
-                print(name)
-                for equation in component.equations:
-                    print('\t', equation)
+    @pytest.mark.skipif('CMLM_TEST_PRINT' not in os.environ, reason="print eq on demand")
+    def test_print_eq(self, model):
+        # show equations
+        for name, component in model.components.items():
+            print(name)
+            for equation in component.equations:
+                print('\t', equation)
