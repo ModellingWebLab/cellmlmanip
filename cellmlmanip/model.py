@@ -516,7 +516,7 @@ class QuantityStore(object):
         if isinstance(expr, sympy.Derivative):
             return None
         # Units are always part of a Multiplicative expression
-        # TODO: check if units are always multiplicative!
+        # TODO: check if all other units are always multiplicative!
         if isinstance(expr, sympy.Mul):
             # We only keep quantities
             keep: List[units.Quantity] = []
@@ -527,8 +527,9 @@ class QuantityStore(object):
                 # Keep anything we find (check - we always should!)
                 if should_keep:
                     keep.append(should_keep)
-            # Perform the same mathematical function, but on the units alone (no symbols or numbers)
+            # Perform the same mathematical operation, but on units only (no symbols or numbers)
             return expr.func(*keep)
+
         # Otherwise, descend into the expression tree
         return expr.func(*[self.summarise_units(x) for x in expr.args])
 
