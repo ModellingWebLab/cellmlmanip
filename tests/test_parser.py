@@ -104,49 +104,50 @@ class TestParser(object):
 
         # mV/millisecond == mV_per_ms
         test_equation = model.components['single_independent_ode'].equations[0]
-        lhs_units = QuantityStore.summarise_units(test_equation.lhs)
-        rhs_units = QuantityStore.summarise_units(test_equation.rhs)
-        assert QuantityStore.is_equal(lhs_units, rhs_units)
+        lhs_units = model.units.summarise_units(test_equation.lhs)
+        rhs_units = model.units.summarise_units(test_equation.rhs)
+        assert model.units.is_equal(lhs_units, rhs_units)
 
         # mV_per_usec != uV/millisecond
         test_equation = model.components['deriv_on_rhs2b'].equations[0]
-        lhs_units = QuantityStore.summarise_units(test_equation.lhs)
-        rhs_units = QuantityStore.summarise_units(test_equation.rhs)
-        assert not QuantityStore.is_equal(lhs_units, rhs_units)
+        lhs_units = model.units.summarise_units(test_equation.lhs)
+        rhs_units = model.units.summarise_units(test_equation.rhs)
+        assert not model.units.is_equal(lhs_units, rhs_units)
 
         # Check a specific RHS->LHS unit conversion
         test_equation = model.components['deriv_on_rhs2b'].equations[0]
         new_rhs = units.convert_to(test_equation.rhs, lhs_units)
-        new_rhs_units = QuantityStore.summarise_units(new_rhs)
+        new_rhs_units = model.units.summarise_units(new_rhs)
         assert QuantityStore.is_equal(lhs_units, new_rhs_units)
 
         # TODO: work in progress...trying to understand what's going on here
         def simplify_units_until_no_change(expr):
             current_expression = expr
             while True:
-                new_expression = QuantityStore.summarise_units(current_expression)
+                new_expression = model.units.summarise_units(current_expression)
                 if current_expression == new_expression:
                     break
                 current_expression = new_expression
             return new_expression
 
+        # TODO: try conversion of units of RHS by LHS.units / RHS.unit == x; if x == 1, good, else RHS = RHS * x
         # Try fixing all units on the RHS so that they match the LHS
         for component in model.components.values():
             for index, equation in enumerate(component.equations):
-                lhs_units = QuantityStore.summarise_units(equation.lhs)
+                lhs_units = model.units.summarise_units(equation.lhs)
                 rhs_units = simplify_units_until_no_change(equation.rhs)
                 if not QuantityStore.is_equal(lhs_units, rhs_units):
                     new_rhs = units.convert_to(equation.rhs, lhs_units)
                     # Create a new equality with the converted RHS and replace original
                     equation = sympy.Eq(equation.lhs, new_rhs)
                     component.equations[index] = equation
-                    lhs_units = QuantityStore.summarise_units(equation.lhs)
-                    rhs_units = QuantityStore.summarise_units(equation.rhs)
+                    lhs_units = model.units.summarise_units(equation.lhs)
+                    rhs_units = model.units.summarise_units(equation.rhs)
                     assert QuantityStore.is_equal(lhs_units, rhs_units)
 
-    def test_unit_extraction(self):
+    def test_unit_extraction(self, model):
         eq = (5*units.mile/(2*units.hour + 10*units.minute))**(8*units.gram)
-        assert QuantityStore.summarise_units(eq) == \
+        assert model.units.summarise_units(eq) == \
             (units.mile/(units.hour + units.minute))**units.gram
 
         millivolts = units.Quantity('millivolts', units.voltage, units.milli * units.volts, 'mV')
