@@ -156,7 +156,7 @@ class Component(object):
 
         # throw error if empty search criteria given
         if search_dict is None or not search_dict:
-            raise RuntimeError("Search criteria cannot be empty.")
+            raise ValueError("Search criteria cannot be empty.")
 
         # a list to collect all matched variables
         matches = []
@@ -203,7 +203,7 @@ class Model(object):
         """Adds name to list of <component>s in the <model>
         """
         if component.name in self.components:
-            raise RuntimeError("%s already exists. Check CellML." % component.name)
+            raise ValueError("%s already exists. Check CellML." % component.name)
 
         self.components[component.name] = component
 
