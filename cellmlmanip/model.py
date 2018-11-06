@@ -11,6 +11,7 @@ import sympy
 import sympy.physics.units as units
 
 
+# Delimiter for the name of the Sympy symbol: <component><delimiter><name>
 SYMPY_SYMBOL_DELIMITER = '$'
 
 
@@ -245,6 +246,7 @@ class Model(object):
                         # This variable was not used in any equations - create a new dummy symbol
                         var_attr['sympy.Dummy'] = var_attr['assignment'] = sympy.Dummy(
                             component.name + '__' + var_attr['name'])
+                            component.name + SYMPY_SYMBOL_DELIMITER + var_attr['name'])
                     else:
                         # The variable is used in an equation & we use the same symbol
                         var_attr['assignment'] = var_attr['sympy.Dummy']
