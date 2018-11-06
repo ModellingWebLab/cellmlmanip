@@ -94,7 +94,7 @@ class Component(object):
                     unit_info[key] = key * value
 
             # Do the substitutions (WARNING: irreversible!)
-            self.equations[index] = equation.subs(unit_info)
+            self.equations[index] = equation.xreplace(unit_info)
 
     def _collect_units(self, expr):
         """Descends into the given Sympy expression and returns the appropriate units (if any)"""
@@ -245,7 +245,6 @@ class Model(object):
                     if 'sympy.Dummy' not in var_attr:
                         # This variable was not used in any equations - create a new dummy symbol
                         var_attr['sympy.Dummy'] = var_attr['assignment'] = sympy.Dummy(
-                            component.name + '__' + var_attr['name'])
                             component.name + SYMPY_SYMBOL_DELIMITER + var_attr['name'])
                     else:
                         # The variable is used in an equation & we use the same symbol
@@ -283,7 +282,7 @@ class Model(object):
                         # If the variable has been assigned [a new dummy symbol]
                         if 'assignment' in variable:
                             # Replace the original dummy with the assign dummy symbol
-                            component.equations[index] = equation.subs(
+                            component.equations[index] = equation.xreplace(
                                 {variable['sympy.Dummy']: variable['assignment']})
                         else:
                             variable['assignment'] = variable['sympy.Dummy']
