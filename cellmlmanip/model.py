@@ -517,7 +517,7 @@ class QuantityStore(object):
             return expr
 
         # Don't descend into Derivative expression (there are no units within!)
-        if isinstance(expr, sympy.Derivative):
+        if expr.is_Derivative:
             return None
 
         # If this is an exponential statement and we can evaluate it to a number
@@ -528,7 +528,7 @@ class QuantityStore(object):
 
         # Units are always part of a Multiplicative expression
         # TODO: check if all other units are always multiplicative!
-        if isinstance(expr, sympy.Mul):
+        if expr.is_Mul:
             # We only keep quantities
             keep: List[units.Quantity] = []
             # For each of the multiplication arguments that contain Quantity atoms
