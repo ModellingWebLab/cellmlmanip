@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<model name="error_model_example" cmeta:id="error_model_example"
+   xmlns="http://www.cellml.org/cellml/1.0#"
+   xmlns:cellml="http://www.cellml.org/cellml/1.0#"
+   xmlns:cmeta="http://www.cellml.org/metadata/1.0#">
+
+   <units name="second" base_units="yes"/>
+   <units name="volt">
+      <unit units="second" prefix="pico"/>
+   </units>
+</model>

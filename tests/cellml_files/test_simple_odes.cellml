@@ -157,6 +157,7 @@ For annotations, we check:
             </apply>
             <ci>a</ci>
          </apply>
+         <!-- This also checks we can have multiple equations in a single <math> -->
          <apply><eq/>
             <ci>a</ci>
             <cn cellml:units="mV_per_ms">-1</cn>
@@ -275,6 +276,7 @@ For annotations, we check:
       <variable name="time" public_interface="in" units="ms"/>
       <variable name="y" units="mM" cmeta:id="y1" initial_value="1" public_interface="out"/>
       <variable name="x" units="mM" public_interface="in"/>
+      <variable name="rhs" units="mM_per_ms"/>
       <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:bqbiol="http://biomodels.net/biology-qualifiers/">
          <rdf:Description rdf:about="#y1">
             <bqbiol:is rdf:resource="https://chaste.comlab.ox.ac.uk/cellml/ns/oxford-metadata#extracellular_calcium_concentration"/>
@@ -290,6 +292,13 @@ For annotations, we check:
                </bvar>
                <ci>y</ci>
             </apply>
+            <ci>rhs</ci>
+         </apply>
+      </math>
+      <!-- This also checks we can have multiple <math> elements in a component -->
+      <math xmlns="http://www.w3.org/1998/Math/MathML">
+         <apply><eq/>
+            <ci>rhs</ci>
             <apply><times/>
                <ci>x</ci>
                <cn cellml:units="per_ms">1</cn>
