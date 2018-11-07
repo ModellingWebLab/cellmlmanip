@@ -8,14 +8,4 @@
    <units name="volt">
       <unit units="second" prefix="pico"/>
    </units>
-
-   <units name="my_model_units">
-      <unit units="second" prefix="femto"/>
-   </units>
-
-   <component name="my_naughty_component">
-      <units name="my_model_units">
-         <unit units="second" prefix="mega"/>
-      </units>
-   </component>
 </model>
