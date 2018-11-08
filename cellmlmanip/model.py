@@ -6,6 +6,7 @@ from collections import deque
 from io import StringIO
 from typing import Dict, List, Tuple
 
+import networkx as nx
 import rdflib
 import sympy
 import sympy.physics.units as units
@@ -301,17 +302,101 @@ class Model(object):
             unsimplified_expr = simplified_expr
         return simplified_expr
 
-    def check_left_right_equality_units(self, equality: sympy.Eq):
+    def check_left_right_units_equal(self, equality: sympy.Eq):
         rhs: sympy.Expr = equality.rhs
         lhs: sympy.Expr = equality.lhs
 
         if rhs.is_Piecewise:
             for piece, _ in rhs.args:
-                self.check_left_right_equality_units(sympy.Eq(lhs, piece))
+                self.check_left_right_units_equal(sympy.Eq(lhs, piece))
         else:
             lhs_units = self.simplify_units_until_no_change(lhs)
             rhs_units = self.simplify_units_until_no_change(rhs)
             assert QuantityStore.is_equal(lhs_units, rhs_units)
+
+    def get_equation_graph(self):
+        """Returns an ordered list of equations for the model"""
+        # Create a dictionary to store the equations
+        equation_lookup = dict()
+        equation_count = 0
+
+        # Loop over each equation
+        for component in self.components.values():
+            for equation in component.equations:
+                equation_count += 1
+                # Determine LHS
+                lhs_symbol = self.get_symbols(equation.lhs)
+                assert len(lhs_symbol) == 1
+                lhs_symbol = lhs_symbol.pop()
+
+                # If LHS is a derivative
+                if lhs_symbol.is_Derivative:
+                    # update the variable information with type='state' or type='free'
+                    state_variable = lhs_symbol.free_symbols.pop()
+                    state_variable = self.find_variable({'sympy.Dummy': state_variable})
+                    assert len(state_variable) == 1
+                    self.__set_variable_type(state_variable[0], 'state')
+                    free_variable = set(lhs_symbol.canonical_variables.keys()).pop()
+                    free_variable = self.find_variable({'sympy.Dummy': free_variable})
+                    assert len(free_variable) == 1
+                    self.__set_variable_type(free_variable[0], 'free')
+
+                # Add equation to the dictionary, using LHS as key
+                equation_lookup[lhs_symbol] = equation
+
+        # There should be no clobbering
+        assert equation_count == len(equation_lookup)
+
+        # There should be no repeats
+        assert len(set([str(x) for x in equation_lookup.keys()])) == equation_count
+
+        # TODO: Set the parameters of the model (parameters rather than use initial values)
+
+        # Create the equation graph from the dictionary
+        G = nx.DiGraph()
+        for symbol, equation in equation_lookup.items():
+            G.add_node(symbol, equation=equation)
+
+        for symbol, equation in equation_lookup.items():
+            rhs_symbols = self.get_symbols(equation.rhs)
+            for rhs_symbol in rhs_symbols:
+                if rhs_symbol in G.node:
+                    G.add_edge(rhs_symbol, symbol)
+                else:
+                    variable = self.find_variable({'sympy.Dummy': rhs_symbol})
+                    assert len(variable) == 1
+                    variable = variable[0]
+                    if 'initial_value' in variable:
+                        G.add_node(rhs_symbol,
+                                   equation=sympy.Eq(rhs_symbol,
+                                                     sympy.Number(variable['initial_value'])))
+                        G.add_edge(rhs_symbol, symbol)
+                    else:
+                        # does only the free variable not have an initial value??
+                        assert variable['type'] == 'free'
+
+        return G
+
+    def __set_variable_type(self, variable, variable_type):
+        if 'type' not in variable:
+            variable['type'] = variable_type
+        else:
+            if variable_type == variable['type']:
+                logging.warning("The variable %s has already been set a type of '%s'",
+                                variable['sympy.Dummy'], variable['type'])
+            else:
+                logging.error("The variable %s has been set a type of '%s'. Skip '%s'",
+                              variable['sympy.Dummy'], variable['type'], variable_type)
+
+    def get_symbols(self, expr):
+        """Returns the symbols in an expression"""
+        symbols = set()
+        if expr.is_Derivative or (expr.is_Dummy and expr.name != '0.0'):
+            symbols.add(expr)
+        else:
+            for arg in expr.args:
+                symbols |= self.get_symbols(arg)
+        return symbols
 
     def __get_connection_endpoints(self, connection):
         """Pull out the variable dict of the component for the two endpoints of the connection
