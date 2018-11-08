@@ -291,6 +291,28 @@ class Model(object):
                         logging.warning('Variable (%s) in component (%s) not assigned a dummy',
                                         variable['name'], component.name)
 
+    def simplify_units_until_no_change(self, expr):
+        """Simplifies the units of an expression until they cannot be simplified any further"""
+        unsimplified_expr = expr
+        while True:
+            simplified_expr = self.units.summarise_units(unsimplified_expr)
+            if unsimplified_expr == simplified_expr:
+                break
+            unsimplified_expr = simplified_expr
+        return simplified_expr
+
+    def check_left_right_equality_units(self, equality: sympy.Eq):
+        rhs: sympy.Expr = equality.rhs
+        lhs: sympy.Expr = equality.lhs
+
+        if rhs.is_Piecewise:
+            for piece, _ in rhs.args:
+                self.check_left_right_equality_units(sympy.Eq(lhs, piece))
+        else:
+            lhs_units = self.simplify_units_until_no_change(lhs)
+            rhs_units = self.simplify_units_until_no_change(rhs)
+            assert QuantityStore.is_equal(lhs_units, rhs_units)
+
     def __get_connection_endpoints(self, connection):
         """Pull out the variable dict of the component for the two endpoints of the connection
 
