@@ -23,7 +23,7 @@ class TestHodgkin:
     def test_counts(self, model):
         # https://models.cellml.org/exposure/5d116522c3b43ccaeb87a1ed10139016/hodgkin_huxley_1952_variant01.cellml/cellml_math
         assert len(model.components) == 8
-        eq_count = sum([len(c.equations) for c in model.components.values()])
+        eq_count = len(list(model.equations()))
         assert eq_count == 17
 
     def test_setup_connections(self, model):
@@ -69,3 +69,12 @@ class TestHodgkin:
         # use `dot -Tpng path.dot -o path.png`
         # nx.nx_agraph.write_dot(graph,
         #                        '/Users/tamuri/Desktop/path.dot')
+
+        # free variable should not depend on anything
+        time_dummy = free_variable[0]['sympy.Dummy']
+        assert graph.in_degree(time_dummy) == 0
+
+        # state variables should not depend on anything
+        for variable in state_variables:
+            dummy = variable['sympy.Dummy']
+            assert graph.in_degree(dummy) == 0
