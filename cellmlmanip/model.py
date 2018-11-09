@@ -316,68 +316,70 @@ class Model(object):
 
     def get_equation_graph(self):
         """Returns an ordered list of equations for the model"""
-        # Create a dictionary to store the equations
-        equation_lookup = dict()
+        # TODO: Set the parameters of the model (parameters rather than use initial values)
+
         equation_count = 0
 
-        # Loop over each equation
+        # we store symbols, their relationships and their equations in a directed graph
+        G = nx.DiGraph()
+
+        # Loop over each equation and create a node for the LHS
         for component in self.components.values():
             for equation in component.equations:
                 equation_count += 1
-                # Determine LHS
+                # Determine LHS. We should only every have one symbol (or derivative)
                 lhs_symbol = self.get_symbols(equation.lhs)
                 assert len(lhs_symbol) == 1
                 lhs_symbol = lhs_symbol.pop()
 
+                G.add_node(lhs_symbol, equation=equation)
+
                 # If LHS is a derivative
                 if lhs_symbol.is_Derivative:
-                    # update the variable information with type='state' or type='free'
-                    state_variable = lhs_symbol.free_symbols.pop()
-                    state_variable = self.find_variable({'sympy.Dummy': state_variable})
+                    # Get the state symbol and update the variable information
+                    state_symbol = lhs_symbol.free_symbols.pop()
+                    state_variable = self.find_variable({'sympy.Dummy': state_symbol})
                     assert len(state_variable) == 1
                     self.__set_variable_type(state_variable[0], 'state')
-                    free_variable = set(lhs_symbol.canonical_variables.keys()).pop()
-                    free_variable = self.find_variable({'sympy.Dummy': free_variable})
+                    # If the state variable symbol is not in the graph, add it
+                    # if state_symbol not in G.node:
+                    #     G.add_node(state_symbol, equation=None)
+
+                    # Get the free symbol and update the variable information
+                    free_symbol = set(lhs_symbol.canonical_variables.keys()).pop()
+                    free_variable = self.find_variable({'sympy.Dummy': free_symbol})
                     assert len(free_variable) == 1
                     self.__set_variable_type(free_variable[0], 'free')
+                    # If the free variable symbol is not in the graph, add it
+                    # if free_symbol not in G.node:
+                    #     G.add_node(free_symbol, equation=None)
 
-                # Add equation to the dictionary, using LHS as key
-                equation_lookup[lhs_symbol] = equation
+                    # # This derivative depends on it's state and free variable
+                    # G.add_edge(state_symbol, lhs_symbol)
+                    # G.add_edge(free_symbol, lhs_symbol)
 
-        # There should be no clobbering
-        assert equation_count == len(equation_lookup)
-
-        # There should be no repeats
-        assert len(set([str(x) for x in equation_lookup.keys()])) == equation_count
-
-        # TODO: Set the parameters of the model (parameters rather than use initial values)
-
-        # Create the equation graph from the dictionary
-        G = nx.DiGraph()
-        for symbol, equation in equation_lookup.items():
-            G.add_node(symbol, equation=equation)
-
-        for symbol, equation in equation_lookup.items():
-            # TODO: if derivative (on left or right) you depend on free and state variables
-            rhs_symbols = self.get_symbols(equation.rhs)
-            for rhs_symbol in rhs_symbols:
-                if rhs_symbol in G.node:
-                    G.add_edge(rhs_symbol, symbol)
-                else:
-                    variable = self.find_variable({'sympy.Dummy': rhs_symbol})
-                    assert len(variable) == 1
-                    variable = variable[0]
-                    if 'initial_value' in variable:
-                        G.add_node(rhs_symbol,
-                                   equation=sympy.Eq(rhs_symbol,
-                                                     sympy.Number(variable['initial_value'])))
-                        G.add_edge(rhs_symbol, symbol)
+        for component in self.components.values():
+            for equation in component.equations:
+                lhs_symbol = self.get_symbols(equation.lhs).pop()
+                rhs_symbols = self.get_symbols(equation.rhs)
+                for rhs_symbol in rhs_symbols:
+                    if rhs_symbol in G.node:
+                        G.add_edge(rhs_symbol, lhs_symbol)
                     else:
-                        # does only the free variable not have an initial value??
-                        assert variable['type'] == 'free'
-                        G.add_node(rhs_symbol,
-                                   equation=sympy.Eq(rhs_symbol, rhs_symbol))
-                        G.add_edge(rhs_symbol, symbol)
+                        variable = self.find_variable({'sympy.Dummy': rhs_symbol})
+                        assert len(variable) == 1
+                        variable = variable[0]
+                        if 'initial_value' in variable:
+                            G.add_node(rhs_symbol,
+                                       equation=sympy.Eq(rhs_symbol,
+                                                         sympy.Number(variable['initial_value'])))
+                            G.add_edge(rhs_symbol, lhs_symbol)
+                        else:
+                            # only the free variable (i.e. time) should be here!
+                            assert variable['type'] == 'free'
+                            # G.add_node(rhs_symbol,
+                            #            equation=sympy.Eq(rhs_symbol, rhs_symbol))
+                            # G.add_edge(rhs_symbol, lhs_symbol)
 
         return G
 

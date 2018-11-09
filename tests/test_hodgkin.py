@@ -46,7 +46,7 @@ class TestHodgkin:
 
     def test_get_equations(self, model):
         graph = model.get_equation_graph()
-        assert len(graph.nodes) == 32
+        assert len(graph.nodes) == 31
 
         import networkx as nx
         out = nx.topological_sort(graph)
