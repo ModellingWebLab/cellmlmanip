@@ -280,7 +280,7 @@ class Model(object):
                 connections_to_process.append(connection)
             # TODO: track looping and break if we can't exit
 
-        # All connections have been made, now substitute the original dummy with new dummy
+        # All connections have been made, now substitute the original dummy symbol with new dummy
         for _, component in self.components.items():
             for _, variable in component.variables.items():
                 for index, equation in enumerate(component.equations):
@@ -399,12 +399,8 @@ class Model(object):
         if 'type' not in variable:
             variable['type'] = variable_type
         else:
-            if variable_type == variable['type']:
-                logging.warning("The variable %s has already been set a type of '%s'",
-                                variable['sympy.Dummy'], variable['type'])
-            else:
-                logging.error("The variable %s has been set a type of '%s'. Skip '%s'",
-                              variable['sympy.Dummy'], variable['type'], variable_type)
+            logging.error("The variable %s has been set a type of '%s'. Skip '%s'",
+                          variable['sympy.Dummy'], variable['type'], variable_type)
 
     def get_symbols(self, expr):
         """Returns the symbols in an expression"""

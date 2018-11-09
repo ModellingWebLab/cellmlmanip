@@ -40,9 +40,8 @@ class TestHodgkin:
         assert lhs_units == model.units.store['millivolt']
 
     def test_check_left_right_units(self, model):
-        for c in model.components.values():
-            for e in c.equations:
-                model.check_left_right_units_equal(e)
+        for e in model.equations():
+            model.check_left_right_units_equal(e)
 
     def test_get_equations(self, model):
         graph = model.get_equation_graph()
