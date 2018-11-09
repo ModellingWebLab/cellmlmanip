@@ -46,10 +46,17 @@ class TestHodgkin:
 
     def test_get_equations(self, model):
         graph = model.get_equation_graph()
-        assert len(graph.nodes) == 31
+        assert len(graph.nodes) == 32
+
+        free_variable = model.find_variable({'type': 'free'})
+        assert len(free_variable) == 1
+        assert free_variable[0]['cmeta:id'] == 'time'
+
+        state_variables = model.find_variable({'type': 'state'})
+        assert len(state_variables) == 4
 
         import networkx as nx
-        out = nx.topological_sort(graph)
+        out = nx.lexicographical_topological_sort(graph, key=lambda x: str(x))
         for node in out:
             print('%r: %r' % (node, graph.nodes[node]['equation']))
 

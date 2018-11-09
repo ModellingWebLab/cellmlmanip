@@ -215,6 +215,11 @@ class Model(object):
         """
         self.rdf.parse(StringIO(rdf))
 
+    def equations(self):
+        for component in self.components.values():
+            for equation in component.equations:
+                yield equation
+
     def _is_free_variable(self, variables: Dict):
         """Checks whether a variable gets its value from another component. There are two
         possibilities. Either it has:
@@ -318,70 +323,67 @@ class Model(object):
         """Returns an ordered list of equations for the model"""
         # TODO: Set the parameters of the model (parameters rather than use initial values)
 
+        # store symbols, their attributes and their relationships in a directed graph
+        graph = nx.DiGraph()
+
+        # for each equation in the model
         equation_count = 0
+        for equation in self.equations():
+            equation_count += 1
 
-        # we store symbols, their relationships and their equations in a directed graph
-        G = nx.DiGraph()
+            # Determine LHS. We should only every have one symbol (or derivative)
+            lhs_symbol = self.get_symbols(equation.lhs)
+            assert len(lhs_symbol) == 1
+            lhs_symbol = lhs_symbol.pop()
 
-        # Loop over each equation and create a node for the LHS
-        for component in self.components.values():
-            for equation in component.equations:
-                equation_count += 1
-                # Determine LHS. We should only every have one symbol (or derivative)
-                lhs_symbol = self.get_symbols(equation.lhs)
-                assert len(lhs_symbol) == 1
-                lhs_symbol = lhs_symbol.pop()
+            # Add the lhs symbol of the equation to the graph
+            graph.add_node(lhs_symbol, equation=equation)
 
-                G.add_node(lhs_symbol, equation=equation)
+            # If LHS is a derivative
+            # TODO: should be in perhaps collect_variable_attributes() but after connections made?
+            if lhs_symbol.is_Derivative:
+                # Get the state symbol and update the variable information
+                state_symbol = lhs_symbol.free_symbols.pop()
+                state_variable = self.find_variable({'sympy.Dummy': state_symbol})
+                assert len(state_variable) == 1
+                self.__set_variable_type(state_variable[0], 'state')
 
-                # If LHS is a derivative
-                if lhs_symbol.is_Derivative:
-                    # Get the state symbol and update the variable information
-                    state_symbol = lhs_symbol.free_symbols.pop()
-                    state_variable = self.find_variable({'sympy.Dummy': state_symbol})
-                    assert len(state_variable) == 1
-                    self.__set_variable_type(state_variable[0], 'state')
-                    # If the state variable symbol is not in the graph, add it
-                    # if state_symbol not in G.node:
-                    #     G.add_node(state_symbol, equation=None)
+                # Get the free symbol and update the variable information
+                free_symbol = set(lhs_symbol.canonical_variables.keys()).pop()
+                free_variable = self.find_variable({'sympy.Dummy': free_symbol})
+                assert len(free_variable) == 1
+                self.__set_variable_type(free_variable[0], 'free')
 
-                    # Get the free symbol and update the variable information
-                    free_symbol = set(lhs_symbol.canonical_variables.keys()).pop()
-                    free_variable = self.find_variable({'sympy.Dummy': free_symbol})
-                    assert len(free_variable) == 1
-                    self.__set_variable_type(free_variable[0], 'free')
-                    # If the free variable symbol is not in the graph, add it
-                    # if free_symbol not in G.node:
-                    #     G.add_node(free_symbol, equation=None)
+        # sanity check none of the lhs have the same hash!
+        assert len(graph.nodes) == equation_count
 
-                    # # This derivative depends on it's state and free variable
-                    # G.add_edge(state_symbol, lhs_symbol)
-                    # G.add_edge(free_symbol, lhs_symbol)
+        # sanity check all the lhs are unique in meaning (sympy.Dummy: same name != same hash)
+        assert len(set([str(x) for x in graph.nodes])) == equation_count
 
-        for component in self.components.values():
-            for equation in component.equations:
-                lhs_symbol = self.get_symbols(equation.lhs).pop()
-                rhs_symbols = self.get_symbols(equation.rhs)
-                for rhs_symbol in rhs_symbols:
-                    if rhs_symbol in G.node:
-                        G.add_edge(rhs_symbol, lhs_symbol)
+        for equation in self.equations():
+            lhs_symbol = self.get_symbols(equation.lhs).pop()
+            rhs_symbols = self.get_symbols(equation.rhs)
+            for rhs_symbol in rhs_symbols:
+                if rhs_symbol in graph.node:
+                    graph.add_edge(rhs_symbol, lhs_symbol)
+                else:
+                    # The symbol does not have a node in the graph
+                    variable = self.find_variable({'sympy.Dummy': rhs_symbol})
+                    assert len(variable) == 1
+                    variable = variable[0]
+
+                    # If the variable is a state or free variable of a derivative
+                    if 'type' in variable:
+                        graph.add_node(rhs_symbol, equation=None, variable_type=variable['type'])
+                        graph.add_edge(rhs_symbol, lhs_symbol)
                     else:
-                        variable = self.find_variable({'sympy.Dummy': rhs_symbol})
-                        assert len(variable) == 1
-                        variable = variable[0]
-                        if 'initial_value' in variable:
-                            G.add_node(rhs_symbol,
+                        # The variable is a constant or parameter of the model
+                        graph.add_node(rhs_symbol,
                                        equation=sympy.Eq(rhs_symbol,
                                                          sympy.Number(variable['initial_value'])))
-                            G.add_edge(rhs_symbol, lhs_symbol)
-                        else:
-                            # only the free variable (i.e. time) should be here!
-                            assert variable['type'] == 'free'
-                            # G.add_node(rhs_symbol,
-                            #            equation=sympy.Eq(rhs_symbol, rhs_symbol))
-                            # G.add_edge(rhs_symbol, lhs_symbol)
+                        graph.add_edge(rhs_symbol, lhs_symbol)
 
-        return G
+        return graph
 
     def __set_variable_type(self, variable, variable_type):
         if 'type' not in variable:
