@@ -56,9 +56,16 @@ class TestHodgkin:
         assert len(state_variables) == 4
 
         import networkx as nx
-        out = nx.lexicographical_topological_sort(graph, key=lambda x: str(x))
-        for node in out:
-            print('%r: %r' % (node, graph.nodes[node]['equation']))
+        sorted_nodes = nx.lexicographical_topological_sort(graph, key=lambda x: str(x))
+
+        sorted_nodes = list(sorted_nodes)
+        assert str(sorted_nodes[0]) == '_environment$time'
+        assert str(sorted_nodes[10]) == '_membrane$stim_period'
+        assert str(sorted_nodes[20]) == '_sodium_channel$E_Na'
+        assert str(sorted_nodes[-1]) == 'Derivative(_membrane$V, _environment$time)'
+
+        for i, node in enumerate(sorted_nodes):
+            print('%d. %r: %r' % (i, node, graph.nodes[node]['equation']))
 
         # use `dot -Tpng path.dot -o path.png`
         # nx.nx_agraph.write_dot(graph,

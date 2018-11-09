@@ -326,8 +326,9 @@ class Model(object):
         # store symbols, their attributes and their relationships in a directed graph
         graph = nx.DiGraph()
 
-        # for each equation in the model
         equation_count = 0
+
+        # for each equation in the model
         for equation in self.equations():
             equation_count += 1
 
@@ -360,20 +361,26 @@ class Model(object):
         # sanity check all the lhs are unique in meaning (sympy.Dummy: same name != same hash)
         assert len(set([str(x) for x in graph.nodes])) == equation_count
 
+        # for each equation in the model
         for equation in self.equations():
+            # get the lhs symbol
             lhs_symbol = self.get_symbols(equation.lhs).pop()
-            rhs_symbols = self.get_symbols(equation.rhs)
-            for rhs_symbol in rhs_symbols:
+
+            # for each of the symbols on the rhs of the equation
+            for rhs_symbol in self.get_symbols(equation.rhs):
+                # if the symbol maps to a node in the graph
                 if rhs_symbol in graph.node:
+                    # add the dependency edge
                     graph.add_edge(rhs_symbol, lhs_symbol)
                 else:
-                    # The symbol does not have a node in the graph
+                    # The symbol does not have a node in the graph, get the variable info
                     variable = self.find_variable({'sympy.Dummy': rhs_symbol})
                     assert len(variable) == 1
                     variable = variable[0]
 
                     # If the variable is a state or free variable of a derivative
                     if 'type' in variable:
+                        assert variable['type'] in ['state', 'free']
                         graph.add_node(rhs_symbol, equation=None, variable_type=variable['type'])
                         graph.add_edge(rhs_symbol, lhs_symbol)
                     else:
