@@ -91,11 +91,13 @@ class TestParser(object):
         assert model.units.get_quantity('kilogram') == units.kilogram
 
         # Custom units defined in CellML example
-        assert units.convert_to(model.units.get_quantity('per_ms'), 1/units.millisecond) == 1/units.millisecond
-        assert units.convert_to(model.units.get_quantity('usec'), units.microsecond) == units.microsecond
-        assert units.convert_to(
-            model.units.get_quantity('mM_per_ms'),
-            [units.mole, units.liter, units.millisecond]) == (units.mole / 1000) / (units.liter * units.millisecond)
+        assert units.convert_to(model.units.get_quantity('per_ms'),
+                                1/units.millisecond) == 1/units.millisecond
+        assert units.convert_to(model.units.get_quantity('usec'),
+                                units.microsecond) == units.microsecond
+        assert units.convert_to(model.units.get_quantity('mM_per_ms'),
+                                [units.mole, units.liter, units.millisecond]
+                                ) == (units.mole / 1000) / (units.liter * units.millisecond)
 
     def test_add_units_to_equations(self, model):
         # This is an irreversible operation # TODO: don't mutate?
@@ -130,7 +132,9 @@ class TestParser(object):
                 current_expression = new_expression
             return new_expression
 
-        # TODO: try conversion of units of RHS by LHS.units / RHS.unit == x; if x == 1, good, else RHS = RHS * x
+        # TODO: try conversion of units of RHS by LHS.units / RHS.unit == x;
+        # i.e. if x == 1, good, else RHS = RHS * x
+        
         # Try fixing all units on the RHS so that they match the LHS
         for component in model.components.values():
             for index, equation in enumerate(component.equations):

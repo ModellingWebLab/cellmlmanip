@@ -216,6 +216,7 @@ class Model(object):
         self.rdf.parse(StringIO(rdf))
 
     def equations(self):
+        """Helper method to iterate over equations in the model (across different components)"""
         for component in self.components.values():
             for equation in component.equations:
                 yield equation
@@ -308,6 +309,7 @@ class Model(object):
         return simplified_expr
 
     def check_left_right_units_equal(self, equality: sympy.Eq):
+        """Given a Sympy Equality expression, checks that the LHS and RHS have the same units"""
         rhs: sympy.Expr = equality.rhs
         lhs: sympy.Expr = equality.lhs
 
@@ -347,13 +349,13 @@ class Model(object):
                 state_symbol = lhs_symbol.free_symbols.pop()
                 state_variable = self.find_variable({'sympy.Dummy': state_symbol})
                 assert len(state_variable) == 1
-                self.__set_variable_type(state_variable[0], 'state')
+                Model.__set_variable_type(state_variable[0], 'state')
 
                 # Get the free symbol and update the variable information
                 free_symbol = set(lhs_symbol.canonical_variables.keys()).pop()
                 free_variable = self.find_variable({'sympy.Dummy': free_symbol})
                 assert len(free_variable) == 1
-                self.__set_variable_type(free_variable[0], 'free')
+                Model.__set_variable_type(free_variable[0], 'free')
 
         # sanity check none of the lhs have the same hash!
         assert len(graph.nodes) == equation_count
@@ -392,7 +394,8 @@ class Model(object):
 
         return graph
 
-    def __set_variable_type(self, variable, variable_type):
+    @staticmethod
+    def __set_variable_type(variable, variable_type):
         if 'type' not in variable:
             variable['type'] = variable_type
         else:
@@ -677,6 +680,7 @@ class QuantityStore(object):
 
     @staticmethod
     def get_conversion_factor(from_unit, to_unit):
+        """Returns the multiplier to convert one unit to another (of the same dimension)"""
         return units.convert_to(from_unit, to_unit).n()
 
     def _sympify(self, string):

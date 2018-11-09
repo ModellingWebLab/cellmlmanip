@@ -70,4 +70,3 @@ class TestHodgkin:
         # use `dot -Tpng path.dot -o path.png`
         # nx.nx_agraph.write_dot(graph,
         #                        '/Users/tamuri/Desktop/path.dot')
-
