@@ -46,15 +46,14 @@ class TestHodgkin:
 
     def test_get_equations(self, model):
         graph = model.get_equation_graph()
-
-        # use `dot -Tpng path.dot -o path.png`
-
-        import networkx as nx
-        nx.nx_agraph.write_dot(graph,
-                               '/Users/tamuri/Desktop/path.dot')
-
         assert len(graph.nodes) == 32
 
+        import networkx as nx
         out = nx.topological_sort(graph)
         for node in out:
             print('%r: %r' % (node, graph.nodes[node]['equation']))
+
+        # use `dot -Tpng path.dot -o path.png`
+        # nx.nx_agraph.write_dot(graph,
+        #                        '/Users/tamuri/Desktop/path.dot')
+
