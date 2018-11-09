@@ -358,6 +358,7 @@ class Model(object):
             G.add_node(symbol, equation=equation)
 
         for symbol, equation in equation_lookup.items():
+            # TODO: if derivative (on left or right) you depend on free and state variables
             rhs_symbols = self.get_symbols(equation.rhs)
             for rhs_symbol in rhs_symbols:
                 if rhs_symbol in G.node:
@@ -374,6 +375,9 @@ class Model(object):
                     else:
                         # does only the free variable not have an initial value??
                         assert variable['type'] == 'free'
+                        G.add_node(rhs_symbol,
+                                   equation=sympy.Eq(rhs_symbol, rhs_symbol))
+                        G.add_edge(rhs_symbol, symbol)
 
         return G
 
