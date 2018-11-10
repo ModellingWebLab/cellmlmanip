@@ -387,9 +387,12 @@ class Model(object):
                         graph.add_edge(rhs_symbol, lhs_symbol)
                     else:
                         # The variable is a constant or parameter of the model
+                        # TODO: change to "self." once collect units is in Model class
+                        unit = next(iter(self.components.values())).collect_units(rhs_symbol)
+                        unit = unit[rhs_symbol]
                         graph.add_node(rhs_symbol,
-                                       equation=sympy.Eq(rhs_symbol,
-                                                         sympy.Number(variable['initial_value'])))
+                                       equation=sympy.Eq(rhs_symbol * unit,
+                                                         sympy.Number(variable['initial_value']) * unit))
                         graph.add_edge(rhs_symbol, lhs_symbol)
 
         return graph
@@ -399,7 +402,7 @@ class Model(object):
         if 'type' not in variable:
             variable['type'] = variable_type
         else:
-            logging.error("The variable %s has been set a type of '%s'. Skip '%s'",
+            logging.error("The variable %s has been set a type of '%s'. Skip setting '%s'",
                           variable['sympy.Dummy'], variable['type'], variable_type)
 
     def get_symbols(self, expr):

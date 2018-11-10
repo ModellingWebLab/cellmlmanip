@@ -83,3 +83,12 @@ class TestHodgkin:
         dm_dt_node = sorted_nodes[29]
         assert str(dm_dt_node) == 'Derivative(_sodium_channel_m_gate$m, _environment$time)'
         assert 3 == graph.in_degree(dm_dt_node)
+
+        # check that units have been added to parameters
+        leakage_var = sorted_nodes[1]
+        assert str(leakage_var) == '_leakage_current$g_L'
+        lcv_equation = graph.node[leakage_var]['equation']
+        rhs_unit = model.units.summarise_units(lcv_equation.rhs)
+        lhs_unit = model.units.summarise_units(lcv_equation.lhs)
+        assert rhs_unit == model.units.store['milliS_per_cm2']
+        assert rhs_unit == lhs_unit
