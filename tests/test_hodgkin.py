@@ -78,3 +78,8 @@ class TestHodgkin:
         for variable in state_variables:
             dummy = variable['sympy.Dummy']
             assert graph.in_degree(dummy) == 0
+
+        # check a node for dependencies
+        dm_dt_node = sorted_nodes[29]
+        assert str(dm_dt_node) == 'Derivative(_sodium_channel_m_gate$m, _environment$time)'
+        assert 3 == graph.in_degree(dm_dt_node)
