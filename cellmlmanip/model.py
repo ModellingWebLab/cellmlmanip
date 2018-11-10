@@ -81,7 +81,7 @@ class Component(object):
         # For each equation in this component
         for index, equation in enumerate(self.equations):
             # extract the unit information from the equation
-            unit_info = self._collect_units(equation)
+            unit_info = self.collect_units(equation)
 
             # Re-purpose the unit_info dict into a substitution dictionary
             # to replace the "symbol-or-number" with "unit * symbol-or-number"
@@ -97,7 +97,7 @@ class Component(object):
             # Do the substitutions (WARNING: irreversible!)
             self.equations[index] = equation.xreplace(unit_info)
 
-    def _collect_units(self, expr):
+    def collect_units(self, expr):
         """Descends into the given Sympy expression and returns the appropriate units (if any)"""
         logging.debug("_collect_units(%s)", expr)
 
@@ -111,7 +111,7 @@ class Component(object):
 
         # Traverse down the arguments of this expression, and collect their unit information
         for args in expr.args:
-            unit_info.update(self._collect_units(args))
+            unit_info.update(self.collect_units(args))
 
         # Special handling for Derivatives
         if isinstance(expr, sympy.Derivative):
