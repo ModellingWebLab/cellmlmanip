@@ -134,7 +134,7 @@ class TestParser(object):
 
         # TODO: try conversion of units of RHS by LHS.units / RHS.unit == x;
         # i.e. if x == 1, good, else RHS = RHS * x
-        
+
         # Try fixing all units on the RHS so that they match the LHS
         for component in model.components.values():
             for index, equation in enumerate(component.equations):
