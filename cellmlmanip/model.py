@@ -7,9 +7,10 @@ from io import StringIO
 from typing import Dict, List, Tuple
 
 import networkx as nx
-import rdflib
 import sympy
 import sympy.physics.units as units
+
+import rdflib
 
 
 # Delimiter for the name of the Sympy symbol: <component><delimiter><name>
@@ -391,8 +392,9 @@ class Model(object):
                         unit = next(iter(self.components.values())).collect_units(rhs_symbol)
                         unit = unit[rhs_symbol]
                         graph.add_node(rhs_symbol,
-                                       equation=sympy.Eq(rhs_symbol * unit,
-                                                         sympy.Number(variable['initial_value']) * unit))
+                                       equation=sympy.Eq(
+                                           rhs_symbol * unit,
+                                           sympy.Number(variable['initial_value']) * unit))
                         graph.add_edge(rhs_symbol, lhs_symbol)
 
         return graph
