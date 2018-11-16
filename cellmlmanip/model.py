@@ -216,13 +216,22 @@ class Model(object):
         """
         self.rdf.parse(StringIO(rdf))
 
+    @property
     def equations(self):
         """Helper method to iterate over equations in the model (across different components)"""
         for component in self.components.values():
             for equation in component.equations:
                 yield equation
 
-    def _is_free_variable(self, variables: Dict):
+    @property
+    def variables(self):
+        """Iterates over all variables in the model (across different components)"""
+        for component in self.components.values():
+            for var_attr in component.variables.values():
+                yield (component, var_attr)
+
+    @staticmethod
+    def _is_free_variable(variables: Dict):
         """Checks whether a variable gets its value from another component. There are two
         possibilities. Either it has:
             (i) public_interface="out" or
@@ -243,20 +252,19 @@ class Model(object):
 
         # First, we assign new sympy.Dummy variables for those CellML <variable>s that are only
         # exposed to other components i.e. do not have an "in" value on public/private_interface
-        # For each component in the model
-        for component in self.components.values():
-            # For each CellML <variable> in the component
-            for var_attr in component.variables.values():
-                # If this variable does not get its value from another component
-                if self._is_free_variable(var_attr):
-                    # If it doesn't have a dummy symbol
-                    if 'sympy.Dummy' not in var_attr:
-                        # This variable was not used in any equations - create a new dummy symbol
-                        var_attr['sympy.Dummy'] = var_attr['assignment'] = sympy.Dummy(
-                            component.name + SYMPY_SYMBOL_DELIMITER + var_attr['name'])
-                    else:
-                        # The variable is used in an equation & we use the same symbol
-                        var_attr['assignment'] = var_attr['sympy.Dummy']
+
+        # For each CellML <variable< in the model
+        for component, variable in self.variables:
+            # If this variable does not get its value from another component
+            if Model._is_free_variable(variable):
+                # If it doesn't have a dummy symbol
+                if 'sympy.Dummy' not in variable:
+                    # This variable was not used in any equations - create a new dummy symbol
+                    variable['sympy.Dummy'] = variable['assignment'] = sympy.Dummy(
+                        component.name + SYMPY_SYMBOL_DELIMITER + variable['name'])
+                else:
+                    # The variable is used in an equation & we use the same symbol
+                    variable['assignment'] = variable['sympy.Dummy']
 
         # Second, we loop over all model connections and create connections between variables
 
@@ -274,30 +282,28 @@ class Model(object):
             connection = connections_to_process.popleft()
             logging.debug("Try to connect %s and %s", *connection)
             success = self.__connect(connection)
-            if success:
-                logging.debug('Connected.')
-            else:
+            if not success:
                 logging.debug('Cannot connect (source does not have assignment).')
                 connections_to_process.append(connection)
             # TODO: track looping and break if we can't exit
 
         # All connections have been made, now substitute the original dummy symbol with new dummy
-        for _, component in self.components.items():
-            for _, variable in component.variables.items():
-                for index, equation in enumerate(component.equations):
-                    # If this variable is used in an equation, it will have been set a sympy.Dummy
-                    if 'sympy.Dummy' in variable:
-                        # If the variable has been assigned [a new dummy symbol]
-                        if 'assignment' in variable:
-                            # Replace the original dummy with the assign dummy symbol
-                            component.equations[index] = equation.xreplace(
-                                {variable['sympy.Dummy']: variable['assignment']})
-                        else:
-                            variable['assignment'] = variable['sympy.Dummy']
-                    # The variable does not have a sympy.Dummy variable set - why??
+        for component, variable in self.variables:
+            for index, equation in enumerate(component.equations):
+                # If this variable is used in an equation, it will have been set a sympy.Dummy
+                if 'sympy.Dummy' in variable:
+                    # If the variable has been assigned [a new dummy symbol]
+                    if 'assignment' in variable:
+                        # Replace the original dummy with the assign dummy symbol
+                        component.equations[index] = equation.xreplace(
+                            {variable['sympy.Dummy']: variable['assignment']}
+                        )
                     else:
-                        logging.warning('Variable (%s) in component (%s) not assigned a dummy',
-                                        variable['name'], component.name)
+                        variable['assignment'] = variable['sympy.Dummy']
+                # The variable does not have a sympy.Dummy variable set - why??
+                else:
+                    logging.warning('Variable (%s) in component (%s) not assigned a dummy',
+                                    variable['name'], component.name)
 
     def simplify_units_until_no_change(self, expr):
         """Simplifies the units of an expression until they cannot be simplified any further"""
@@ -332,7 +338,7 @@ class Model(object):
         equation_count = 0
 
         # for each equation in the model
-        for equation in self.equations():
+        for equation in self.equations:
             equation_count += 1
 
             # Determine LHS. We should only every have one symbol (or derivative)
@@ -365,7 +371,7 @@ class Model(object):
         assert len(set([str(x) for x in graph.nodes])) == equation_count
 
         # for each equation in the model
-        for equation in self.equations():
+        for equation in self.equations:
             # get the lhs symbol
             lhs_symbol = self.get_symbols(equation.lhs).pop()
 
@@ -399,7 +405,7 @@ class Model(object):
                                            sympy.Number(variable['initial_value']) * unit),
                                        variable_type='parameter')
                         if 'cmeta:id' in variable:
-                            graph.node[rhs_symbol]['cmeta:id'] = variable['cmeta:id']
+                            graph.nodes[rhs_symbol]['cmeta:id'] = variable['cmeta:id']
                         graph.add_edge(rhs_symbol, lhs_symbol)
 
         return graph

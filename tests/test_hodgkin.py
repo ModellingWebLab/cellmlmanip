@@ -23,7 +23,7 @@ class TestHodgkin:
     def test_counts(self, model):
         # https://models.cellml.org/exposure/5d116522c3b43ccaeb87a1ed10139016/hodgkin_huxley_1952_variant01.cellml/cellml_math
         assert len(model.components) == 8
-        eq_count = len(list(model.equations()))
+        eq_count = len(list(model.equations))
         assert eq_count == 17
 
     def test_setup_connections(self, model):
@@ -40,7 +40,7 @@ class TestHodgkin:
         assert lhs_units == model.units.store['millivolt']
 
     def test_check_left_right_units(self, model):
-        for e in model.equations():
+        for e in model.equations:
             model.check_left_right_units_equal(e)
 
     def test_get_equations(self, model):
