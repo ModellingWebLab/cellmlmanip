@@ -466,6 +466,21 @@ class Model(object):
         """Takes a CellML connection and attempts to resolve the connect by assigning the target
         variable to the assigned source variable
 
+        Relevant lines from the CellML specification:
+
+            The set of all components immediately encapsulated by the current
+            component is the encapsulated set.
+
+            Other components encapsulated by the same parent make up the
+            sibling set.
+
+            The interface exposed to the parent component and components in
+            the sibling set is defined by the public_interface attribute. The
+            private_interface attribute defines the interface exposed to
+            components in the encapsulated set. Each interface has three possible
+            values: "in", "out", and "none", where "none" indicates the absence
+            of an interface.
+
         :param connection: a single connection tuple, created by the CellML parser
             ((component_1, variable_1), (component_2, variable_2))
         """
