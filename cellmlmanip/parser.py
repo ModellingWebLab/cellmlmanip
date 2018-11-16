@@ -2,6 +2,7 @@
 This module contains the CellML parser. It reads CellML model and stores model information in a
 CellML Model class. MathML equations are translated to Sympy. RDF is handled by RDFLib.
 """
+import itertools
 from enum import Enum
 from typing import Dict
 
@@ -53,6 +54,7 @@ class Parser(object):
         # handle the child elements of <model>
         self.__add_units(model_xml)
         self.__add_components(model_xml)
+        self.__add_relationships(model_xml)
         self.__add_rdf(model_xml)
         self.__add_connection(model_xml)
 
@@ -138,3 +140,47 @@ class Parser(object):
             for variable_0, variable_1 in map_variables:
                 self.model.connections.append(((map_component[0], variable_0),
                                                (map_component[1], variable_1)))
+
+    def __add_relationships(self, model: etree.Element):
+        group_elements = model.findall(Parser.with_ns(XmlNs.CELLML, u'group'))
+
+        # find all the <group> elements
+        for group_element in group_elements:
+
+            # find the relationship for this <group>
+            relationship_ref = group_element.findall(Parser.with_ns(XmlNs.CELLML, u'relationship_ref'))
+            assert len(relationship_ref) == 1
+            relationship = relationship_ref[0].attrib.get('relationship')
+
+            # we only handle 'encapsulation' relationships (i.e. ignoring 'containment')
+            if relationship == 'encapsulation':
+                self.__handle_component_ref(group_element, None)
+
+    def __handle_component_ref(self, parent_tag, parent_component):
+        # we're going to process all the siblings at the end
+        siblings = []
+
+        # for each of the child <component_ref> elements in the parent tag
+        for component_ref_element in parent_tag.findall(Parser.with_ns(XmlNs.CELLML, u'component_ref')):
+
+            # get the name of the child component
+            child_component = component_ref_element.attrib.get('component')
+
+            # add it to the sibling list
+            siblings.append(child_component)
+
+            # if we have a parent component for this child component (i.e. not top-level anonymous)
+            if parent_component:
+                # add the relationship in the component
+                self.model.components[parent_component].add_encapsulated(child_component)
+                self.model.components[child_component].set_parent(parent_component)
+
+            # descend into this <component_ref> tag to handle any children
+            self.__handle_component_ref(component_ref_element, child_component)
+
+        # if there are siblings in this non-anonymous group
+        if parent_component and len(siblings) > 1:
+            # register each of the siblings with each other
+            for component_a, component_b in itertools.product(siblings, siblings):
+                if component_a != component_b:
+                    self.model.components[component_a].add_sibling(component_b)

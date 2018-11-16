@@ -26,6 +26,22 @@ class TestParser(object):
     def test_component_count(self, model):
         assert len(model.components) == 21  # grep -c '<component ' test_simple_odes.cellml
 
+    def test_group_relationships(self, model):
+        assert model.components['circle_parent'].parent is None
+
+        assert 'circle_x' in model.components['circle_parent'].encapsulated
+        assert 'circle_y' in model.components['circle_parent'].encapsulated
+
+        assert 'circle_parent' == model.components['circle_x'].parent
+        assert 'circle_parent' == model.components['circle_y'].parent
+
+        assert 'circle_x_source' in model.components['circle_x'].encapsulated
+        assert 'circle_x_source' in model.components['circle_x_sibling'].siblings
+        assert 'circle_x_sibling' in model.components['circle_x_source'].siblings
+        assert 'circle_x' == model.components['circle_x_sibling'].parent
+
+        assert 'circle_y_implementation' not in model.components['circle_parent'].encapsulated
+
     def test_equations_count(self, model):
         equation_count = 0
         for component in model.components.values():

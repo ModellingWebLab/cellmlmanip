@@ -4,7 +4,7 @@ Classes representing a CellML model and its components
 import logging
 from collections import deque
 from io import StringIO
-from typing import Dict, List, Tuple
+from typing import Dict, List, Set, Tuple
 
 import networkx as nx
 import rdflib
@@ -27,6 +27,12 @@ class Component(object):
         """
         self.name: str = name
         self.model: 'Model' = model
+
+        # store for <group> relationships
+        self.parent: str = None
+        self.siblings: Set[str] = set()
+        self.encapsulated: Set[str] = set()
+
         self.variables: Dict[str, Dict] = {}
         self.equations: List[sympy.Eq] = []
         self.numbers: Dict[sympy.Dummy, Dict] = {}
@@ -36,6 +42,23 @@ class Component(object):
         return "Component(\n  name: %s\n  equations: %s\n  variables: %s\n  numbers: %s\n)" % (
             self.name, self.equations, self.variables, self.numbers
         )
+
+    def set_parent(self, parent_name):
+        if self.parent:
+            raise ValueError('Parent of component %s already %s. Cannot set %s!' % (self.name,
+                                                                                    self.parent,
+                                                                                    parent_name))
+        self.parent = parent_name
+
+    def add_sibling(self, sibling_name):
+        if sibling_name in self.siblings:
+            raise ValueError('Sibling component %s already added!' % sibling_name)
+        self.siblings.add(sibling_name)
+
+    def add_encapsulated(self, encapsulated_name):
+        if encapsulated_name in self.encapsulated:
+            raise ValueError('Encapsulated component %s already added!' % encapsulated_name)
+        self.encapsulated.add(encapsulated_name)
 
     def collect_variable_attributes(self, metadata):
         """Called after adding equations and variables from the CellML model and collects the
