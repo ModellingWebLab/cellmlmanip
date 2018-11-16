@@ -208,6 +208,6 @@ class TestParser(object):
             c.add_units_to_equations()
 
         # then check the lhs/rhs units
-        with pytest.raises(AssertionError, match='Units volt != second'):
+        with pytest.raises(AssertionError, match='Units second != volt'):
             for e in model.equations:
                 model.check_left_right_units_equal(e)

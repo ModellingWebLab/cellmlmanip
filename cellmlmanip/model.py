@@ -340,8 +340,8 @@ class Model(object):
             lhs_units = self.units.simplify_units_until_no_change(lhs)
             rhs_units = self.units.simplify_units_until_no_change(rhs)
 
-            assert self.units.is_equal(rhs_units, lhs_units), 'Units %s != %s' % (lhs_units,
-                                                                                  rhs_units)
+            assert self.units.is_equal(rhs_units, lhs_units), 'Units %s != %s' % (rhs_units,
+                                                                                  lhs_units)
 
     def get_equation_graph(self):
         """Returns an ordered list of equations for the model"""
