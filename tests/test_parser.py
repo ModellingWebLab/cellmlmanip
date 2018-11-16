@@ -124,19 +124,20 @@ class TestParser(object):
         test_equation = model.components['single_independent_ode'].equations[0]
         lhs_units = model.units.summarise_units(test_equation.lhs)
         rhs_units = model.units.summarise_units(test_equation.rhs)
-        assert model.units.is_equal(lhs_units, rhs_units)
+        assert model.units.is_equal(rhs_units, lhs_units)
 
         # mV_per_usec != uV/millisecond
         test_equation = model.components['deriv_on_rhs2b'].equations[0]
         lhs_units = model.units.summarise_units(test_equation.lhs)
         rhs_units = model.units.summarise_units(test_equation.rhs)
-        assert not model.units.is_equal(lhs_units, rhs_units)
+        print(lhs_units, rhs_units)
+        assert not model.units.is_equal(rhs_units, lhs_units)
 
         # Check a specific RHS->LHS unit conversion
         test_equation = model.components['deriv_on_rhs2b'].equations[0]
         new_rhs = units.convert_to(test_equation.rhs, lhs_units)
         new_rhs_units = model.units.summarise_units(new_rhs)
-        assert model.units.is_equal(lhs_units, new_rhs_units)
+        assert model.units.is_equal(new_rhs_units, lhs_units)
 
         # TODO: work in progress...trying to understand what's going on here
         def simplify_units_until_no_change(expr):

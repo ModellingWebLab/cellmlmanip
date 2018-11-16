@@ -339,7 +339,8 @@ class Model(object):
         else:
             lhs_units = self.units.simplify_units_until_no_change(lhs)
             rhs_units = self.units.simplify_units_until_no_change(rhs)
-            assert self.units.is_equal(lhs_units, rhs_units), 'Units %s != %s' % (lhs_units,
+
+            assert self.units.is_equal(rhs_units, lhs_units), 'Units %s != %s' % (lhs_units,
                                                                                   rhs_units)
 
     def get_equation_graph(self):
@@ -735,7 +736,8 @@ class QuantityStore(object):
         :param quantity_1: a Sympy Quantity instance
         :param quantity_2: a Sympy Quantity instance
         """
-        return units.convert_to(quantity_1, quantity_2) == quantity_2
+        conversion = units.convert_to(quantity_1, quantity_2)
+        return conversion == quantity_2
 
     @staticmethod
     def get_conversion_factor(from_unit, to_unit):
