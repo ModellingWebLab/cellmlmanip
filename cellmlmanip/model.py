@@ -253,7 +253,7 @@ class Model(object):
                 yield (component, var_attr)
 
     @staticmethod
-    def _is_free_variable(variables: Dict):
+    def __is_not_assigned(variables: Dict):
         """Checks whether a variable gets its value from another component. There are two
         possibilities. Either it has:
             (i) public_interface="out" or
@@ -278,7 +278,7 @@ class Model(object):
         # For each CellML <variable< in the model
         for component, variable in self.variables:
             # If this variable does not get its value from another component
-            if Model._is_free_variable(variable):
+            if Model.__is_not_assigned(variable):
                 # If it doesn't have a dummy symbol
                 if 'sympy.Dummy' not in variable:
                     # This variable was not used in any equations - create a new dummy symbol
@@ -469,17 +469,36 @@ class Model(object):
         """
         cmp_name_1, var_att_1, cmp_name_2, var_att_2 = self.__get_connection_endpoints(connection)
 
-        # Determine which are the source and target variables, and connect from->to
-        if (('public_interface', 'out') in var_att_1.items() or
-                ('private_interface', 'out') in var_att_1.items()) and (
-                    ('public_interface', 'in') in var_att_2.items() or
-                    ('private_interface', 'in') in var_att_2.items()):
-            return self.__connect_with_direction(cmp_name_1, var_att_1, cmp_name_2, var_att_2)
-        elif (('public_interface', 'out') in var_att_2.items() or
-              ('private_interface', 'out') in var_att_2.items()) and (
-                  ('public_interface', 'in') in var_att_1.items() or
-                  ('private_interface', 'in') in var_att_1.items()):
-            return self.__connect_with_direction(cmp_name_2, var_att_2, cmp_name_1, var_att_1)
+        # keys for lookup
+        pub = 'public_interface'
+        pri = 'private_interface'
+
+        def __are_siblings(name_a, name_b):
+            return self.components[name_a].parent == self.components[name_b].parent
+
+        def __parent_of(parent_name, child_name):
+            return parent_name == self.components[child_name].parent
+
+        def __has_interface(variable_a, key_a, value_a, variable_b, key_b, value_b):
+            return (key_a, value_a) in variable_a.items() and (key_b, value_b) in variable_b.items()
+
+        # if one component is encapsulated by the other
+        if __parent_of(cmp_name_1, cmp_name_2) or __parent_of(cmp_name_2, cmp_name_1):
+            # they can be connected with (i) public=out to private=in (ii) private=out to public=in
+            if __has_interface(*(var_att_1, pri, 'in'), *(var_att_2, pub, 'out')):
+                return self.__connect_with_direction(cmp_name_2, var_att_2, cmp_name_1, var_att_1)
+            elif __has_interface(*(var_att_1, pri, 'out'), *(var_att_2, pub, 'in')):
+                return self.__connect_with_direction(cmp_name_1, var_att_1, cmp_name_2, var_att_2)
+
+        # if components are siblings (in group or top-level group) or one encapsulates the other
+        if __are_siblings(cmp_name_1, cmp_name_2) or \
+                __parent_of(cmp_name_1, cmp_name_2) or __parent_of(cmp_name_2, cmp_name_1):
+            # they can be connected using public_interface=out to public_interface=in
+            if __has_interface(*(var_att_1, pub, 'out'), *(var_att_2, pub, 'in')):
+                return self.__connect_with_direction(cmp_name_1, var_att_1, cmp_name_2, var_att_2)
+            elif __has_interface(*(var_att_2, pub, 'out'), *(var_att_1, pub, 'in')):
+                return self.__connect_with_direction(cmp_name_2, var_att_2, cmp_name_1, var_att_1)
+
         raise RuntimeError("Cannot determine the source & target for connection %s" % connection)
 
     def __connect_with_direction(self, source_component, source_variable,
