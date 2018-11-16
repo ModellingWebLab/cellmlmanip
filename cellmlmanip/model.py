@@ -7,10 +7,9 @@ from io import StringIO
 from typing import Dict, List, Tuple
 
 import networkx as nx
+import rdflib
 import sympy
 import sympy.physics.units as units
-
-import rdflib
 
 
 # Delimiter for the name of the Sympy symbol: <component><delimiter><name>
