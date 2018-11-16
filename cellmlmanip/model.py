@@ -276,7 +276,7 @@ class Model(object):
         # First, we assign new sympy.Dummy variables for those CellML <variable>s that are only
         # exposed to other components i.e. do not have an "in" value on public/private_interface
 
-        # For each CellML <variable< in the model
+        # For each CellML <variable> in the model
         for component, variable in self.variables:
             # If this variable does not have a sympy.Dummy (e.g. variable declared but not mathml?)
             if 'sympy.Dummy' not in variable:
