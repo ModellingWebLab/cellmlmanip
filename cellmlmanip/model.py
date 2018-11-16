@@ -388,13 +388,18 @@ class Model(object):
                         graph.add_edge(rhs_symbol, lhs_symbol)
                     else:
                         # The variable is a constant or parameter of the model
+                        variable['type'] = 'parameter'
+                        # TODO: Can we tell the difference between a parameter and a constant?
                         # TODO: change to "self." once collect units is in Model class
                         unit = next(iter(self.components.values())).collect_units(rhs_symbol)
                         unit = unit[rhs_symbol]
                         graph.add_node(rhs_symbol,
                                        equation=sympy.Eq(
                                            rhs_symbol * unit,
-                                           sympy.Number(variable['initial_value']) * unit))
+                                           sympy.Number(variable['initial_value']) * unit),
+                                       variable_type='parameter')
+                        if 'cmeta:id' in variable:
+                            graph.node[rhs_symbol]['cmeta:id'] = variable['cmeta:id']
                         graph.add_edge(rhs_symbol, lhs_symbol)
 
         return graph

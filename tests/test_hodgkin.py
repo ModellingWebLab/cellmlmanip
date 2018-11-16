@@ -50,9 +50,12 @@ class TestHodgkin:
         free_variable = model.find_variable({'type': 'free'})
         assert len(free_variable) == 1
         assert free_variable[0]['cmeta:id'] == 'time'
+        assert graph.node[free_variable[0]['sympy.Dummy']]['variable_type'] == 'free'
 
         state_variables = model.find_variable({'type': 'state'})
         assert len(state_variables) == 4
+        first_state_variable = state_variables[0]
+        assert graph.node[first_state_variable['sympy.Dummy']]['variable_type'] == 'state'
 
         import networkx as nx
         sorted_nodes = nx.lexicographical_topological_sort(graph, key=lambda x: str(x))
@@ -92,3 +95,9 @@ class TestHodgkin:
         lhs_unit = model.units.summarise_units(lcv_equation.lhs)
         assert rhs_unit == model.units.store['milliS_per_cm2']
         assert rhs_unit == lhs_unit
+
+        # check attributes on membrane capacitance
+        membrane_Cm = sorted_nodes[2]
+        assert str(membrane_Cm) == '_membrane$Cm'
+        assert graph.node[membrane_Cm]['cmeta:id'] == 'membrane_capacitance'
+        assert graph.node[membrane_Cm]['variable_type'] == 'parameter'
