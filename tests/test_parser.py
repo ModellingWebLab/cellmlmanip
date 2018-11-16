@@ -211,3 +211,16 @@ class TestParser(object):
         with pytest.raises(AssertionError, match='Units second != volt'):
             for e in model.equations:
                 model.check_left_right_units_equal(e)
+
+    def test_algebraic(self):
+        example_cellml = os.path.join(
+            os.path.dirname(__file__), "cellml_files", "algebraic.cellml"
+        )
+        p = parser.Parser(example_cellml)
+        model = p.parse()
+        model.make_connections()
+        for c in model.components.values():
+            c.add_units_to_equations()
+        for e in model.equations:
+            print(e)
+            model.check_left_right_units_equal(e)

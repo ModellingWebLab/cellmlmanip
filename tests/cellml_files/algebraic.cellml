@@ -10,7 +10,7 @@ It also tests handling of novel base units, and a model that's a single componen
 
    <units name="new_base" base_units="yes"/>
    <units name="derived">
-      <unit units="new_base" prefix="nano"/>
+      <unit units="new_base"/>
       <unit units="second" exponent="-1"/>
    </units>
 

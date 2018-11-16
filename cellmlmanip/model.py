@@ -340,8 +340,14 @@ class Model(object):
             lhs_units = self.units.simplify_units_until_no_change(lhs)
             rhs_units = self.units.simplify_units_until_no_change(rhs)
 
-            assert self.units.is_equal(rhs_units, lhs_units), 'Units %s != %s' % (rhs_units,
-                                                                                  lhs_units)
+            if rhs_units.is_Add:
+                # each part of the add should equal the lhs unit
+                for atom in rhs_units.args:
+                    assert self.units.is_equal(atom, lhs_units), 'Units %s != %s' % (rhs_units,
+                                                                                     lhs_units)
+            else:
+                assert self.units.is_equal(rhs_units, lhs_units), 'Units %s != %s' % (rhs_units,
+                                                                                      lhs_units)
 
     def get_equation_graph(self):
         """Returns an ordered list of equations for the model"""
@@ -759,6 +765,10 @@ class QuantityStore(object):
 
         # For each of the <unit> elements for this unit definition
         for unit_element in self.cellml_definitions[name]:
+            # if this unit is a new base unit defined by the cellml model
+            if 'base_units' in unit_element and unit_element['base_units'] == 'yes':
+                return units.Quantity(name, units.Dimension(1), sympy.Rational(1, 1))
+
             # Source the <unit units="XXX"> from our store
             unit_as_quantity = self.get_quantity(unit_element['units'])
 
@@ -768,6 +778,7 @@ class QuantityStore(object):
 
             # Construct a string representing the expression and dimensions for this <unit>
             expr = str(unit_as_quantity.name)
+            print(unit_as_quantity.args)
             dimension = str(unit_as_quantity.args[1].args[0])
 
             if 'prefix' in unit_element:

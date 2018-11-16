@@ -75,7 +75,14 @@ class Parser(object):
         for units_element in units_elements:
             units_name = units_element.get(u'name')
             unit_elements = [dict(t.attrib) for t in units_element.getchildren()]
-            units_collected[units_name] = unit_elements
+
+            # if we didn't find any child <unit> elements
+            if not unit_elements:
+                if units_element.get('base_units') == 'yes':
+                    units_collected[units_name] = [{'base_units': 'yes'}]
+            else:
+                units_collected[units_name] = unit_elements
+
         self.model.add_unit(units_collected)
 
     def __add_components(self, model: etree.Element):
