@@ -182,3 +182,23 @@ class TestParser(object):
             print(name)
             for equation in component.equations:
                 print('\t', equation)
+
+    def test_bad_connection_units(self):
+        example_cellml = os.path.join(
+            os.path.dirname(__file__), "cellml_files", "err_bad_connection_units.cellml"
+        )
+        p = parser.Parser(example_cellml)
+        model = p.parse()
+
+        # first we make the connections
+        model.make_connections()
+
+        # then add the units to the equations
+        for c in model.components.values():
+            c.add_units_to_equations()
+
+        # then check the lhs/rhs units
+        with pytest.raises(AssertionError, match='Units volt != second'):
+            for e in model.equations:
+                model.check_left_right_units_equal(e)
+

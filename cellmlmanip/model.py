@@ -277,16 +277,14 @@ class Model(object):
 
         # For each CellML <variable< in the model
         for component, variable in self.variables:
+            # If this variable does not have a sympy.Dummy (e.g. variable declared but not mathml?)
+            if 'sympy.Dummy' not in variable:
+                variable['sympy.Dummy'] = sympy.Dummy(component.name + SYMPY_SYMBOL_DELIMITER + variable['name'])
+
             # If this variable does not get its value from another component
             if Model.__is_not_assigned(variable):
-                # If it doesn't have a dummy symbol
-                if 'sympy.Dummy' not in variable:
-                    # This variable was not used in any equations - create a new dummy symbol
-                    variable['sympy.Dummy'] = variable['assignment'] = sympy.Dummy(
-                        component.name + SYMPY_SYMBOL_DELIMITER + variable['name'])
-                else:
-                    # The variable is used in an equation & we use the same symbol
-                    variable['assignment'] = variable['sympy.Dummy']
+                # The assigned variable to this variable *is* the dummy symbol (no assignment)
+                variable['assignment'] = variable['sympy.Dummy']
 
         # Second, we loop over all model connections and create connections between variables
 
@@ -348,7 +346,8 @@ class Model(object):
         else:
             lhs_units = self.simplify_units_until_no_change(lhs)
             rhs_units = self.simplify_units_until_no_change(rhs)
-            assert QuantityStore.is_equal(lhs_units, rhs_units)
+            assert QuantityStore.is_equal(lhs_units, rhs_units), 'Units %s != %s' % (lhs_units,
+                                                                                     rhs_units)
 
     def get_equation_graph(self):
         """Returns an ordered list of equations for the model"""
