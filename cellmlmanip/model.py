@@ -259,7 +259,8 @@ class Model(object):
             (i) public_interface="out" or
             (ii) private_interface="out" without public_interface="in"
         """
-        return (('public_interface', 'out') in variables.items()) or \
+        return (('public_interface', 'out') in variables.items() and
+                ('private_interface', 'in' not in variables.items())) or \
                (('private_interface', 'out') in variables.items() and
                 ('public_interface', 'in') not in variables.items())
 
