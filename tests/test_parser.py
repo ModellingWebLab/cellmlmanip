@@ -183,6 +183,15 @@ class TestParser(object):
             for equation in component.equations:
                 print('\t', equation)
 
+    def test_connect_to_hidden_component(self):
+        example_cellml = os.path.join(
+            os.path.dirname(__file__), "cellml_files", "err_connect_to_hidden_component.cellml"
+        )
+        p = parser.Parser(example_cellml)
+        model = p.parse()
+        with pytest.raises(ValueError, match=r'^Cannot determine the source & target.*'):
+            model.make_connections()
+
     def test_bad_connection_units(self):
         example_cellml = os.path.join(
             os.path.dirname(__file__), "cellml_files", "err_bad_connection_units.cellml"

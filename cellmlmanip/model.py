@@ -498,7 +498,7 @@ class Model(object):
             elif __has_interface(*(var_att_2, pub, 'out'), *(var_att_1, pub, 'in')):
                 return self.__connect_with_direction(cmp_name_2, var_att_2, cmp_name_1, var_att_1)
 
-        raise RuntimeError("Cannot determine the source & target for connection %s" % connection)
+        raise ValueError("Cannot determine the source & target for connection %s" % str(connection))
 
     def __connect_with_direction(self, source_component, source_variable,
                                  target_component, target_variable):
