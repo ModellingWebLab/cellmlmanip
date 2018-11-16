@@ -148,7 +148,8 @@ class Parser(object):
         for group_element in group_elements:
 
             # find the relationship for this <group>
-            relationship_ref = group_element.findall(Parser.with_ns(XmlNs.CELLML, u'relationship_ref'))
+            relationship_ref = group_element.findall(Parser.with_ns(XmlNs.CELLML,
+                                                                    u'relationship_ref'))
             assert len(relationship_ref) == 1
             relationship = relationship_ref[0].attrib.get('relationship')
 
@@ -161,7 +162,8 @@ class Parser(object):
         siblings = []
 
         # for each of the child <component_ref> elements in the parent tag
-        for component_ref_element in parent_tag.findall(Parser.with_ns(XmlNs.CELLML, u'component_ref')):
+        for component_ref_element in parent_tag.findall(Parser.with_ns(XmlNs.CELLML,
+                                                                       u'component_ref')):
 
             # get the name of the child component
             child_component = component_ref_element.attrib.get('component')
