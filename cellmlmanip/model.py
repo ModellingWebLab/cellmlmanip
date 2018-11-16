@@ -328,16 +328,6 @@ class Model(object):
                     logging.warning('Variable (%s) in component (%s) not assigned a dummy',
                                     variable['name'], component.name)
 
-    def simplify_units_until_no_change(self, expr):
-        """Simplifies the units of an expression until they cannot be simplified any further"""
-        unsimplified_expr = expr
-        while True:
-            simplified_expr = self.units.summarise_units(unsimplified_expr)
-            if unsimplified_expr == simplified_expr:
-                break
-            unsimplified_expr = simplified_expr
-        return simplified_expr
-
     def check_left_right_units_equal(self, equality: sympy.Eq):
         """Given a Sympy Equality expression, checks that the LHS and RHS have the same units"""
         rhs: sympy.Expr = equality.rhs
@@ -347,10 +337,10 @@ class Model(object):
             for piece, _ in rhs.args:
                 self.check_left_right_units_equal(sympy.Eq(lhs, piece))
         else:
-            lhs_units = self.simplify_units_until_no_change(lhs)
-            rhs_units = self.simplify_units_until_no_change(rhs)
-            assert QuantityStore.is_equal(lhs_units, rhs_units), 'Units %s != %s' % (lhs_units,
-                                                                                     rhs_units)
+            lhs_units = self.units.simplify_units_until_no_change(lhs)
+            rhs_units = self.units.simplify_units_until_no_change(rhs)
+            assert self.units.is_equal(lhs_units, rhs_units), 'Units %s != %s' % (lhs_units,
+                                                                                  rhs_units)
 
     def get_equation_graph(self):
         """Returns an ordered list of equations for the model"""
@@ -739,8 +729,7 @@ class QuantityStore(object):
         # Otherwise, descend into the expression tree
         return expr.func(*[self.summarise_units(x) for x in expr.args])
 
-    @staticmethod
-    def is_equal(quantity_1, quantity_2):
+    def is_equal(self, quantity_1, quantity_2):
         """Converts one quantity into another to see if they are equal
 
         :param quantity_1: a Sympy Quantity instance
@@ -800,3 +789,14 @@ class QuantityStore(object):
         logging.debug('%s=Quantity("%s", %s, %s)',
                       name, name, full_dimension.args[0], full_unit_expr)
         return quantity
+
+    def simplify_units_until_no_change(self, expr):
+        """Simplifies the units of an expression until they cannot be simplified any further"""
+        unsimplified_expr = expr
+        while True:
+            simplified_expr = self.summarise_units(unsimplified_expr)
+            if unsimplified_expr == simplified_expr:
+                break
+            unsimplified_expr = simplified_expr
+        return simplified_expr
+

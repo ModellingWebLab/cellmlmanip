@@ -136,7 +136,7 @@ class TestParser(object):
         test_equation = model.components['deriv_on_rhs2b'].equations[0]
         new_rhs = units.convert_to(test_equation.rhs, lhs_units)
         new_rhs_units = model.units.summarise_units(new_rhs)
-        assert QuantityStore.is_equal(lhs_units, new_rhs_units)
+        assert model.units.is_equal(lhs_units, new_rhs_units)
 
         # TODO: work in progress...trying to understand what's going on here
         def simplify_units_until_no_change(expr):
@@ -156,14 +156,14 @@ class TestParser(object):
             for index, equation in enumerate(component.equations):
                 lhs_units = model.units.summarise_units(equation.lhs)
                 rhs_units = simplify_units_until_no_change(equation.rhs)
-                if not QuantityStore.is_equal(lhs_units, rhs_units):
+                if not model.units.is_equal(lhs_units, rhs_units):
                     new_rhs = units.convert_to(equation.rhs, lhs_units)
                     # Create a new equality with the converted RHS and replace original
                     equation = sympy.Eq(equation.lhs, new_rhs)
                     component.equations[index] = equation
                     lhs_units = model.units.summarise_units(equation.lhs)
                     rhs_units = model.units.summarise_units(equation.rhs)
-                    assert QuantityStore.is_equal(lhs_units, rhs_units)
+                    assert model.units.is_equal(lhs_units, rhs_units)
 
     def test_unit_extraction(self, model):
         eq = (5*units.mile/(2*units.hour + 10*units.minute))**(8*units.gram)
