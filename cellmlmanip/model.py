@@ -279,7 +279,9 @@ class Model(object):
         for component, variable in self.variables:
             # If this variable does not have a sympy.Dummy (e.g. variable declared but not mathml?)
             if 'sympy.Dummy' not in variable:
-                variable['sympy.Dummy'] = sympy.Dummy(component.name + SYMPY_SYMBOL_DELIMITER + variable['name'])
+                variable['sympy.Dummy'] = sympy.Dummy(
+                    component.name + SYMPY_SYMBOL_DELIMITER + variable['name']
+                )
 
             # If this variable does not get its value from another component
             if Model.__is_not_assigned(variable):

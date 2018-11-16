@@ -210,4 +210,3 @@ class TestParser(object):
         with pytest.raises(AssertionError, match='Units volt != second'):
             for e in model.equations:
                 model.check_left_right_units_equal(e)
-
