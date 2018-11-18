@@ -181,18 +181,27 @@ class TestHodgkin:
                 # substitute all symbols in the rhs of the equation
                 eq_substituted = eq_no_units.subs(evaluated_symbols)
 
+                # if any symbols remain, we have a problem
+                remaining_symbols = eq_substituted.atoms(sympy.Symbol)
+                if remaining_symbols:
+                    for remaining_symbol in remaining_symbols:
+                        # TODO: we need to handle 0.0 - best place to put this?
+                        if str(remaining_symbol) == '_0.0':
+                            eq_substituted = eq_substituted.subs({remaining_symbol: 0.0})
+                        else:
+                            pytest.fail("Unresolved symbol" + remaining_symbol + " in " + equation)
+
                 # calculate the result
                 eq_evaluated = eq_substituted.evalf()
 
                 # save the calculation for this symbol (to be used in the next equations)
-                evaluated_symbols[__remove_quantities(equation.lhs)] = eq_evaluated
+                lhs_without_units = __remove_quantities(equation.lhs)
+                evaluated_symbols[lhs_without_units] = eq_evaluated
 
                 # if the symbol on the lhs is a derivative
-                derivative = equation.lhs.atoms(sympy.Derivative)
-                if derivative:
+                if lhs_without_units.is_Derivative:
                     # save the calculation for testing
-                    assert len(derivative) == 1
-                    state_derivatives[derivative.pop().free_symbols.pop()] = eq_evaluated
+                    state_derivatives[lhs_without_units.free_symbols.pop()] = eq_evaluated
 
             # otherwise the symbol doesn't have an equation
             # if the symbol has an initial value
@@ -203,19 +212,8 @@ class TestHodgkin:
                 # something has gone wrong - no equation or initial value
                 pytest.fail("Symbol " + str(symbol) + " does not have equation or initial value.")
 
-        # loop over each calculated state variable
+        # for each calculated state variable
         for state_symbol, evaluated_deriv in state_derivatives.items():
-            # there should be no remaining symbols in the evaluated expression
-            symbols = evaluated_deriv.atoms(sympy.Symbol)
-            if len(symbols):
-                for symbol in symbols:
-                    # TODO: we need to handle 0.0 - best place to put this?
-                    if str(symbol) == '_0.0':
-                        evaluated_deriv = evaluated_deriv.subs({symbol: 0.0})
-                    else:
-                        pytest.fail("Lost symbol: deriv(" + state_symbol + ")=" + evaluated_deriv)
-                state_derivatives[state_symbol] = evaluated_deriv
-
             # check evaluation against expected
             expected = evaluated_derivatives[str(state_symbol)]
             actual = evaluated_deriv
