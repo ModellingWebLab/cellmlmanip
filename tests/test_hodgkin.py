@@ -23,6 +23,10 @@ class TestHodgkin:
         model = p.parse()
         return model
 
+    @pytest.fixture(scope="class")
+    def graph(self, model):
+        return model.get_equation_graph()
+
     def test_counts(self, model):
         # https://models.cellml.org/exposure/5d116522c3b43ccaeb87a1ed10139016/hodgkin_huxley_1952_variant01.cellml/cellml_math
         assert len(model.components) == 8
@@ -46,8 +50,7 @@ class TestHodgkin:
         for e in model.equations:
             model.check_left_right_units_equal(e)
 
-    def test_get_equations(self, model):
-        graph = model.get_equation_graph()
+    def test_get_equations(self, graph, model):
         assert len(graph.nodes) == 32
 
         free_variable = model.find_variable({'type': 'free'})
@@ -104,7 +107,7 @@ class TestHodgkin:
         assert graph.node[membrane_Cm]['cmeta:id'] == 'membrane_capacitance'
         assert graph.node[membrane_Cm]['variable_type'] == 'parameter'
 
-    def test_evaluation(self, model):
+    def test_evaluation(self, graph):
         """
         From Michael:
 
@@ -151,7 +154,6 @@ class TestHodgkin:
             '_potassium_channel_n_gate$n': -1.34157228632045961e-03
         }
 
-        graph = model.get_equation_graph()
         sorted_symbols = nx.lexicographical_topological_sort(graph, key=lambda x: str(x))
 
         def __remove_quantities(eq_with_quantities):
