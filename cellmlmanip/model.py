@@ -349,7 +349,7 @@ class Model(object):
                 assert self.units.is_equal(rhs_units, lhs_units), 'Units %s != %s' % (rhs_units,
                                                                                       lhs_units)
 
-    def get_equation_graph(self):
+    def get_equation_graph(self) -> nx.DiGraph:
         """Returns an ordered list of equations for the model"""
         # TODO: Set the parameters of the model (parameters rather than use initial values)
 
@@ -409,8 +409,7 @@ class Model(object):
                     variable = variable[0]
 
                     # If the variable is a state or free variable of a derivative
-                    if 'type' in variable:
-                        assert variable['type'] in ['state', 'free']
+                    if 'type' in variable and variable['type'] in ['state', 'free']:
                         graph.add_node(rhs_symbol, equation=None, variable_type=variable['type'])
                         graph.add_edge(rhs_symbol, lhs_symbol)
                     else:
@@ -425,9 +424,10 @@ class Model(object):
                                            rhs_symbol * unit,
                                            sympy.Number(variable['initial_value']) * unit),
                                        variable_type='parameter')
-                        if 'cmeta:id' in variable:
-                            graph.nodes[rhs_symbol]['cmeta:id'] = variable['cmeta:id']
                         graph.add_edge(rhs_symbol, lhs_symbol)
+
+                    if 'cmeta:id' in variable:
+                        graph.nodes[rhs_symbol]['cmeta:id'] = variable['cmeta:id']
 
         return graph
 
@@ -778,7 +778,6 @@ class QuantityStore(object):
 
             # Construct a string representing the expression and dimensions for this <unit>
             expr = str(unit_as_quantity.name)
-            print(unit_as_quantity.args)
             dimension = str(unit_as_quantity.args[1].args[0])
 
             if 'prefix' in unit_element:
@@ -812,4 +811,3 @@ class QuantityStore(object):
                 break
             unsimplified_expr = simplified_expr
         return simplified_expr
-

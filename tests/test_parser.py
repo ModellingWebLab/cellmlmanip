@@ -6,7 +6,6 @@ import sympy
 import sympy.physics.units as units
 
 from cellmlmanip import parser
-from cellmlmanip.model import QuantityStore
 
 logging.getLogger().setLevel(logging.INFO)
 

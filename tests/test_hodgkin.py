@@ -1,7 +1,10 @@
 import logging
 import os
 
+import networkx as nx
 import pytest
+import sympy
+from sympy.physics.units import Quantity
 
 from cellmlmanip import parser
 
@@ -57,7 +60,6 @@ class TestHodgkin:
         first_state_variable = state_variables[0]
         assert graph.node[first_state_variable['sympy.Dummy']]['variable_type'] == 'state'
 
-        import networkx as nx
         sorted_nodes = nx.lexicographical_topological_sort(graph, key=lambda x: str(x))
 
         sorted_nodes = list(sorted_nodes)
@@ -66,8 +68,8 @@ class TestHodgkin:
         assert str(sorted_nodes[20]) == '_sodium_channel$E_Na'
         assert str(sorted_nodes[-1]) == 'Derivative(_membrane$V, _environment$time)'
 
-        for i, node in enumerate(sorted_nodes):
-            print('%d. %r: %r' % (i, node, graph.nodes[node]['equation']))
+        # for i, node in enumerate(sorted_nodes):
+        #     print('%d. %r: %r' % (i, node, graph.nodes[node]['equation']))
 
         # use `dot -Tpng path.dot -o path.png`
         # nx.nx_agraph.write_dot(graph,
@@ -101,3 +103,118 @@ class TestHodgkin:
         assert str(membrane_Cm) == '_membrane$Cm'
         assert graph.node[membrane_Cm]['cmeta:id'] == 'membrane_capacitance'
         assert graph.node[membrane_Cm]['variable_type'] == 'parameter'
+
+    def test_evaluation(self, model):
+        """
+        From Michael:
+
+        These are my calculations for the derivatives of the state variables
+        in the hodgkin-huxley model, evaluated from the initial state (so the
+        initial values of the state variables)
+
+        Reading model from hodgkin_huxley_squid_axon_model_1952_modified.mmt...
+        Model hodgkin_huxley_squid_axon_model_1952_modified read successfully.
+        Evaluating state vector derivatives...
+
+        -------------------------------------------------------------------------------
+        Name                        Initial value             Derivative at t=0
+        -------------------------------------------------------------------------------
+        membrane.V                  -7.50000000000000000e+01  -6.00768750000000740e-01
+        sodium_channel_m_gate.m      5.00000000000000028e-02   1.23855383553985177e-02
+        sodium_channel_h_gate.h      5.99999999999999978e-01  -4.55523906540064583e-04
+        potassium_channel_n_gate.n   3.25000000000000011e-01  -1.34157228632045961e-03
+        -------------------------------------------------------------------------------```
+
+        The free variable time is set to 0
+
+        Numbers are converted to string with `'{:<1.17e}'.format(number)`,
+        which I think should give the maximum precision for any double precision float
+
+        (as in, converting to and back from string shouldn't lose
+        accuracy, it does _not_ mean all printed digits are accurate)
+        """
+
+        # initial values for the free and state variables
+        initials = {
+            '_environment$time': 0.0,
+            '_membrane$V': -7.50000000000000000e+01,
+            '_sodium_channel_m_gate$m': 5.00000000000000028e-02,
+            '_sodium_channel_h_gate$h': 5.99999999999999978e-01,
+            '_potassium_channel_n_gate$n': 3.25000000000000011e-01
+        }
+
+        # the calculated derivatives at the initial conditions
+        evaluated_derivatives = {
+            '_membrane$V': -6.00768750000000740e-01,
+            '_sodium_channel_m_gate$m': 1.23855383553985177e-02,
+            '_sodium_channel_h_gate$h': -4.55523906540064583e-04,
+            '_potassium_channel_n_gate$n': -1.34157228632045961e-03
+        }
+
+        graph = model.get_equation_graph()
+        sorted_symbols = nx.lexicographical_topological_sort(graph, key=lambda x: str(x))
+
+        def __remove_quantities(eq_with_quantities):
+            """Replaces all quantity symbols in the equation with 1"""
+            quantities = {q: 1 for q in eq_with_quantities.atoms(Quantity)}
+            eq_without_quantities = eq_with_quantities.subs(quantities, simultaneous=True)
+            return eq_without_quantities
+
+        # collects all the evaluated lh-sides of the equations
+        evaluated_symbols = dict()
+
+        # saves the evaluated lh-side for the state variables
+        state_derivatives = dict()
+
+        # loop over each of the equations in the model (topologically sorted)
+        for symbol in sorted_symbols:
+            equation = graph.nodes[symbol]['equation']
+
+            # if this symbol is calculated using an equation
+            if equation is not None:
+
+                # remove all quantity symbols from the equation
+                eq_no_units = __remove_quantities(equation.rhs)
+
+                # substitute all symbols in the rhs of the equation
+                eq_substituted = eq_no_units.subs(evaluated_symbols)
+
+                # calculate the result
+                eq_evaluated = eq_substituted.evalf()
+
+                # save the calculation for this symbol (to be used in the next equations)
+                evaluated_symbols[__remove_quantities(equation.lhs)] = eq_evaluated
+
+                # if the symbol on the lhs is a derivative
+                derivative = equation.lhs.atoms(sympy.Derivative)
+                if derivative:
+                    # save the calculation for testing
+                    assert len(derivative) == 1
+                    state_derivatives[derivative.pop().free_symbols.pop()] = eq_evaluated
+
+            # otherwise the symbol doesn't have an equation
+            # if the symbol has an initial value
+            elif str(symbol) in initials:
+                # add the symbol's initial value to the substitution dictionary
+                evaluated_symbols[symbol] = sympy.Number(initials[str(symbol)])
+            else:
+                # something has gone wrong - no equation or initial value
+                pytest.fail("Symbol " + str(symbol) + " does not have equation or initial value.")
+
+        # loop over each calculated state variable
+        for state_symbol, evaluated_deriv in state_derivatives.items():
+            # there should be no remaining symbols in the evaluated expression
+            symbols = evaluated_deriv.atoms(sympy.Symbol)
+            if len(symbols):
+                for symbol in symbols:
+                    # TODO: we need to handle 0.0 - best place to put this?
+                    if str(symbol) == '_0.0':
+                        evaluated_deriv = evaluated_deriv.subs({symbol: 0.0})
+                    else:
+                        pytest.fail("Lost symbol: deriv(" + state_symbol + ")=" + evaluated_deriv)
+                state_derivatives[state_symbol] = evaluated_deriv
+
+            # check evaluation against expected
+            expected = evaluated_derivatives[str(state_symbol)]
+            actual = evaluated_deriv
+            assert float(actual) == pytest.approx(expected)
