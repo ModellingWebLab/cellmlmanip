@@ -15,8 +15,7 @@ setup(
     author_email='',
     url='https://github.com/ModellingWebLab/cellmlmanip',
     license=license_,
-    find_packages=find_packages(exclude=('tests', 'docs')),
-    
+    packages=find_packages(exclude=('tests', 'docs')),
     install_requires=[
         'lxml>=4',
         'networkx>=2',
