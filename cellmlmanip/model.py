@@ -11,7 +11,6 @@ import rdflib
 import sympy
 import sympy.physics.units as units
 
-
 # Delimiter for the name of the Sympy symbol: <component><delimiter><name>
 SYMPY_SYMBOL_DELIMITER = '$'
 
@@ -259,10 +258,10 @@ class Model(object):
             (i) public_interface="out" or
             (ii) private_interface="out" without public_interface="in"
         """
-        return (('public_interface', 'out') in variables.items() and
-                ('private_interface', 'in' not in variables.items())) or \
-               (('private_interface', 'out') in variables.items() and
-                ('public_interface', 'in') not in variables.items())
+        return (
+            ('private_interface', 'in') not in variables.items() and
+            ('public_interface', 'in') not in variables.items()
+        )
 
     def make_connections(self):
         """Uses public/private interface attributes of variables and model connections to assign
@@ -306,7 +305,7 @@ class Model(object):
             logging.debug("Try to connect %s and %s", *connection)
             success = self.__connect(connection)
             if not success:
-                logging.debug('Cannot connect (source does not have assignment).')
+                logging.debug('Cannot connect %s (source does not have assignment).', connection)
                 connections_to_process.append(connection)
             # TODO: track looping and break if we can't exit
 
@@ -481,37 +480,42 @@ class Model(object):
         :param connection: a single connection tuple, created by the CellML parser
             ((component_1, variable_1), (component_2, variable_2))
         """
-        cmp_name_1, var_att_1, cmp_name_2, var_att_2 = self.__get_connection_endpoints(connection)
+        comp_1, var_1, comp_2, var_2 = self.__get_connection_endpoints(connection)
 
         # keys for lookup
         pub = 'public_interface'
         pri = 'private_interface'
 
-        def __are_siblings(name_a, name_b):
-            return self.components[name_a].parent == self.components[name_b].parent
+        def __are_siblings(comp_a, comp_b):
+            return self.components[comp_a].parent == self.components[comp_b].parent
 
         def __parent_of(parent_name, child_name):
             return parent_name == self.components[child_name].parent
 
-        def __has_interface(variable_a, key_a, value_a, variable_b, key_b, value_b):
-            return (key_a, value_a) in variable_a.items() and (key_b, value_b) in variable_b.items()
+        def __has_interface(dic, key, val):
+            return key in dic and dic[key] == val
 
-        # if one component is encapsulated by the other
-        if __parent_of(cmp_name_1, cmp_name_2) or __parent_of(cmp_name_2, cmp_name_1):
-            # they can be connected with (i) public=out to private=in (ii) private=out to public=in
-            if __has_interface(*(var_att_1, pri, 'in'), *(var_att_2, pub, 'out')):
-                return self.__connect_with_direction(cmp_name_2, var_att_2, cmp_name_1, var_att_1)
-            elif __has_interface(*(var_att_1, pri, 'out'), *(var_att_2, pub, 'in')):
-                return self.__connect_with_direction(cmp_name_1, var_att_1, cmp_name_2, var_att_2)
+        # if the components are siblings (either same parent or top-level)
+        if __are_siblings(comp_1, comp_2):
+            # they are both connected on their public_interface
+            if __has_interface(var_1, pub, 'out') and __has_interface(var_2, pub, 'in'):
+                return self.__connect_with_direction(comp_1, var_1, comp_2, var_2)
+            elif __has_interface(var_1, pub, 'in') and __has_interface(var_2, pub, 'out'):
+                return self.__connect_with_direction(comp_2, var_2, comp_1, var_1)
+        else:
+            # determine which component is parent of the other
+            if __parent_of(comp_1, comp_2):
+                parent_comp, child_comp = comp_1, comp_2
+                parent_var, child_var = var_1, var_2
+            else:
+                parent_comp, child_comp = comp_2, comp_1
+                parent_var, child_var = var_2, var_1
 
-        # if components are siblings (in group or top-level group) or one encapsulates the other
-        if __are_siblings(cmp_name_1, cmp_name_2) or \
-                __parent_of(cmp_name_1, cmp_name_2) or __parent_of(cmp_name_2, cmp_name_1):
-            # they can be connected using public_interface=out to public_interface=in
-            if __has_interface(*(var_att_1, pub, 'out'), *(var_att_2, pub, 'in')):
-                return self.__connect_with_direction(cmp_name_1, var_att_1, cmp_name_2, var_att_2)
-            elif __has_interface(*(var_att_2, pub, 'out'), *(var_att_1, pub, 'in')):
-                return self.__connect_with_direction(cmp_name_2, var_att_2, cmp_name_1, var_att_1)
+            # parent/child components are connected using private/public interface, respectively
+            if __has_interface(child_var, pub, 'in') and __has_interface(parent_var, pri, 'out'):
+                return self.__connect_with_direction(parent_comp, parent_var, child_comp, child_var)
+            elif __has_interface(child_var, pub, 'out') and __has_interface(parent_var, pri, 'in'):
+                return self.__connect_with_direction(child_comp, child_var, parent_comp, parent_var)
 
         raise ValueError("Cannot determine the source & target for connection %s" % str(connection))
 
@@ -519,8 +523,8 @@ class Model(object):
                                  target_component, target_variable):
         """Given the source and target component and variable, create a connection by assigning
         the symbol from the source to the target. If units are not the same, it will add an equation
-        to the component reflecting the relationship. If a symbol has not been assigned to the
-        source variable, then return False.
+        to the target component reflecting the relationship. If a symbol has not been assigned to
+        the source variable, then return False.
 
         :param source_component: name of source component
         :param source_variable: name of source variable
@@ -529,8 +533,15 @@ class Model(object):
         """
         logging.debug('    Source: %s ⟶ %s', source_component, source_variable)
         logging.debug('    Target: %s ⟶ %s', target_component, target_variable)
+
         # If the source variable has already been assigned a final symbol
         if 'assignment' in source_variable:
+
+            if 'assignment' in target_variable:
+                raise ValueError('Target already assigned to %s before assignment to %s',
+                                 target_variable['assignment'],
+                                 source_variable['assignment'])
+
             # If source/target variable is in the same unit
             if source_variable['units'] == target_variable['units']:
                 # Direct substitution is possible
