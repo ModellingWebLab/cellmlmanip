@@ -129,7 +129,6 @@ class TestParser(object):
         test_equation = model.components['deriv_on_rhs2b'].equations[0]
         lhs_units = model.units.summarise_units(test_equation.lhs)
         rhs_units = model.units.summarise_units(test_equation.rhs)
-        print(lhs_units, rhs_units)
         assert not model.units.is_equal(rhs_units, lhs_units)
 
         # Check a specific RHS->LHS unit conversion

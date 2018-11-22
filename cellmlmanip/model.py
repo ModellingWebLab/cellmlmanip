@@ -117,7 +117,8 @@ class Component(object):
                     unit_info[key] = key * value
 
             # Do the substitutions (WARNING: irreversible!)
-            self.equations[index] = equation.xreplace(unit_info)
+            with sympy.evaluate(False):
+                self.equations[index] = equation.xreplace(unit_info)
 
     def collect_units(self, expr):
         """Descends into the given Sympy expression and returns the appropriate units (if any)"""
