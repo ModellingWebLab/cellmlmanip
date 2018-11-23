@@ -136,16 +136,6 @@ class TestParser(object):
         new_rhs_units = model.units.summarise_units(new_rhs)
         assert model.units.is_equal(new_rhs_units, lhs_units)
 
-        # TODO: work in progress...trying to understand what's going on here
-        def simplify_units_until_no_change(expr):
-            current_expression = expr
-            while True:
-                new_expression = model.units.summarise_units(current_expression)
-                if current_expression == new_expression:
-                    break
-                current_expression = new_expression
-            return new_expression
-
         # TODO: try conversion of units of RHS by LHS.units / RHS.unit == x;
         # i.e. if x == 1, good, else RHS = RHS * x
 
