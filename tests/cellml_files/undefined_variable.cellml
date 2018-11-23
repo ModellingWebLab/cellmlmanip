@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<model name="generated_model" xmlns="http://www.cellml.org/cellml/1.0#" xmlns:cellml="http://www.cellml.org/cellml/1.0#">
+	<component name="c">
+		<variable name="a" units="dimensionless"/>
+		<math xmlns="http://www.w3.org/1998/Math/MathML">
+			<apply>
+				<eq/>
+				<ci>b</ci>
+				<cn cellml:units="dimensionless">2.0</cn>
+			</apply>
+        </math>
+	</component>
+</model>
