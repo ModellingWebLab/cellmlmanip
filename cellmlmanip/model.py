@@ -732,11 +732,31 @@ class QuantityStore(object):
         if expr.is_Derivative:
             return None
 
-        # If this is an exponential statement and we can evaluate it to a number
-        # (i.e. all the units inside the exponential have dropped-out)
-        if isinstance(expr, sympy.exp) and isinstance(expr.evalf(), sympy.Number):
-            # We say this expression is dimensionless
+        if expr.is_Number:
+            return expr
+
+        # If expr is an exponential, the result is always dimensionless (don't descend)
+        if isinstance(expr, sympy.exp):
             return self.get_quantity('dimensionless')
+
+        # If expression is of the form dimensionless**n then -> dimensionless
+        if (isinstance(expr, sympy.Pow)
+                and isinstance(expr.args[0], units.Quantity)
+                and expr.args[0] == self.get_quantity('dimensionless')):
+            return self.get_quantity('dimensionless')
+
+        # remove negative coefficients (prevents cases where `unit - unit = 0`)
+        def __no_neg_coeffs(expression):
+            if expression.is_Symbol:
+                return expression
+            elif expression.is_Number:
+                return expression
+            else:
+                coefficients = {k: v for k, v in expression.as_coefficients_dict().items() if v < 0}
+                for c in coefficients.keys():
+                    expression = expression.subs(c, c * -1)
+                return expression.func(*[__no_neg_coeffs(x) for x in expression.args])
+        expr = __no_neg_coeffs(expr)
 
         # Units are always part of a Multiplicative expression
         # TODO: check if all other units are always multiplicative!
