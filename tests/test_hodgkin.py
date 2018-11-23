@@ -40,8 +40,7 @@ class TestHodgkin:
         assert target['assignment'] == source['sympy.Dummy']
 
     def test_add_units_to_equations(self, model):
-        for c in model.components.values():
-            c.add_units_to_equations()
+        model.add_units_to_equations()
         equation = model.components['sodium_channel'].equations[0]
         lhs_units = model.units.summarise_units(equation.lhs)
         assert lhs_units == model.units.store['millivolt']

@@ -116,8 +116,7 @@ class TestParser(object):
 
     def test_add_units_to_equations(self, model):
         # This is an irreversible operation # TODO: don't mutate?
-        for component in model.components.values():
-            component.add_units_to_equations()
+        model.add_units_to_equations()
 
         # mV/millisecond == mV_per_ms
         test_equation = model.components['single_independent_ode'].equations[0]
@@ -154,7 +153,7 @@ class TestParser(object):
         for component in model.components.values():
             for index, equation in enumerate(component.equations):
                 lhs_units = model.units.summarise_units(equation.lhs)
-                rhs_units = simplify_units_until_no_change(equation.rhs)
+                rhs_units = model.units.simplify_units_until_no_change(equation.rhs)
                 if not model.units.is_equal(lhs_units, rhs_units):
                     new_rhs = units.convert_to(equation.rhs, lhs_units)
                     # Create a new equality with the converted RHS and replace original
@@ -202,8 +201,7 @@ class TestParser(object):
         model.make_connections()
 
         # then add the units to the equations
-        for c in model.components.values():
-            c.add_units_to_equations()
+        model.add_units_to_equations()
 
         # then check the lhs/rhs units
         with pytest.raises(AssertionError, match='Units second != volt'):
@@ -217,8 +215,7 @@ class TestParser(object):
         p = parser.Parser(example_cellml)
         model = p.parse()
         model.make_connections()
-        for c in model.components.values():
-            c.add_units_to_equations()
+        model.add_units_to_equations()
         for e in model.equations:
             print(e)
             model.check_left_right_units_equal(e)
