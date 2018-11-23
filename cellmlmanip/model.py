@@ -94,6 +94,9 @@ class Component(object):
             variable_name = symbol.name.split(SYMPY_SYMBOL_DELIMITER)[1]
             if variable_name in self.variables:
                 self.variables[variable_name]['sympy.Dummy'] = symbol
+            else:
+                raise KeyError('Variable "%s" in component "%s" could not be found.' %
+                               (variable_name, self.name))
 
     def collect_units(self, expr):
         """Descends into the given Sympy expression and returns the appropriate units (if any)"""
