@@ -782,6 +782,11 @@ class QuantityStore(object):
             # Perform the same mathematical operation, but on units only (no symbols or numbers)
             return expr.func(*keep)
 
+        # if there are not quantities in this expression, we can't continue
+        # (or we should handle this scenario above)
+        if not expr.atoms(units.Quantity):
+            raise ValueError('No quantities to summarise in expression %s' % expr)
+
         # Otherwise, descend into the expression tree
         return expr.func(*[self.summarise_units(x) for x in expr.args])
 
