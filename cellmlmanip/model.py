@@ -11,6 +11,7 @@ import rdflib
 import sympy
 import sympy.physics.units as units
 
+
 # Delimiter for the name of the Sympy symbol: <component><delimiter><name>
 SYMPY_SYMBOL_DELIMITER = '$'
 
@@ -723,6 +724,11 @@ class QuantityStore(object):
         """Given a Sympy expression, will get all the Quantity objects in the expression and
         collect them together to give a single Sympy expression of the units
         """
+        # remove all free_symbols TODO: why doesn't this work??
+        # replace_symbols = {k: 1 for k in expr.free_symbols}
+        # with sympy.evaluate(False):
+        #    expr = expr.subs(replace_symbols, simultaneous=True)
+
         # If this expression is a Quantity itself
         if isinstance(expr, units.Quantity):
             # Return it as it is
