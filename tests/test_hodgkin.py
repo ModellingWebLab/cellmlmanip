@@ -54,13 +54,16 @@ class TestHodgkin:
 
         free_variable = model.find_variable({'type': 'free'})
         assert len(free_variable) == 1
-        assert free_variable[0]['cmeta:id'] == 'time'
-        assert graph.node[free_variable[0]['sympy.Dummy']]['variable_type'] == 'free'
+        free_variable = free_variable[0]
+        assert free_variable['cmeta:id'] == 'time'
+        assert graph.node[free_variable['sympy.Dummy']]['variable_type'] == 'free'
+        assert free_variable['cmeta:id'] == graph.node[free_variable['sympy.Dummy']]['cmeta:id']
 
         state_variables = model.find_variable({'type': 'state'})
         assert len(state_variables) == 4
-        first_state_variable = state_variables[0]
-        assert graph.node[first_state_variable['sympy.Dummy']]['variable_type'] == 'state'
+        state_variable = state_variables[0]
+        assert graph.node[state_variable['sympy.Dummy']]['variable_type'] == 'state'
+        assert state_variable['cmeta:id'] == graph.node[state_variable['sympy.Dummy']]['cmeta:id']
 
         sorted_nodes = nx.lexicographical_topological_sort(graph, key=lambda x: str(x))
 
@@ -78,7 +81,7 @@ class TestHodgkin:
         #                        '/Users/tamuri/Desktop/path.dot')
 
         # free variable should not depend on anything
-        time_dummy = free_variable[0]['sympy.Dummy']
+        time_dummy = free_variable['sympy.Dummy']
         assert graph.in_degree(time_dummy) == 0
 
         # state variables should not depend on anything
