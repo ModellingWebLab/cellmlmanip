@@ -446,8 +446,9 @@ class Model(object):
                 for key in ['cmeta:id', 'name']:
                     if key in variable:
                         graph.nodes[node][key] = variable[key]
-                if 'initial_value' in variable:
-                    graph.nodes[node]['initial_value'] = sympy.Float(variable['initial_value'])
+                if graph.nodes[node].get('variable_type', '') == 'state':
+                    if 'initial_value' in variable:
+                        graph.nodes[node]['initial_value'] = sympy.Float(variable['initial_value'])
 
         return graph
 

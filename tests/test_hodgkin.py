@@ -82,8 +82,12 @@ class TestHodgkin:
                 for key in ['cmeta:id', 'name']:
                     if key in variable[0]:
                         assert variable[0][key] == graph.nodes[node][key]
-                if 'initial_value' in variable[0]:
+
+                # only state variables should have initial_values
+                if graph.nodes[node].get('variable_type', '') == 'state':
                     assert float(variable[0]['initial_value']) == float(graph.nodes[node]['initial_value'])
+                else:
+                    assert 'initial_value' not in graph.nodes[node]
 
         # for i, node in enumerate(sorted_nodes):
         #     print('%d. %r: %r' % (i, node, graph.nodes[node]['equation']))
