@@ -65,7 +65,7 @@ class TestHodgkin:
         assert graph.node[state_variable['sympy.Dummy']]['variable_type'] == 'state'
         assert state_variable['cmeta:id'] == graph.node[state_variable['sympy.Dummy']]['cmeta:id']
 
-        sorted_nodes = nx.lexicographical_topological_sort(graph, key=lambda x: str(x))
+        sorted_nodes = nx.lexicographical_topological_sort(graph, key=str)
 
         sorted_nodes = list(sorted_nodes)
         assert str(sorted_nodes[0]) == '_environment$time'
@@ -172,7 +172,7 @@ class TestHodgkin:
             '_potassium_channel_n_gate$n': -1.34157228632045961e-03
         }
 
-        sorted_symbols = nx.lexicographical_topological_sort(graph, key=lambda x: str(x))
+        sorted_symbols = nx.lexicographical_topological_sort(graph, key=str)
 
         def __remove_quantities(eq_with_quantities):
             """Replaces all quantity symbols in the equation with 1"""
