@@ -79,8 +79,11 @@ class TestHodgkin:
             if not node.is_Derivative:
                 variable = model.find_variable({'sympy.Dummy': node})
                 assert len(variable) == 1
-                if 'cmeta:id' in variable[0]:
-                    assert variable[0]['cmeta:id'] == graph.nodes[node]['cmeta:id']
+                for key in ['cmeta:id', 'name']:
+                    if key in variable[0]:
+                        assert variable[0][key] == graph.nodes[node][key]
+                if 'initial_value' in variable[0]:
+                    assert float(variable[0]['initial_value']) == float(graph.nodes[node]['initial_value'])
 
         # for i, node in enumerate(sorted_nodes):
         #     print('%d. %r: %r' % (i, node, graph.nodes[node]['equation']))

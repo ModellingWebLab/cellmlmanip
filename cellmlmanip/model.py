@@ -396,11 +396,6 @@ class Model(object):
                 free_variable = self.find_variable({'sympy.Dummy': free_symbol})
                 assert len(free_variable) == 1
                 Model.__set_variable_type(free_variable[0], 'free')
-            else:
-                variable = self.find_variable({'sympy.Dummy': lhs_symbol})
-                assert len(variable) == 1
-                if 'cmeta:id' in variable[0]:
-                    graph.nodes[lhs_symbol]['cmeta:id'] = variable[0]['cmeta:id']
 
         # sanity check none of the lhs have the same hash!
         assert len(graph.nodes) == equation_count
@@ -439,12 +434,20 @@ class Model(object):
                         graph.add_node(rhs_symbol,
                                        equation=sympy.Eq(
                                            rhs_symbol * unit,
-                                           sympy.Number(variable['initial_value']) * unit),
+                                           sympy.Float(variable['initial_value']) * unit),
                                        variable_type='parameter')
                         graph.add_edge(rhs_symbol, lhs_symbol)
 
-                    if 'cmeta:id' in variable:
-                        graph.nodes[rhs_symbol]['cmeta:id'] = variable['cmeta:id']
+        for node in graph.nodes:
+            if not node.is_Derivative:
+                variable = self.find_variable({'sympy.Dummy': node})
+                assert len(variable) == 1
+                variable = variable.pop()
+                for key in ['cmeta:id', 'name']:
+                    if key in variable:
+                        graph.nodes[node][key] = variable[key]
+                if 'initial_value' in variable:
+                    graph.nodes[node]['initial_value'] = sympy.Float(variable['initial_value'])
 
         return graph
 
