@@ -398,8 +398,9 @@ class Model(object):
                 Model.__set_variable_type(free_variable[0], 'free')
             else:
                 variable = self.find_variable({'sympy.Dummy': lhs_symbol})
-                if 'cmeta:id' in variable:
-                    graph.nodes[lhs_symbol]['cmeta:id'] = variable['cmeta:id']
+                assert len(variable) == 1
+                if 'cmeta:id' in variable[0]:
+                    graph.nodes[lhs_symbol]['cmeta:id'] = variable[0]['cmeta:id']
 
         # sanity check none of the lhs have the same hash!
         assert len(graph.nodes) == equation_count

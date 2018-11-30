@@ -73,6 +73,15 @@ class TestHodgkin:
         assert str(sorted_nodes[20]) == '_sodium_channel$E_Na'
         assert str(sorted_nodes[-1]) == 'Derivative(_membrane$V, _environment$time)'
 
+        # check all cmeta ids have been added
+        for node in sorted_nodes:
+            # derivative nodes depend on state and free variable nodes
+            if not node.is_Derivative:
+                variable = model.find_variable({'sympy.Dummy': node})
+                assert len(variable) == 1
+                if 'cmeta:id' in variable[0]:
+                    assert variable[0]['cmeta:id'] == graph.nodes[node]['cmeta:id']
+
         # for i, node in enumerate(sorted_nodes):
         #     print('%d. %r: %r' % (i, node, graph.nodes[node]['equation']))
 
