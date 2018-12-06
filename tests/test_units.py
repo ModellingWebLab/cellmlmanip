@@ -80,3 +80,13 @@ class TestUnits(object):
             quantity_store.get_quantity('mV_per_usec'),
             unit_registry.millivolt / unit_registry.microsecond
         )
+
+    def test_conversion_factor(self, quantity_store):
+        ureg = quantity_store.ureg
+        assert quantity_store.get_conversion_factor(ureg.ms, ureg.second) == 0.001
+        assert quantity_store.get_conversion_factor(ureg.volt, ureg.millivolt) == 1000.0
+
+        assert quantity_store.get_conversion_factor(
+            quantity_store.get_quantity('milli_mole'),
+            quantity_store.get_quantity('mole')
+        ) == 0.001

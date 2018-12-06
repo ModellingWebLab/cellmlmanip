@@ -130,6 +130,18 @@ class QuantityStorePints(object):
         logging.debug('Unit %s => %s', custom_unit_name, full_unit_expr)
         return '%s = %s' % (custom_unit_name, full_unit_expr)
 
+    @staticmethod
+    def get_conversion_factor(from_unit, to_unit):
+        assert isinstance(from_unit, pint.unit._Unit)
+        assert isinstance(to_unit, pint.unit._Unit)
+
+        assert from_unit.dimensionality == to_unit.dimensionality
+
+        from_quantity = 1 * from_unit
+        to_quantity = 1 * to_unit
+
+        return from_quantity.to(to_quantity).magnitude
+
 
 class QuantityStore(object):
     """Holds sympy.physics.unit.Quantity objects for the model. Can be initialised with <units>
