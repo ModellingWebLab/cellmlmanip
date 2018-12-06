@@ -1,8 +1,136 @@
 import logging
 from typing import List
 
+import pint
 import sympy
+from pint import UndefinedUnitError
 from sympy.physics import units as units
+
+logging.basicConfig(level=logging.DEBUG)
+
+# The full list of supported CellML units
+# Taken from https://www.cellml.org/specifications/cellml_1.1/#sec_units
+# Some are not defined by Sympy, see comments
+CELLML_UNITS = {
+    # Base SI units
+    'ampere',
+    'candela',
+    'kelvin',
+    'kilogram',
+    'meter',
+    'mole',
+    'second',
+
+    # Derived SI units
+    'becquerel',
+    'celsius',
+    'coulomb',
+    'farad',
+    'gray',
+    'henry',
+    'hertz',
+    'joule',
+    'katal',  # see __add_custom_units()
+    'lumen',
+    'lux',
+    'newton',
+    'ohm',
+    'pascal',
+    'radian',
+    'siemens',
+    'sievert',
+    'steradian',
+    'tesla',
+    'volt',
+    'watt',
+    'weber',
+
+    # Convenience units
+    'dimensionless',
+    'gram',
+    'liter',
+
+    # Aliases
+    'metre',
+    'litre',
+}
+
+
+class QuantityStorePints(object):
+
+    def __init__(self, cellml_def=None):
+        """Initialise a QuantityStore instance
+        :param cellml_def: a dictionary of <units> definitions from the CellML model. See parser
+        for format, essentially: {'name of unit': { [ unit attributes ], [ unit attributes ] } }
+        """
+        # Initialise the unit registry
+        # TODO: create Pint unit definition file for CellML
+        self.ureg = pint.UnitRegistry()
+
+        # Add default CellML units not provided by Pint
+        self.__add_undefined_units()
+
+        # Hold on to custom unit definitions
+        self.cellml_definitions = cellml_def if cellml_def else {}
+        self.cellml_defined = set()
+
+    def __add_undefined_units(self):
+        """Adds units required by CellML but not provided by Pint."""
+        self.ureg.define('katal = mol / second = kat')
+
+    def get_quantity(self, unit_name):
+        """Given the name of the unit, this will either (i) return a Quantity from the internal
+        store as its already been resolved previously (ii) return the Quantity from Pint if it a
+        built-in name or (iii) construct and return a new Quantity object using the
+        <units><unit></units> definition in the CellML <model>
+        """
+
+        # If this unit is a custom CellML definition and we haven't defined it
+        if unit_name in self.cellml_definitions and unit_name not in self.cellml_defined:
+            # Create the unit definition and add to the unit registry
+            unit_definition = self._make_cellml_unit(unit_name)
+            self.ureg.define(unit_definition)
+            self.cellml_defined.add(unit_name)
+
+        # return the defined unit from the registry
+        try:
+            resolved_unit = self.ureg.parse_expression(unit_name).units
+            return resolved_unit
+        except UndefinedUnitError:
+            raise ValueError('Cannot find the unit with name "%s"' % unit_name)
+
+    def _make_cellml_unit(self, custom_unit_name):
+        """Uses the CellML definition for 'unit_name' to construct a Pint unit definition string
+        """
+        full_unit_expr = []
+
+        # For each of the <unit> elements for this unit definition
+        for unit_element in self.cellml_definitions[custom_unit_name]:
+            # if this unit is a new base unit defined by the cellml model
+            # if 'base_units' in unit_element and unit_element['base_units'] == 'yes':
+            #     return units.Quantity(custom_unit_name, units.Dimension(1), sympy.Rational(1, 1))
+
+            # Source the <unit units="XXX"> from our store
+            matched_unit = self.get_quantity(unit_element['units'])
+
+            # Construct a string representing the expression and dimensions for this <unit>
+            expr = str(matched_unit)
+
+            if 'prefix' in unit_element:
+                expr = '%s%s' % (unit_element['prefix'], expr)
+
+            if 'exponent' in unit_element:
+                expr = '((%s)**%s)' % (expr, unit_element['exponent'])
+
+            # Collect/add this particular <unit> definition
+            full_unit_expr.append(expr)
+
+        # Join together all the parts of the unit expression
+        full_unit_expr = '*'.join(full_unit_expr)
+
+        # Return Pint definition string
+        logging.debug('Unit %s => %s', custom_unit_name, full_unit_expr)
+        return '%s = %s' % (custom_unit_name, full_unit_expr)
 
 
 class QuantityStore(object):
