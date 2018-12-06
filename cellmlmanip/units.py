@@ -2,8 +2,8 @@ import logging
 from typing import List
 
 import pint
+import pint.unit
 import sympy
-from pint import UndefinedUnitError
 from sympy.physics import units as units
 
 logging.basicConfig(level=logging.DEBUG)
@@ -78,7 +78,7 @@ class QuantityStorePints(object):
         """Adds units required by CellML but not provided by Pint."""
         self.ureg.define('katal = mol / second = kat')
 
-    def get_quantity(self, unit_name):
+    def get_quantity(self, unit_name: str):
         """Given the name of the unit, this will either (i) return a Quantity from the internal
         store as its already been resolved previously (ii) return the Quantity from Pint if it a
         built-in name or (iii) construct and return a new Quantity object using the
@@ -96,7 +96,7 @@ class QuantityStorePints(object):
         try:
             resolved_unit = self.ureg.parse_expression(unit_name).units
             return resolved_unit
-        except UndefinedUnitError:
+        except pint.UndefinedUnitError:
             raise ValueError('Cannot find the unit with name "%s"' % unit_name)
 
     def _make_cellml_unit(self, custom_unit_name):
@@ -106,14 +106,12 @@ class QuantityStorePints(object):
 
         # For each of the <unit> elements for this unit definition
         for unit_element in self.cellml_definitions[custom_unit_name]:
-            # if this unit is a new base unit defined by the cellml model
-            # if 'base_units' in unit_element and unit_element['base_units'] == 'yes':
-            #     return units.Quantity(custom_unit_name, units.Dimension(1), sympy.Rational(1, 1))
+            # TODO: handle 'base_units'
 
             # Source the <unit units="XXX"> from our store
             matched_unit = self.get_quantity(unit_element['units'])
 
-            # Construct a string representing the expression and dimensions for this <unit>
+            # Construct a string representing the expression for this <unit>
             expr = str(matched_unit)
 
             if 'prefix' in unit_element:

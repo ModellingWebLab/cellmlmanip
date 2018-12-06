@@ -1,22 +1,22 @@
 import pint
 import pint.unit
 import pytest
-import sympy
 
-from cellmlmanip.units import QuantityStore, QuantityStorePints
+from cellmlmanip.units import QuantityStorePints
 
 
 class TestUnits(object):
     test_definitions = {
-        'ms': [{'units': 'second', 'prefix': 'milli'}] ,
-        'per_ms': [{'units': 'ms', 'exponent': '-1'}] ,
-        'usec': [{'units': 'second', 'prefix': 'micro'}] ,
-        'mV': [{'units': 'volt', 'prefix': 'milli'}] ,
-        'per_mV': [{'units': 'volt', 'prefix': 'milli', 'exponent': '-1'}] ,
-        'uV': [{'units': 'volt', 'prefix': 'micro'}] ,
-        'mV_per_ms': [{'units': 'mV', 'exponent': '1'}, {'units': 'ms', 'exponent': '-1'}] ,
-        'mV_per_s': [{'units': 'mV', 'exponent': '1'}, {'units': 'second', 'exponent': '-1'}] ,
-        'mV_per_usec': [{'units': 'mV', 'exponent': '1'}, {'prefix': 'micro', 'units': 'second', 'exponent': '-1'}] ,
+        'ms': [{'units': 'second', 'prefix': 'milli'}],
+        'per_ms': [{'units': 'ms', 'exponent': '-1'}],
+        'usec': [{'units': 'second', 'prefix': 'micro'}],
+        'mV': [{'units': 'volt', 'prefix': 'milli'}],
+        'per_mV': [{'units': 'volt', 'prefix': 'milli', 'exponent': '-1'}],
+        'uV': [{'units': 'volt', 'prefix': 'micro'}],
+        'mV_per_ms': [{'units': 'mV', 'exponent': '1'}, {'units': 'ms', 'exponent': '-1'}],
+        'mV_per_s': [{'units': 'mV', 'exponent': '1'}, {'units': 'second', 'exponent': '-1'}],
+        'mV_per_usec': [{'units': 'mV', 'exponent': '1'}, 
+                        {'prefix': 'micro', 'units': 'second', 'exponent': '-1'}],
         'mM': [{'prefix': 'milli', 'units': 'mole'}, {'units': 'litre', 'exponent': '-1'}],
         'mM_per_ms': [{'units': 'mM'}, {'units': 'ms', 'exponent': '-1'}],
         'milli_mole': [{'prefix': 'milli', 'units': 'mole'}]
@@ -28,7 +28,7 @@ class TestUnits(object):
         return qs
 
     @staticmethod
-    def check_unit_equivalent(unit1, unit2):
+    def is_equivalent(unit1, unit2):
         assert isinstance(unit1, pint.unit._Unit)
         assert isinstance(unit2, pint.unit._Unit)
 
@@ -50,33 +50,33 @@ class TestUnits(object):
             quantity_store.get_quantity(name)
 
         # Pint built-in units
-        assert TestUnits.check_unit_equivalent(
+        assert self.is_equivalent(
             quantity_store.get_quantity('kilogram'),
             unit_registry.kilogram
         )
 
         # Custom units defined in CellML example
-        assert TestUnits.check_unit_equivalent(
+        assert self.is_equivalent(
             quantity_store.get_quantity('per_ms'),
             unit_registry.millisecond**(-1)
         )
 
-        assert TestUnits.check_unit_equivalent(
+        assert self.is_equivalent(
             quantity_store.get_quantity('usec'),
             unit_registry.microsecond
         )
 
-        assert TestUnits.check_unit_equivalent(
+        assert self.is_equivalent(
             quantity_store.get_quantity('mM_per_ms'),
             (unit_registry.millimole / unit_registry.liter) / unit_registry.millisecond
         )
 
-        assert TestUnits.check_unit_equivalent(
+        assert self.is_equivalent(
             quantity_store.get_quantity('milli_mole'),
             unit_registry.millimole
         )
 
-        assert TestUnits.check_unit_equivalent(
+        assert self.is_equivalent(
             quantity_store.get_quantity('mV_per_usec'),
             unit_registry.millivolt / unit_registry.microsecond
         )
