@@ -6,9 +6,11 @@ import logging
 import math
 
 import pint
-from pint.unit import _Unit as Unit
-from pint.quantity import _Quantity as Quantity
 import sympy
+from pint.quantity import _Quantity as Quantity
+from pint.unit import _Unit as Unit
+from sympy.printing.lambdarepr import LambdaPrinter
+
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -139,14 +141,14 @@ class UnitStore(object):
         return '%s = %s' % (custom_unit_name, full_unit_expr)
 
     @staticmethod
-    def get_unit_quantity(unit):
+    def one_of_unit(unit):
         assert isinstance(unit, Unit)
         return 1 * unit
 
     @staticmethod
     def is_unit_equal(u1, u2):
-        q1 = u1 if isinstance(u1, Quantity) else UnitStore.get_unit_quantity(u1)
-        q2 = u2 if isinstance(u2, Quantity) else UnitStore.get_unit_quantity(u2)
+        q1 = u1 if isinstance(u1, Quantity) else UnitStore.one_of_unit(u1)
+        q2 = u2 if isinstance(u2, Quantity) else UnitStore.one_of_unit(u2)
         is_equal = q1.dimensionality == q2.dimensionality and math.isclose(q1.to(q2).magnitude,
                                                                            q1.magnitude)
         logging.debug('is_unit_equal(%s, %s) -> %s', q1.units, q2.units, is_equal)
@@ -160,23 +162,14 @@ class UnitStore(object):
 
     @staticmethod
     def convert_to(q1, q2):
-        q1 = q1 if isinstance(q1, Quantity) else UnitStore.get_unit_quantity(q1)
-        q2 = q2 if isinstance(q2, Quantity) else UnitStore.get_unit_quantity(q2)
+        q1 = q1 if isinstance(q1, Quantity) else UnitStore.one_of_unit(q1)
+        q2 = q2 if isinstance(q2, Quantity) else UnitStore.one_of_unit(q2)
         return q1.to(q2)
 
     def summarise_units(self, expr: sympy.Expr):
         """Given a Sympy expression, will get the lambdified string to evaluate units
         """
-        import sympy.printing.lambdarepr as spp
-        import math
-
-        class MyLambdaPrinter(spp.LambdaPrinter):
-            def _print_Derivative(self, e):
-                state = e.free_symbols.pop()
-                free = set(e.canonical_variables.keys()).pop()
-                return '(1 * u.%s)/(1 * u.%s)' % (state.unit, free.unit)
-
-        printer = MyLambdaPrinter()
+        printer = UnitLambdaPrinter()
 
         to_evaluate = printer.doprint(expr)
 
@@ -242,3 +235,8 @@ class UnitDummy(sympy.Dummy):
     _sympystr = __str__
 
 
+class UnitLambdaPrinter(LambdaPrinter):
+    def _print_Derivative(self, e):
+        state = e.free_symbols.pop()
+        free = set(e.canonical_variables.keys()).pop()
+        return '(1 * u.%s)/(1 * u.%s)' % (state.unit, free.unit)
