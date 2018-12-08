@@ -10,7 +10,7 @@ import networkx as nx
 import rdflib
 import sympy
 
-from cellmlmanip.units import QuantityStorePints, UnitDummy
+from cellmlmanip.units import UnitStore, UnitDummy
 
 # Delimiter for the name of the Sympy symbol: <component><delimiter><name>
 SYMPY_SYMBOL_DELIMITER = '$'
@@ -207,7 +207,7 @@ class Model(object):
         :param name: the name of the model e.g. from <model name="">
         """
         self.name: str = name
-        self.units: 'QuantityStorePints' = None
+        self.units: 'UnitStore' = None
         self.components: Dict[str, Component] = {}
         self.connections: List[Tuple] = []
         self.rdf: rdflib.Graph = rdflib.Graph()
@@ -219,7 +219,7 @@ class Model(object):
     def add_unit(self, units_elements: dict):
         """Adds information about <units> in <model>
         """
-        self.units = QuantityStorePints(units_elements)
+        self.units = UnitStore(units_elements)
 
     def add_component(self, component: Component):
         """Adds name to list of <component>s in the <model>

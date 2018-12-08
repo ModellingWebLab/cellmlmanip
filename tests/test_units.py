@@ -1,6 +1,6 @@
 import pytest
 
-from cellmlmanip.units import QuantityStorePints
+from cellmlmanip.units import UnitStore
 
 
 class TestUnits(object):
@@ -22,7 +22,7 @@ class TestUnits(object):
 
     @pytest.fixture(scope="class")
     def quantity_store(self):
-        qs = QuantityStorePints(TestUnits.test_definitions)
+        qs = UnitStore(TestUnits.test_definitions)
         return qs
 
     def test_quantity_translation(self, quantity_store):

@@ -60,7 +60,7 @@ CELLML_UNITS = {
 }
 
 
-class QuantityStorePints(object):
+class UnitStore(object):
 
     def __init__(self, cellml_def=None):
         """Initialise a QuantityStore instance
@@ -145,8 +145,8 @@ class QuantityStorePints(object):
 
     @staticmethod
     def is_unit_equal(u1, u2):
-        q1 = u1 if has_class_name(u1, 'Quantity') else QuantityStorePints.get_unit_quantity(u1)
-        q2 = u2 if has_class_name(u2, 'Quantity') else QuantityStorePints.get_unit_quantity(u2)
+        q1 = u1 if has_class_name(u1, 'Quantity') else UnitStore.get_unit_quantity(u1)
+        q2 = u2 if has_class_name(u2, 'Quantity') else UnitStore.get_unit_quantity(u2)
         is_equal = q1.dimensionality == q2.dimensionality and math.isclose(q1.to(q2).magnitude,
                                                                            q1.magnitude)
         logging.debug('is_unit_equal(%s, %s) -> %s', q1.units, q2.units, is_equal)
@@ -160,8 +160,8 @@ class QuantityStorePints(object):
 
     @staticmethod
     def convert_to(q1, q2):
-        q1 = q1 if has_class_name(q1, 'Quantity') else QuantityStorePints.get_unit_quantity(q1)
-        q2 = q2 if has_class_name(q1, 'Quantity') else QuantityStorePints.get_unit_quantity(q2)
+        q1 = q1 if has_class_name(q1, 'Quantity') else UnitStore.get_unit_quantity(q1)
+        q2 = q2 if has_class_name(q1, 'Quantity') else UnitStore.get_unit_quantity(q2)
         return q1.to(q2)
 
     def summarise_units(self, expr: sympy.Expr):
