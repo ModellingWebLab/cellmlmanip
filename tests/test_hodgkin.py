@@ -43,7 +43,7 @@ class TestHodgkin:
         model.add_units_to_equations()
         equation = model.components['sodium_channel'].equations[0]
         lhs_units = model.units.summarise_units(equation.lhs)
-        assert lhs_units == model.units.store['millivolt']
+        assert lhs_units == model.units.ureg.millivolt
 
     def test_check_left_right_units(self, model):
         for e in model.equations:
@@ -68,10 +68,10 @@ class TestHodgkin:
         sorted_nodes = nx.lexicographical_topological_sort(graph, key=str)
 
         sorted_nodes = list(sorted_nodes)
-        assert str(sorted_nodes[0]) == '_environment$time'
-        assert str(sorted_nodes[10]) == '_membrane$stim_period'
-        assert str(sorted_nodes[20]) == '_sodium_channel$E_Na'
-        assert str(sorted_nodes[-1]) == 'Derivative(_membrane$V, _environment$time)'
+        assert sorted_nodes[0].name == 'environment$time'
+        assert sorted_nodes[10].name == 'membrane$stim_period'
+        assert sorted_nodes[20].name == 'sodium_channel$E_Na'
+        assert str(sorted_nodes[-1]) == 'Derivative(membrane$V[millivolt], environment$time[millisecond])'
 
         # check all cmeta ids have been added
         for node in sorted_nodes:
@@ -107,21 +107,21 @@ class TestHodgkin:
 
         # check a node for dependencies
         dm_dt_node = sorted_nodes[29]
-        assert str(dm_dt_node) == 'Derivative(_sodium_channel_m_gate$m, _environment$time)'
+        assert str(dm_dt_node) == 'Derivative(sodium_channel_m_gate$m[dimensionless], environment$time[millisecond])'
         assert 3 == graph.in_degree(dm_dt_node)
 
         # check that units have been added to parameters
         leakage_var = sorted_nodes[1]
-        assert str(leakage_var) == '_leakage_current$g_L'
+        assert leakage_var.name == 'leakage_current$g_L'
         lcv_equation = graph.node[leakage_var]['equation']
         rhs_unit = model.units.summarise_units(lcv_equation.rhs)
         lhs_unit = model.units.summarise_units(lcv_equation.lhs)
-        assert rhs_unit == model.units.store['milliS_per_cm2']
+        assert rhs_unit == model.units.ureg.milliS_per_cm2
         assert rhs_unit == lhs_unit
 
         # check attributes on membrane capacitance
         membrane_Cm = sorted_nodes[2]
-        assert str(membrane_Cm) == '_membrane$Cm'
+        assert membrane_Cm.name == 'membrane$Cm'
         assert graph.node[membrane_Cm]['cmeta:id'] == 'membrane_capacitance'
         assert graph.node[membrane_Cm]['variable_type'] == 'parameter'
 
@@ -157,28 +157,22 @@ class TestHodgkin:
 
         # initial values for the free and state variables
         initials = {
-            '_environment$time': 0.0,
-            '_membrane$V': -7.50000000000000000e+01,
-            '_sodium_channel_m_gate$m': 5.00000000000000028e-02,
-            '_sodium_channel_h_gate$h': 5.99999999999999978e-01,
-            '_potassium_channel_n_gate$n': 3.25000000000000011e-01
+            'environment$time': 0.0,
+            'membrane$V': -7.50000000000000000e+01,
+            'sodium_channel_m_gate$m': 5.00000000000000028e-02,
+            'sodium_channel_h_gate$h': 5.99999999999999978e-01,
+            'potassium_channel_n_gate$n': 3.25000000000000011e-01
         }
 
         # the calculated derivatives at the initial conditions
         evaluated_derivatives = {
-            '_membrane$V': -6.00768750000000740e-01,
-            '_sodium_channel_m_gate$m': 1.23855383553985177e-02,
-            '_sodium_channel_h_gate$h': -4.55523906540064583e-04,
-            '_potassium_channel_n_gate$n': -1.34157228632045961e-03
+            'membrane$V': -6.00768750000000740e-01,
+            'sodium_channel_m_gate$m': 1.23855383553985177e-02,
+            'sodium_channel_h_gate$h': -4.55523906540064583e-04,
+            'potassium_channel_n_gate$n': -1.34157228632045961e-03
         }
 
         sorted_symbols = nx.lexicographical_topological_sort(graph, key=str)
-
-        def __remove_quantities(eq_with_quantities):
-            """Replaces all quantity symbols in the equation with 1"""
-            quantities = {q: 1 for q in eq_with_quantities.atoms(Quantity)}
-            eq_without_quantities = eq_with_quantities.subs(quantities, simultaneous=True)
-            return eq_without_quantities
 
         # collects all the evaluated lh-sides of the equations
         evaluated_symbols = dict()
@@ -193,39 +187,34 @@ class TestHodgkin:
             # if this symbol is calculated using an equation
             if equation is not None:
 
-                # remove all quantity symbols from the equation
-                eq_no_units = __remove_quantities(equation.rhs)
-
                 # substitute all symbols in the rhs of the equation
-                eq_substituted = eq_no_units.subs(evaluated_symbols)
+                eq_substituted = equation.rhs.subs(evaluated_symbols)
 
                 # if any symbols remain, we have a problem
                 remaining_symbols = eq_substituted.atoms(sympy.Symbol)
                 if remaining_symbols:
                     for remaining_symbol in remaining_symbols:
-                        # TODO: we need to handle 0.0 - best place to put this?
-                        if str(remaining_symbol) == '_0.0':
-                            eq_substituted = eq_substituted.subs({remaining_symbol: 0.0})
+                        if remaining_symbol.number is not None:
+                            eq_substituted = eq_substituted.subs({remaining_symbol: remaining_symbol.number})
                         else:
-                            pytest.fail("Unresolved symbol" + remaining_symbol + " in " + equation)
+                            pytest.fail("Unresolved symbol %s in %s" % (remaining_symbol, equation))
 
                 # calculate the result
                 eq_evaluated = eq_substituted.evalf()
 
                 # save the calculation for this symbol (to be used in the next equations)
-                lhs_without_units = __remove_quantities(equation.lhs)
-                evaluated_symbols[lhs_without_units] = eq_evaluated
+                evaluated_symbols[equation.lhs] = eq_evaluated
 
                 # if the symbol on the lhs is a derivative
-                if lhs_without_units.is_Derivative:
+                if equation.lhs.is_Derivative:
                     # save the calculation for testing
-                    state_derivatives[lhs_without_units.free_symbols.pop()] = eq_evaluated
+                    state_derivatives[equation.lhs.free_symbols.pop()] = eq_evaluated
 
             # otherwise the symbol doesn't have an equation
             # if the symbol has an initial value
-            elif str(symbol) in initials:
+            elif symbol.name in initials:
                 # add the symbol's initial value to the substitution dictionary
-                evaluated_symbols[symbol] = sympy.Number(initials[str(symbol)])
+                evaluated_symbols[symbol] = sympy.Number(initials[symbol.name])
             else:
                 # something has gone wrong - no equation or initial value
                 pytest.fail("Symbol " + str(symbol) + " does not have equation or initial value.")
@@ -233,6 +222,6 @@ class TestHodgkin:
         # for each calculated state variable
         for state_symbol, evaluated_deriv in state_derivatives.items():
             # check evaluation against expected
-            expected = evaluated_derivatives[str(state_symbol)]
+            expected = evaluated_derivatives[state_symbol.name]
             actual = evaluated_deriv
             assert float(actual) == pytest.approx(expected)
