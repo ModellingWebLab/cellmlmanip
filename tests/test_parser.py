@@ -93,27 +93,6 @@ class TestParser(object):
         equation = sympy.Eq(time_units_conversion2__time, environment__time)
         assert equation in model.components['time_units_conversion2'].equations
 
-    def test_quantity_translation(self, model):
-        assert model.units.get_quantity('dimensionless').scale_factor == sympy.Rational(1, 1)
-
-        # Units defined in the test CellML <model>:
-        unit_names = ['ms', 'per_ms', 'usec', 'mV', 'per_mV', 'uV', 'mV_per_ms', 'mV_per_s',
-                      'mV_per_usec', 'mM', 'mM_per_ms']
-        for name in unit_names:
-            model.units.get_quantity(name)
-
-        # Sympy built-in units
-        assert model.units.get_quantity('kilogram') == units.kilogram
-
-        # Custom units defined in CellML example
-        assert units.convert_to(model.units.get_quantity('per_ms'),
-                                1/units.millisecond) == 1/units.millisecond
-        assert units.convert_to(model.units.get_quantity('usec'),
-                                units.microsecond) == units.microsecond
-        assert units.convert_to(model.units.get_quantity('mM_per_ms'),
-                                [units.mole, units.liter, units.millisecond]
-                                ) == (units.mole / 1000) / (units.liter * units.millisecond)
-
     def test_add_units_to_equations(self, model):
         # This is an irreversible operation # TODO: don't mutate?
         model.add_units_to_equations()
@@ -122,19 +101,18 @@ class TestParser(object):
         test_equation = model.components['single_independent_ode'].equations[0]
         lhs_units = model.units.summarise_units(test_equation.lhs)
         rhs_units = model.units.summarise_units(test_equation.rhs)
-        assert model.units.is_equal(rhs_units, lhs_units)
+        assert model.units.is_unit_equal(rhs_units, lhs_units)
 
         # mV_per_usec != uV/millisecond
         test_equation = model.components['deriv_on_rhs2b'].equations[0]
         lhs_units = model.units.summarise_units(test_equation.lhs)
         rhs_units = model.units.summarise_units(test_equation.rhs)
-        assert not model.units.is_equal(rhs_units, lhs_units)
+        assert not model.units.is_unit_equal(rhs_units, lhs_units)
 
-        # Check a specific RHS->LHS unit conversion
-        test_equation = model.components['deriv_on_rhs2b'].equations[0]
-        new_rhs = units.convert_to(test_equation.rhs, lhs_units)
-        new_rhs_units = model.units.summarise_units(new_rhs)
-        assert model.units.is_equal(new_rhs_units, lhs_units)
+        # Convert RHS into required units. This returns a Quantity object
+        new_rhs = model.units.convert_to(rhs_units, lhs_units)
+        assert new_rhs.magnitude == pytest.approx(1.0e-6)
+        assert model.units.is_unit_equal(new_rhs.units, lhs_units)
 
         # TODO: try conversion of units of RHS by LHS.units / RHS.unit == x;
         # i.e. if x == 1, good, else RHS = RHS * x
@@ -143,15 +121,21 @@ class TestParser(object):
         for component in model.components.values():
             for index, equation in enumerate(component.equations):
                 lhs_units = model.units.summarise_units(equation.lhs)
-                rhs_units = model.units.simplify_units_until_no_change(equation.rhs)
-                if not model.units.is_equal(lhs_units, rhs_units):
-                    new_rhs = units.convert_to(equation.rhs, lhs_units)
+                rhs_units = model.units.summarise_units(equation.rhs)
+                if not model.units.is_unit_equal(lhs_units, rhs_units):
+                    new_rhs = model.units.convert_to(rhs_units, lhs_units)
                     # Create a new equality with the converted RHS and replace original
-                    equation = sympy.Eq(equation.lhs, new_rhs)
+                    from cellmlmanip.units import UnitDummy
+                    new_dummy = UnitDummy(str(new_rhs.magnitude))
+                    new_dummy.number = sympy.Float(new_rhs.magnitude)
+                    new_dummy.unit = ((1*lhs_units) / (1*rhs_units)).units
+                    equation = sympy.Eq(equation.lhs, equation.rhs * new_dummy)
                     component.equations[index] = equation
+                    print('new eq:', equation)
                     lhs_units = model.units.summarise_units(equation.lhs)
                     rhs_units = model.units.summarise_units(equation.rhs)
-                    assert model.units.is_equal(lhs_units, rhs_units)
+                    # TODO: how to test this?
+                    assert model.units.is_unit_equal(lhs_units, rhs_units)
 
     def test_unit_extraction(self, model):
         eq = (5*units.mile/(2*units.hour + 10*units.minute))**(8*units.gram)
