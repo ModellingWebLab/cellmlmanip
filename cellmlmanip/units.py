@@ -3,6 +3,7 @@ from typing import List
 
 import pint
 import pint.unit
+import pint.quantity
 import sympy
 from sympy.physics import units as units
 
@@ -65,7 +66,7 @@ class QuantityStorePints(object):
         """
         # Initialise the unit registry
         # TODO: create Pint unit definition file for CellML
-        self.ureg = pint.UnitRegistry()
+        self.ureg: pint.UnitRegistry = pint.UnitRegistry()
 
         # Add default CellML units not provided by Pint
         self.__add_undefined_units()
@@ -131,6 +132,55 @@ class QuantityStorePints(object):
         return '%s = %s' % (custom_unit_name, full_unit_expr)
 
     @staticmethod
+    def get_unit_quantity(unit):
+        assert isinstance(unit, pint.unit._Unit)
+        return 1 * unit
+
+    @staticmethod
+    def is_unit_equal(u1, u2):
+        if u1.dimensionality != u2.dimensionality:
+            return False
+        q1 = u1 if isinstance(u1, pint.quantity._Quantity) else QuantityStorePints.get_unit_quantity(u1)
+        q2 = u2 if isinstance(u2, pint.quantity._Quantity) else QuantityStorePints.get_unit_quantity(u2)
+        is_equal = q1.to(q2).magnitude == q1.magnitude
+        print('is_unit_equal(%s, %s) -> %s' % (q1.units, q2.units, is_equal))
+        return is_equal
+
+    @staticmethod
+    def is_quantity_equal(q1, q2):
+        assert isinstance(q1, pint.quantity._Quantity)
+        assert isinstance(q2, pint.quantity._Quantity)
+        return q1.dimensionality == q2.dimensionality and q1.magnitude == q2.magnitude
+
+    @staticmethod
+    def convert_to(quantity1, quantity2):
+        quantity1 = quantity1 if isinstance(quantity1, pint.quantity._Quantity) else QuantityStorePints.get_unit_quantity(quantity1)
+        quantity2 = quantity2 if isinstance(quantity2, pint.quantity._Quantity) else QuantityStorePints.get_unit_quantity(quantity2)
+        return quantity1.to(quantity2)
+
+    def summarise_units(self, expr: sympy.Expr):
+        """Given a Sympy expression, will get the lambdified string to evaluate units
+        """
+        import sympy.printing.lambdarepr as spp
+        import math
+
+        class MyLambdaPrinter(spp.LambdaPrinter):
+            def _print_Derivative(self, e):
+                state = e.free_symbols.pop()
+                free = set(e.canonical_variables.keys()).pop()
+                return '(1 * u.%s)/(1 * u.%s)' % (state.unit, free.unit)
+
+        printer = MyLambdaPrinter()
+
+        to_evaluate = printer.doprint(expr)
+
+        to_evaluate = to_evaluate.replace('exp(', 'math.exp(')
+        simplified = eval(to_evaluate, {'u': self.ureg, 'math': math}).units
+        print('summarise_units(%s) -> %s -> %s' % (expr, to_evaluate, simplified))
+        return simplified
+
+
+    @staticmethod
     def get_conversion_factor(from_unit, to_unit):
         assert isinstance(from_unit, pint.unit._Unit)
         assert isinstance(to_unit, pint.unit._Unit)
@@ -141,6 +191,50 @@ class QuantityStorePints(object):
         to_quantity = 1 * to_unit
 
         return from_quantity.to(to_quantity).magnitude
+
+
+class UnitDummy(sympy.Dummy):
+    def __init__(self, name):
+        super().__init__()
+        self._unit = None
+        self._number = None
+
+    @property
+    def unit(self):
+        return self._unit
+
+    @unit.setter
+    def unit(self, value):
+        if value is not None:
+            assert isinstance(value, pint.unit._Unit)
+        self._unit = value
+
+    @property
+    def quantity(self):
+        return 1 * self.unit
+
+    @property
+    def number(self):
+        return self._number
+
+    @number.setter
+    def number(self, value):
+        if value is not None:
+            assert isinstance(value, sympy.Number)
+        self._number = value
+
+    def __str__(self, printer=None):
+        import re
+        if printer and printer.__class__.__name__ == 'MyLambdaPrinter':
+            unit_with_prefix = re.sub(r'\b([a-zA-Z_0-9]+)\b', r'u.\1', str(self.unit))
+            return '(1 * (%s))' % unit_with_prefix
+        if self._number:
+            return '%f[%s]' % (self._number, str(self.unit))
+        else:
+            return '%s[%s]' % (self.name, str(self.unit))
+
+    __repr__ = __str__
+    _sympystr = __str__
 
 
 class QuantityStore(object):
