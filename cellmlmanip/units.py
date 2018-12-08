@@ -6,9 +6,9 @@ import logging
 import math
 
 import pint
+from pint.unit import _Unit as Unit
+from pint.quantity import _Quantity as Quantity
 import sympy
-
-from cellmlmanip.utils import has_class_name
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -140,13 +140,13 @@ class UnitStore(object):
 
     @staticmethod
     def get_unit_quantity(unit):
-        assert has_class_name(unit, 'Unit')
+        assert isinstance(unit, Unit)
         return 1 * unit
 
     @staticmethod
     def is_unit_equal(u1, u2):
-        q1 = u1 if has_class_name(u1, 'Quantity') else UnitStore.get_unit_quantity(u1)
-        q2 = u2 if has_class_name(u2, 'Quantity') else UnitStore.get_unit_quantity(u2)
+        q1 = u1 if isinstance(u1, Quantity) else UnitStore.get_unit_quantity(u1)
+        q2 = u2 if isinstance(u2, Quantity) else UnitStore.get_unit_quantity(u2)
         is_equal = q1.dimensionality == q2.dimensionality and math.isclose(q1.to(q2).magnitude,
                                                                            q1.magnitude)
         logging.debug('is_unit_equal(%s, %s) -> %s', q1.units, q2.units, is_equal)
@@ -154,14 +154,14 @@ class UnitStore(object):
 
     @staticmethod
     def is_quantity_equal(q1, q2):
-        assert has_class_name(q1, 'Quantity')
-        assert has_class_name(q2, 'Quantity')
+        assert isinstance(q1, Quantity)
+        assert isinstance(q2, Quantity)
         return q1.dimensionality == q2.dimensionality and q1.magnitude == q2.magnitude
 
     @staticmethod
     def convert_to(q1, q2):
-        q1 = q1 if has_class_name(q1, 'Quantity') else UnitStore.get_unit_quantity(q1)
-        q2 = q2 if has_class_name(q1, 'Quantity') else UnitStore.get_unit_quantity(q2)
+        q1 = q1 if isinstance(q1, Quantity) else UnitStore.get_unit_quantity(q1)
+        q2 = q2 if isinstance(q2, Quantity) else UnitStore.get_unit_quantity(q2)
         return q1.to(q2)
 
     def summarise_units(self, expr: sympy.Expr):
@@ -187,8 +187,8 @@ class UnitStore(object):
 
     @staticmethod
     def get_conversion_factor(from_unit, to_unit):
-        assert isinstance(from_unit, pint.unit._Unit)
-        assert isinstance(to_unit, pint.unit._Unit)
+        assert isinstance(from_unit, Unit)
+        assert isinstance(to_unit, Unit)
 
         assert from_unit.dimensionality == to_unit.dimensionality
 
@@ -211,7 +211,7 @@ class UnitDummy(sympy.Dummy):
     @unit.setter
     def unit(self, value):
         if value is not None:
-            assert isinstance(value, pint.unit._Unit)
+            assert isinstance(value, Unit)
         self._unit = value
 
     @property
