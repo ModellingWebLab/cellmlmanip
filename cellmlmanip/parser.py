@@ -10,6 +10,7 @@ from lxml import etree
 
 from cellmlmanip import mathml2sympy
 from cellmlmanip.model import SYMPY_SYMBOL_DELIMITER, Component, Model
+from cellmlmanip.units import UnitDummy
 
 
 class XmlNs(Enum):
@@ -108,7 +109,8 @@ class Parser(object):
         math_element = component_element.find(Parser.with_ns(XmlNs.MATHML, u'math'))
         if math_element is not None:
             transpiler = mathml2sympy.Transpiler(
-                dummify=True, symbol_prefix=component.name+SYMPY_SYMBOL_DELIMITER
+                dummify=True, symbol_prefix=component.name+SYMPY_SYMBOL_DELIMITER,
+                dummy_class=UnitDummy
             )
             # TODO: check whether element can be passed directly without .tostring()
             sympy_exprs = transpiler.parse_string(etree.tostring(math_element, encoding=str))
