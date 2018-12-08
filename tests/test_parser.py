@@ -137,15 +137,6 @@ class TestParser(object):
                     # TODO: how to test this?
                     assert model.units.is_unit_equal(lhs_units, rhs_units)
 
-    def test_unit_extraction(self, model):
-        eq = (5*units.mile/(2*units.hour + 10*units.minute))**(8*units.gram)
-        assert model.units.summarise_units(eq) == \
-            (units.mile/(units.hour + units.minute))**units.gram
-
-        millivolts = units.Quantity('millivolts', units.voltage, units.milli * units.volts, 'mV')
-        x, y = sympy.symbols('x y')
-        eq = (millivolts / units.millisecond)*sympy.Derivative(x, y)
-        assert model.units.summarise_units(eq) == (millivolts / units.milliseconds)
 
     @pytest.mark.skipif('CMLM_TEST_PRINT' not in os.environ, reason="print eq on demand")
     def test_print_eq(self, model):

@@ -1,5 +1,3 @@
-import pint
-import pint.unit
 import pytest
 
 from cellmlmanip.units import QuantityStorePints
@@ -27,17 +25,6 @@ class TestUnits(object):
         qs = QuantityStorePints(TestUnits.test_definitions)
         return qs
 
-    @staticmethod
-    def is_equivalent(unit1, unit2):
-        assert isinstance(unit1, pint.unit._Unit)
-        assert isinstance(unit2, pint.unit._Unit)
-
-        assert unit1.dimensionality == unit2.dimensionality
-
-        quantity1 = 1 * unit1
-        quantity2 = 1 * unit2
-        return quantity1.to(quantity2).magnitude == quantity1.magnitude
-
     def test_quantity_translation(self, quantity_store):
         unit_registry = quantity_store.ureg
 
@@ -50,33 +37,33 @@ class TestUnits(object):
             quantity_store.get_quantity(name)
 
         # Pint built-in units
-        assert self.is_equivalent(
+        assert quantity_store.is_unit_equal(
             quantity_store.get_quantity('kilogram'),
             unit_registry.kilogram
         )
 
         # Custom units defined in CellML example
-        assert self.is_equivalent(
+        assert quantity_store.is_unit_equal(
             quantity_store.get_quantity('per_ms'),
             unit_registry.millisecond**(-1)
         )
 
-        assert self.is_equivalent(
+        assert quantity_store.is_unit_equal(
             quantity_store.get_quantity('usec'),
             unit_registry.microsecond
         )
 
-        assert self.is_equivalent(
+        assert quantity_store.is_unit_equal(
             quantity_store.get_quantity('mM_per_ms'),
             (unit_registry.millimole / unit_registry.liter) / unit_registry.millisecond
         )
 
-        assert self.is_equivalent(
+        assert quantity_store.is_unit_equal(
             quantity_store.get_quantity('milli_mole'),
             unit_registry.millimole
         )
 
-        assert self.is_equivalent(
+        assert quantity_store.is_unit_equal(
             quantity_store.get_quantity('mV_per_usec'),
             unit_registry.millivolt / unit_registry.microsecond
         )
@@ -90,3 +77,16 @@ class TestUnits(object):
             quantity_store.get_quantity('milli_mole'),
             quantity_store.get_quantity('mole')
         ) == 0.001
+
+    def test_unit_extraction(self, quantity_store):
+        pass
+        # TODO: test pint unit extraction from sympy expressions
+        # kq = (5*units.mile/(2*units.hour + 10*units.minute))**(8*units.gram)
+        # assert model.units.summarise_units(eq) == \
+        #        (units.mile/(units.hour + units.minute))**units.gram
+
+        # millivolts = units.Quantity('millivolts', units.voltage, units.milli * units.volts, 'mV')
+        # x, y = sympy.symbols('x y')
+        # eq = (millivolts / units.millisecond)*sympy.Derivative(x, y)
+        # assert model.units.summarise_units(eq) == (millivolts / units.milliseconds)
+
