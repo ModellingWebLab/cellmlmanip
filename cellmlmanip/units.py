@@ -1,13 +1,14 @@
+"""
+Unit handling for CellML models, using the Pint unit library (replaces previous
+Sympy-units implementation
+"""
 import logging
 import math
-from typing import List
 
 import pint
-import pint.unit
-import pint.quantity
 import sympy
-from pint import UndefinedUnitError
-from sympy.physics import units as units
+
+from cellmlmanip.utils import has_class_name
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -93,7 +94,7 @@ class QuantityStorePints(object):
             # TODO create cellml pint unit definitions file
             try:
                 getattr(self.ureg, unit_name)
-            except UndefinedUnitError:
+            except pint.UndefinedUnitError:
                 # Create the unit definition and add to the unit registry
                 unit_definition = self._make_cellml_unit(unit_name)
                 self.ureg.define(unit_definition)
@@ -139,29 +140,29 @@ class QuantityStorePints(object):
 
     @staticmethod
     def get_unit_quantity(unit):
-        assert isinstance(unit, pint.unit._Unit)
+        assert has_class_name(unit, 'Unit')
         return 1 * unit
 
     @staticmethod
     def is_unit_equal(u1, u2):
-        q1 = u1 if isinstance(u1, pint.quantity._Quantity) else QuantityStorePints.get_unit_quantity(u1)
-        q2 = u2 if isinstance(u2, pint.quantity._Quantity) else QuantityStorePints.get_unit_quantity(u2)
+        q1 = u1 if has_class_name(u1, 'Quantity') else QuantityStorePints.get_unit_quantity(u1)
+        q2 = u2 if has_class_name(u2, 'Quantity') else QuantityStorePints.get_unit_quantity(u2)
         is_equal = q1.dimensionality == q2.dimensionality and math.isclose(q1.to(q2).magnitude,
                                                                            q1.magnitude)
-        print('is_unit_equal(%s, %s) -> %s' % (q1.units, q2.units, is_equal))
+        logging.debug('is_unit_equal(%s, %s) -> %s', q1.units, q2.units, is_equal)
         return is_equal
 
     @staticmethod
     def is_quantity_equal(q1, q2):
-        assert isinstance(q1, pint.quantity._Quantity)
-        assert isinstance(q2, pint.quantity._Quantity)
+        assert has_class_name(q1, 'Quantity')
+        assert has_class_name(q2, 'Quantity')
         return q1.dimensionality == q2.dimensionality and q1.magnitude == q2.magnitude
 
     @staticmethod
-    def convert_to(quantity1, quantity2):
-        quantity1 = quantity1 if isinstance(quantity1, pint.quantity._Quantity) else QuantityStorePints.get_unit_quantity(quantity1)
-        quantity2 = quantity2 if isinstance(quantity2, pint.quantity._Quantity) else QuantityStorePints.get_unit_quantity(quantity2)
-        return quantity1.to(quantity2)
+    def convert_to(q1, q2):
+        q1 = q1 if has_class_name(q1, 'Quantity') else QuantityStorePints.get_unit_quantity(q1)
+        q2 = q2 if has_class_name(q1, 'Quantity') else QuantityStorePints.get_unit_quantity(q2)
+        return q1.to(q2)
 
     def summarise_units(self, expr: sympy.Expr):
         """Given a Sympy expression, will get the lambdified string to evaluate units
@@ -181,7 +182,7 @@ class QuantityStorePints(object):
 
         to_evaluate = to_evaluate.replace('exp(', 'math.exp(')
         simplified = eval(to_evaluate, {'u': self.ureg, 'math': math}).units
-        print('summarise_units(%s) -> %s -> %s' % (expr, to_evaluate, simplified))
+        logging.debug('summarise_units(%s) -> %s -> %s', expr, to_evaluate, simplified)
         return simplified
 
     @staticmethod

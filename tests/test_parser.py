@@ -137,7 +137,6 @@ class TestParser(object):
                     # TODO: how to test this?
                     assert model.units.is_unit_equal(lhs_units, rhs_units)
 
-
     @pytest.mark.skipif('CMLM_TEST_PRINT' not in os.environ, reason="print eq on demand")
     def test_print_eq(self, model):
         # show equations
