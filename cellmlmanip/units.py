@@ -1,10 +1,12 @@
 import logging
+import math
 from typing import List
 
 import pint
 import pint.unit
 import pint.quantity
 import sympy
+from pint import UndefinedUnitError
 from sympy.physics import units as units
 
 logging.basicConfig(level=logging.DEBUG)
@@ -88,10 +90,14 @@ class QuantityStorePints(object):
 
         # If this unit is a custom CellML definition and we haven't defined it
         if unit_name in self.cellml_definitions and unit_name not in self.cellml_defined:
-            # Create the unit definition and add to the unit registry
-            unit_definition = self._make_cellml_unit(unit_name)
-            self.ureg.define(unit_definition)
-            self.cellml_defined.add(unit_name)
+            # TODO create cellml pint unit definitions file
+            try:
+                getattr(self.ureg, unit_name)
+            except UndefinedUnitError:
+                # Create the unit definition and add to the unit registry
+                unit_definition = self._make_cellml_unit(unit_name)
+                self.ureg.define(unit_definition)
+                self.cellml_defined.add(unit_name)
 
         # return the defined unit from the registry
         try:
@@ -138,11 +144,10 @@ class QuantityStorePints(object):
 
     @staticmethod
     def is_unit_equal(u1, u2):
-        if u1.dimensionality != u2.dimensionality:
-            return False
         q1 = u1 if isinstance(u1, pint.quantity._Quantity) else QuantityStorePints.get_unit_quantity(u1)
         q2 = u2 if isinstance(u2, pint.quantity._Quantity) else QuantityStorePints.get_unit_quantity(u2)
-        is_equal = q1.to(q2).magnitude == q1.magnitude
+        is_equal = q1.dimensionality == q2.dimensionality and math.isclose(q1.to(q2).magnitude,
+                                                                           q1.magnitude)
         print('is_unit_equal(%s, %s) -> %s' % (q1.units, q2.units, is_equal))
         return is_equal
 
@@ -178,7 +183,6 @@ class QuantityStorePints(object):
         simplified = eval(to_evaluate, {'u': self.ureg, 'math': math}).units
         print('summarise_units(%s) -> %s -> %s' % (expr, to_evaluate, simplified))
         return simplified
-
 
     @staticmethod
     def get_conversion_factor(from_unit, to_unit):
