@@ -4,7 +4,7 @@ Parses Content MathML and returns equivalent SymPy expressions
 Content Markup specification: https://www.w3.org/TR/MathML2/chapter4.html
 """
 import logging
-from typing import Dict, List
+from typing import Dict, List, Type
 from xml.dom import Node, minidom
 
 import sympy
@@ -13,10 +13,11 @@ import sympy
 class Transpiler(object):
     """Transpiler class handles conversion of MathmL to Sympy exprerssions"""
 
-    def __init__(self, dummify: bool=False, symbol_prefix: str=None) -> None:
+    def __init__(self, dummify: bool=False, symbol_prefix: str=None, dummy_class=sympy.Dummy) -> None:
         self.metadata: Dict = dict()
-        self.dummy_symbol_cache: Dict[str, sympy.Dummy] = dict()
+        self.dummy_symbol_cache = dict()
         self.dummify: bool = dummify
+        self.dummy_class: Type[sympy.Dummy] = dummy_class
         self.symbol_prefix = symbol_prefix
 
         # Mapping MathML tag element names (keys) to appropriate handler for SymPy output (values)
@@ -118,7 +119,7 @@ class Transpiler(object):
             identifier = self.symbol_prefix + identifier
         if self.dummify:
             # Return a dummified version of this symbol, picking up from cache
-            return self.dummy_symbol_cache.setdefault(identifier, sympy.Dummy(identifier))
+            return self.dummy_symbol_cache.setdefault(identifier, self.dummy_class(identifier))
         return sympy.Symbol(identifier)
 
     def __cn_handler(self, node):
@@ -151,7 +152,7 @@ class Transpiler(object):
             number = sympy.Number(number)
 
         if self.dummify:
-            dummified = sympy.Dummy(str(number))
+            dummified = self.dummy_class(str(number))
             self.metadata[dummified] = {**(dict(node.attributes.items())), 'sympy.Number': number}
             return dummified
 
