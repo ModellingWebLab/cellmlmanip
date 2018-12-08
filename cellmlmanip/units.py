@@ -223,7 +223,7 @@ class UnitDummy(sympy.Dummy):
 
     def __str__(self, printer=None):
         import re
-        if printer and printer.__class__.__name__ == 'MyLambdaPrinter':
+        if printer and isinstance(printer, UnitLambdaPrinter):
             unit_with_prefix = re.sub(r'\b([a-zA-Z_0-9]+)\b', r'u.\1', str(self.unit))
             return '(1 * (%s))' % unit_with_prefix
         if self._number:
