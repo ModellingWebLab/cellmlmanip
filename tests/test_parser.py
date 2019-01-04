@@ -6,7 +6,6 @@ import sympy
 import sympy.physics.units as units
 
 from cellmlmanip import parser
-from cellmlmanip.model import QuantityStore
 
 logging.getLogger().setLevel(logging.INFO)
 
@@ -26,6 +25,22 @@ class TestParser(object):
     def test_component_count(self, model):
         assert len(model.components) == 21  # grep -c '<component ' test_simple_odes.cellml
 
+    def test_group_relationships(self, model):
+        assert model.components['circle_parent'].parent is None
+
+        assert 'circle_x' in model.components['circle_parent'].encapsulated
+        assert 'circle_y' in model.components['circle_parent'].encapsulated
+
+        assert 'circle_parent' == model.components['circle_x'].parent
+        assert 'circle_parent' == model.components['circle_y'].parent
+
+        assert 'circle_x_source' in model.components['circle_x'].encapsulated
+        assert 'circle_x_source' in model.components['circle_x_sibling'].siblings
+        assert 'circle_x_sibling' in model.components['circle_x_source'].siblings
+        assert 'circle_x' == model.components['circle_x_sibling'].parent
+
+        assert 'circle_y_implementation' not in model.components['circle_parent'].encapsulated
+
     def test_equations_count(self, model):
         equation_count = 0
         for component in model.components.values():
@@ -39,7 +54,7 @@ class TestParser(object):
                                                               'units': 'ms'}]
         matched = model.find_variable({'cmeta:id': 'sv12'})
         assert len(matched) == 1 and \
-            matched[0]['sympy.Dummy'].name == 'single_ode_rhs_const_var__sv1'
+            matched[0]['sympy.Dummy'].name == 'single_ode_rhs_const_var$sv1'
 
     def test_connections_loaded(self, model):
         assert len(model.connections) == 32  # grep -c '<map_variables ' test_simple_odes.cellml
@@ -91,74 +106,113 @@ class TestParser(object):
         assert model.units.get_quantity('kilogram') == units.kilogram
 
         # Custom units defined in CellML example
-        assert units.convert_to(model.units.get_quantity('per_ms'), 1/units.millisecond) == 1/units.millisecond
-        assert units.convert_to(model.units.get_quantity('usec'), units.microsecond) == units.microsecond
-        assert units.convert_to(
-            model.units.get_quantity('mM_per_ms'),
-            [units.mole, units.liter, units.millisecond]) == (units.mole / 1000) / (units.liter * units.millisecond)
+        assert units.convert_to(model.units.get_quantity('per_ms'),
+                                1/units.millisecond) == 1/units.millisecond
+        assert units.convert_to(model.units.get_quantity('usec'),
+                                units.microsecond) == units.microsecond
+        assert units.convert_to(model.units.get_quantity('mM_per_ms'),
+                                [units.mole, units.liter, units.millisecond]
+                                ) == (units.mole / 1000) / (units.liter * units.millisecond)
 
     def test_add_units_to_equations(self, model):
         # This is an irreversible operation # TODO: don't mutate?
-        for component in model.components.values():
-            component.add_units_to_equations()
+        model.add_units_to_equations()
 
         # mV/millisecond == mV_per_ms
         test_equation = model.components['single_independent_ode'].equations[0]
-        lhs_units = QuantityStore.summarise_units(test_equation.lhs)
-        rhs_units = QuantityStore.summarise_units(test_equation.rhs)
-        assert QuantityStore.is_equal(lhs_units, rhs_units)
+        lhs_units = model.units.summarise_units(test_equation.lhs)
+        rhs_units = model.units.summarise_units(test_equation.rhs)
+        assert model.units.is_equal(rhs_units, lhs_units)
 
         # mV_per_usec != uV/millisecond
         test_equation = model.components['deriv_on_rhs2b'].equations[0]
-        lhs_units = QuantityStore.summarise_units(test_equation.lhs)
-        rhs_units = QuantityStore.summarise_units(test_equation.rhs)
-        assert not QuantityStore.is_equal(lhs_units, rhs_units)
+        lhs_units = model.units.summarise_units(test_equation.lhs)
+        rhs_units = model.units.summarise_units(test_equation.rhs)
+        assert not model.units.is_equal(rhs_units, lhs_units)
 
         # Check a specific RHS->LHS unit conversion
         test_equation = model.components['deriv_on_rhs2b'].equations[0]
         new_rhs = units.convert_to(test_equation.rhs, lhs_units)
-        new_rhs_units = QuantityStore.summarise_units(new_rhs)
-        assert QuantityStore.is_equal(lhs_units, new_rhs_units)
+        new_rhs_units = model.units.summarise_units(new_rhs)
+        assert model.units.is_equal(new_rhs_units, lhs_units)
 
-        # TODO: work in progress...trying to understand what's going on here
-        def simplify_units_until_no_change(expr):
-            current_expression = expr
-            while True:
-                new_expression = QuantityStore.summarise_units(current_expression)
-                if current_expression == new_expression:
-                    break
-                current_expression = new_expression
-            return new_expression
+        # TODO: try conversion of units of RHS by LHS.units / RHS.unit == x;
+        # i.e. if x == 1, good, else RHS = RHS * x
 
         # Try fixing all units on the RHS so that they match the LHS
         for component in model.components.values():
             for index, equation in enumerate(component.equations):
-                lhs_units = QuantityStore.summarise_units(equation.lhs)
-                rhs_units = simplify_units_until_no_change(equation.rhs)
-                if not QuantityStore.is_equal(lhs_units, rhs_units):
+                lhs_units = model.units.summarise_units(equation.lhs)
+                rhs_units = model.units.simplify_units_until_no_change(equation.rhs)
+                if not model.units.is_equal(lhs_units, rhs_units):
                     new_rhs = units.convert_to(equation.rhs, lhs_units)
                     # Create a new equality with the converted RHS and replace original
                     equation = sympy.Eq(equation.lhs, new_rhs)
                     component.equations[index] = equation
-                    lhs_units = QuantityStore.summarise_units(equation.lhs)
-                    rhs_units = QuantityStore.summarise_units(equation.rhs)
-                    assert QuantityStore.is_equal(lhs_units, rhs_units)
+                    lhs_units = model.units.summarise_units(equation.lhs)
+                    rhs_units = model.units.summarise_units(equation.rhs)
+                    assert model.units.is_equal(lhs_units, rhs_units)
 
-    def test_unit_extraction(self):
+    def test_unit_extraction(self, model):
         eq = (5*units.mile/(2*units.hour + 10*units.minute))**(8*units.gram)
-        assert QuantityStore.summarise_units(eq) == \
+        assert model.units.summarise_units(eq) == \
             (units.mile/(units.hour + units.minute))**units.gram
 
         millivolts = units.Quantity('millivolts', units.voltage, units.milli * units.volts, 'mV')
         x, y = sympy.symbols('x y')
         eq = (millivolts / units.millisecond)*sympy.Derivative(x, y)
-        assert QuantityStore.summarise_units(eq) == (millivolts / units.milliseconds)
+        assert model.units.summarise_units(eq) == (millivolts / units.milliseconds)
 
-    def test_print(self, model):
-        from os import environ
-        if "CMLM_TEST_PRINT" in environ:
-            # show equations
-            for name, component in model.components.items():
-                print(name)
-                for equation in component.equations:
-                    print('\t', equation)
+    @pytest.mark.skipif('CMLM_TEST_PRINT' not in os.environ, reason="print eq on demand")
+    def test_print_eq(self, model):
+        # show equations
+        for name, component in model.components.items():
+            print(name)
+            for equation in component.equations:
+                print('\t', equation)
+
+    def test_connect_to_hidden_component(self):
+        example_cellml = os.path.join(
+            os.path.dirname(__file__), "cellml_files", "err_connect_to_hidden_component.cellml"
+        )
+        p = parser.Parser(example_cellml)
+        model = p.parse()
+        with pytest.raises(ValueError, match=r'^Cannot determine the source & target.*'):
+            model.make_connections()
+
+    def test_bad_connection_units(self):
+        example_cellml = os.path.join(
+            os.path.dirname(__file__), "cellml_files", "err_bad_connection_units.cellml"
+        )
+        p = parser.Parser(example_cellml)
+        model = p.parse()
+
+        # first we make the connections
+        model.make_connections()
+
+        # then add the units to the equations
+        model.add_units_to_equations()
+
+        # then check the lhs/rhs units
+        with pytest.raises(AssertionError, match='Units second != volt'):
+            for e in model.equations:
+                model.check_left_right_units_equal(e)
+
+    def test_algebraic(self):
+        example_cellml = os.path.join(
+            os.path.dirname(__file__), "cellml_files", "algebraic.cellml"
+        )
+        p = parser.Parser(example_cellml)
+        model = p.parse()
+        model.make_connections()
+        model.add_units_to_equations()
+        for e in model.equations:
+            model.check_left_right_units_equal(e)
+
+    def test_undefined_variable(self):
+        example_cellml = os.path.join(
+            os.path.dirname(__file__), "cellml_files", "undefined_variable.cellml"
+        )
+        p = parser.Parser(example_cellml)
+        with pytest.raises(KeyError, match=r'Variable "b" in component "c" could not be found\.'):
+            p.parse()

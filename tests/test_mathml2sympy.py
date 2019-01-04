@@ -260,8 +260,12 @@ class TestParser(object):
         sympy_expr = transpiler.parse_string(mathml)
         assert sympy_expr[0] == sympy.Symbol('test__x')
 
-    def test_noble_1962(self):
-        cellml_path = os.path.join(os.path.dirname(__file__), "noble_model_1962.cellml")
+    def test_hodgkin_1952(self):
+        cellml_path = os.path.join(
+            os.path.dirname(__file__),
+            "cellml_files",
+            "hodgkin_huxley_squid_axon_model_1952_modified.cellml"
+        )
 
         document = pulldom.parse(cellml_path)
         components = []

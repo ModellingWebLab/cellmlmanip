@@ -138,16 +138,17 @@ class Transpiler(object):
                 if len(node.childNodes) == 3 and node.childNodes[1].tagName == 'sep':
                     mantissa = node.childNodes[0].data.strip()
                     exponent = int(node.childNodes[2].data.strip())
-                    return sympy.Float('%se%d' % (mantissa, exponent))
+                    number = sympy.Float('%se%d' % (mantissa, exponent))
                 else:
                     raise SyntaxError('Expecting '
                                       '<cn type="e-notation">significand<sep/>exponent</cn>.'
                                       'Got: ' + node.toxml())
-            raise NotImplementedError('Unimplemented type attribute for <cn>: '
-                                      + node.attributes['type'].value)
-
-        number = float(node.childNodes[0].data.strip())
-        number = sympy.Number(number)
+            else:
+                raise NotImplementedError('Unimplemented type attribute for <cn>: '
+                                          + node.attributes['type'].value)
+        else:
+            number = float(node.childNodes[0].data.strip())
+            number = sympy.Number(number)
 
         if self.dummify:
             dummified = sympy.Dummy(str(number))
