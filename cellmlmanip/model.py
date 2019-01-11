@@ -100,13 +100,13 @@ class Component(object):
 
     def collect_units(self, expr):
         """Descends into the given Sympy expression and returns the appropriate units (if any)"""
-        logging.debug("_collect_units(%s)", expr)
+        logging.debug("collect_units(%s)", expr)
 
         expr_unit_info = self._find_unit_info(expr)
         if expr_unit_info:
             expr_unit_info = self.model.units.get_quantity(expr_unit_info)
             unit_info = {expr: expr_unit_info}
-            logging.debug('Found unit for "%s" ⟶ "%s"', expr, expr_unit_info)
+            logging.debug('Found unit for "%s" ⟶ "%s"', expr.name, expr_unit_info)
         else:
             unit_info: Dict = {}
 
@@ -157,7 +157,7 @@ class Component(object):
                 return number_info['cellml:units']
 
         # Note unit information about this expression in this component. It might be referring to
-        # a variable in a different component
+        # a variable in a different component (above, we're only looking in current component)
         variable_with_assigned = self.model.find_variable({'assignment': expr})
         if variable_with_assigned:
             return variable_with_assigned[0]['units']
@@ -414,6 +414,7 @@ class Model(object):
                         graph.add_node(rhs_symbol, equation=None, variable_type=variable['type'])
                         graph.add_edge(rhs_symbol, lhs_symbol)
                     else:
+                        # TODO: <variable> with initial_value is a paramter & variable without any variables on RHS is a parameter
                         # The variable is a constant or parameter of the model
                         variable['type'] = 'parameter'
                         # TODO: Can we tell the difference between a parameter and a constant?
@@ -433,7 +434,7 @@ class Model(object):
                 variable = self.find_variable({'sympy.Dummy': node})
                 assert len(variable) == 1
                 variable = variable.pop()
-                for key in ['cmeta:id', 'name']:
+                for key in ['cmeta:id', 'name', 'units']:
                     if key in variable:
                         graph.nodes[node][key] = variable[key]
                 if graph.nodes[node].get('variable_type', '') == 'state':

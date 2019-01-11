@@ -8,7 +8,7 @@ from sympy.physics.units import Quantity
 
 from cellmlmanip import parser
 
-logging.getLogger().setLevel(logging.INFO)
+logging.getLogger().setLevel(logging.DEBUG)
 
 
 class TestHodgkin:

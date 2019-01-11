@@ -11,8 +11,8 @@ from pint.quantity import _Quantity as Quantity
 from pint.unit import _Unit as Unit
 from sympy.printing.lambdarepr import LambdaPrinter
 
-
-logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
 
 # The full list of supported CellML units
 # Taken from https://www.cellml.org/specifications/cellml_1.1/#sec_units
@@ -80,6 +80,8 @@ class UnitStore(object):
         self.cellml_definitions = cellml_def if cellml_def else {}
         self.cellml_defined = set()
 
+        self.printer = UnitLambdaPrinter()
+
     def __add_undefined_units(self):
         """Adds units required by CellML but not provided by Pint."""
         self.ureg.define('katal = mol / second = kat')
@@ -137,7 +139,7 @@ class UnitStore(object):
         full_unit_expr = '*'.join(full_unit_expr)
 
         # Return Pint definition string
-        logging.debug('Unit %s => %s', custom_unit_name, full_unit_expr)
+        logger.debug('Unit %s => %s', custom_unit_name, full_unit_expr)
         return '%s = %s' % (custom_unit_name, full_unit_expr)
 
     @staticmethod
@@ -151,7 +153,7 @@ class UnitStore(object):
         q2 = u2 if isinstance(u2, Quantity) else UnitStore.one_of_unit(u2)
         is_equal = q1.dimensionality == q2.dimensionality and math.isclose(q1.to(q2).magnitude,
                                                                            q1.magnitude)
-        logging.debug('is_unit_equal(%s, %s) -> %s', q1.units, q2.units, is_equal)
+        logger.debug('UnitStore.is_unit_equal(%s, %s) ⟶ %s', q1.units, q2.units, is_equal)
         return is_equal
 
     @staticmethod
@@ -169,13 +171,10 @@ class UnitStore(object):
     def summarise_units(self, expr: sympy.Expr):
         """Given a Sympy expression, will get the lambdified string to evaluate units
         """
-        printer = UnitLambdaPrinter()
-
-        to_evaluate = printer.doprint(expr)
-
+        to_evaluate = self.printer.doprint(expr)
         to_evaluate = to_evaluate.replace('exp(', 'math.exp(')
         simplified = eval(to_evaluate, {'u': self.ureg, 'math': math}).units
-        logging.debug('summarise_units(%s) -> %s -> %s', expr, to_evaluate, simplified)
+        logger.debug('UnitStore.summarise_units(%s) ⟶ %s ⟶ %s', expr, to_evaluate, simplified)
         return simplified
 
     @staticmethod
