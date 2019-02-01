@@ -110,15 +110,6 @@ class TestHodgkin:
         assert str(dm_dt_node) == 'Derivative(_sodium_channel_m_gate$m, _environment$time)'
         assert 3 == graph.in_degree(dm_dt_node)
 
-        # check that units have been added to parameters
-        leakage_var = sorted_nodes[1]
-        assert leakage_var.name == 'leakage_current$g_L'
-        lcv_equation = graph.node[leakage_var]['equation']
-        rhs_unit = model.units.summarise_units(lcv_equation.rhs)
-        lhs_unit = model.units.summarise_units(lcv_equation.lhs)
-        assert rhs_unit == model.units.ureg.milliS_per_cm2
-        assert rhs_unit == lhs_unit
-
         # check attributes on membrane capacitance
         membrane_Cm = sorted_nodes[2]
         assert membrane_Cm.name == 'membrane$Cm'

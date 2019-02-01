@@ -469,6 +469,27 @@ class Model(object):
                     if 'initial_value' in variable:
                         graph.nodes[node]['initial_value'] = sympy.Float(variable['initial_value'])
 
+        # TODO: the replacement of dummy-number placeholders can happen above?
+        # for each node in the graph
+        for node in graph.nodes:
+            # if an equation exists for this node
+            equation = graph.nodes[node]['equation']
+            if equation is not None:
+                # get all the dummy symbols on the RHS
+                dummies = equation.rhs.atoms(sympy.Dummy)
+
+                # get any dummy-numbers
+                subs_dict = {}
+                for dummy in dummies:
+                    if 'number' in self.dummy_info[dummy]:
+                        subs_dict[dummy] = self.dummy_info[dummy]['number']
+
+                # if there are any dummy-numbers on the rhs
+                if subs_dict:
+                    # replace the equation with a new equation with rhs subbed with real numbers
+                    graph.nodes[node]['equation'] = sympy.Eq(equation.lhs,
+                                                             equation.rhs.subs(subs_dict))
+
         return graph
 
     @staticmethod
