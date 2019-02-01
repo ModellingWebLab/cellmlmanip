@@ -130,6 +130,7 @@ class TestParser(object):
                         'unit': ((1*lhs_units) / (1*rhs_units)).units
                     }
                     equation = sympy.Eq(equation.lhs, equation.rhs * new_dummy)
+                    # Replace the current equation with the same equation multiplied by factor
                     component.equations[index] = equation
                     lhs_units = model.units.summarise_units(equation.lhs)
                     rhs_units = model.units.summarise_units(equation.rhs)
