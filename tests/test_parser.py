@@ -99,26 +99,20 @@ class TestParser(object):
         rhs_units = model.units.summarise_units(test_equation.rhs)
         assert model.units.is_unit_equal(rhs_units, lhs_units)
 
-        # mV_per_usec != uV/millisecond
-        test_equation = model.components['deriv_on_rhs2b'].equations[0]
-        lhs_units = model.units.summarise_units(test_equation.lhs)
-        rhs_units = model.units.summarise_units(test_equation.rhs)
-        assert not model.units.is_unit_equal(rhs_units, lhs_units)
-
-        # Convert RHS into required units. This returns a Quantity object
-        new_rhs = model.units.convert_to(rhs_units, lhs_units)
-        assert new_rhs.magnitude == pytest.approx(1.0e-6)
-        assert model.units.is_unit_equal(new_rhs.units, lhs_units)
-
-        # TODO: try conversion of units of RHS by LHS.units / RHS.unit == x;
-        # i.e. if x == 1, good, else RHS = RHS * x
+        # We should find two equations with different lhs/rhs units
+        # 1. time_units_conversion1
+        #    Eq(_time_units_conversion1$time, _environment$time) second millisecond
+        # 2. time_units_conversion2
+        #    Eq(_time_units_conversion2$time, _environment$time) microsecond millisecond
 
         # Try fixing all units on the RHS so that they match the LHS
+        invalid_rhs_lhs_count = 0
         for component in model.components.values():
             for index, equation in enumerate(component.equations):
                 lhs_units = model.units.summarise_units(equation.lhs)
                 rhs_units = model.units.summarise_units(equation.rhs)
                 if not model.units.is_unit_equal(lhs_units, rhs_units):
+                    invalid_rhs_lhs_count += 1
                     new_rhs = model.units.convert_to(rhs_units, lhs_units)
                     # Create a new equality with the converted RHS and replace original
                     new_dummy = sympy.Dummy(str(new_rhs.magnitude))
@@ -133,6 +127,7 @@ class TestParser(object):
                     rhs_units = model.units.summarise_units(equation.rhs)
                     # TODO: how to test this?
                     assert model.units.is_unit_equal(lhs_units, rhs_units)
+        assert invalid_rhs_lhs_count == 2
 
     @pytest.mark.skipif('CMLM_TEST_PRINT' not in os.environ, reason="print eq on demand")
     def test_print_eq(self, model):
