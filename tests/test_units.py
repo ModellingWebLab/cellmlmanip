@@ -13,7 +13,7 @@ class TestUnits(object):
         'uV': [{'units': 'volt', 'prefix': 'micro'}],
         'mV_per_ms': [{'units': 'mV', 'exponent': '1'}, {'units': 'ms', 'exponent': '-1'}],
         'mV_per_s': [{'units': 'mV', 'exponent': '1'}, {'units': 'second', 'exponent': '-1'}],
-        'mV_per_usec': [{'units': 'mV', 'exponent': '1'}, 
+        'mV_per_usec': [{'units': 'mV', 'exponent': '1'},
                         {'prefix': 'micro', 'units': 'second', 'exponent': '-1'}],
         'mM': [{'prefix': 'milli', 'units': 'mole'}, {'units': 'litre', 'exponent': '-1'}],
         'mM_per_ms': [{'units': 'mM'}, {'units': 'ms', 'exponent': '-1'}],
@@ -89,4 +89,3 @@ class TestUnits(object):
         # x, y = sympy.symbols('x y')
         # eq = (millivolts / units.millisecond)*sympy.Derivative(x, y)
         # assert model.units.summarise_units(eq) == (millivolts / units.milliseconds)
-

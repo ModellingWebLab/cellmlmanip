@@ -4,7 +4,6 @@ import os
 import networkx as nx
 import pytest
 import sympy
-from sympy.physics.units import Quantity
 
 from cellmlmanip import parser
 
@@ -71,7 +70,6 @@ class TestHodgkin:
         assert sorted_nodes[0].name == 'environment$time'
         assert sorted_nodes[10].name == 'membrane$stim_period'
         assert sorted_nodes[20].name == 'sodium_channel$E_Na'
-        # assert str(sorted_nodes[-1]) == 'Derivative(membrane$V[millivolt], environment$time[millisecond])'
         assert str(sorted_nodes[-1]) == 'Derivative(_membrane$V, _environment$time)'
 
         # check all cmeta ids have been added
@@ -86,7 +84,8 @@ class TestHodgkin:
 
                 # only state variables should have initial_values
                 if graph.nodes[node].get('variable_type', '') == 'state':
-                    assert float(variable[0]['initial_value']) == float(graph.nodes[node]['initial_value'])
+                    assert (float(variable[0]['initial_value']) ==
+                            float(graph.nodes[node]['initial_value']))
                 else:
                     assert 'initial_value' not in graph.nodes[node]
 
@@ -108,7 +107,6 @@ class TestHodgkin:
 
         # check a node for dependencies
         dm_dt_node = sorted_nodes[29]
-        # assert str(dm_dt_node) == 'Derivative(sodium_channel_m_gate$m[dimensionless], environment$time[millisecond])'
         assert str(dm_dt_node) == 'Derivative(_sodium_channel_m_gate$m, _environment$time)'
         assert 3 == graph.in_degree(dm_dt_node)
 

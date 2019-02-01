@@ -434,7 +434,8 @@ class Model(object):
                         graph.add_node(rhs_symbol, equation=None, variable_type=variable['type'])
                         graph.add_edge(rhs_symbol, lhs_symbol)
                     else:
-                        # TODO: <variable> with initial_value is a paramter & variable without any variables on RHS is a parameter
+                        # TODO: <variable> with initial_value is a parameter & variable without
+                        # any variables on RHS is a parameter
                         # The variable is a constant or parameter of the model
                         variable['type'] = 'parameter'
                         # TODO: Can we tell the difference between a parameter and a constant?
