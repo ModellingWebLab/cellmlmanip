@@ -92,7 +92,7 @@ class Transpiler(object):
                 if tag_name in self.handlers:
                     sympy_expressions.append(self.handlers[tag_name](child_node))
                     logger.debug('Transpiled node %s ⟶ %s',
-                                  child_node.toxml(), sympy_expressions[-1])
+                                 child_node.toxml(), sympy_expressions[-1])
                 else:
                     # MathML handler function not found for this tag!
                     raise NotImplementedError('No handler for element <%s>' % tag_name)

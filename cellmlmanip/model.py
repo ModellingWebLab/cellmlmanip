@@ -7,9 +7,9 @@ from io import StringIO
 from typing import Dict, List, Set, Tuple
 
 import networkx as nx
+import rdflib
 import sympy
 
-import rdflib
 from cellmlmanip.units import UnitStore
 
 
@@ -340,7 +340,8 @@ class Model(object):
                 # The variable does not have a sympy.Dummy variable set - why??
                 else:
                     logger.warning('Variable (%s) in component (%s) not assigned a dummy',
-                                    variable['name'], component.name)
+                                   variable['name'],
+                                   component.name)
 
     def add_units_to_equations(self):
         """Inserts unit attributes associated with symbols into equations.
@@ -618,7 +619,7 @@ class Model(object):
                     sympy.Eq(target_variable['sympy.Dummy'], source_variable['assignment'])
                 )
                 logger.info('    New target eq: %s ⟶ %s', target_component,
-                             self.components[target_component].equations[-1])
+                            self.components[target_component].equations[-1])
 
                 # The assigned symbol for this variable is itself
                 target_variable['assignment'] = target_variable['sympy.Dummy']

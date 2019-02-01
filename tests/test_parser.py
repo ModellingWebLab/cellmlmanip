@@ -146,9 +146,10 @@ class TestParser(object):
                                         printer.doprint(equation.rhs)))
                 lhs_units = model.units.summarise_units(equation.lhs)
                 rhs_units = model.units.summarise_units(equation.rhs)
-                print('\t%s %s %s' % (lhs_units,
-                                      '==' if model.units.is_unit_equal(rhs_units, lhs_units) else '!=',
-                                      rhs_units))
+                print('\t%s %s %s' %
+                      (lhs_units,
+                       '==' if model.units.is_unit_equal(rhs_units, lhs_units) else '!=',
+                       rhs_units))
 
     def test_connect_to_hidden_component(self):
         example_cellml = os.path.join(

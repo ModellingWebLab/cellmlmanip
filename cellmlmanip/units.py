@@ -6,12 +6,11 @@ import logging
 import math
 import re
 
-import sympy
-from sympy.printing.lambdarepr import LambdaPrinter
-
 import pint
+import sympy
 from pint.quantity import _Quantity as Quantity
 from pint.unit import _Unit as Unit
+from sympy.printing.lambdarepr import LambdaPrinter
 
 
 logger = logging.getLogger(__name__)
