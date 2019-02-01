@@ -14,8 +14,8 @@ from pint.quantity import _Quantity as Quantity
 from pint.unit import _Unit as Unit
 
 
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+LOGGER = logging.getLogger(__name__)
+LOGGER.setLevel(logging.DEBUG)
 
 # The full list of supported CellML units
 # Taken from https://www.cellml.org/specifications/cellml_1.1/#sec_units
@@ -66,7 +66,10 @@ CELLML_UNITS = {
 
 
 class UnitStore(object):
-
+    """
+    Wraps the underlying Pint UnitRegistry to provide unit handling for the model's Sympy
+    expressions. Getting and checking units is handled by this class.
+    """
     def __init__(self, model, cellml_def=None):
         """Initialise a QuantityStore instance
         :param cellml_def: a dictionary of <units> definitions from the CellML model. See parser
@@ -81,7 +84,7 @@ class UnitStore(object):
 
         # Hold on to custom unit definitions
         self.cellml_definitions = cellml_def if cellml_def else {}
-        logger.debug('Found %d CellML unit definitions', len(self.cellml_definitions))
+        LOGGER.debug('Found %d CellML unit definitions', len(self.cellml_definitions))
 
         # CellML units that we've defined in unit registry because of call to get_quantity()
         self.cellml_defined = set()
@@ -90,7 +93,7 @@ class UnitStore(object):
         self.model = model
 
         # Prints Sympy expression in terms of units
-        self.printer = UnitLambdaPrinter(self)
+        self.printer = PintUnitPrinter(self)
 
     def __add_undefined_units(self):
         """Adds units required by CellML but not provided by Pint."""
@@ -148,69 +151,76 @@ class UnitStore(object):
         full_unit_expr = '*'.join(full_unit_expr)
 
         # Return Pint definition string
-        logger.debug('Unit %s => %s', custom_unit_name, full_unit_expr)
+        LOGGER.debug('Unit %s => %s', custom_unit_name, full_unit_expr)
         return '%s = %s' % (custom_unit_name, full_unit_expr)
 
     @staticmethod
     def one_of_unit(unit):
+        """ Returns a quantity of 1 * unit """
         assert isinstance(unit, Unit)
         return 1 * unit
 
     @staticmethod
-    def is_unit_equal(u1, u2):
-        q1 = u1 if isinstance(u1, Quantity) else UnitStore.one_of_unit(u1)
-        q2 = u2 if isinstance(u2, Quantity) else UnitStore.one_of_unit(u2)
-        is_equal = q1.dimensionality == q2.dimensionality and math.isclose(q1.to(q2).magnitude,
-                                                                           q1.magnitude)
-        logger.debug('UnitStore.is_unit_equal(%s, %s) ⟶ %s', q1.units, q2.units, is_equal)
+    def is_unit_equal(unit1, unit2):
+        """ Check whether two Pint Units are equal (converts to quantities if necessary) """
+        quantity1 = unit1 if isinstance(unit1, Quantity) else UnitStore.one_of_unit(unit1)
+        quantity2 = unit2 if isinstance(unit2, Quantity) else UnitStore.one_of_unit(unit2)
+        is_equal = (quantity1.dimensionality == quantity2.dimensionality and
+                    math.isclose(quantity1.to(quantity2).magnitude, quantity1.magnitude))
+        LOGGER.debug('UnitStore.is_unit_equal(%s, %s) ⟶ %s',
+                     quantity1.units, quantity2.units, is_equal)
         return is_equal
 
     @staticmethod
-    def is_quantity_equal(q1, q2):
-        assert isinstance(q1, Quantity)
-        assert isinstance(q2, Quantity)
-        return q1.dimensionality == q2.dimensionality and q1.magnitude == q2.magnitude
+    def is_quantity_equal(quantity1, quantity2):
+        """ Checks whether two instances of Quantity had the same dimensionality and magnitude """
+        assert isinstance(quantity1, Quantity)
+        assert isinstance(quantity2, Quantity)
+        return (quantity1.dimensionality == quantity2.dimensionality
+                and quantity1.magnitude == quantity2.magnitude)
 
     @staticmethod
-    def convert_to(q1, q2):
-        q1 = q1 if isinstance(q1, Quantity) else UnitStore.one_of_unit(q1)
-        q2 = q2 if isinstance(q2, Quantity) else UnitStore.one_of_unit(q2)
-        return q1.to(q2)
+    def convert_to(unit1, unit2):
+        """ Returns a quantity that is the result of converting [one of] unit1 into unit2 """
+        assert isinstance(unit1, Unit)
+        assert isinstance(unit2, Unit)
+        assert unit1.dimensionality == unit2.dimensionality
+        quantity1 = unit1 if isinstance(unit1, Quantity) else UnitStore.one_of_unit(unit1)
+        return quantity1.to(unit2)
 
     def summarise_units(self, expr: sympy.Expr):
         """Given a Sympy expression, will get the lambdified string to evaluate units
         """
         to_evaluate = self.printer.doprint(expr)
         to_evaluate = to_evaluate.replace('exp(', 'math.exp(')
+        # TODO: get rid of eval
         simplified = eval(to_evaluate, {'u': self.ureg, 'math': math}).units
-        logger.debug('UnitStore.summarise_units(%s) ⟶ %s ⟶ %s', expr, to_evaluate, simplified)
+        LOGGER.debug('UnitStore.summarise_units(%s) ⟶ %s ⟶ %s', expr, to_evaluate, simplified)
         return simplified
 
     @staticmethod
     def get_conversion_factor(from_unit, to_unit):
-        assert isinstance(from_unit, Unit)
-        assert isinstance(to_unit, Unit)
-
-        assert from_unit.dimensionality == to_unit.dimensionality
-
-        from_quantity = 1 * from_unit
-        to_quantity = 1 * to_unit
-
-        return from_quantity.to(to_quantity).magnitude
+        """ Returns the magnitude multiplier required to convert from_unit to to_unit """
+        return UnitStore.convert_to(from_unit, to_unit).magnitude
 
 
-class UnitLambdaPrinter(LambdaPrinter):
+class PintUnitPrinter(LambdaPrinter):
+    """ A Sympy expression printer that returns Pint unit arithmetic that can be evaluated """
     def __init__(self, unit_store: UnitStore = None):
         super().__init__()
         self.unit_store = unit_store
 
+    def __get_dummy_unit(self, expr):
+        return self.unit_store.model.dummy_info[expr]['unit']
+
     def _print_Dummy(self, expr):
-        unit_with_prefix = re.sub(r'\b([a-zA-Z_0-9]+)\b', r'u.\1', str(self.unit_store.model.dummy_info[expr]['unit']))
+        unit_with_prefix = re.sub(r'\b([a-zA-Z_0-9]+)\b', r'u.\1',
+                                  str(self.__get_dummy_unit(expr)))
         return '(1 * (%s))' % unit_with_prefix
 
-    def _print_Derivative(self, e):
-        state_dummy = e.free_symbols.pop()
-        state_unit = self.unit_store.model.dummy_info[state_dummy]['unit']
-        free_dummy = set(e.canonical_variables.keys()).pop()
-        free_unit = self.unit_store.model.dummy_info[free_dummy]['unit']
+    def _print_Derivative(self, expr):
+        state_dummy = expr.free_symbols.pop()
+        state_unit = self.__get_dummy_unit(state_dummy)
+        free_dummy = set(expr.canonical_variables.keys()).pop()
+        free_unit = self.__get_dummy_unit(free_dummy)
         return '(1 * u.%s)/(1 * u.%s)' % (state_unit, free_unit)
