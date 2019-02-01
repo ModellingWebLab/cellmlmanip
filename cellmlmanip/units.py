@@ -204,6 +204,39 @@ class UnitStore(object):
         return UnitStore.convert_to(from_unit, to_unit).magnitude
 
 
+class ExpressionWithUnitPrinter(LambdaPrinter):
+    """ A Sympy expression printer that prints the expression with unit information """
+    def __init__(self, unit_store: UnitStore = None):
+        super().__init__()
+        self.unit_store = unit_store
+
+    def __get_dummy_unit(self, expr):
+        return self.unit_store.model.dummy_info[expr]['unit']
+
+    def __get_dummy_number(self, expr):
+        if 'number' in self.unit_store.model.dummy_info[expr]:
+            return self.unit_store.model.dummy_info[expr]['number']
+        else:
+            return None
+
+    def _print_Dummy(self, expr):
+        number = self.__get_dummy_number(expr)
+        if number:
+            return '%f[%s]' % (number, str(self.__get_dummy_unit(expr)))
+
+        return '%s[%s]' % (expr.name, str(self.__get_dummy_unit(expr)))
+
+    def _print_Derivative(self, expr):
+        state_dummy = expr.free_symbols.pop()
+        state_unit = self.__get_dummy_unit(state_dummy)
+        free_dummy = set(expr.canonical_variables.keys()).pop()
+        free_unit = self.__get_dummy_unit(free_dummy)
+        return 'Derivative(%s[%s], %s[%s])' % (state_dummy.name,
+                                               str(state_unit),
+                                               free_dummy.name,
+                                               str(free_unit))
+
+
 class PintUnitPrinter(LambdaPrinter):
     """ A Sympy expression printer that returns Pint unit arithmetic that can be evaluated """
     def __init__(self, unit_store: UnitStore = None):

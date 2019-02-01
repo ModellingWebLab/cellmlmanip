@@ -139,11 +139,20 @@ class TestParser(object):
 
     @pytest.mark.skipif('CMLM_TEST_PRINT' not in os.environ, reason="print eq on demand")
     def test_print_eq(self, model):
+        from cellmlmanip.units import ExpressionWithUnitPrinter
+        printer = ExpressionWithUnitPrinter(unit_store=model.units)
         # show equations
         for name, component in model.components.items():
-            print(name)
             for equation in component.equations:
-                print('\t', equation)
+                logger.debug('%s: Eq(%s, %s)' % (name,
+                                                 printer.doprint(equation.lhs),
+                                                 printer.doprint(equation.rhs)))
+                lhs_units = model.units.summarise_units(equation.lhs)
+                rhs_units = model.units.summarise_units(equation.rhs)
+                logger.debug('%s: %s %s %s' % (name,
+                                               lhs_units,
+                                               '==' if model.units.is_unit_equal(rhs_units, lhs_units) else '!=',
+                                               rhs_units))
 
     def test_connect_to_hidden_component(self):
         example_cellml = os.path.join(
