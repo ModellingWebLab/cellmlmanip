@@ -1,13 +1,9 @@
-import logging
 import os
 
 import pytest
 import sympy
 
 from cellmlmanip import parser
-
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
 
 
 class TestParser(object):
@@ -144,16 +140,15 @@ class TestParser(object):
         printer = ExpressionWithUnitPrinter(unit_store=model.units)
         # show equations
         for name, component in model.components.items():
+            print('Component: %s' % name)
             for equation in component.equations:
-                logger.debug('%s: Eq(%s, %s)' % (name,
-                                                 printer.doprint(equation.lhs),
-                                                 printer.doprint(equation.rhs)))
+                print('\tEq(%s, %s)' % (printer.doprint(equation.lhs),
+                                        printer.doprint(equation.rhs)))
                 lhs_units = model.units.summarise_units(equation.lhs)
                 rhs_units = model.units.summarise_units(equation.rhs)
-                logger.debug('%s: %s %s %s' % (name,
-                                               lhs_units,
-                                               '==' if model.units.is_unit_equal(rhs_units, lhs_units) else '!=',
-                                               rhs_units))
+                print('\t%s %s %s' % (lhs_units,
+                                      '==' if model.units.is_unit_equal(rhs_units, lhs_units) else '!=',
+                                      rhs_units))
 
     def test_connect_to_hidden_component(self):
         example_cellml = os.path.join(
