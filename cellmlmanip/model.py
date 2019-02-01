@@ -45,6 +45,7 @@ class Component(object):
         )
 
     def set_parent(self, parent_name):
+        """Sets the parent of this component"""
         if self.parent:
             raise ValueError('Parent of component %s already %s. Cannot set %s!' % (self.name,
                                                                                     self.parent,
@@ -52,11 +53,13 @@ class Component(object):
         self.parent = parent_name
 
     def add_sibling(self, sibling_name):
+        """Adds a sibling for this component"""
         if sibling_name in self.siblings:
             raise ValueError('Sibling component %s already added!' % sibling_name)
         self.siblings.add(sibling_name)
 
     def add_encapsulated(self, encapsulated_name):
+        """Adds an encapsulated component to this component"""
         if encapsulated_name in self.encapsulated:
             raise ValueError('Encapsulated component %s already added!' % encapsulated_name)
         self.encapsulated.add(encapsulated_name)
@@ -118,11 +121,13 @@ class Component(object):
         return unit_info
 
     def add_units_to_all_equations(self):
+        """Iterates over equations in this component and returns the unit and number information
+        for each sympy.Dummy symbol"""
         # TODO: rename method to get_dummy_info()
-        all_dummy_info = dict()
+        component_dummy_info = dict()
 
         # for each equation in this component
-        for index, equation in enumerate(self.equations):
+        for equation in self.equations:
             # get the unit information for each dummy symbol
             unit_info = self.collect_units(equation)
 
@@ -136,14 +141,14 @@ class Component(object):
 
             # add each dummy symbol in this equation to the collected dummy info for the component
             for dummy, dummy_info in unit_info.items():
-                if dummy in all_dummy_info:
+                if dummy in component_dummy_info:
                     # TODO: check for conflicting information
                     pass
                 else:
-                    all_dummy_info[dummy] = dummy_info
+                    component_dummy_info[dummy] = dummy_info
 
-        # return information about all dummy symbols used in equations in this component
-        return all_dummy_info
+        # information about all dummy symbols used in equations in this component
+        return component_dummy_info
 
     def _find_unit_info(self, expr):
         """Takes an expression (part of an equation) and searches in the component variables
@@ -574,9 +579,8 @@ class Model(object):
         if 'assignment' in source_variable:
 
             if 'assignment' in target_variable:
-                raise ValueError('Target already assigned to %s before assignment to %s',
-                                 target_variable['assignment'],
-                                 source_variable['assignment'])
+                raise ValueError('Target already assigned to %s before assignment to %s' %
+                                 (target_variable['assignment'], source_variable['assignment']))
 
             # If source/target variable is in the same unit
             if source_variable['units'] == target_variable['units']:

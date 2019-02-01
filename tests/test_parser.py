@@ -131,7 +131,6 @@ class TestParser(object):
                     }
                     equation = sympy.Eq(equation.lhs, equation.rhs * new_dummy)
                     component.equations[index] = equation
-                    print('new eq:', equation)
                     lhs_units = model.units.summarise_units(equation.lhs)
                     rhs_units = model.units.summarise_units(equation.rhs)
                     # TODO: how to test this?
