@@ -3,7 +3,6 @@
        xmlns="http://www.cellml.org/cellml/1.0#"
        xmlns:cmeta="http://www.cellml.org/metadata/1.0#">
 
-
     <component name="parent">
         <variable name="time2" public_interface="in" units="second"/>
     </component>
