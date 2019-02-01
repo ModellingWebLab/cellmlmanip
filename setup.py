@@ -19,6 +19,7 @@ setup(
     install_requires=[
         'lxml>=4',
         'networkx>=2',
+        'pint>=0.8.1',
         'rdflib>=4',
         'sympy==1.1.1',
     ],
