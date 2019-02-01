@@ -2,15 +2,16 @@
 Classes representing a CellML model and its components
 """
 import logging
-from collections import deque, defaultdict
+from collections import defaultdict, deque
 from io import StringIO
 from typing import Dict, List, Set, Tuple
 
 import networkx as nx
-import rdflib
 import sympy
 
+import rdflib
 from cellmlmanip.units import UnitStore
+
 
 # Delimiter for the name of the Sympy symbol: <component><delimiter><name>
 SYMPY_SYMBOL_DELIMITER = '$'
@@ -609,5 +610,3 @@ class Model(object):
         for component in self.components.values():
             matches.extend(component.find_variable(search_dict))
         return matches
-
-
