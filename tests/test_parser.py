@@ -182,7 +182,6 @@ class TestParser(object):
         model.make_connections()
         model.add_units_to_equations()
         for e in model.equations:
-            print(e)
             model.check_left_right_units_equal(e)
 
     def test_undefined_variable(self):
