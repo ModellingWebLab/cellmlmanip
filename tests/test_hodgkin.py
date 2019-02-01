@@ -1,4 +1,3 @@
-import logging
 import os
 
 import networkx as nx
@@ -6,8 +5,6 @@ import pytest
 import sympy
 
 from cellmlmanip import parser
-
-logging.getLogger().setLevel(logging.DEBUG)
 
 
 class TestHodgkin:

@@ -6,7 +6,8 @@ import sympy
 
 from cellmlmanip import parser
 
-logging.getLogger().setLevel(logging.INFO)
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 
 class TestParser(object):

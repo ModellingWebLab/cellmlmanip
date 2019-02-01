@@ -10,6 +10,10 @@ from xml.dom import Node, minidom
 import sympy
 
 
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+
+
 class Transpiler(object):
     """Transpiler class handles conversion of MathmL to Sympy exprerssions"""
 
@@ -81,13 +85,13 @@ class Transpiler(object):
                 # (see cn_handler for an example), show a message
                 text = child_node.data.strip()
                 if text:
-                    logging.warning('Unhandled text node in <%s>: "%s"', child_node.tagName, text)
+                    logger.warning('Unhandled text node in <%s>: "%s"', child_node.tagName, text)
             elif child_node.nodeType == child_node.ELEMENT_NODE:
                 # Call the appropriate MathML handler function for this tag
                 tag_name = child_node.tagName
                 if tag_name in self.handlers:
                     sympy_expressions.append(self.handlers[tag_name](child_node))
-                    logging.debug('Transpiled node %s ⟶ %s',
+                    logger.debug('Transpiled node %s ⟶ %s',
                                   child_node.toxml(), sympy_expressions[-1])
                 else:
                     # MathML handler function not found for this tag!
@@ -165,7 +169,7 @@ class Transpiler(object):
         """
         result = self.transpile(node)
 
-        logging.debug('Result of <apply>:\n\t%s\t⟶\t%s', node.toxml(), result)
+        logger.debug('Result of <apply>:\n\t%s\t⟶\t%s', node.toxml(), result)
 
         if len(result) > 1:
             expression = result[0](*(result[1:]))

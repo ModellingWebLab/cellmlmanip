@@ -13,6 +13,10 @@ import rdflib
 from cellmlmanip.units import UnitStore
 
 
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+
+
 # Delimiter for the name of the Sympy symbol: <component><delimiter><name>
 SYMPY_SYMBOL_DELIMITER = '$'
 
@@ -104,13 +108,13 @@ class Component(object):
 
     def collect_units(self, expr):
         """Descends into the given Sympy expression and returns the appropriate units (if any)"""
-        logging.debug("collect_units(%s)", expr)
+        logger.debug("collect_units(%s)", expr)
 
         expr_unit_info = self._find_unit_info(expr)
         if expr_unit_info:
             expr_unit_info = self.model.units.get_quantity(expr_unit_info)
             unit_info = {expr: expr_unit_info}
-            logging.debug('Found unit for "%s" ⟶ "%s"', expr.name, expr_unit_info)
+            logger.debug('Found unit for "%s" ⟶ "%s"', expr.name, expr_unit_info)
         else:
             unit_info: Dict = {}
 
@@ -313,10 +317,10 @@ class Model(object):
         while connections_to_process:
             # Get connection at front of queue
             connection = connections_to_process.popleft()
-            logging.debug("Try to connect %s and %s", *connection)
+            logger.debug("Try to connect %s and %s", *connection)
             success = self.__connect(connection)
             if not success:
-                logging.debug('Cannot connect %s (source does not have assignment).', connection)
+                logger.debug('Cannot connect %s (source does not have assignment).', connection)
                 connections_to_process.append(connection)
             # TODO: track looping and break if we can't exit
 
@@ -335,7 +339,7 @@ class Model(object):
                         variable['assignment'] = variable['sympy.Dummy']
                 # The variable does not have a sympy.Dummy variable set - why??
                 else:
-                    logging.warning('Variable (%s) in component (%s) not assigned a dummy',
+                    logger.warning('Variable (%s) in component (%s) not assigned a dummy',
                                     variable['name'], component.name)
 
     def add_units_to_equations(self):
@@ -497,8 +501,8 @@ class Model(object):
         if 'type' not in variable:
             variable['type'] = variable_type
         else:
-            logging.error("The variable %s has been set a type of '%s'. Skip setting '%s'",
-                          variable['sympy.Dummy'], variable['type'], variable_type)
+            logger.warning("The variable %s has been set a type of '%s'. Skip setting '%s'",
+                           variable['sympy.Dummy'], variable['type'], variable_type)
 
     def get_symbols(self, expr):
         """Returns the symbols in an expression"""
@@ -593,8 +597,8 @@ class Model(object):
         :param target_component: name of target component
         :param target_variable: name of target variable
         """
-        logging.debug('    Source: %s ⟶ %s', source_component, source_variable)
-        logging.debug('    Target: %s ⟶ %s', target_component, target_variable)
+        logger.debug('    Source: %s ⟶ %s', source_component, source_variable)
+        logger.debug('    Target: %s ⟶ %s', target_component, target_variable)
 
         # If the source variable has already been assigned a final symbol
         if 'assignment' in source_variable:
@@ -613,12 +617,12 @@ class Model(object):
                 self.components[target_component].equations.append(
                     sympy.Eq(target_variable['sympy.Dummy'], source_variable['assignment'])
                 )
-                logging.info('    New target eq: %s ⟶ %s', target_component,
+                logger.info('    New target eq: %s ⟶ %s', target_component,
                              self.components[target_component].equations[-1])
 
                 # The assigned symbol for this variable is itself
                 target_variable['assignment'] = target_variable['sympy.Dummy']
-            logging.debug('    Updated target: %s ⟶ %s', target_component, target_variable)
+            logger.debug('    Updated target: %s ⟶ %s', target_component, target_variable)
             return True
         # The source variable has not been assigned a symbol, so we can't make this connection
         return False

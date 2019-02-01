@@ -14,8 +14,8 @@ from pint.quantity import _Quantity as Quantity
 from pint.unit import _Unit as Unit
 
 
-LOGGER = logging.getLogger(__name__)
-LOGGER.setLevel(logging.DEBUG)
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 # The full list of supported CellML units
 # Taken from https://www.cellml.org/specifications/cellml_1.1/#sec_units
@@ -84,7 +84,7 @@ class UnitStore(object):
 
         # Hold on to custom unit definitions
         self.cellml_definitions = cellml_def if cellml_def else {}
-        LOGGER.debug('Found %d CellML unit definitions', len(self.cellml_definitions))
+        logger.debug('Found %d CellML unit definitions', len(self.cellml_definitions))
 
         # CellML units that we've defined in unit registry because of call to get_quantity()
         self.cellml_defined = set()
@@ -151,7 +151,7 @@ class UnitStore(object):
         full_unit_expr = '*'.join(full_unit_expr)
 
         # Return Pint definition string
-        LOGGER.debug('Unit %s => %s', custom_unit_name, full_unit_expr)
+        logger.debug('Unit %s => %s', custom_unit_name, full_unit_expr)
         return '%s = %s' % (custom_unit_name, full_unit_expr)
 
     @staticmethod
@@ -167,7 +167,7 @@ class UnitStore(object):
         quantity2 = unit2 if isinstance(unit2, Quantity) else UnitStore.one_of_unit(unit2)
         is_equal = (quantity1.dimensionality == quantity2.dimensionality and
                     math.isclose(quantity1.to(quantity2).magnitude, quantity1.magnitude))
-        LOGGER.debug('UnitStore.is_unit_equal(%s, %s) ⟶ %s',
+        logger.debug('UnitStore.is_unit_equal(%s, %s) ⟶ %s',
                      quantity1.units, quantity2.units, is_equal)
         return is_equal
 
@@ -195,7 +195,7 @@ class UnitStore(object):
         to_evaluate = to_evaluate.replace('exp(', 'math.exp(')
         # TODO: get rid of eval
         simplified = eval(to_evaluate, {'u': self.ureg, 'math': math}).units
-        LOGGER.debug('UnitStore.summarise_units(%s) ⟶ %s ⟶ %s', expr, to_evaluate, simplified)
+        logger.debug('UnitStore.summarise_units(%s) ⟶ %s ⟶ %s', expr, to_evaluate, simplified)
         return simplified
 
     @staticmethod
