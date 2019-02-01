@@ -190,50 +190,6 @@ class UnitStore(object):
         return from_quantity.to(to_quantity).magnitude
 
 
-class UnitDummy(sympy.Dummy):
-    def __init__(self, name):
-        super().__init__()
-        self._unit = None
-        self._number = None
-
-    @property
-    def unit(self):
-        return self._unit
-
-    @unit.setter
-    def unit(self, value):
-        if value is not None:
-            assert isinstance(value, Unit)
-        self._unit = value
-
-    @property
-    def quantity(self):
-        return 1 * self.unit
-
-    @property
-    def number(self):
-        return self._number
-
-    @number.setter
-    def number(self, value):
-        if value is not None:
-            assert isinstance(value, sympy.Number)
-        self._number = value
-
-    def __str__(self, printer=None):
-        import re
-        if printer and isinstance(printer, UnitLambdaPrinter):
-            unit_with_prefix = re.sub(r'\b([a-zA-Z_0-9]+)\b', r'u.\1', str(self.unit))
-            return '(1 * (%s))' % unit_with_prefix
-        if self._number:
-            return '%f[%s]' % (self._number, str(self.unit))
-        else:
-            return '%s[%s]' % (self.name, str(self.unit))
-
-    __repr__ = __str__
-    _sympystr = __str__
-
-
 class UnitLambdaPrinter(LambdaPrinter):
     def _print_Derivative(self, e):
         state = e.free_symbols.pop()

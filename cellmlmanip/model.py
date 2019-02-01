@@ -10,7 +10,7 @@ import networkx as nx
 import rdflib
 import sympy
 
-from cellmlmanip.units import UnitStore, UnitDummy
+from cellmlmanip.units import UnitStore
 
 # Delimiter for the name of the Sympy symbol: <component><delimiter><name>
 SYMPY_SYMBOL_DELIMITER = '$'
@@ -277,7 +277,7 @@ class Model(object):
         for component, variable in self.variables:
             # If this variable does not have a sympy.Dummy (e.g. variable declared but not mathml?)
             if 'sympy.Dummy' not in variable:
-                variable['sympy.Dummy'] = UnitDummy(
+                variable['sympy.Dummy'] = sympy.Dummy(
                     component.name + SYMPY_SYMBOL_DELIMITER + variable['name']
                 )
 
@@ -421,7 +421,7 @@ class Model(object):
                         # TODO: change to "self." once collect units is in Model class
                         unit = next(iter(self.components.values())).collect_units(rhs_symbol)
                         unit = unit[rhs_symbol]
-                        number = UnitDummy(str(variable['initial_value']))
+                        number = sympy.Dummy(str(variable['initial_value']))
                         number.unit = unit
                         number.number = sympy.Float(variable['initial_value'])
                         graph.add_node(rhs_symbol,
