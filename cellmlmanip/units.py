@@ -129,7 +129,9 @@ class UnitStore(object):
 
         # For each of the <unit> elements for this unit definition
         for unit_element in self.cellml_definitions[custom_unit_name]:
-            # TODO: handle 'base_units'
+            # TODO: what other attributes can a unit have if it have base_units = 'yes'?
+            if 'base_units' in unit_element and unit_element['base_units'] == 'yes':
+                return '%s = [%s]' % (custom_unit_name, custom_unit_name)
 
             # Source the <unit units="XXX"> from our store
             matched_unit = self.get_quantity(unit_element['units'])
