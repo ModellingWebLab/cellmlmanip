@@ -124,10 +124,11 @@ class TestParser(object):
                 if not model.units.is_unit_equal(lhs_units, rhs_units):
                     new_rhs = model.units.convert_to(rhs_units, lhs_units)
                     # Create a new equality with the converted RHS and replace original
-                    from cellmlmanip.units import UnitDummy
-                    new_dummy = UnitDummy(str(new_rhs.magnitude))
-                    new_dummy.number = sympy.Float(new_rhs.magnitude)
-                    new_dummy.unit = ((1*lhs_units) / (1*rhs_units)).units
+                    new_dummy = sympy.Dummy(str(new_rhs.magnitude))
+                    model.dummy_info[new_dummy] = {
+                        'number': sympy.Float(new_rhs.magnitude),
+                        'unit': ((1*lhs_units) / (1*rhs_units)).units
+                    }
                     equation = sympy.Eq(equation.lhs, equation.rhs * new_dummy)
                     component.equations[index] = equation
                     print('new eq:', equation)

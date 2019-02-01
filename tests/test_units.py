@@ -22,7 +22,7 @@ class TestUnits(object):
 
     @pytest.fixture(scope="class")
     def quantity_store(self):
-        qs = UnitStore(TestUnits.test_definitions)
+        qs = UnitStore(model=None, cellml_def=TestUnits.test_definitions)
         return qs
 
     def test_quantity_translation(self, quantity_store):

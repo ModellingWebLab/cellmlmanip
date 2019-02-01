@@ -4,7 +4,7 @@ Parses Content MathML and returns equivalent SymPy expressions
 Content Markup specification: https://www.w3.org/TR/MathML2/chapter4.html
 """
 import logging
-from typing import Dict, List, Type
+from typing import Dict, List
 from xml.dom import Node, minidom
 
 import sympy

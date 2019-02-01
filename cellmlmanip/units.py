@@ -4,6 +4,7 @@ Sympy-units implementation
 """
 import logging
 import math
+import re
 
 import pint
 import sympy
@@ -64,7 +65,7 @@ CELLML_UNITS = {
 
 class UnitStore(object):
 
-    def __init__(self, cellml_def=None):
+    def __init__(self, model, cellml_def=None):
         """Initialise a QuantityStore instance
         :param cellml_def: a dictionary of <units> definitions from the CellML model. See parser
         for format, essentially: {'name of unit': { [ unit attributes ], [ unit attributes ] } }
@@ -78,9 +79,16 @@ class UnitStore(object):
 
         # Hold on to custom unit definitions
         self.cellml_definitions = cellml_def if cellml_def else {}
+        logger.debug('Found %d CellML unit definitions', len(self.cellml_definitions))
+
+        # CellML units that we've defined in unit registry because of call to get_quantity()
         self.cellml_defined = set()
 
-        self.printer = UnitLambdaPrinter()
+        # Keep reference to the underlying model, to look up the 'dummy_info' dictionary
+        self.model = model
+
+        # Prints Sympy expression in terms of units
+        self.printer = UnitLambdaPrinter(self)
 
     def __add_undefined_units(self):
         """Adds units required by CellML but not provided by Pint."""
@@ -92,7 +100,6 @@ class UnitStore(object):
         built-in name or (iii) construct and return a new Quantity object using the
         <units><unit></units> definition in the CellML <model>
         """
-
         # If this unit is a custom CellML definition and we haven't defined it
         if unit_name in self.cellml_definitions and unit_name not in self.cellml_defined:
             # TODO create cellml pint unit definitions file
@@ -191,7 +198,17 @@ class UnitStore(object):
 
 
 class UnitLambdaPrinter(LambdaPrinter):
+    def __init__(self, unit_store: UnitStore = None):
+        super().__init__()
+        self.unit_store = unit_store
+
+    def _print_Dummy(self, expr):
+        unit_with_prefix = re.sub(r'\b([a-zA-Z_0-9]+)\b', r'u.\1', str(self.unit_store.model.dummy_info[expr]['unit']))
+        return '(1 * (%s))' % unit_with_prefix
+
     def _print_Derivative(self, e):
-        state = e.free_symbols.pop()
-        free = set(e.canonical_variables.keys()).pop()
-        return '(1 * u.%s)/(1 * u.%s)' % (state.unit, free.unit)
+        state_dummy = e.free_symbols.pop()
+        state_unit = self.unit_store.model.dummy_info[state_dummy]['unit']
+        free_dummy = set(e.canonical_variables.keys()).pop()
+        free_unit = self.unit_store.model.dummy_info[free_dummy]['unit']
+        return '(1 * u.%s)/(1 * u.%s)' % (state_unit, free_unit)

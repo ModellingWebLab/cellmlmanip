@@ -71,7 +71,8 @@ class TestHodgkin:
         assert sorted_nodes[0].name == 'environment$time'
         assert sorted_nodes[10].name == 'membrane$stim_period'
         assert sorted_nodes[20].name == 'sodium_channel$E_Na'
-        assert str(sorted_nodes[-1]) == 'Derivative(membrane$V[millivolt], environment$time[millisecond])'
+        # assert str(sorted_nodes[-1]) == 'Derivative(membrane$V[millivolt], environment$time[millisecond])'
+        assert str(sorted_nodes[-1]) == 'Derivative(_membrane$V, _environment$time)'
 
         # check all cmeta ids have been added
         for node in sorted_nodes:
@@ -107,7 +108,8 @@ class TestHodgkin:
 
         # check a node for dependencies
         dm_dt_node = sorted_nodes[29]
-        assert str(dm_dt_node) == 'Derivative(sodium_channel_m_gate$m[dimensionless], environment$time[millisecond])'
+        # assert str(dm_dt_node) == 'Derivative(sodium_channel_m_gate$m[dimensionless], environment$time[millisecond])'
+        assert str(dm_dt_node) == 'Derivative(_sodium_channel_m_gate$m, _environment$time)'
         assert 3 == graph.in_degree(dm_dt_node)
 
         # check that units have been added to parameters
@@ -125,7 +127,7 @@ class TestHodgkin:
         assert graph.node[membrane_Cm]['cmeta:id'] == 'membrane_capacitance'
         assert graph.node[membrane_Cm]['variable_type'] == 'parameter'
 
-    def test_evaluation(self, graph):
+    def test_evaluation(self, graph, model):
         """
         From Michael:
 
@@ -194,8 +196,9 @@ class TestHodgkin:
                 remaining_symbols = eq_substituted.atoms(sympy.Symbol)
                 if remaining_symbols:
                     for remaining_symbol in remaining_symbols:
-                        if remaining_symbol.number is not None:
-                            eq_substituted = eq_substituted.subs({remaining_symbol: remaining_symbol.number})
+                        if 'number' in model.dummy_info[remaining_symbol]:
+                            number = model.dummy_info[remaining_symbol]['number']
+                            eq_substituted = eq_substituted.subs({remaining_symbol: number})
                         else:
                             pytest.fail("Unresolved symbol %s in %s" % (remaining_symbol, equation))
 
