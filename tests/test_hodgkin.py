@@ -4,7 +4,7 @@ import networkx as nx
 import pytest
 import sympy
 
-from cellmlmanip import parser
+from cellmlmanip import load_model
 
 
 class TestHodgkin:
@@ -15,9 +15,7 @@ class TestHodgkin:
             "cellml_files",
             "hodgkin_huxley_squid_axon_model_1952_modified.cellml"
         )
-        p = parser.Parser(hodgkin_cellml)
-        model = p.parse()
-        return model
+        return load_model(hodgkin_cellml)
 
     @pytest.fixture(scope="class")
     def graph(self, model):
@@ -29,14 +27,12 @@ class TestHodgkin:
         eq_count = len(list(model.equations))
         assert eq_count == 17
 
-    def test_setup_connections(self, model):
-        model.make_connections()
+    def test_connections(self, model):
         target = model.components['sodium_channel'].variables['h']
         source = model.components['sodium_channel_h_gate'].variables['h']
         assert target['assignment'] == source['sympy.Dummy']
 
-    def test_add_units_to_equations(self, model):
-        model.add_units_to_equations()
+    def test_equation_units(self, model):
         equation = model.components['sodium_channel'].equations[0]
         lhs_units = model.units.summarise_units(equation.lhs)
         assert lhs_units == model.units.ureg.millivolt
@@ -45,7 +41,7 @@ class TestHodgkin:
         for e in model.equations:
             model.check_left_right_units_equal(e)
 
-    def test_get_equations(self, graph, model):
+    def test_equation_graph(self, graph, model):
         assert len(graph.nodes) == 32
 
         free_variable = model.find_variable({'type': 'free'})

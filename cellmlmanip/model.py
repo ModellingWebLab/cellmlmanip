@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 
-# Delimiter for the name of the Sympy symbol: <component><delimiter><name>
+# Delimiter for variables name in Sympy expressions: <component><delimiter><name>
 SYMPY_SYMBOL_DELIMITER = '$'
 
 
@@ -502,7 +502,7 @@ class Model(object):
         if 'type' not in variable:
             variable['type'] = variable_type
         else:
-            logger.warning("The variable %s has been set a type of '%s'. Skip setting '%s'",
+            logger.warning("Variable %s already has type=='%s'. Skip setting '%s'",
                            variable['sympy.Dummy'], variable['type'], variable_type)
 
     def get_symbols(self, expr):
