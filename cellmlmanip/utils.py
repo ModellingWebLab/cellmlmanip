@@ -1,2 +1,0 @@
-"""Miscellaneous utility functions
-"""
