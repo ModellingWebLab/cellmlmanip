@@ -39,7 +39,7 @@ class Parser(object):
         self.filepath: str = filepath
         self.model: Model = None
 
-    def parse(self):
+    def parse(self) -> Model:
         """The main method that reads the XML file and extract the relevant parts of CellML model
         definition. Parser class should have been instantiated with the filepath.
 
