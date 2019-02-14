@@ -193,10 +193,9 @@ class UnitStore(object):
         """Given a Sympy expression, will get the lambdified string to evaluate units
         """
         to_evaluate = self.printer.doprint(expr)
-        to_evaluate = to_evaluate.replace('exp(', 'math.exp(')
         # TODO: get rid of eval
         simplified = eval(to_evaluate, {'u': self.ureg, 'math': math}).units
-        logger.debug('UnitStore.summarise_units(%s) ⟶ %s ⟶ %s', expr, to_evaluate, simplified)
+        logger.debug('summarise_units(%s).5 ⟶ %s ⟶ %s', expr, to_evaluate, simplified)
         return simplified
 
     @staticmethod
