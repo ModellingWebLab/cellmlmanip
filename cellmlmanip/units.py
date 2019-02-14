@@ -238,23 +238,96 @@ class ExpressionWithUnitPrinter(LambdaPrinter):
                                                str(free_unit))
 
 
+_known_functions_math = {
+    'acos': 'acos',
+    'acosh': 'acosh',
+    'asin': 'asin',
+    'asinh': 'asinh',
+    'atan': 'atan',
+    'atan2': 'atan2',
+    'atanh': 'atanh',
+    'ceiling': 'ceil',
+    'cos': 'cos',
+    'cosh': 'cosh',
+    'erf': 'erf',
+    'erfc': 'erfc',
+    'exp': 'exp',
+    'expm1': 'expm1',
+    'factorial': 'factorial',
+    'floor': 'floor',
+    'gamma': 'gamma',
+    'hypot': 'hypot',
+    'loggamma': 'lgamma',
+    'log': 'log',
+    'log10': 'log10',
+    'log1p': 'log1p',
+    'log2': 'log2',
+    'sin': 'sin',
+    'sinh': 'sinh',
+    'Sqrt': 'sqrt',
+    'tan': 'tan',
+    'tanh': 'tanh'
+}  # Not used from ``math``: [copysign isclose isfinite isinf isnan ldexp frexp pow modf
+# radians trunc fmod fsum gcd degrees fabs]
+_known_constants_math = {
+    'Exp1': 'e',
+    'Pi': 'pi',
+    # Only in python >= 3.5:
+    # 'Infinity': 'inf',
+    # 'NaN': 'nan'
+}
+
+
 class PintUnitPrinter(LambdaPrinter):
     """ A Sympy expression printer that returns Pint unit arithmetic that can be evaluated """
     def __init__(self, unit_store: UnitStore = None):
         super().__init__()
         self.unit_store = unit_store
+        self.in_pow = False
+
+        for k in _known_functions_math:
+            setattr(PintUnitPrinter, '_print_%s' % k, self._print_known_func)
+
+    def _print_known_func(self, expr):
+        known = _known_functions_math[expr.__class__.__name__]
+        return 'math.{name}({args})'.format(name=known, args=', '.join(map(self._print, expr.args)))
 
     def __get_dummy_unit(self, expr):
+        # logger.debug('__get_dummy_unit(%s)', expr)
         return self.unit_store.model.dummy_info[expr]['unit']
 
+    def __get_dummy_number(self, expr):
+        if 'number' in self.unit_store.model.dummy_info[expr]:
+            return self.unit_store.model.dummy_info[expr]['number']
+        else:
+            return None
+
     def _print_Dummy(self, expr):
-        unit_with_prefix = re.sub(r'\b([a-zA-Z_0-9]+)\b', r'u.\1',
-                                  str(self.__get_dummy_unit(expr)))
-        return '(1 * (%s))' % unit_with_prefix
+        number = self.__get_dummy_number(expr)
+        unit = str(self.__get_dummy_unit(expr))
+        unit_with_prefix = re.sub(r'\b([a-zA-Z_0-9]+)\b', r'u.\1', unit)
+
+        if number:
+            return '(%f * (%s))' % (number, unit_with_prefix)
+        else:
+            return '(1*%s)' % unit_with_prefix
 
     def _print_Derivative(self, expr):
+        # logger.debug('_print_Derivative(%s)', expr)
         state_dummy = expr.free_symbols.pop()
         state_unit = self.__get_dummy_unit(state_dummy)
         free_dummy = set(expr.canonical_variables.keys()).pop()
         free_unit = self.__get_dummy_unit(free_dummy)
-        return '(1 * u.%s)/(1 * u.%s)' % (state_unit, free_unit)
+        return '((1 * u.%s)/(1 * u.%s))' % (state_unit, free_unit)
+
+    def _print_Pow(self, expr, rational=False):
+        if expr.exp == 0.5:
+            # return '{0}({1})'.format('math.sqrt', self._print(expr.base))
+            base = self._print(expr.base)
+            return '(({0})**(1/2))'.format(base)
+        else:
+            base = super(LambdaPrinter, self)._print_Pow(expr)
+            return base
+
+    def _print_Pi(self, expr):
+        return 'math.pi'

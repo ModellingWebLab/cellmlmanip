@@ -497,6 +497,87 @@ class Model(object):
 
         return graph
 
+    def get_equations_for(self, symbols):
+        graph = self.get_equation_graph()
+        sorted_symbols = nx.lexicographical_topological_sort(graph, key=str)
+
+        # Create set of symbols for which we require equations
+        required_symbols = set()
+        for output in symbols:
+            required_symbols.add(output)
+            required_symbols.update(nx.ancestors(graph, output))
+
+        eqs = []
+        for symbol in sorted_symbols:
+            # Ignore symbols we don't need
+            if symbol not in required_symbols:
+                continue
+
+            # Get equation
+            eq = graph.nodes[symbol]['equation']
+
+            # Skip symbols that are not set with an equation
+            if eq is None:
+                continue
+
+            eqs.append(eq)
+
+        return eqs
+
+    def get_derivative_symbols(self):
+        """
+        Returns a list of derivative symbols found in the given model graph.
+        """
+        graph = self.get_equation_graph()
+
+        return [v for v in graph if isinstance(v, sympy.Derivative)]
+
+    def get_state_symbols(self):
+        """
+        Returns a list of state variables found in the given model graph.
+        """
+        return [v.args[0] for v in self.get_derivative_symbols()]
+
+    def get_free_variable_symbol(self):
+        """
+        Returns the free variable of the given model graph.
+        """
+        graph = self.get_equation_graph()
+        for v in graph:
+            if graph.nodes[v].get('variable_type', '') == 'free':
+                return v
+
+        # This should be unreachable
+        raise ValueError('No free variable set in model.')  # pragma: no cover
+
+    def get_symbol_by_cmeta_id(self, cmeta_id):
+        """
+        Searches the given graph and returns the symbol for the variable with the
+        given cmeta_id.
+        """
+        # TODO: Either add an argument to allow derivative symbols to be fetched, or
+        #      create a separate method for them.
+        graph = self.get_equation_graph()
+        for v in graph:
+            if graph.nodes[v].get('cmeta:id', '') == cmeta_id:
+                return v
+
+        raise KeyError('No variable with cmeta id "' + str(cmeta_id) + '" found.')
+
+    def get_value(self, symbol):
+        """
+        Returns the evaluated value of the given symbol's RHS.
+        """
+        graph = self.get_equation_graph()
+
+        # Find RHS
+        rhs = graph.nodes[symbol]['equation'].rhs
+        print('get_value(%s)' % rhs)
+
+        # Evaluate and return
+        print('evalf = %s' % rhs.evalf())
+        return float(rhs.evalf())
+
     @staticmethod
     def __set_variable_type(variable, variable_type):
         if 'type' not in variable:

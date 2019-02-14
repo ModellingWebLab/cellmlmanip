@@ -109,6 +109,33 @@ class TestHodgkin:
         assert graph.node[membrane_Cm]['cmeta:id'] == 'membrane_capacitance'
         assert graph.node[membrane_Cm]['variable_type'] == 'parameter'
 
+    def test_derivative_symbols(self, model):
+        """
+        Derivative(_membrane$V, _environment$time)
+        Derivative(_sodium_channel_m_gate$m, _environment$time)
+        Derivative(_sodium_channel_h_gate$h, _environment$time)
+        Derivative(_potassium_channel_n_gate$n, _environment$time)
+        """
+        derivatives = model.get_derivative_symbols()
+        assert len(derivatives) == 4
+
+    def test_state_symbols(self, model):
+        """
+        _membrane$V
+        _sodium_channel_m_gate$m
+        _sodium_channel_h_gate$h
+        _potassium_channel_n_gate$n
+        """
+        state_symbols = model.get_state_symbols()
+        assert len(state_symbols) == 4
+
+    def test_free_variable_symbol(self, model):
+        """
+        _environment$time
+        """
+        free_variable_symbol = model.get_free_variable_symbol()
+        assert free_variable_symbol.name == 'environment$time'
+
     def test_evaluation(self, graph, model):
         """
         From Michael:
@@ -178,11 +205,7 @@ class TestHodgkin:
                 remaining_symbols = eq_substituted.atoms(sympy.Symbol)
                 if remaining_symbols:
                     for remaining_symbol in remaining_symbols:
-                        if 'number' in model.dummy_info[remaining_symbol]:
-                            number = model.dummy_info[remaining_symbol]['number']
-                            eq_substituted = eq_substituted.subs({remaining_symbol: number})
-                        else:
-                            pytest.fail("Unresolved symbol %s in %s" % (remaining_symbol, equation))
+                        pytest.fail("Unresolved symbol %s in %s" % (remaining_symbol, equation))
 
                 # calculate the result
                 eq_evaluated = eq_substituted.evalf()
