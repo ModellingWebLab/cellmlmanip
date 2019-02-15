@@ -228,6 +228,7 @@ class Model(object):
         self.connections: List[Tuple] = []
         self.rdf: rdflib.Graph = rdflib.Graph()
         self.dummy_info: Dict[Dict] = defaultdict(dict)
+        self.graph: nx.DiGraph = None
 
     def __str__(self):
         """Pretty-print each of the components in this model"""
@@ -380,9 +381,14 @@ class Model(object):
             assert self.units.is_unit_equal(rhs_units, lhs_units), 'Units %s != %s' % (rhs_units,
                                                                                        lhs_units)
 
-    def get_equation_graph(self) -> nx.DiGraph:
+    def get_equation_graph(self, refresh=False) -> nx.DiGraph:
         """Returns an ordered list of equations for the model"""
         # TODO: Set the parameters of the model (parameters rather than use initial values)
+
+        # if we already have generated the equation graph
+        if self.graph and not refresh:
+            # return the cached object
+            return self.graph
 
         # store symbols, their attributes and their relationships in a directed graph
         graph = nx.DiGraph()
@@ -495,6 +501,7 @@ class Model(object):
                     graph.nodes[node]['equation'] = sympy.Eq(equation.lhs,
                                                              equation.rhs.subs(subs_dict))
 
+        self.graph = graph
         return graph
 
     def get_equations_for(self, symbols):
