@@ -199,7 +199,7 @@ class UnitStore(object):
         except Exception as e:
             printer = ExpressionWithUnitPrinter(unit_store=self)
             from functools import reduce
-            from operator import mul, add
+            from operator import mul
 
             def check_unit_list_equal(iterator):
                 iterator = iter(iterator)
@@ -218,7 +218,8 @@ class UnitStore(object):
 
                 if _e.is_Dummy:
                     if 'number' in self.model.dummy_info[_e]:
-                        r = float(self.model.dummy_info[_e]['number']) * self.model.dummy_info[_e]['unit']
+                        r = (float(self.model.dummy_info[_e]['number']) *
+                             self.model.dummy_info[_e]['unit'])
                     else:
                         r = _e * self.model.dummy_info[_e]['unit']
                     print('%s is Dummy -> %s' % (_e, repr(r)))
@@ -227,16 +228,20 @@ class UnitStore(object):
                     base = quantity_per_arg[0]
                     exponent = quantity_per_arg[1]
                     # if both are dimensionless
-                    if base.units == self.ureg.dimensionless and exponent.units == self.ureg.dimensionless:
+                    if (base.units == self.ureg.dimensionless and
+                            exponent.units == self.ureg.dimensionless):
                         r = (base.magnitude**exponent.magnitude) * self.ureg.dimensionless
-                    elif base.units != self.ureg.dimensionless and exponent.units == self.ureg.dimensionless:
+                    elif (base.units != self.ureg.dimensionless and
+                          exponent.units == self.ureg.dimensionless):
                         r = base ** exponent
                     else:
                         print('could not Pow', sympy.srepr(_e))
                         print('that has', quantity_per_arg)
                         print('each type is', str([type(x) for x in _e.args]))
                         return None
-                    print('%s is Pow(%s) -> %s' % (_e, ', '.join([repr(x) for x in quantity_per_arg]), repr(r)))
+                    print('%s is Pow(%s) -> %s' % (_e,
+                                                   ', '.join([repr(x) for x in quantity_per_arg]),
+                                                   repr(r)))
                     return r
                 elif _e.is_Integer:
                     r = int(_e) * self.ureg.dimensionless
@@ -260,7 +265,8 @@ class UnitStore(object):
                         print('All items in Add do not have the same unit', quantity_per_arg)
                 elif _e.is_Function:
                     print('%s is a function %s -> %s' % (_e, _e.func, quantity_per_arg))
-                    if len(quantity_per_arg) == 1 and quantity_per_arg[0].units == self.ureg.dimensionless:
+                    if (len(quantity_per_arg) == 1 and
+                            quantity_per_arg[0].units == self.ureg.dimensionless):
                         return 1 * self.ureg.dimensionless
                     else:
                         print(type(_e), _e.is_Function, _e.func, _e.args)
