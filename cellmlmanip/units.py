@@ -194,8 +194,14 @@ class UnitStore(object):
         """
         to_evaluate = self.printer.doprint(expr)
         # TODO: get rid of eval
-        simplified = eval(to_evaluate, {'u': self.ureg, 'math': math}).units
-        logger.debug('summarise_units(%s).5 ⟶ %s ⟶ %s', expr, to_evaluate, simplified)
+        try:
+            simplified = eval(to_evaluate, {'u': self.ureg, 'math': math}).units
+        except Exception as e:
+            printer = ExpressionWithUnitPrinter(unit_store=self)
+            logger.fatal('Could not summaries units: %s -> %s', expr, to_evaluate)
+            logger.fatal('Could not summarise units: %s', printer.doprint(expr))
+            raise e
+        logger.debug('summarise_units(%s) ⟶ %s ⟶ %s', expr, to_evaluate, simplified)
         return simplified
 
     @staticmethod
@@ -290,6 +296,9 @@ class PintUnitPrinter(LambdaPrinter):
     def _print_known_func(self, expr):
         known = _known_functions_math[expr.__class__.__name__]
         return 'math.{name}({args})'.format(name=known, args=', '.join(map(self._print, expr.args)))
+
+    def _print_Abs(self, expr):
+        return 'abs({args})'.format(args=self._print(expr.args[0]))
 
     def __get_dummy_unit(self, expr):
         # logger.debug('__get_dummy_unit(%s)', expr)
