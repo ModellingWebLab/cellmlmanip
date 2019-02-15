@@ -535,9 +535,7 @@ class Model(object):
         """
         Returns a list of derivative symbols found in the given model graph.
         """
-        graph = self.get_equation_graph()
-
-        return [v for v in graph if isinstance(v, sympy.Derivative)]
+        return [v for v in self.graph if isinstance(v, sympy.Derivative)]
 
     def get_state_symbols(self):
         """
@@ -549,9 +547,8 @@ class Model(object):
         """
         Returns the free variable of the given model graph.
         """
-        graph = self.get_equation_graph()
-        for v in graph:
-            if graph.nodes[v].get('variable_type', '') == 'free':
+        for v in self.graph:
+            if self.graph.nodes[v].get('variable_type', '') == 'free':
                 return v
 
         # This should be unreachable
@@ -564,9 +561,8 @@ class Model(object):
         """
         # TODO: Either add an argument to allow derivative symbols to be fetched, or
         #      create a separate method for them.
-        graph = self.get_equation_graph()
-        for v in graph:
-            if graph.nodes[v].get('cmeta:id', '') == cmeta_id:
+        for v in self.graph:
+            if self.graph.nodes[v].get('cmeta:id', '') == cmeta_id:
                 return v
 
         raise KeyError('No variable with cmeta id "' + str(cmeta_id) + '" found.')
@@ -575,15 +571,19 @@ class Model(object):
         """
         Returns the evaluated value of the given symbol's RHS.
         """
-        graph = self.get_equation_graph()
-
         # Find RHS
-        rhs = graph.nodes[symbol]['equation'].rhs
-        print('get_value(%s)' % rhs)
+        rhs = self.graph.nodes[symbol]['equation'].rhs
 
         # Evaluate and return
-        print('evalf = %s' % rhs.evalf())
         return float(rhs.evalf())
+
+    def get_initial_value(self, symbol):
+        """
+        Returns the initial value of the given symbol
+        :param symbol: Sympy Dummy object of required symbol
+        :return: float of initial value
+        """
+        return float(self.graph.nodes[symbol]['initial_value'])
 
     @staticmethod
     def __set_variable_type(variable, variable_type):
