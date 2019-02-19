@@ -38,7 +38,7 @@ class Component(object):
         self.siblings: Set[str] = set()
         self.encapsulated: Set[str] = set()
 
-        self.variables: OrderedDict[str, Dict] = OrderedDict()
+        self.variables: Dict[str, Dict] = OrderedDict()
         self.equations: List[sympy.Eq] = []
         self.numbers: Dict[sympy.Dummy, Dict] = {}
 
