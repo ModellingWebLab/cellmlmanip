@@ -123,6 +123,12 @@ class UnitStore(object):
         except pint.UndefinedUnitError:
             raise ValueError('Cannot find the unit with name "%s"' % unit_name)
 
+    @staticmethod
+    def _check_int(s):
+        if s[0] in ('-', '+'):
+            return s[1:].isdigit()
+        return s.isdigit()
+
     def _make_cellml_unit(self, custom_unit_name):
         """Uses the CellML definition for 'unit_name' to construct a Pint unit definition string
         """
@@ -140,11 +146,20 @@ class UnitStore(object):
             # Construct a string representing the expression for this <unit>
             expr = str(matched_unit)
 
+            # See https://www.cellml.org/specifications/cellml_1.1/#sec_units 5.2.2
+            # offset, prefix, exponent, and multiplier
+
             if 'prefix' in unit_element:
-                expr = '%s%s' % (unit_element['prefix'], expr)
+                if UnitStore._check_int(unit_element['prefix']):
+                    expr = '(%s * 10**%s)' % (expr, unit_element['prefix'])
+                else:
+                    expr = '%s%s' % (unit_element['prefix'], expr)
 
             if 'exponent' in unit_element:
                 expr = '((%s)**%s)' % (expr, unit_element['exponent'])
+
+            if 'multiplier' in unit_element:
+                expr = '(%s * %s)' % (unit_element['multiplier'], expr)
 
             # Collect/add this particular <unit> definition
             full_unit_expr.append(expr)
