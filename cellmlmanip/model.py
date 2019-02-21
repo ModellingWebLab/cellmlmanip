@@ -2,7 +2,7 @@
 Classes representing a CellML model and its components
 """
 import logging
-from collections import defaultdict, deque
+from collections import defaultdict, deque, OrderedDict
 from io import StringIO
 from typing import Dict, List, Set, Tuple
 
@@ -38,7 +38,7 @@ class Component(object):
         self.siblings: Set[str] = set()
         self.encapsulated: Set[str] = set()
 
-        self.variables: Dict[str, Dict] = {}
+        self.variables: Dict[str, Dict] = OrderedDict()
         self.equations: List[sympy.Eq] = []
         self.numbers: Dict[sympy.Dummy, Dict] = {}
 
@@ -224,7 +224,7 @@ class Model(object):
         """
         self.name: str = name
         self.units: 'UnitStore' = None
-        self.components: Dict[str, Component] = {}
+        self.components: Dict[str, Component] = OrderedDict()
         self.connections: List[Tuple] = []
         self.rdf: rdflib.Graph = rdflib.Graph()
         self.dummy_info: Dict[Dict] = defaultdict(dict)
