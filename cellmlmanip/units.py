@@ -94,9 +94,6 @@ class UnitStore(object):
         # Keep reference to the underlying model, to look up the 'dummy_info' dictionary
         self.model = model
 
-        # Prints Sympy expression in terms of units
-        self.printer = PintUnitPrinter(self)
-
     def __add_undefined_units(self):
         """Adds units required by CellML but not provided by Pint."""
         self.ureg.define('katal = mol / second = kat')
@@ -197,125 +194,164 @@ class UnitStore(object):
         quantity1 = unit1 if isinstance(unit1, Quantity) else UnitStore.one_of_unit(unit1)
         return quantity1.to(unit2)
 
-    def post(self, _e):
-
-        def check_unit_list_equal(iterator):
-            iterator = iter(iterator)
-            try:
-                first = next(iterator)
-            except StopIteration:
-                return True
-            return all(first.dimensionality == rest.dimensionality and
-                       math.isclose(((1*first.units).to(rest.units)).magnitude, 1.0)
-                       for rest in iterator)
-
-        quantity_per_arg = []
-        for arg in _e.args:
-            quantity_per_arg.append(self.post(arg))
-
-        if _e.is_Dummy:
-            if 'number' in self.model.dummy_info[_e]:
-                r = (float(self.model.dummy_info[_e]['number']) *
-                     self.model.dummy_info[_e]['unit'])
-            else:
-                info = self.model.find_variable({'sympy.Dummy': _e})
-                if 'initial_value' in info[0]:
-                    r = self.ureg.Quantity(float(info[0]['initial_value']),
-                                           self.model.dummy_info[_e]['unit'])
-                else:
-                    r = self.ureg.Quantity(_e, self.model.dummy_info[_e]['unit'])
-            # print('%s is Dummy -> %s' % (_e, repr(r)))
-            return r
-        elif _e.is_Pow:
-            base = quantity_per_arg[0]
-            exponent = quantity_per_arg[1]
-            # if both are dimensionless
-            if (base.units == self.ureg.dimensionless and
-                    exponent.units == self.ureg.dimensionless):
-                r = self.ureg.Quantity(base.magnitude**exponent.magnitude, self.ureg.dimensionless)
-            elif (base.units != self.ureg.dimensionless and
-                  exponent.units == self.ureg.dimensionless):
-                r = base ** exponent
-            else:
-                print('could not Pow', sympy.srepr(_e))
-                print('that has', quantity_per_arg)
-                print('each type is', str([type(x) for x in _e.args]))
-                return None
-            # print('%s is Pow(%s) -> %s' % (_e,
-            #                                ', '.join([repr(x) for x in quantity_per_arg]),
-            #                                repr(r)))
-            return r
-        elif _e.is_Integer:
-            r = int(_e) * self.ureg.dimensionless
-            # print('%s is Integer -> %s' % (_e, repr(r)))
-            return r
-        elif _e.is_Rational:
-            # TODO: can't send back Rational(1,2) * u.dimensionless
-            r = float(_e) * self.ureg.dimensionless
-            # print('%s is Rational -> %s' % (_e, repr(r)))
-            return r
-        elif _e.is_Mul:
-            r = reduce(mul, quantity_per_arg)
-            # print('%s is Mul -> %s' % (_e, repr(r)))
-            return r
-        elif _e.is_Add:
-            if check_unit_list_equal(quantity_per_arg):
-                r = quantity_per_arg[0]
-                # print('%s is Add -> %s' % (_e, repr(r)))
-                return r
-            else:
-                print('All items in Add do not have the same unit', quantity_per_arg)
-        elif _e.is_Function:
-            if str(_e.func) == 'Abs':
-                return abs(quantity_per_arg[0])
-            # print('%s is a function %s -> %s' % (_e, _e.func, quantity_per_arg))
-            if str(_e.func) not in ['cos', 'acos', 'exp', 'floor']:
-                print('!!!Check', _e.func)
-            # check that unit os dimensional less
-            is_dimensionless = ((quantity_per_arg[0]).to(self.ureg.dimensionless).units
-                                == self.ureg.dimensionless)
-            if len(quantity_per_arg) == 1 and is_dimensionless:
-                return 1 * self.ureg.dimensionless
-            else:
-                print(type(_e), _e.is_Function, _e.func, _e.args)
-                raise RuntimeError('HANDLE %s %s' % (_e, sympy.srepr(_e)))
-        elif _e == sympy.pi:
-            return math.pi * self.ureg.dimensionless
-        elif _e.is_Derivative:
-            r = quantity_per_arg[0] / quantity_per_arg[1]
-            # print('%s is Derivative -> %s' % (_e, repr(r)))
-            return r
-        else:
-            print(type(_e), _e.is_Function, _e.func, _e.args)
-            raise RuntimeError('HANDLE %s %s' % (_e, sympy.srepr(_e)))
-
     def summarise_units(self, expr: sympy.Expr):
         """Given a Sympy expression, will get the lambdified string to evaluate units
         """
-        to_evaluate = self.printer.doprint(expr)
-        # TODO: get rid of eval
+
+        # TODO: move this!
+        # get all the symbols in this expression
+        symbols = expr.atoms(sympy.Symbol)
+
+        # collect the initial values, if specified, for each symbol
+        subs = {}
+        for symbol in symbols:
+            symbol_info = self.model.find_variable({'sympy.Dummy': symbol})
+            if len(symbol_info) == 1:
+                if symbol_info[0].get('initial_value', None):
+                    subs[symbol] = float(symbol_info[0]['initial_value'])
+            else:
+                # dummy placeholders for numbers don't have variable information
+                assert 'number' in self.model.dummy_info[symbol]
+
+        unit_calculator = UnitCalculator(self.ureg, self.model.dummy_info, subs)
+
         try:
             # print('Find units of %s' % expr)
-            found = self.post(expr)
+            found = unit_calculator.traverse(expr)
+            logger.debug('summarise_units(%s) ⟶ %s', expr, found.units)
             # print('using traversal', found.units)
-            simplified = eval(to_evaluate, {'u': self.ureg, 'math': math}).units
+            # simplified = eval(to_evaluate, {'u': self.ureg, 'math': math}).units
             # print(simplified, '=?', found.units)
-            conversion = (1*simplified).to(found.units)
-            assert conversion.units == found.units and math.isclose(conversion.magnitude, 1.0)
+            # conversion = (1*simplified).to(found.units)
+            # assert conversion.units == found.units and math.isclose(conversion.magnitude, 1.0)
         except Exception as e:
             printer = ExpressionWithUnitPrinter(unit_store=self)
-            print('the final unit is', repr(self.post(expr)))
+            print('The final unit is', repr(unit_calculator.traverse(expr)))
             logger.fatal('Could not summaries units: %s', expr)
             logger.fatal('-> %s', printer.doprint(expr))
-            logger.fatal('-> %s', to_evaluate)
-            simplified = found.units
-        logger.debug('summarise_units(%s) ⟶ %s ⟶ %s', expr, to_evaluate, simplified)
-        return simplified
+            return None
+        return found.units
 
     @staticmethod
     def get_conversion_factor(from_unit, to_unit):
         """ Returns the magnitude multiplier required to convert from_unit to to_unit """
         return UnitStore.convert_to(from_unit, to_unit).magnitude
+
+
+class UnitCalculator(object):
+    """Evaluates a Sympy expression to determine its units. Note: only supports subset of Sympy
+    math"""
+    def __init__(self, unit_registry, symbol_info, symbol_subs):
+        """
+        :param unit_registry: instance of Pint UnitRegistry
+        :param symbol_info: dictionary mapping symbol to 'unit' and, if applicable, 'number'
+        :param symbol_subs: dictionary mapping symbol to its numerical replacement
+        """
+        self.ureg = unit_registry
+        self.symbols = symbol_info
+        self.subs = symbol_subs
+
+    def _check_unit_list_equal(self, list_of_quantities):
+        """checks whether all units in list are equivalent
+        :param list_of_quantities: a list of Pint quantities
+        :return: boolean indicating whether all units are equivalent
+        """
+        if len(list_of_quantities) == 1:
+            return True
+
+        list_of_quantities = iter(list_of_quantities)
+        first = next(list_of_quantities)
+
+        def _is_equal(quantity1, quantity2):
+            assert isinstance(quantity1, self.ureg.Quantity)
+            assert isinstance(quantity2, self.ureg.Quantity)
+            base1 = self.ureg.get_base_units(1 * quantity1.units)
+            base2 = self.ureg.get_base_units(1 * quantity2.units)
+            return math.isclose(base1[0], base2[0]) and base1[1] == base2[1]
+
+        return all(_is_equal(first, rest) for rest in list_of_quantities)
+
+    def traverse(self, expr):
+        """descends the Sympy expression and performs Pint unit arithmetic on sub-expressions
+        :param expr: a Sympy expression
+        """
+
+        # collect the units for each sub-expression in the expression
+        quantity_per_arg = []
+        for arg in expr.args:
+            quantity_per_arg.append(self.traverse(arg))
+
+        if expr.is_Symbol:
+            # is this symbol is a placeholder for a number
+            if 'number' in self.symbols[expr]:
+                r = float(self.symbols[expr]['number']) * self.symbols[expr]['unit']
+            else:
+                # if we need to replace this symbol for evaluating units
+                if expr in self.subs:
+                    r = self.ureg.Quantity(self.subs[expr], self.symbols[expr]['unit'])
+                else:
+                    # otherwise, straightforward Quantity
+                    r = self.ureg.Quantity(expr, self.symbols[expr]['unit'])
+            return r
+        elif expr.is_Pow:
+            base = quantity_per_arg[0]
+            exponent = quantity_per_arg[1]
+            # if both base and exponent are dimensionless units
+            if base.units == exponent.units == self.ureg.dimensionless:
+                r = self.ureg.Quantity(base.magnitude**exponent.magnitude, self.ureg.dimensionless)
+            # if the base unit is not dimensionless, we exponentiate the unit
+            elif (base.units != self.ureg.dimensionless and
+                  exponent.units == self.ureg.dimensionless):
+                r = base ** exponent
+            else:
+                raise NotImplemented
+            return r
+        elif expr.is_Integer:
+            r = int(expr) * self.ureg.dimensionless
+            return r
+        elif expr.is_Rational:
+            # TODO: can't send back Rational(1,2) * u.dimensionless
+            r = float(expr) * self.ureg.dimensionless
+            return r
+        elif expr.is_Mul:
+            r = reduce(mul, quantity_per_arg)
+            return r
+        elif expr.is_Add:
+            if self._check_unit_list_equal(quantity_per_arg):
+                r = quantity_per_arg[0]
+                return r
+            else:
+                print('Add args do not have the same unit. In base units:')
+                for x in quantity_per_arg:
+                    print('\t%s -> %s' % (x.units, self.ureg.get_base_units(x.units)))
+                return None
+        elif expr.is_Function:
+            # List of functions I've checked
+            if str(expr.func) not in ['cos', 'acos', 'exp', 'floor', 'log', 'Abs', 'tanh']:
+                logger.warning('Have not check unit arithmetic for function %s', expr.func)
+            if expr.func == sympy.Abs:
+                return abs(quantity_per_arg[0])
+            elif expr.func == sympy.log:
+                if quantity_per_arg[0].units.dimensionality == self.ureg.dimensionless.dimensionality:
+                    return 1 * self.ureg.dimensionless
+                else:
+                    raise RuntimeError('log arguments not dimensionless', [x.units for x in quantity_per_arg])
+            is_dimensionless = ((quantity_per_arg[0]).to(self.ureg.dimensionless).units
+                                == self.ureg.dimensionless)
+            if len(quantity_per_arg) == 1 and is_dimensionless:
+                return 1 * self.ureg.dimensionless
+            else:
+                print(type(expr), expr.is_Function, expr.func, expr.args)
+                raise RuntimeError('HANDLE %s %s' % (expr, sympy.srepr(expr)))
+        elif expr == sympy.pi:
+            return math.pi * self.ureg.dimensionless
+        elif expr.is_Derivative:
+            r = quantity_per_arg[0] / quantity_per_arg[1]
+            return r
+        # TODO: Handle _e.is_Piecewise here and remove from model.check_left_right_units_equal
+        else:
+            print(type(expr), expr.is_Function, expr.func, expr.args)
+            raise RuntimeError('HANDLE %s %s' % (expr, sympy.srepr(expr)))
 
 
 class ExpressionWithUnitPrinter(LambdaPrinter):
@@ -350,100 +386,3 @@ class ExpressionWithUnitPrinter(LambdaPrinter):
                                                free_dummy.name,
                                                str(free_unit))
 
-
-_known_functions_math = {
-    'acos': 'acos',
-    'acosh': 'acosh',
-    'asin': 'asin',
-    'asinh': 'asinh',
-    'atan': 'atan',
-    'atan2': 'atan2',
-    'atanh': 'atanh',
-    'ceiling': 'ceil',
-    'cos': 'cos',
-    'cosh': 'cosh',
-    'erf': 'erf',
-    'erfc': 'erfc',
-    'exp': 'exp',
-    'expm1': 'expm1',
-    'factorial': 'factorial',
-    'floor': 'floor',
-    'gamma': 'gamma',
-    'hypot': 'hypot',
-    'loggamma': 'lgamma',
-    'log': 'log',
-    'log10': 'log10',
-    'log1p': 'log1p',
-    'log2': 'log2',
-    'sin': 'sin',
-    'sinh': 'sinh',
-    'Sqrt': 'sqrt',
-    'tan': 'tan',
-    'tanh': 'tanh'
-}  # Not used from ``math``: [copysign isclose isfinite isinf isnan ldexp frexp pow modf
-# radians trunc fmod fsum gcd degrees fabs]
-_known_constants_math = {
-    'Exp1': 'e',
-    'Pi': 'pi',
-    # Only in python >= 3.5:
-    # 'Infinity': 'inf',
-    # 'NaN': 'nan'
-}
-
-
-class PintUnitPrinter(LambdaPrinter):
-    """ A Sympy expression printer that returns Pint unit arithmetic that can be evaluated """
-    def __init__(self, unit_store: UnitStore = None):
-        super().__init__()
-        self.unit_store = unit_store
-        self.in_pow = False
-
-        for k in _known_functions_math:
-            setattr(PintUnitPrinter, '_print_%s' % k, self._print_known_func)
-
-    def _print_known_func(self, expr):
-        known = _known_functions_math[expr.__class__.__name__]
-        return 'math.{name}({args})'.format(name=known, args=', '.join(map(self._print, expr.args)))
-
-    def _print_Abs(self, expr):
-        return 'abs({args})'.format(args=self._print(expr.args[0]))
-
-    def __get_dummy_unit(self, expr):
-        # logger.debug('__get_dummy_unit(%s)', expr)
-        return self.unit_store.model.dummy_info[expr]['unit']
-
-    def __get_dummy_number(self, expr):
-        if 'number' in self.unit_store.model.dummy_info[expr]:
-            return self.unit_store.model.dummy_info[expr]['number']
-        else:
-            return None
-
-    def _print_Dummy(self, expr):
-        number = self.__get_dummy_number(expr)
-        unit = str(self.__get_dummy_unit(expr))
-        unit_with_prefix = re.sub(r'\b([a-zA-Z_0-9]+)\b', r'u.\1', unit)
-
-        if number:
-            return '(%f * (%s))' % (number, unit_with_prefix)
-        else:
-            return '(1*%s)' % unit_with_prefix
-
-    def _print_Derivative(self, expr):
-        # logger.debug('_print_Derivative(%s)', expr)
-        state_dummy = expr.free_symbols.pop()
-        state_unit = self.__get_dummy_unit(state_dummy)
-        free_dummy = set(expr.canonical_variables.keys()).pop()
-        free_unit = self.__get_dummy_unit(free_dummy)
-        return '((1 * u.%s)/(1 * u.%s))' % (state_unit, free_unit)
-
-    def _print_Pow(self, expr, rational=False):
-        if expr.exp == 0.5:
-            # return '{0}({1})'.format('math.sqrt', self._print(expr.base))
-            base = self._print(expr.base)
-            return '(({0})**(1/2))'.format(base)
-        else:
-            base = super(LambdaPrinter, self)._print_Pow(expr)
-            return base
-
-    def _print_Pi(self, expr):
-        return 'math.pi'
