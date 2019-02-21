@@ -115,7 +115,8 @@ class UnitStore(object):
             except pint.UndefinedUnitError:
                 # Create the unit definition and add to the unit registry
                 unit_definition = self._make_cellml_unit(unit_name)
-                self.ureg.define(unit_definition)
+                if unit_definition:
+                    self.ureg.define(unit_definition)
                 self.cellml_defined.add(unit_name)
 
         # return the defined unit from the registry
@@ -153,6 +154,10 @@ class UnitStore(object):
 
         # Join together all the parts of the unit expression
         full_unit_expr = '*'.join(full_unit_expr)
+
+        # to avoid recursion due to pint prefix magic
+        if custom_unit_name == full_unit_expr:
+            return None
 
         # Return Pint definition string
         logger.debug('Unit %s => %s', custom_unit_name, full_unit_expr)
