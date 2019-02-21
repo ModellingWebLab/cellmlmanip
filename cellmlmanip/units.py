@@ -286,6 +286,9 @@ class UnitCalculator(object):
 
         return all(_is_equal(first, rest) for rest in list_of_quantities)
 
+    def _is_dimensionless(self, quantity):
+        return quantity.units.dimensionality == self.ureg.dimensionless.dimensionality
+
     def traverse(self, expr):
         """descends the Sympy expression and performs Pint unit arithmetic on sub-expressions
         :param expr: a Sympy expression
@@ -336,9 +339,9 @@ class UnitCalculator(object):
                 r = quantity_per_arg[0]
                 return r
             else:
-                print('Add args do not have the same unit. In base units:')
+                logger.warning('Add args do not have the same unit. In base units:')
                 for x in quantity_per_arg:
-                    print('\t%s -> %s' % (x.units, self.ureg.get_base_units(x.units)))
+                    logger.warning('%s -> %s' % (x.units, self.ureg.get_base_units(x.units)))
                 return None
         elif expr.is_Function:
             # List of functions I've checked
@@ -347,17 +350,18 @@ class UnitCalculator(object):
             if expr.func == sympy.Abs:
                 return abs(quantity_per_arg[0])
             elif expr.func == sympy.log:
-                if quantity_per_arg[0].units.dimensionality == self.ureg.dimensionless.dimensionality:
+                if self._is_dimensionless(quantity_per_arg[0]):
                     return 1 * self.ureg.dimensionless
                 else:
                     raise RuntimeError('log arguments not dimensionless', [x.units for x in quantity_per_arg])
-            is_dimensionless = ((quantity_per_arg[0]).to(self.ureg.dimensionless).units
-                                == self.ureg.dimensionless)
-            if len(quantity_per_arg) == 1 and is_dimensionless:
+
+            # if this function has exactly one dimensionless argument
+            if len(quantity_per_arg) == 1 and self._is_dimensionless(quantity_per_arg[0]):
+                # assume the result is dimensionless!
                 return 1 * self.ureg.dimensionless
             else:
-                print(type(expr), expr.is_Function, expr.func, expr.args)
-                raise RuntimeError('HANDLE %s %s' % (expr, sympy.srepr(expr)))
+                print(expr.func, expr.args, quantity_per_arg)
+                raise RuntimeError(' %s %s' % (expr, sympy.srepr(expr)))
         elif expr == sympy.pi:
             return math.pi * self.ureg.dimensionless
         elif expr.is_Derivative:
@@ -365,7 +369,7 @@ class UnitCalculator(object):
             return r
         # TODO: Handle _e.is_Piecewise here and remove from model.check_left_right_units_equal
         else:
-            print(type(expr), expr.is_Function, expr.func, expr.args)
+            print(expr.func, expr.args, quantity_per_arg)
             raise RuntimeError('HANDLE %s %s' % (expr, sympy.srepr(expr)))
 
 
