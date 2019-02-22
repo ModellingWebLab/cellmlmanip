@@ -66,6 +66,11 @@ CELLML_UNITS = {
     'litre',
 }
 
+CELLML_PREFIXES = {
+    'yotta', 'zetta', 'exa', 'peta', 'tera', 'giga', 'mega', 'kilo', 'hecto', 'deka',
+    'deci', 'centi', 'milli', 'micro', 'nano', 'pico', 'femto', 'atto', 'zepto', 'yocto'
+}
+
 
 class UnitStore(object):
     """
@@ -123,12 +128,6 @@ class UnitStore(object):
         except pint.UndefinedUnitError:
             raise ValueError('Cannot find the unit with name "%s"' % unit_name)
 
-    @staticmethod
-    def _check_int(s):
-        if s[0] in ('-', '+'):
-            return s[1:].isdigit()
-        return s.isdigit()
-
     def _make_cellml_unit(self, custom_unit_name):
         """Uses the CellML definition for 'unit_name' to construct a Pint unit definition string
         """
@@ -150,10 +149,11 @@ class UnitStore(object):
             # offset, prefix, exponent, and multiplier
 
             if 'prefix' in unit_element:
-                if UnitStore._check_int(unit_element['prefix']):
-                    expr = '(%s * 10**%s)' % (expr, unit_element['prefix'])
-                else:
+                if unit_element['prefix'] in CELLML_PREFIXES:
                     expr = '%s%s' % (unit_element['prefix'], expr)
+                else:
+                    # Assume that prefix is an integer - will CellML validation check?
+                    expr = '(%s * 10**%s)' % (expr, unit_element['prefix'])
 
             if 'exponent' in unit_element:
                 expr = '((%s)**%s)' % (expr, unit_element['exponent'])
