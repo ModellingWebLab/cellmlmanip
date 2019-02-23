@@ -4,15 +4,12 @@ Sympy-units implementation
 """
 import logging
 import math
-import re
 
 from functools import reduce
 from operator import mul
 
 import pint
 import sympy
-from pint.quantity import _Quantity as Quantity
-from pint.unit import _Unit as Unit
 from sympy.printing.lambdarepr import LambdaPrinter
 
 
@@ -175,38 +172,34 @@ class UnitStore(object):
         logger.debug('Unit %s => %s', cellml_custom_unit, full_unit_expr)
         return '%s = %s' % (cellml_custom_unit, full_unit_expr)
 
-    @staticmethod
-    def one_of_unit(unit):
+    def one_of_unit(self, unit):
         """ Returns a quantity of 1 * unit """
-        assert isinstance(unit, Unit)
+        assert isinstance(unit, self.ureg.Unit)
         return 1 * unit
 
-    @staticmethod
-    def is_unit_equal(unit1, unit2):
+    def is_unit_equal(self, unit1, unit2):
         """ Check whether two Pint Units are equal (converts to quantities if necessary) """
-        quantity1 = unit1 if isinstance(unit1, Quantity) else UnitStore.one_of_unit(unit1)
-        quantity2 = unit2 if isinstance(unit2, Quantity) else UnitStore.one_of_unit(unit2)
+        quantity1 = unit1 if isinstance(unit1, self.ureg.Quantity) else self.one_of_unit(unit1)
+        quantity2 = unit2 if isinstance(unit2, self.ureg.Quantity) else self.one_of_unit(unit2)
         is_equal = (quantity1.dimensionality == quantity2.dimensionality and
                     math.isclose(quantity1.to(quantity2).magnitude, quantity1.magnitude))
         logger.debug('UnitStore.is_unit_equal(%s, %s) ⟶ %s',
                      quantity1.units, quantity2.units, is_equal)
         return is_equal
 
-    @staticmethod
-    def is_quantity_equal(quantity1, quantity2):
+    def is_quantity_equal(self, quantity1, quantity2):
         """ Checks whether two instances of Quantity had the same dimensionality and magnitude """
-        assert isinstance(quantity1, Quantity)
-        assert isinstance(quantity2, Quantity)
+        assert isinstance(quantity1, self.ureg.Quantity)
+        assert isinstance(quantity2, self.ureg.Quantity)
         return (quantity1.dimensionality == quantity2.dimensionality
                 and quantity1.magnitude == quantity2.magnitude)
 
-    @staticmethod
-    def convert_to(unit1, unit2):
+    def convert_to(self, unit1, unit2):
         """ Returns a quantity that is the result of converting [one of] unit1 into unit2 """
-        assert isinstance(unit1, Unit)
-        assert isinstance(unit2, Unit)
+        assert isinstance(unit1, self.ureg.Unit)
+        assert isinstance(unit2, self.ureg.Unit)
         assert unit1.dimensionality == unit2.dimensionality
-        quantity1 = unit1 if isinstance(unit1, Quantity) else UnitStore.one_of_unit(unit1)
+        quantity1 = unit1 if isinstance(unit1, self.ureg.Quantity) else self.one_of_unit(unit1)
         return quantity1.to(unit2)
 
     def summarise_units(self, expr: sympy.Expr):
@@ -247,10 +240,9 @@ class UnitStore(object):
             return None
         return found.units
 
-    @staticmethod
-    def get_conversion_factor(from_unit, to_unit):
+    def get_conversion_factor(self, from_unit, to_unit):
         """ Returns the magnitude multiplier required to convert from_unit to to_unit """
-        return UnitStore.convert_to(from_unit, to_unit).magnitude
+        return self.convert_to(from_unit, to_unit).magnitude
 
 
 class UnitCalculator(object):
@@ -353,7 +345,8 @@ class UnitCalculator(object):
                 if self._is_dimensionless(quantity_per_arg[0]):
                     return 1 * self.ureg.dimensionless
                 else:
-                    raise RuntimeError('log arguments not dimensionless', [x.units for x in quantity_per_arg])
+                    raise RuntimeError('log args not dimensionless (%s)',
+                                       [x.units for x in quantity_per_arg])
 
             # if this function has exactly one dimensionless argument
             if len(quantity_per_arg) == 1 and self._is_dimensionless(quantity_per_arg[0]):
@@ -406,4 +399,3 @@ class ExpressionWithUnitPrinter(LambdaPrinter):
                                                str(state_unit),
                                                free_dummy.name,
                                                str(free_unit))
-
