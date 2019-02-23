@@ -66,7 +66,7 @@ CELLML_UNITS = {
     'litre',
 }
 
-CELLML_PREFIXES = {
+CELLML_UNIT_PREFIXES = {
     'yotta', 'zetta', 'exa', 'peta', 'tera', 'giga', 'mega', 'kilo', 'hecto', 'deka',
     'deci', 'centi', 'milli', 'micro', 'nano', 'pico', 'femto', 'atto', 'zepto', 'yocto'
 }
@@ -116,7 +116,7 @@ class UnitStore(object):
                 getattr(self.ureg, unit_name)
             except pint.UndefinedUnitError:
                 # Create the unit definition and add to the unit registry
-                unit_definition = self._make_cellml_unit(unit_name)
+                unit_definition = self._make_pint_unit_definition(unit_name)
                 if unit_definition:
                     self.ureg.define(unit_definition)
                 self.cellml_defined.add(unit_name)
@@ -128,16 +128,16 @@ class UnitStore(object):
         except pint.UndefinedUnitError:
             raise ValueError('Cannot find the unit with name "%s"' % unit_name)
 
-    def _make_cellml_unit(self, custom_unit_name):
+    def _make_pint_unit_definition(self, cellml_custom_unit):
         """Uses the CellML definition for 'unit_name' to construct a Pint unit definition string
         """
         full_unit_expr = []
 
         # For each of the <unit> elements for this unit definition
-        for unit_element in self.cellml_definitions[custom_unit_name]:
+        for unit_element in self.cellml_definitions[cellml_custom_unit]:
             # TODO: what other attributes can a unit have if it have base_units = 'yes'?
             if 'base_units' in unit_element and unit_element['base_units'] == 'yes':
-                return '%s = [%s]' % (custom_unit_name, custom_unit_name)
+                return '%s = [%s]' % (cellml_custom_unit, cellml_custom_unit)
 
             # Source the <unit units="XXX"> from our store
             matched_unit = self.get_quantity(unit_element['units'])
@@ -149,7 +149,7 @@ class UnitStore(object):
             # offset, prefix, exponent, and multiplier
 
             if 'prefix' in unit_element:
-                if unit_element['prefix'] in CELLML_PREFIXES:
+                if unit_element['prefix'] in CELLML_UNIT_PREFIXES:
                     expr = '%s%s' % (unit_element['prefix'], expr)
                 else:
                     # Assume that prefix is an integer - will CellML validation check?
@@ -168,12 +168,12 @@ class UnitStore(object):
         full_unit_expr = '*'.join(full_unit_expr)
 
         # to avoid recursion due to pint prefix magic
-        if custom_unit_name == full_unit_expr:
+        if cellml_custom_unit == full_unit_expr:
             return None
 
         # Return Pint definition string
-        logger.debug('Unit %s => %s', custom_unit_name, full_unit_expr)
-        return '%s = %s' % (custom_unit_name, full_unit_expr)
+        logger.debug('Unit %s => %s', cellml_custom_unit, full_unit_expr)
+        return '%s = %s' % (cellml_custom_unit, full_unit_expr)
 
     @staticmethod
     def one_of_unit(unit):
