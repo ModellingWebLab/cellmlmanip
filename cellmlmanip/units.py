@@ -150,14 +150,13 @@ class UnitStore(object):
         return 1 * unit
 
     def is_unit_equal(self, unit1, unit2):
-        """ Check whether two Pint Units are equal (converts to quantities if necessary) """
-        quantity1 = unit1 if isinstance(unit1, self.ureg.Quantity) else self.one_of_unit(unit1)
-        quantity2 = unit2 if isinstance(unit2, self.ureg.Quantity) else self.one_of_unit(unit2)
-        is_equal = (quantity1.dimensionality == quantity2.dimensionality and
-                    math.isclose(quantity1.to(quantity2).magnitude, quantity1.magnitude))
-        logger.debug('UnitStore.is_unit_equal(%s, %s) ⟶ %s',
-                     quantity1.units, quantity2.units, is_equal)
-        return is_equal
+            assert isinstance(unit1, self.ureg.Unit)
+            assert isinstance(unit2, self.ureg.Unit)
+            base1 = self.ureg.get_base_units(unit1)
+            base2 = self.ureg.get_base_units(unit2)
+            is_equal = math.isclose(base1[0], base2[0]) and base1[1] == base2[1]
+            logger.debug('is_unit_equal(%s, %s) ⟶ %s', unit1, unit2, is_equal)
+            return is_equal
 
     def is_quantity_equal(self, quantity1, quantity2):
         """ Checks whether two instances of Quantity had the same dimensionality and magnitude """
