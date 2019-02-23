@@ -4,6 +4,7 @@ from cellmlmanip.units import UnitStore
 
 
 class TestUnits(object):
+    # These represent CellML <units><unit>...</unit></units> elements
     test_definitions = {
         'ms': [{'units': 'second', 'prefix': 'milli'}],
         'per_ms': [{'units': 'ms', 'exponent': '-1'}],
@@ -17,7 +18,9 @@ class TestUnits(object):
                         {'prefix': 'micro', 'units': 'second', 'exponent': '-1'}],
         'mM': [{'prefix': 'milli', 'units': 'mole'}, {'units': 'litre', 'exponent': '-1'}],
         'mM_per_ms': [{'units': 'mM'}, {'units': 'ms', 'exponent': '-1'}],
-        'milli_mole': [{'prefix': 'milli', 'units': 'mole'}]
+        'milli_mole': [{'prefix': 'milli', 'units': 'mole'}],
+        'millisecond': [{'prefix': 'milli', 'units': 'second'}],
+        'ms_power_prefix': [{'prefix': '-3', 'units': 'second'}],
     }
 
     @pytest.fixture(scope="class")
@@ -31,9 +34,7 @@ class TestUnits(object):
         assert quantity_store.get_quantity('dimensionless') == unit_registry.dimensionless
 
         # Units defined in the test CellML <model>:
-        unit_names = ['ms', 'per_ms', 'usec', 'mV', 'per_mV', 'uV', 'mV_per_ms', 'mV_per_s',
-                      'mV_per_usec', 'mM', 'mM_per_ms']
-        for name in unit_names:
+        for name in TestUnits.test_definitions.keys():
             quantity_store.get_quantity(name)
 
         # Pint built-in units
@@ -66,6 +67,16 @@ class TestUnits(object):
         assert quantity_store.is_unit_equal(
             quantity_store.get_quantity('mV_per_usec'),
             unit_registry.millivolt / unit_registry.microsecond
+        )
+
+        assert quantity_store.is_unit_equal(
+            quantity_store.get_quantity('millisecond'),
+            unit_registry.millisecond
+        )
+
+        assert quantity_store.is_unit_equal(
+            quantity_store.get_quantity('ms_power_prefix'),
+            unit_registry.millisecond
         )
 
     def test_conversion_factor(self, quantity_store):
