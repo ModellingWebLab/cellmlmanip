@@ -1,3 +1,4 @@
+import logging
 import os
 
 import pytest
@@ -99,11 +100,12 @@ class TestParser(object):
         rhs_units = model.units.summarise_units(test_equation.rhs)
         assert model.units.is_unit_equal(rhs_units, lhs_units)
 
-        # We should find two equations with different lhs/rhs units
+        # TODO: We should find two equations with different lhs/rhs units
         # 1. time_units_conversion1
         #    Eq(_time_units_conversion1$time, _environment$time) second millisecond
         # 2. time_units_conversion2
         #    Eq(_time_units_conversion2$time, _environment$time) microsecond millisecond
+        # Make test to check two are unequal, fix them, then check equal
 
         # Try fixing all units on the RHS so that they match the LHS
         invalid_rhs_lhs_count = 0
@@ -132,7 +134,7 @@ class TestParser(object):
     @pytest.mark.skipif('CMLM_TEST_PRINT' not in os.environ, reason="print eq on demand")
     def test_print_eq(self, model):
         from cellmlmanip.units import ExpressionWithUnitPrinter
-        printer = ExpressionWithUnitPrinter(unit_store=model.units)
+        printer = ExpressionWithUnitPrinter(symbol_info=model.dummy_info)
         # show equations
         for name, component in model.components.items():
             print('Component: %s' % name)

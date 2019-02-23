@@ -240,7 +240,7 @@ class UnitStore(object):
             # conversion = (1*simplified).to(found.units)
             # assert conversion.units == found.units and math.isclose(conversion.magnitude, 1.0)
         except Exception as e:
-            printer = ExpressionWithUnitPrinter(unit_store=self)
+            printer = ExpressionWithUnitPrinter(symbol_info=self.model.dummy_info)
             print('The final unit is', repr(unit_calculator.traverse(expr)))
             logger.fatal('Could not summaries units: %s', expr)
             logger.fatal('-> %s', printer.doprint(expr))
@@ -375,16 +375,18 @@ class UnitCalculator(object):
 
 class ExpressionWithUnitPrinter(LambdaPrinter):
     """ A Sympy expression printer that prints the expression with unit information """
-    def __init__(self, unit_store: UnitStore = None):
+    def __init__(self, symbol_info=None):
         super().__init__()
-        self.unit_store = unit_store
+        if symbol_info is None:
+            symbol_info = dict()
+        self.symbols = symbol_info
 
     def __get_dummy_unit(self, expr):
-        return self.unit_store.model.dummy_info[expr]['unit']
+        return self.symbols[expr]['unit']
 
     def __get_dummy_number(self, expr):
-        if 'number' in self.unit_store.model.dummy_info[expr]:
-            return self.unit_store.model.dummy_info[expr]['number']
+        if 'number' in self.symbols[expr]:
+            return self.symbols[expr]['number']
         else:
             return None
 
