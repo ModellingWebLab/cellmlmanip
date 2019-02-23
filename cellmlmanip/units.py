@@ -12,56 +12,28 @@ import pint
 import sympy
 from sympy.printing.lambdarepr import LambdaPrinter
 
-
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 # The full list of supported CellML units
 # Taken from https://www.cellml.org/specifications/cellml_1.1/#sec_units
-# Some are not defined by Sympy, see comments
+# Some are not defined by Pint, see comments
 CELLML_UNITS = {
     # Base SI units
-    'ampere',
-    'candela',
-    'kelvin',
-    'kilogram',
-    'meter',
-    'mole',
-    'second',
+    'ampere', 'candela', 'kelvin', 'kilogram', 'meter', 'mole', 'second',
 
     # Derived SI units
-    'becquerel',
-    'celsius',
-    'coulomb',
-    'farad',
-    'gray',
-    'henry',
-    'hertz',
-    'joule',
+    'becquerel', 'celsius', 'coulomb', 'farad', 'gray', 'henry', 'hertz', 'joule',
+    'lumen', 'lux', 'newton', 'ohm', 'pascal', 'radian', 'siemens', 'sievert',
+    'steradian', 'tesla', 'volt', 'watt', 'weber',
+
     'katal',  # see __add_custom_units()
-    'lumen',
-    'lux',
-    'newton',
-    'ohm',
-    'pascal',
-    'radian',
-    'siemens',
-    'sievert',
-    'steradian',
-    'tesla',
-    'volt',
-    'watt',
-    'weber',
 
     # Convenience units
-    'dimensionless',
-    'gram',
-    'liter',
+    'dimensionless', 'gram', 'liter',
 
     # Aliases
-    'metre',
-    'litre',
-}
+    'metre', 'litre', }
 
 CELLML_UNIT_PREFIXES = {
     'yotta', 'zetta', 'exa', 'peta', 'tera', 'giga', 'mega', 'kilo', 'hecto', 'deka',
