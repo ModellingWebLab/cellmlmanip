@@ -4,13 +4,13 @@ Sympy-units implementation
 """
 import logging
 import math
-
 from functools import reduce
 from operator import mul
 
 import pint
 import sympy
 from sympy.printing.lambdarepr import LambdaPrinter
+
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)

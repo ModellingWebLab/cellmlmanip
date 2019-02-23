@@ -2,7 +2,7 @@
 Classes representing a CellML model and its components
 """
 import logging
-from collections import defaultdict, deque, OrderedDict
+from collections import OrderedDict, defaultdict, deque
 from io import StringIO
 from typing import Dict, List, Set, Tuple
 
