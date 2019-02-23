@@ -150,20 +150,15 @@ class UnitStore(object):
         return 1 * unit
 
     def is_unit_equal(self, unit1, unit2):
-            assert isinstance(unit1, self.ureg.Unit)
-            assert isinstance(unit2, self.ureg.Unit)
-            base1 = self.ureg.get_base_units(unit1)
-            base2 = self.ureg.get_base_units(unit2)
-            is_equal = math.isclose(base1[0], base2[0]) and base1[1] == base2[1]
-            logger.debug('is_unit_equal(%s, %s) ⟶ %s', unit1, unit2, is_equal)
-            return is_equal
-
-    def is_quantity_equal(self, quantity1, quantity2):
-        """ Checks whether two instances of Quantity had the same dimensionality and magnitude """
-        assert isinstance(quantity1, self.ureg.Quantity)
-        assert isinstance(quantity2, self.ureg.Quantity)
-        return (quantity1.dimensionality == quantity2.dimensionality
-                and quantity1.magnitude == quantity2.magnitude)
+        """Compares two units are equivalent by converting them into base units and comparing the
+        resulting units and multiplicative factors"""
+        assert isinstance(unit1, self.ureg.Unit)
+        assert isinstance(unit2, self.ureg.Unit)
+        base1 = self.ureg.get_base_units(unit1)
+        base2 = self.ureg.get_base_units(unit2)
+        is_equal = math.isclose(base1[0], base2[0]) and base1[1] == base2[1]
+        logger.debug('is_unit_equal(%s, %s) ⟶ %s', unit1, unit2, is_equal)
+        return is_equal
 
     def convert_to(self, unit1, unit2):
         """ Returns a quantity that is the result of converting [one of] unit1 into unit2 """
