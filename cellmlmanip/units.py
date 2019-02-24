@@ -160,13 +160,11 @@ class UnitStore(object):
         logger.debug('is_unit_equal(%s, %s) ⟶ %s', unit1, unit2, is_equal)
         return is_equal
 
-    def convert_to(self, unit1, unit2):
+    def convert_to(self, quantity, unit):
         """ Returns a quantity that is the result of converting [one of] unit1 into unit2 """
-        assert isinstance(unit1, self.ureg.Unit)
-        assert isinstance(unit2, self.ureg.Unit)
-        assert unit1.dimensionality == unit2.dimensionality
-        quantity1 = unit1 if isinstance(unit1, self.ureg.Quantity) else self.one_of_unit(unit1)
-        return quantity1.to(unit2)
+        assert isinstance(quantity, self.ureg.Quantity)
+        assert isinstance(unit, self.ureg.Unit)
+        return quantity.to(unit)
 
     def summarise_units(self, expr: sympy.Expr):
         """Given a Sympy expression, will get the lambdified string to evaluate units
@@ -206,9 +204,9 @@ class UnitStore(object):
             return None
         return found.units
 
-    def get_conversion_factor(self, from_unit, to_unit):
+    def get_conversion_factor(self, quantity, to_unit):
         """ Returns the magnitude multiplier required to convert from_unit to to_unit """
-        return self.convert_to(from_unit, to_unit).magnitude
+        return self.convert_to(quantity, to_unit).magnitude
 
 
 class UnitCalculator(object):

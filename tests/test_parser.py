@@ -114,7 +114,7 @@ class TestParser(object):
                 rhs_units = model.units.summarise_units(equation.rhs)
                 if not model.units.is_unit_equal(lhs_units, rhs_units):
                     invalid_rhs_lhs_count += 1
-                    new_rhs = model.units.convert_to(rhs_units, lhs_units)
+                    new_rhs = model.units.convert_to(1*rhs_units, lhs_units)
                     # Create a new equality with the converted RHS and replace original
                     new_dummy = sympy.Dummy(str(new_rhs.magnitude))
                     model.dummy_info[new_dummy] = {
