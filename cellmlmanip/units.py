@@ -144,11 +144,6 @@ class UnitStore(object):
         logger.debug('Unit %s => %s', cellml_custom_unit, full_unit_expr)
         return '%s = %s' % (cellml_custom_unit, full_unit_expr)
 
-    def one_of_unit(self, unit):
-        """ Returns a quantity of 1 * unit """
-        assert isinstance(unit, self.ureg.Unit)
-        return 1 * unit
-
     def is_unit_equal(self, unit1, unit2):
         """Compares two units are equivalent by converting them into base units and comparing the
         resulting units and multiplicative factors"""
