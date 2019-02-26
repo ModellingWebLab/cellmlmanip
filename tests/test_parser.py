@@ -3,7 +3,7 @@ import os
 import pytest
 import sympy
 
-from cellmlmanip import parser
+from cellmlmanip import parser, load_model
 
 
 class TestParser(object):
@@ -195,3 +195,11 @@ class TestParser(object):
         p = parser.Parser(example_cellml)
         with pytest.raises(KeyError, match=r'Variable "b" in component "c" could not be found\.'):
             p.parse()
+
+    def test_multiple_math_elements(self):
+        example_cellml = os.path.join(
+            os.path.dirname(__file__), "cellml_files", "3.4.2.1.component_with_maths.cellml"
+        )
+        model = load_model(example_cellml)
+        assert len(list(model.components['A'].equations)) == 2
+        assert len(list(model.equations)) == 2
