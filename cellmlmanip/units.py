@@ -183,21 +183,16 @@ class UnitStore(object):
 
         unit_calculator = UnitCalculator(self.ureg, self.model.dummy_info, subs)
 
-        try:
-            # print('Find units of %s' % expr)
-            found = unit_calculator.traverse(expr)
-            logger.debug('summarise_units(%s) ⟶ %s', expr, found.units)
-            # print('using traversal', found.units)
-            # simplified = eval(to_evaluate, {'u': self.ureg, 'math': math}).units
-            # print(simplified, '=?', found.units)
-            # conversion = (1*simplified).to(found.units)
-            # assert conversion.units == found.units and math.isclose(conversion.magnitude, 1.0)
-        except Exception as e:
+        found = unit_calculator.traverse(expr)
+
+        if found is None:
             printer = ExpressionWithUnitPrinter(symbol_info=self.model.dummy_info)
             print('The final unit is', repr(unit_calculator.traverse(expr)))
             logger.fatal('Could not summaries units: %s', expr)
             logger.fatal('-> %s', printer.doprint(expr))
             return None
+
+        logger.debug('summarise_units(%s) ⟶ %s', expr, found.units)
         return found.units
 
     def get_conversion_factor(self, quantity, to_unit):
@@ -214,7 +209,7 @@ class UnitCalculator(object):
         :param symbol_info: dictionary mapping symbol to 'unit' and, if applicable, 'number'
         :param symbol_subs: dictionary mapping symbol to its numerical replacement
         """
-        self.ureg = unit_registry
+        self.ureg: pint.UnitRegistry = unit_registry
         self.symbols = symbol_info
         self.subs = symbol_subs
 
@@ -241,16 +236,19 @@ class UnitCalculator(object):
     def _is_dimensionless(self, quantity):
         return quantity.units.dimensionality == self.ureg.dimensionless.dimensionality
 
-    def traverse(self, expr):
+    def traverse(self, expr: sympy.Expr):
         """descends the Sympy expression and performs Pint unit arithmetic on sub-expressions
         :param expr: a Sympy expression
         """
-
         # collect the units for each sub-expression in the expression
         quantity_per_arg = []
         for arg in expr.args:
             quantity_per_arg.append(self.traverse(arg))
 
+        if None in quantity_per_arg:
+            return None
+
+        # Terminal atoms in expressions (Integers and Rationals are used by Sympy itself)
         if expr.is_Symbol:
             # is this symbol is a placeholder for a number
             if 'number' in self.symbols[expr]:
@@ -263,67 +261,86 @@ class UnitCalculator(object):
                     # otherwise, straightforward Quantity
                     r = self.ureg.Quantity(expr, self.symbols[expr]['unit'])
             return r
-        elif expr.is_Pow:
-            base = quantity_per_arg[0]
-            exponent = quantity_per_arg[1]
-            # if both base and exponent are dimensionless units
-            if base.units == exponent.units == self.ureg.dimensionless:
-                r = self.ureg.Quantity(base.magnitude**exponent.magnitude, self.ureg.dimensionless)
-            # if the base unit is not dimensionless, we exponentiate the unit
-            elif (base.units != self.ureg.dimensionless and
-                  exponent.units == self.ureg.dimensionless):
-                r = base ** exponent
-            else:
-                raise NotImplemented
-            return r
         elif expr.is_Integer:
             r = int(expr) * self.ureg.dimensionless
             return r
         elif expr.is_Rational:
-            # TODO: can't send back Rational(1,2) * u.dimensionless
+            # NOTE: can't send back Rational(1,2) * u.dimensionless
+            # Used by Sympy for root e.g. sqrt(x) == Pow(x, Rational(1,2))
             r = float(expr) * self.ureg.dimensionless
             return r
+
         elif expr.is_Mul:
+            # There are no restrictions on the units of operands
+            # The result of this operator has units that are the product of the units on
+            # the operands. This product may be simplified according to the rules outlined
+            # in Appendix C.3.1.
             r = reduce(mul, quantity_per_arg)
             return r
+
+        # Pow is used by Sympy for exponentiating, roots and division
+        elif expr.is_Pow:
+            base = quantity_per_arg[0]
+            exponent = quantity_per_arg[1]
+
+            # exponent must be dimensionless
+            if exponent.units != self.ureg.dimensionless:
+                logger.warning('Exponent of pow is not dimensionless %s', expr)
+                return None
+
+            # if base is dimensionless, return is dimensionless
+            if base.units == self.ureg.dimensionless:
+                return self.ureg.Quantity(base.magnitude**exponent.magnitude,
+                                          self.ureg.dimensionless)
+            else:
+                # if base is not dimensionless, raise quantity (magnitude and unit) to power
+                return base ** exponent
+
         elif expr.is_Add:
+            # These operators, if applied to more than one operand, require all of their operands
+            # to have either equivalent units references, as defined in Appendix C.2.1, or to
+            # reference units that have dimensional equivalence, as defined in Appendix C.2.2.
             if self._check_unit_of_quantities_equal(quantity_per_arg):
                 r = quantity_per_arg[0]
                 return r
             else:
                 logger.warning('Add args do not have the same unit. In base units:')
                 for x in quantity_per_arg:
-                    logger.warning('%s -> %s' % (x.units, self.ureg.get_base_units(x.units)))
+                    logger.warning('%s -> %s', x.units, self.ureg.get_base_units(x.units))
                 return None
         elif expr.is_Function:
             # List of functions I've checked
             if str(expr.func) not in ['cos', 'acos', 'exp', 'floor', 'log', 'Abs', 'tanh']:
                 logger.warning('Have not check unit arithmetic for function %s', expr.func)
+
+            # Handle these function explicitly
             if expr.func == sympy.Abs:
                 return abs(quantity_per_arg[0])
+            elif expr.func == sympy.floor:
+                if isinstance(quantity_per_arg[0].magnitude, sympy.Expr):
+                    return 1 * quantity_per_arg[0].units
+                else:
+                    return math.floor(quantity_per_arg[0].magnitude) * quantity_per_arg[0].units
             elif expr.func == sympy.log:
                 if self._is_dimensionless(quantity_per_arg[0]):
                     return 1 * self.ureg.dimensionless
                 else:
-                    raise RuntimeError('log args not dimensionless (%s)',
-                                       [x.units for x in quantity_per_arg])
+                    raise ValueError('log args not dimensionless (%s)',
+                                     [x.units for x in quantity_per_arg])
 
-            # if this function has exactly one dimensionless argument
+            # if the function has exactly one dimensionless argument
             if len(quantity_per_arg) == 1 and self._is_dimensionless(quantity_per_arg[0]):
                 # assume the result is dimensionless!
                 return 1 * self.ureg.dimensionless
-            else:
-                print(expr.func, expr.args, quantity_per_arg)
-                raise RuntimeError(' %s %s' % (expr, sympy.srepr(expr)))
         elif expr == sympy.pi:
             return math.pi * self.ureg.dimensionless
         elif expr.is_Derivative:
             r = quantity_per_arg[0] / quantity_per_arg[1]
             return r
+
         # TODO: Handle _e.is_Piecewise here and remove from model.check_left_right_units_equal
-        else:
-            print(expr.func, expr.args, quantity_per_arg)
-            raise RuntimeError('HANDLE %s %s' % (expr, sympy.srepr(expr)))
+        print(expr.func, expr.args, quantity_per_arg)
+        raise NotImplemented('TODO TODO TODO %s %s' % (expr, sympy.srepr(expr)))
 
 
 class ExpressionWithUnitPrinter(LambdaPrinter):
