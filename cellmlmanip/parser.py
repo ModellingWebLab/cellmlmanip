@@ -103,16 +103,26 @@ class Parser(object):
 
     def __add_maths(self, component: Component, component_element: etree.Element):
         """ <model> <component> <math> </component> </model> """
-        # TODO: Handle cases where there multiple <math> elements
-        math_element = component_element.find(Parser.with_ns(XmlNs.MATHML, u'math'))
-        if math_element is not None:
-            transpiler = mathml2sympy.Transpiler(
-                dummify=True, symbol_prefix=component.name+SYMPY_SYMBOL_DELIMITER,
-            )
+        # get all <math> elements in the component
+        math_elements = component_element.findall(Parser.with_ns(XmlNs.MATHML, u'math'))
+
+        # nothing to do if we don't have any <math> elements
+        if not math_elements:
+            return
+
+        # reuse transpiler so cache of dummy symbols is preserved across <math> elements
+        transpiler = mathml2sympy.Transpiler(
+            dummify=True, symbol_prefix=component.name+SYMPY_SYMBOL_DELIMITER,
+        )
+
+        # for each math element
+        for math_element in math_elements:
             # TODO: check whether element can be passed directly without .tostring()
             sympy_exprs = transpiler.parse_string(etree.tostring(math_element, encoding=str))
             component.equations.extend(sympy_exprs)
-            component.collect_variable_attributes(transpiler.metadata)
+
+        # Add metadata collected whilst parsing <math> elements to the model
+        component.collect_variable_attributes(transpiler.metadata)
 
     def __add_variables(self, component: Component, component_element: etree.Element):
         """ <model> <component> <variable> </component> </model> """

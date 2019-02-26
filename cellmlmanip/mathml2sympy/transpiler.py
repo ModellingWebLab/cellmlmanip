@@ -63,8 +63,6 @@ class Transpiler(object):
         :param math_dom_element: <math> XmlNode object of a MathML DOM structure
         :return: List of SymPy expression(s)
         """
-        self.metadata.clear()
-        self.dummy_symbol_cache.clear()
         return self.transpile(math_dom_element)
 
     def transpile(self, xml_node):
