@@ -29,7 +29,7 @@ class Parser(object):
     @staticmethod
     def with_ns(ns_enum, name):
         """Returns an ElementTree-friendly name with namespace in brackets"""
-        return u'{%s}%s' % (ns_enum.value, name)
+        return '{%s}%s' % (ns_enum.value, name)
 
     def __init__(self, filepath: str) -> None:
         """Initialise an instance of Parser
@@ -49,7 +49,7 @@ class Parser(object):
 
         # <model> root node - initialise the model object
         model_xml = tree.getroot()
-        self.model = Model(model_xml.get(Parser.with_ns(XmlNs.CMETA, u'id')))
+        self.model = Model(model_xml.get(Parser.with_ns(XmlNs.CMETA, 'id')))
 
         # handle the child elements of <model>
         self.__add_units(model_xml)
@@ -65,15 +65,15 @@ class Parser(object):
 
         :param element: the CellML parent element to search for children RDF tags
         """
-        for rdf in element.iter(Parser.with_ns(XmlNs.RDF, u'RDF')):
+        for rdf in element.iter(Parser.with_ns(XmlNs.RDF, 'RDF')):
             self.model.add_rdf(etree.tostring(rdf, encoding=str))
 
     def __add_units(self, model: etree.Element):
         """  <model> <units> <unit /> </units> </model> """
-        units_elements = model.findall(Parser.with_ns(XmlNs.CELLML, u'units'))
+        units_elements = model.findall(Parser.with_ns(XmlNs.CELLML, 'units'))
         units_collected = {}
         for units_element in units_elements:
-            units_name = units_element.get(u'name')
+            units_name = units_element.get('name')
             unit_elements = [dict(t.attrib) for t in units_element.getchildren()]
 
             # if we didn't find any child <unit> elements
@@ -87,12 +87,12 @@ class Parser(object):
 
     def __add_components(self, model: etree.Element):
         """ <model> <component> </model> """
-        component_elements = model.findall(Parser.with_ns(XmlNs.CELLML, u'component'))
+        component_elements = model.findall(Parser.with_ns(XmlNs.CELLML, 'component'))
 
         # for each component defined in the model
         for component_element in component_elements:
             # create an instance of Component
-            component = Component(component_element.get(u'name'), self.model)
+            component = Component(component_element.get('name'), self.model)
 
             # Add the child elements under <component>
             self.__add_variables(component, component_element)
@@ -104,7 +104,7 @@ class Parser(object):
     def __add_maths(self, component: Component, component_element: etree.Element):
         """ <model> <component> <math> </component> </model> """
         # get all <math> elements in the component
-        math_elements = component_element.findall(Parser.with_ns(XmlNs.MATHML, u'math'))
+        math_elements = component_element.findall(Parser.with_ns(XmlNs.MATHML, 'math'))
 
         # nothing to do if we don't have any <math> elements
         if not math_elements:
@@ -126,7 +126,7 @@ class Parser(object):
 
     def __add_variables(self, component: Component, component_element: etree.Element):
         """ <model> <component> <variable> </component> </model> """
-        variable_elements = component_element.findall(Parser.with_ns(XmlNs.CELLML, u'variable'))
+        variable_elements = component_element.findall(Parser.with_ns(XmlNs.CELLML, 'variable'))
         for variable_element in variable_elements:
             attributes: Dict = dict(variable_element.attrib)
 
@@ -138,7 +138,7 @@ class Parser(object):
             component.variables[attributes['name']] = attributes
 
     def __add_connection(self, model: etree.Element):
-        connection_elements = model.findall(Parser.with_ns(XmlNs.CELLML, u'connection'))
+        connection_elements = model.findall(Parser.with_ns(XmlNs.CELLML, 'connection'))
         for connection in connection_elements:
             # there can be one <map_component> and multiple <map_variables>
             map_variables = []
@@ -155,14 +155,14 @@ class Parser(object):
                                                (map_component[1], variable_1)))
 
     def __add_relationships(self, model: etree.Element):
-        group_elements = model.findall(Parser.with_ns(XmlNs.CELLML, u'group'))
+        group_elements = model.findall(Parser.with_ns(XmlNs.CELLML, 'group'))
 
         # find all the <group> elements
         for group_element in group_elements:
 
             # find the relationship for this <group>
             relationship_ref = group_element.findall(Parser.with_ns(XmlNs.CELLML,
-                                                                    u'relationship_ref'))
+                                                                    'relationship_ref'))
             assert len(relationship_ref) == 1
             relationship = relationship_ref[0].attrib.get('relationship')
 
@@ -176,7 +176,7 @@ class Parser(object):
 
         # for each of the child <component_ref> elements in the parent tag
         for component_ref_element in parent_tag.findall(Parser.with_ns(XmlNs.CELLML,
-                                                                       u'component_ref')):
+                                                                       'component_ref')):
 
             # get the name of the child component
             child_component = component_ref_element.attrib.get('component')
