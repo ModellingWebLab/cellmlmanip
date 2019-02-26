@@ -3,7 +3,7 @@ import os
 import pytest
 import sympy
 
-from cellmlmanip import parser, load_model
+from cellmlmanip import load_model, parser
 
 
 class TestParser(object):
