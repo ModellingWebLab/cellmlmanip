@@ -242,8 +242,13 @@ class UnitCalculator(object):
         """
         # collect the units for each sub-expression in the expression
         quantity_per_arg = []
-        for arg in expr.args:
-            quantity_per_arg.append(self.traverse(arg))
+
+        if expr.is_Piecewise:
+            for arg in expr.args:
+                quantity_per_arg.append(self.traverse(arg[0]))
+        else:
+            for arg in expr.args:
+                quantity_per_arg.append(self.traverse(arg))
 
         if None in quantity_per_arg:
             return None
@@ -304,10 +309,20 @@ class UnitCalculator(object):
                 r = quantity_per_arg[0]
                 return r
             else:
-                logger.warning('Add args do not have the same unit. In base units:')
-                for x in quantity_per_arg:
-                    logger.warning('%s -> %s', x.units, self.ureg.get_base_units(x.units))
+                logger.warning('Add args do not have the same unit.')
                 return None
+
+        elif expr.is_Piecewise:
+            # If unit of each expression in piecewise is the same
+            if self._check_unit_of_quantities_equal(quantity_per_arg):
+                # TODO: descend into each condition, and check units are compatible
+                # return one of them for the unit arithmetic
+                r = quantity_per_arg[0]
+                return r
+            else:
+                logger.warning('Piecewise args do not have the same unit.')
+                return None
+
         elif expr.is_Function:
             # List of functions I've checked
             if str(expr.func) not in ['cos', 'acos', 'exp', 'floor', 'log', 'Abs', 'tanh']:
@@ -338,7 +353,6 @@ class UnitCalculator(object):
             r = quantity_per_arg[0] / quantity_per_arg[1]
             return r
 
-        # TODO: Handle _e.is_Piecewise here and remove from model.check_left_right_units_equal
         print(expr.func, expr.args, quantity_per_arg)
         raise NotImplemented('TODO TODO TODO %s %s' % (expr, sympy.srepr(expr)))
 

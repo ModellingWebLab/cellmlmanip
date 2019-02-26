@@ -373,15 +373,11 @@ class Model(object):
         rhs: sympy.Expr = equality.rhs
         lhs: sympy.Expr = equality.lhs
 
-        if rhs.is_Piecewise:
-            for piece, _ in rhs.args:
-                self.check_left_right_units_equal(sympy.Eq(lhs, piece))
-        else:
-            lhs_units = self.units.summarise_units(lhs)
-            rhs_units = self.units.summarise_units(rhs)
+        lhs_units = self.units.summarise_units(lhs)
+        rhs_units = self.units.summarise_units(rhs)
 
-            assert self.units.is_unit_equal(rhs_units, lhs_units), 'Units %s != %s' % (rhs_units,
-                                                                                       lhs_units)
+        assert self.units.is_unit_equal(rhs_units, lhs_units), 'Units %s != %s\n\t%s\n\t%s' % (
+            lhs_units, rhs_units, self.units.ureg.get_base_units(lhs_units), self.units.ureg.get_base_units(rhs_units))
 
     def get_equation_graph(self, refresh=False) -> nx.DiGraph:
         """Returns an ordered list of equations for the model"""
