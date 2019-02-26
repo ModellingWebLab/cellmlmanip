@@ -33,7 +33,8 @@ CELLML_UNITS = {
     'dimensionless', 'gram', 'liter',
 
     # Aliases
-    'metre', 'litre', }
+    'metre', 'litre',
+}
 
 CELLML_UNIT_PREFIXES = {
     'yotta', 'zetta', 'exa', 'peta', 'tera', 'giga', 'mega', 'kilo', 'hecto', 'deka',
@@ -217,7 +218,7 @@ class UnitCalculator(object):
         self.symbols = symbol_info
         self.subs = symbol_subs
 
-    def _check_unit_list_equal(self, list_of_quantities):
+    def _check_unit_of_quantities_equal(self, list_of_quantities):
         """checks whether all units in list are equivalent
         :param list_of_quantities: a list of Pint quantities
         :return: boolean indicating whether all units are equivalent
@@ -286,7 +287,7 @@ class UnitCalculator(object):
             r = reduce(mul, quantity_per_arg)
             return r
         elif expr.is_Add:
-            if self._check_unit_list_equal(quantity_per_arg):
+            if self._check_unit_of_quantities_equal(quantity_per_arg):
                 r = quantity_per_arg[0]
                 return r
             else:
