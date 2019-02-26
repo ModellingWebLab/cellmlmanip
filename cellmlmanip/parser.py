@@ -65,7 +65,7 @@ class Parser(object):
 
         :param element: the CellML parent element to search for children RDF tags
         """
-        for rdf in element.findall(Parser.with_ns(XmlNs.RDF, u'RDF')):
+        for rdf in element.iter(Parser.with_ns(XmlNs.RDF, u'RDF')):
             self.model.add_rdf(etree.tostring(rdf, encoding=str))
 
     def __add_units(self, model: etree.Element):
@@ -97,7 +97,6 @@ class Parser(object):
             # Add the child elements under <component>
             self.__add_variables(component, component_element)
             self.__add_maths(component, component_element)
-            self.__add_rdf(component_element)
 
             # Add the component instance to the model
             self.model.add_component(component)
@@ -127,9 +126,6 @@ class Parser(object):
                 attributes['cmeta:id'] = attributes.pop(cmeta_id_attribute)
 
             component.variables[attributes['name']] = attributes
-
-            # Add any RDF for this <variable>
-            self.__add_rdf(variable_element)
 
     def __add_connection(self, model: etree.Element):
         connection_elements = model.findall(Parser.with_ns(XmlNs.CELLML, u'connection'))

@@ -52,6 +52,9 @@ class TestParser(object):
         assert len(matched) == 1 and \
             matched[0]['sympy.Dummy'].name == 'single_ode_rhs_const_var$sv1'
 
+    def test_rdf(self, model):
+        assert len(model.rdf) == 17
+
     def test_connections_loaded(self, model):
         assert len(model.connections) == 32  # grep -c '<map_variables ' test_simple_odes.cellml
         first, second = model.connections[0]
