@@ -44,7 +44,7 @@ class Component(object):
 
     def __str__(self):
         """Pretty-print object"""
-        return "Component(\n  name: %s\n  equations: %s\n  variables: %s\n  numbers: %s\n)" % (
+        return 'Component(\n  name: %s\n  equations: %s\n  variables: %s\n  numbers: %s\n)' % (
             self.name, self.equations, self.variables, self.numbers
         )
 
@@ -110,7 +110,7 @@ class Component(object):
 
     def collect_units(self, expr):
         """Descends into the given Sympy expression and returns the appropriate units (if any)"""
-        logger.debug("collect_units(%s)", expr)
+        logger.debug('collect_units(%s)', expr)
 
         expr_unit_info = self._find_unit_info(expr)
         if expr_unit_info:
@@ -196,7 +196,7 @@ class Component(object):
 
         # throw error if empty search criteria given
         if search_dict is None or not search_dict:
-            raise ValueError("Search criteria cannot be empty.")
+            raise ValueError('Search criteria cannot be empty.')
 
         # a list to collect all matched variables
         matches = []
@@ -245,7 +245,7 @@ class Model(object):
         """Adds name to list of <component>s in the <model>
         """
         if component.name in self.components:
-            raise ValueError("%s already exists. Check CellML." % component.name)
+            raise ValueError('Component "%s" already exists. Check CellML.' % component.name)
 
         self.components[component.name] = component
 
@@ -320,7 +320,7 @@ class Model(object):
         while connections_to_process:
             # Get connection at front of queue
             connection = connections_to_process.popleft()
-            logger.debug("Try to connect %s and %s", *connection)
+            logger.debug('Try to connect %s and %s', *connection)
             success = self.__connect(connection)
             if not success:
                 logger.debug('Cannot connect %s (source does not have assignment).', connection)
@@ -567,7 +567,7 @@ class Model(object):
             if self.graph.nodes[v].get('cmeta:id', '') == cmeta_id:
                 return v
 
-        raise KeyError('No variable with cmeta id "' + str(cmeta_id) + '" found.')
+        raise KeyError('No variable with cmeta id "%s" found.' % str(cmeta_id))
 
     def get_value(self, symbol):
         """
@@ -592,7 +592,7 @@ class Model(object):
         if 'type' not in variable:
             variable['type'] = variable_type
         else:
-            logger.warning("Variable %s already has type=='%s'. Skip setting '%s'",
+            logger.warning('Variable %s already has type=="%s". Skip setting "%s"',
                            variable['sympy.Dummy'], variable['type'], variable_type)
 
     def get_symbols(self, expr):
@@ -674,7 +674,7 @@ class Model(object):
             elif __has_interface(child_var, pub, 'out') and __has_interface(parent_var, pri, 'in'):
                 return self.__connect_with_direction(child_comp, child_var, parent_comp, parent_var)
 
-        raise ValueError("Cannot determine the source & target for connection %s" % str(connection))
+        raise ValueError('Cannot determine the source & target for connection %s' % str(connection))
 
     def __connect_with_direction(self, source_component, source_variable,
                                  target_component, target_variable):

@@ -333,7 +333,7 @@ class Transpiler(object):
         elif len(result) == 2:
             return result
         else:
-            raise SyntaxError("Don't know how to handle <bvar> " + node.toxml())
+            raise SyntaxError('Do not know how to handle <bvar> ' + node.toxml())
 
     # ELEMENTARY CLASSICAL FUNCTIONS ###############################################################
 
