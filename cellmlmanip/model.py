@@ -88,7 +88,9 @@ class Component(object):
                 dummy_symbols.add(free_symbol)
             # Collect bound variables for derivatives (not returned by .free_symbols)
             for derivative in equation.atoms(sympy.Derivative):
-                dummy_symbols.add(derivative.variables[0])  # TODO: variables for degree > 1
+                # only allow first-order derivatives
+                assert len(derivative.variables) == 1
+                dummy_symbols.add(derivative.variables[0])
 
         # For each of the symbols in these equations
         for symbol in dummy_symbols:
