@@ -173,9 +173,13 @@ class TestParser(object):
         model.add_units_to_equations()
 
         # then check the lhs/rhs units
-        with pytest.raises(AssertionError, match='Units second != volt'):
+        with pytest.raises(AssertionError) as assert_info:
             for e in model.equations:
                 model.check_left_right_units_equal(e)
+
+        match = ("Units volt (1.0, <Unit('kilogram * meter ** 2 / ampere / second ** 3')>) != "
+                 "second (1.0, <Unit('second')>)")
+        assert match in str(assert_info.value)
 
     def test_algebraic(self):
         example_cellml = os.path.join(
