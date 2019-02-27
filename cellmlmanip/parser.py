@@ -52,15 +52,15 @@ class Parser(object):
         self.model = Model(model_xml.get(Parser.with_ns(XmlNs.CMETA, 'id')))
 
         # handle the child elements of <model>
-        self.__add_units(model_xml)
-        self.__add_components(model_xml)
-        self.__add_relationships(model_xml)
-        self.__add_rdf(model_xml)
-        self.__add_connection(model_xml)
+        self._add_units(model_xml)
+        self._add_components(model_xml)
+        self._add_relationships(model_xml)
+        self._add_rdf(model_xml)
+        self._add_connection(model_xml)
 
         return self.model
 
-    def __add_rdf(self, element: etree.Element):
+    def _add_rdf(self, element: etree.Element):
         """Finds all <RDF> definitions under <element> and adds them to the model
 
         :param element: the CellML parent element to search for children RDF tags
@@ -68,7 +68,7 @@ class Parser(object):
         for rdf in element.iter(Parser.with_ns(XmlNs.RDF, 'RDF')):
             self.model.add_rdf(etree.tostring(rdf, encoding=str))
 
-    def __add_units(self, model: etree.Element):
+    def _add_units(self, model: etree.Element):
         """  <model> <units> <unit /> </units> </model> """
         units_elements = model.findall(Parser.with_ns(XmlNs.CELLML, 'units'))
         units_collected = {}
@@ -85,7 +85,7 @@ class Parser(object):
 
         self.model.add_unit(units_collected)
 
-    def __add_components(self, model: etree.Element):
+    def _add_components(self, model: etree.Element):
         """ <model> <component> </model> """
         component_elements = model.findall(Parser.with_ns(XmlNs.CELLML, 'component'))
 
@@ -95,13 +95,13 @@ class Parser(object):
             component = Component(component_element.get('name'), self.model)
 
             # Add the child elements under <component>
-            self.__add_variables(component, component_element)
-            self.__add_maths(component, component_element)
+            self._add_variables(component, component_element)
+            self._add_maths(component, component_element)
 
             # Add the component instance to the model
             self.model.add_component(component)
 
-    def __add_maths(self, component: Component, component_element: etree.Element):
+    def _add_maths(self, component: Component, component_element: etree.Element):
         """ <model> <component> <math> </component> </model> """
         # get all <math> elements in the component
         math_elements = component_element.findall(Parser.with_ns(XmlNs.MATHML, 'math'))
@@ -124,7 +124,7 @@ class Parser(object):
         # Add metadata collected whilst parsing <math> elements to the model
         component.collect_variable_attributes(transpiler.metadata)
 
-    def __add_variables(self, component: Component, component_element: etree.Element):
+    def _add_variables(self, component: Component, component_element: etree.Element):
         """ <model> <component> <variable> </component> </model> """
         variable_elements = component_element.findall(Parser.with_ns(XmlNs.CELLML, 'variable'))
         for variable_element in variable_elements:
@@ -137,7 +137,7 @@ class Parser(object):
 
             component.variables[attributes['name']] = attributes
 
-    def __add_connection(self, model: etree.Element):
+    def _add_connection(self, model: etree.Element):
         connection_elements = model.findall(Parser.with_ns(XmlNs.CELLML, 'connection'))
         for connection in connection_elements:
             # there can be one <map_component> and multiple <map_variables>
@@ -154,7 +154,7 @@ class Parser(object):
                 self.model.connections.append(((map_component[0], variable_0),
                                                (map_component[1], variable_1)))
 
-    def __add_relationships(self, model: etree.Element):
+    def _add_relationships(self, model: etree.Element):
         group_elements = model.findall(Parser.with_ns(XmlNs.CELLML, 'group'))
 
         # find all the <group> elements
@@ -168,9 +168,9 @@ class Parser(object):
 
             # we only handle 'encapsulation' relationships (i.e. ignoring 'containment')
             if relationship == 'encapsulation':
-                self.__handle_component_ref(group_element, None)
+                self._handle_component_ref(group_element, None)
 
-    def __handle_component_ref(self, parent_tag, parent_component):
+    def _handle_component_ref(self, parent_tag, parent_component):
         # we're going to process all the siblings at the end
         siblings = []
 
@@ -191,7 +191,7 @@ class Parser(object):
                 self.model.components[child_component].set_parent(parent_component)
 
             # descend into this <component_ref> tag to handle any children
-            self.__handle_component_ref(component_ref_element, child_component)
+            self._handle_component_ref(component_ref_element, child_component)
 
         # if there are siblings in this non-anonymous group
         if parent_component and len(siblings) > 1:

@@ -28,7 +28,7 @@ CELLML_UNITS = {
     'lumen', 'lux', 'newton', 'ohm', 'pascal', 'radian', 'siemens', 'sievert',
     'steradian', 'tesla', 'volt', 'watt', 'weber',
 
-    'katal',  # see __add_custom_units()
+    'katal',  # see _add_custom_units()
 
     # Convenience units
     'dimensionless', 'gram', 'liter',
@@ -58,7 +58,7 @@ class UnitStore(object):
         self.ureg: pint.UnitRegistry = pint.UnitRegistry()
 
         # Add default CellML units not provided by Pint
-        self.__add_undefined_units()
+        self._add_undefined_units()
 
         # Hold on to custom unit definitions
         self.cellml_definitions = cellml_def if cellml_def else {}
@@ -70,7 +70,7 @@ class UnitStore(object):
         # Keep reference to the underlying model, to look up the 'dummy_info' dictionary
         self.model = model
 
-    def __add_undefined_units(self):
+    def _add_undefined_units(self):
         """Adds units required by CellML but not provided by Pint."""
         self.ureg.define('katal = mol / second = kat')
 
@@ -389,27 +389,27 @@ class ExpressionWithUnitPrinter(LambdaPrinter):
             symbol_info = dict()
         self.symbols = symbol_info
 
-    def __get_dummy_unit(self, expr):
+    def _get_dummy_unit(self, expr):
         return self.symbols[expr]['unit']
 
-    def __get_dummy_number(self, expr):
+    def _get_dummy_number(self, expr):
         if 'number' in self.symbols[expr]:
             return self.symbols[expr]['number']
         else:
             return None
 
     def _print_Dummy(self, expr):
-        number = self.__get_dummy_number(expr)
+        number = self._get_dummy_number(expr)
         if number:
-            return '%f[%s]' % (number, str(self.__get_dummy_unit(expr)))
+            return '%f[%s]' % (number, str(self._get_dummy_unit(expr)))
 
-        return '%s[%s]' % (expr.name, str(self.__get_dummy_unit(expr)))
+        return '%s[%s]' % (expr.name, str(self._get_dummy_unit(expr)))
 
     def _print_Derivative(self, expr):
         state_dummy = expr.free_symbols.pop()
-        state_unit = self.__get_dummy_unit(state_dummy)
+        state_unit = self._get_dummy_unit(state_dummy)
         free_dummy = set(expr.canonical_variables.keys()).pop()
-        free_unit = self.__get_dummy_unit(free_dummy)
+        free_unit = self._get_dummy_unit(free_dummy)
         return 'Derivative(%s[%s], %s[%s])' % (state_dummy.name,
                                                str(state_unit),
                                                free_dummy.name,

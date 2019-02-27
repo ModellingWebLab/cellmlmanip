@@ -270,7 +270,7 @@ class Model(object):
                 yield (component, var_attr)
 
     @staticmethod
-    def __is_not_assigned(variables: Dict):
+    def _is_not_assigned(variables: Dict):
         """Checks whether a variable gets its value from another component. There are two
         possibilities. Either it has:
             (i) public_interface="out" or
@@ -302,7 +302,7 @@ class Model(object):
                 )
 
             # If this variable does not get its value from another component
-            if Model.__is_not_assigned(variable):
+            if Model._is_not_assigned(variable):
                 # The assigned variable to this variable *is* the dummy symbol (no assignment)
                 variable['assignment'] = variable['sympy.Dummy']
 
@@ -321,7 +321,7 @@ class Model(object):
             # Get connection at front of queue
             connection = connections_to_process.popleft()
             logger.debug('Try to connect %s and %s', *connection)
-            success = self.__connect(connection)
+            success = self._connect(connection)
             if not success:
                 logger.debug('Cannot connect %s (source does not have assignment).', connection)
                 connections_to_process.append(connection)
@@ -414,13 +414,13 @@ class Model(object):
                 state_symbol = lhs_symbol.free_symbols.pop()
                 state_variable = self.find_variable({'sympy.Dummy': state_symbol})
                 assert len(state_variable) == 1
-                Model.__set_variable_type(state_variable[0], 'state')
+                Model._set_variable_type(state_variable[0], 'state')
 
                 # Get the free symbol and update the variable information
                 free_symbol = set(lhs_symbol.canonical_variables.keys()).pop()
                 free_variable = self.find_variable({'sympy.Dummy': free_symbol})
                 assert len(free_variable) == 1
-                Model.__set_variable_type(free_variable[0], 'free')
+                Model._set_variable_type(free_variable[0], 'free')
 
         # sanity check none of the lhs have the same hash!
         assert len(graph.nodes) == equation_count
@@ -586,7 +586,7 @@ class Model(object):
         return float(self.graph.nodes[symbol]['initial_value'])
 
     @staticmethod
-    def __set_variable_type(variable, variable_type):
+    def _set_variable_type(variable, variable_type):
         if 'type' not in variable:
             variable['type'] = variable_type
         else:
@@ -603,7 +603,7 @@ class Model(object):
                 symbols |= self.get_symbols(arg)
         return symbols
 
-    def __get_connection_endpoints(self, connection):
+    def _get_connection_endpoints(self, connection):
         """Pull out the variable dict of the component for the two endpoints of the connection
 
         :param connection: single connection tuple as created by the parser
@@ -613,7 +613,7 @@ class Model(object):
         variable_2_attributes = self.components[component_2].variables[variable_2]
         return component_1, variable_1_attributes, component_2, variable_2_attributes
 
-    def __connect(self, connection):
+    def _connect(self, connection):
         """Takes a CellML connection and attempts to resolve the connect by assigning the target
         variable to the assigned source variable
 
@@ -635,31 +635,31 @@ class Model(object):
         :param connection: a single connection tuple, created by the CellML parser
             ((component_1, variable_1), (component_2, variable_2))
         """
-        comp_1, var_1, comp_2, var_2 = self.__get_connection_endpoints(connection)
+        comp_1, var_1, comp_2, var_2 = self._get_connection_endpoints(connection)
 
         # keys for lookup
         pub = 'public_interface'
         pri = 'private_interface'
 
-        def __are_siblings(comp_a, comp_b):
+        def _are_siblings(comp_a, comp_b):
             return self.components[comp_a].parent == self.components[comp_b].parent
 
-        def __parent_of(parent_name, child_name):
+        def _parent_of(parent_name, child_name):
             return parent_name == self.components[child_name].parent
 
-        def __has_interface(dic, key, val):
+        def _has_interface(dic, key, val):
             return key in dic and dic[key] == val
 
         # if the components are siblings (either same parent or top-level)
-        if __are_siblings(comp_1, comp_2):
+        if _are_siblings(comp_1, comp_2):
             # they are both connected on their public_interface
-            if __has_interface(var_1, pub, 'out') and __has_interface(var_2, pub, 'in'):
-                return self.__connect_with_direction(comp_1, var_1, comp_2, var_2)
-            elif __has_interface(var_1, pub, 'in') and __has_interface(var_2, pub, 'out'):
-                return self.__connect_with_direction(comp_2, var_2, comp_1, var_1)
+            if _has_interface(var_1, pub, 'out') and _has_interface(var_2, pub, 'in'):
+                return self._connect_with_direction(comp_1, var_1, comp_2, var_2)
+            elif _has_interface(var_1, pub, 'in') and _has_interface(var_2, pub, 'out'):
+                return self._connect_with_direction(comp_2, var_2, comp_1, var_1)
         else:
             # determine which component is parent of the other
-            if __parent_of(comp_1, comp_2):
+            if _parent_of(comp_1, comp_2):
                 parent_comp, child_comp = comp_1, comp_2
                 parent_var, child_var = var_1, var_2
             else:
@@ -667,15 +667,16 @@ class Model(object):
                 parent_var, child_var = var_2, var_1
 
             # parent/child components are connected using private/public interface, respectively
-            if __has_interface(child_var, pub, 'in') and __has_interface(parent_var, pri, 'out'):
-                return self.__connect_with_direction(parent_comp, parent_var, child_comp, child_var)
-            elif __has_interface(child_var, pub, 'out') and __has_interface(parent_var, pri, 'in'):
-                return self.__connect_with_direction(child_comp, child_var, parent_comp, parent_var)
+            if _has_interface(child_var, pub, 'in') and _has_interface(parent_var, pri, 'out'):
+                return self._connect_with_direction(parent_comp, parent_var, child_comp, child_var)
+            elif _has_interface(child_var, pub, 'out') and _has_interface(parent_var, pri, 'in'):
+                return self._connect_with_direction(child_comp, child_var, parent_comp, parent_var)
 
         raise ValueError('Cannot determine the source & target for connection %s' % str(connection))
 
-    def __connect_with_direction(self, source_component, source_variable,
-                                 target_component, target_variable):
+    def _connect_with_direction(self,
+                                source_component, source_variable,
+                                target_component, target_variable):
         """Given the source and target component and variable, create a connection by assigning
         the symbol from the source to the target. If units are not the same, it will add an equation
         to the target component reflecting the relationship. If a symbol has not been assigned to
