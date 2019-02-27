@@ -4,6 +4,7 @@ Sympy-units implementation
 """
 import logging
 import math
+import numbers
 from functools import reduce
 from operator import mul
 
@@ -191,7 +192,6 @@ class UnitStore(object):
 
         if found is None:
             printer = ExpressionWithUnitPrinter(symbol_info=self.model.dummy_info)
-            print('The final unit is', repr(unit_calculator.traverse(expr)))
             logger.fatal('Could not summaries units: %s', expr)
             logger.fatal('-> %s', printer.doprint(expr))
             return None
@@ -294,7 +294,13 @@ class UnitCalculator(object):
 
             # exponent must be dimensionless
             if exponent.units != self.ureg.dimensionless:
-                logger.warning('Exponent of pow is not dimensionless %s', expr)
+                logger.critical('Exponent of pow is not dimensionless %s', expr)
+                return None
+
+            if not isinstance(exponent.magnitude, (sympy.Number, numbers.Number)):
+                logger.critical('Exponent of pow is not a number (is %s): %s',
+                                type(exponent.magnitude).__name__,
+                                expr)
                 return None
 
             # if base is dimensionless, return is dimensionless
@@ -358,6 +364,9 @@ class UnitCalculator(object):
                     else:
                         # magnitude contains an unresolved symbol, we lose it here!
                         return 1 * self.ureg.dimensionless
+                else:
+                    logger.critical('Exp operand is not dimensionless: %s', expr)
+                    return None
 
             # if the function has exactly one dimensionless argument
             if len(quantity_per_arg) == 1 and self._is_dimensionless(quantity_per_arg[0]):
