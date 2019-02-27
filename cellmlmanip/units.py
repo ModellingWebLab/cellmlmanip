@@ -176,7 +176,11 @@ class UnitStore(object):
             symbol_info = self.model.find_variable({'sympy.Dummy': symbol})
             if len(symbol_info) == 1:
                 if symbol_info[0].get('initial_value', None):
-                    subs[symbol] = float(symbol_info[0]['initial_value'])
+                    value = float(symbol_info[0]['initial_value'])
+                    # we don't substitute symbols if value is 0 due to div by zero errors
+                    # check what other impact this has
+                    if value != 0.0:
+                        subs[symbol] = value
             else:
                 # dummy placeholders for numbers don't have variable information
                 assert 'number' in self.model.dummy_info[symbol]
