@@ -358,7 +358,7 @@ class UnitCalculator(object):
             return r
 
         print(expr.func, expr.args, quantity_per_arg)
-        raise NotImplemented('TODO TODO TODO %s %s' % (expr, sympy.srepr(expr)))
+        raise NotImplementedError('TODO TODO TODO %s %s' % (expr, sympy.srepr(expr)))
 
 
 class ExpressionWithUnitPrinter(LambdaPrinter):
