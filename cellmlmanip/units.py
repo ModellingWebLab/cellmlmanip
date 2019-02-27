@@ -346,6 +346,18 @@ class UnitCalculator(object):
                 else:
                     raise ValueError('log args not dimensionless (%s)',
                                      [x.units for x in quantity_per_arg])
+            elif expr.func == sympy.exp:
+                # requires operands to have units of dimensionless.
+                # result of these has units of dimensionless.
+                if self._is_dimensionless(quantity_per_arg[0]):
+                    # is the operand is a float
+                    if isinstance(quantity_per_arg[0].magnitude, float):
+                        # return the exponential of the float as dimensionless
+                        return self.ureg.Quantity(math.exp(quantity_per_arg[0].magnitude),
+                                                  self.ureg.dimensionless)
+                    else:
+                        # magnitude contains an unresolved symbol, we lose it here!
+                        return 1 * self.ureg.dimensionless
 
             # if the function has exactly one dimensionless argument
             if len(quantity_per_arg) == 1 and self._is_dimensionless(quantity_per_arg[0]):
@@ -357,7 +369,6 @@ class UnitCalculator(object):
             r = quantity_per_arg[0] / quantity_per_arg[1]
             return r
 
-        print(expr.func, expr.args, quantity_per_arg)
         raise NotImplementedError('TODO TODO TODO %s %s' % (expr, sympy.srepr(expr)))
 
 
