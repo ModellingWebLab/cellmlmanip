@@ -621,7 +621,8 @@ class Model(object):
             uri = str(result)
             if uri[0] != '#':
                 # TODO This should eventually be implemented
-                raise NotImplementedError('Non-local URIs are not supported.')
+                raise NotImplementedError(
+                    'Non-local annotations are not supported.')
             symbols.append(self.get_symbol_by_cmeta_id(uri[1:]))
 
         return symbols
