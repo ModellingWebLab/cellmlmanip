@@ -10,4 +10,5 @@ def load_model(path):
     model = Parser(path).parse()
     model.make_connections()
     model.add_units_to_equations()
+    model.get_equation_graph()
     return model
