@@ -9,13 +9,14 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 
+'''
 def create_rdf_node(self, node_content=None, fragment_id=None):
     """
-    Create an RDF node.
+    Creates an RDF node from the given ``node_content``.
 
     The ``node_content``, if given, must either be a :class:`rdflib.term.Node`
-    instance, a tuple ``(qname, namespace_uri)``, or a string, in which case it
-    is interpreted as a literal RDF node.
+    instance, a tuple ``(namespace, local_name)``, or a string, in which case
+    it is interpreted as a literal RDF node.
 
     Alternatively, ``fragment_id`` may be given to refer to a ``cmeta:id``
     within the current model.
@@ -37,15 +38,14 @@ def create_rdf_node(self, node_content=None, fragment_id=None):
             node = node_content
 
         if isinstance(node_content, tuple):
-            # Create a node from the given (``qname``, ``namespace``) tuple
-            qname, ns_uri = node_content
+            # Create a node from the given (namespace, local_name) tuple
+            ns_uri, local_name = node_content
 
             # Ensure namespace prefix can be appended to
             if ns_uri[-1] not in ['#', '/']:
                 ns_uri = ns_uri + '#'
 
             ns = rdflib.Namespace(ns_uri)
-            prefix, local_name = pycml.SplitQName(qname)
             node = ns[local_name]
 
         elif isinstance(node_content, str):
@@ -62,3 +62,17 @@ def create_rdf_node(self, node_content=None, fragment_id=None):
         node = rdflib.BNode()
 
     return node
+'''
+
+
+def create_rdf_node(namespace, local_name):
+    """
+    Creates and returns an RDF node from the given ``ns_``,
+    ``local_name`` pair.
+    """
+    # Ensure namespace prefix can be appended to
+    if namespace[-1] not in ['#', '/']:
+        namespace = namespace + '#'
+
+    return rdflib.Namespace(namespace)[local_name]
+
