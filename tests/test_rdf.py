@@ -25,6 +25,7 @@ def test_create_rdf_node():
     node = cellmlmanip.rdf.create_rdf_node('http://example.com', 'hi')
     assert str(node) == 'http://example.com#hi'
 
+
 def test_get_symbol_by_ontology_term(model):
     # Tests model.get_symbol_by_ontology_term
 
