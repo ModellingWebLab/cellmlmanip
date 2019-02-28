@@ -1,12 +1,12 @@
 """
 Module for working with RDF data.
 """
-import logging
+# import logging
 import rdflib
 
 
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
+# logger = logging.getLogger(__name__)
+# logger.setLevel(logging.INFO)
 
 
 '''
