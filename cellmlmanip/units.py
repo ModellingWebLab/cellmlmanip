@@ -19,7 +19,6 @@ logger.setLevel(logging.INFO)
 
 # The full list of supported CellML units
 # Taken from https://www.cellml.org/specifications/cellml_1.1/#sec_units
-# Some are not defined by Pint, see comments
 CELLML_UNITS = {
     # Base SI units
     'ampere', 'candela', 'kelvin', 'kilogram', 'meter', 'mole', 'second',
@@ -29,7 +28,7 @@ CELLML_UNITS = {
     'lumen', 'lux', 'newton', 'ohm', 'pascal', 'radian', 'siemens', 'sievert',
     'steradian', 'tesla', 'volt', 'watt', 'weber',
 
-    'katal',  # see _add_custom_units()
+    'katal',
 
     # Convenience units
     'dimensionless', 'gram', 'liter',
@@ -60,9 +59,6 @@ class UnitStore(object):
         )
         self.ureg: pint.UnitRegistry = pint.UnitRegistry(cellml_unit_definition)
 
-        # Add default CellML units not provided by Pint
-        self._add_undefined_units()
-
         # Hold on to custom unit definitions
         self.cellml_definitions = cellml_def if cellml_def else {}
         logger.debug('Found %d CellML unit definitions', len(self.cellml_definitions))
@@ -73,10 +69,6 @@ class UnitStore(object):
         # Keep reference to the underlying model, to look up the 'dummy_info' dictionary
         self.model = model
 
-    def _add_undefined_units(self):
-        """Adds units required by CellML but not provided by Pint."""
-        self.ureg.define('katal = mol / second = kat')
-
     def get_quantity(self, unit_name: str):
         """Given the name of the unit, this will either (i) return a Quantity from the internal
         store as its already been resolved previously (ii) return the Quantity from Pint if it a
@@ -85,7 +77,6 @@ class UnitStore(object):
         """
         # If this unit is a custom CellML definition and we haven't defined it
         if unit_name in self.cellml_definitions and unit_name not in self.cellml_defined:
-            # TODO create cellml pint unit definitions file
             try:
                 getattr(self.ureg, unit_name)
             except pint.UndefinedUnitError:
