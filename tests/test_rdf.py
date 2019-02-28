@@ -1,5 +1,6 @@
 import os
 import pytest
+import sympy
 
 import cellmlmanip
 import cellmlmanip.rdf
@@ -21,8 +22,8 @@ def test_create_rdf_node():
 def test_get_symbol_by_ontology_term(model):
     # Tests model.get_symbol_by_ontology_term
 
+    # Test getting the time variable
     oxmeta = 'https://chaste.comlab.ox.ac.uk/cellml/ns/oxford-metadata#'
     var = model.get_symbol_by_ontology_term(oxmeta, 'time')
-
-    assert var == 'hello'
-
+    assert isinstance(var, sympy.Symbol)
+    assert var.name == 'environment$time'
