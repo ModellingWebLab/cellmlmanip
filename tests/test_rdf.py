@@ -15,7 +15,7 @@ def model():
 
 def test_create_rdf_node():
     # Tests rdf.create_rdf_node
-    #TODO
+    # TODO
     pass
 
 

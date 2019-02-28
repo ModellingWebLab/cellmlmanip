@@ -75,4 +75,3 @@ def create_rdf_node(namespace, local_name):
         namespace = namespace + '#'
 
     return rdflib.Namespace(namespace)[local_name]
-

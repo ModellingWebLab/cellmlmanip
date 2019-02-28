@@ -593,7 +593,7 @@ class Model(object):
         else:
             raise RuntimeError(
                 'Multiple variables annotated with ' + namespace + ':'
-                 + local_name)
+                + local_name)
 
     def _get_symbols_by_rdf(self, predicate, object_=None):
         """
@@ -604,8 +604,8 @@ class Model(object):
         ``(namespace, local_name)`` tuples.
         """
         # Convert property and value to RDF nodes
-        #TODO: Eventually a different form for predicate and object may be
-        #      accepted.
+        # TODO: Eventually a different form for predicate and object may be
+        #       accepted.
         assert len(predicate) == 2
         predicate = create_rdf_node(*predicate)
         if object_ is not None:
@@ -620,7 +620,7 @@ class Model(object):
             # Get cmeta id from result uri
             uri = str(result)
             if uri[0] != '#':
-                #TODO This should eventually be implemented
+                # TODO This should eventually be implemented
                 raise NotImplementedError('Non-local URIs are not supported.')
             symbols.append(self.get_symbol_by_cmeta_id(uri[1:]))
 
