@@ -5,6 +5,7 @@ Sympy-units implementation
 import logging
 import math
 import numbers
+import os
 from functools import reduce
 from operator import mul
 
@@ -54,8 +55,10 @@ class UnitStore(object):
         for format, essentially: {'name of unit': { [ unit attributes ], [ unit attributes ] } }
         """
         # Initialise the unit registry
-        # TODO: create Pint unit definition file for CellML
-        self.ureg: pint.UnitRegistry = pint.UnitRegistry()
+        cellml_unit_definition = os.path.join(
+            os.path.dirname(__file__), 'cellml_units.txt'
+        )
+        self.ureg: pint.UnitRegistry = pint.UnitRegistry(cellml_unit_definition)
 
         # Add default CellML units not provided by Pint
         self._add_undefined_units()

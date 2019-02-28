@@ -1,0 +1,70 @@
+# This is a Pint units definition file specifying units in the CellML 1.1 specification
+# https://www.cellml.org/specifications/cellml_1.1/#sec_units
+
+@defaults
+    group = international
+    system = mks
+@end
+
+# prefixes (table 3 in 5.2.2 of spec.)
+yocto- = 1e-24
+zepto- = 1e-21
+atto- =  1e-18
+femto- = 1e-15
+pico- =  1e-12
+nano- =  1e-9
+micro- = 1e-6
+milli- = 1e-3
+centi- = 1e-2
+deci- =  1e-1
+deca- =  1e+1
+hecto- = 1e2
+kilo- =  1e3
+mega- =  1e6
+giga- =  1e9
+tera- =  1e12
+peta- =  1e15
+exa- =   1e18
+zetta- = 1e21
+yotta- = 1e24
+
+# base SI units (table 2 in 5.2.1 of spec.)
+ampere = [current]
+candela = [luminosity]
+gram = [mass]  # (note: base unit is kilogram - see @system declaration below)
+kelvin = [temperature]; offset: 0
+meter = [length] = metre
+mole = [substance]
+radian = []
+second = [time]
+
+# derived units (table 2 in 5.2.1 of spec.)
+becquerel = hertz
+celsius = kelvin; offset: 273.15
+coulomb = ampere * second
+farad = coulomb / volt
+henry = weber / ampere
+hertz = 1 / second
+joule = newton * meter
+katal = mole / second
+liter = 1e-3 * metre ** 3 = litre
+lumen = candela * steradian
+lux = lumen / meter ** 2
+molar = mole / (1e-3 * meter ** 3)
+newton = kilogram * meter / second ** 2
+ohm = volt / ampere
+pascal = newton / meter ** 2
+siemens = ampere / volt
+sievert = joule / kilogram = gray
+steradian = radian ** 2
+tesla = weber / meter ** 2
+volt = joule / coulomb
+watt = joule / second
+weber = volt * second
+
+@system mks using international
+    meter
+    kilogram
+    second
+@end
+
