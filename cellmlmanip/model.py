@@ -11,6 +11,7 @@ import rdflib
 import sympy
 
 from cellmlmanip.units import UnitStore
+from cellmlmanip.rdf import create_rdf_node
 
 
 logger = logging.getLogger(__name__)
@@ -566,6 +567,55 @@ class Model(object):
                 return v
 
         raise KeyError('No variable with cmeta id "%s" found.' % str(cmeta_id))
+
+    def get_symbol_by_rdf(self, property, value=None):
+        """
+        Like :meth:`get_symbols_by_rdf` but only returns a single variable
+        symbol.
+
+        Raises a `KeyError` if no match is found, or a `ValueError` if multiple
+        matching variables are found.
+        """
+        x = get_symbols_by_rdf(property, value)
+        if len(x) == 0:
+            raise ValueError(
+                'No match found for `' + str(property) '`: `' + value + '`.')
+        elif len(x) > 1:
+            raise ValueError(
+                'Multiple variables match `' + str(property) '`: `' + value +
+                '`.')
+
+    def get_symbols_by_rdf(self, property, value=None):
+        """
+        Searches the RDF graph for variables with the given property (and
+        value, if given) and returns a list of matching symbols.
+
+        Both property and value (if given) must be suitable as input to
+        :meth:`rdf.create_rdf_node`.
+
+        Assumes (but does not check) that annotations are all of the form
+        ``(namespace:name, is, cmeta:id)``.
+        """
+        # Convert property and value to nodes
+        property = create_rdf_node(property)
+        if value:
+            value = create_rdf_node(value)
+
+        # Find symbols
+        symbols = []
+        for result in self.rdf.subjects(property, value):
+            assert isinstance(result, rdflib.URIRef), "Non-resource annotated."
+
+            # Get uri with cmeta id
+            uri = str(result)
+            if uri[0] != '#':
+                raise NotImplementedError('Non-local URIs are not supported.')
+            cmeta_id = uri[1:]
+
+            # Add variable
+            symbols.append(self.get_symbol_by_cmeta_id(cmeta_id))
+
+        return symbols
 
     def get_value(self, symbol):
         """
