@@ -32,7 +32,7 @@ yotta- = 1e24
 ampere = [current]
 candela = [luminosity]
 gram = [mass]  # (note: base unit is kilogram - see @system declaration below)
-kelvin = [temperature]; offset: 0
+kelvin = [temperature]
 meter = [length] = metre
 mole = [substance]
 radian = []
@@ -40,7 +40,6 @@ second = [time]
 
 # derived units (table 2 in 5.2.1 of spec.)
 becquerel = hertz
-celsius = kelvin; offset: 273.15
 coulomb = ampere * second
 farad = coulomb / volt
 henry = weber / ampere
