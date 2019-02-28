@@ -579,10 +579,10 @@ class Model(object):
         x = get_symbols_by_rdf(property, value)
         if len(x) == 0:
             raise ValueError(
-                'No match found for `' + str(property) '`: `' + value + '`.')
+                'No match found for `' + str(property) + '`: `' + value + '`.')
         elif len(x) > 1:
             raise ValueError(
-                'Multiple variables match `' + str(property) '`: `' + value +
+                'Multiple variables match `' + str(property) + '`: `' + value +
                 '`.')
 
     def get_symbols_by_rdf(self, property, value=None):
