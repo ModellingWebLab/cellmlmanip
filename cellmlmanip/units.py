@@ -63,6 +63,10 @@ class UnitStore(object):
         self.cellml_definitions = cellml_def if cellml_def else {}
         logger.debug('Found %d CellML unit definitions', len(self.cellml_definitions))
 
+        # Users are not allowed to redefine the standard unit dictionary
+        assert (len(CELLML_UNITS & self.cellml_definitions.keys()) == 0,
+                'Cannot redefine standard CellML units in <units>')
+
         # CellML units that we've defined in unit registry because of call to get_quantity()
         self.cellml_defined = set()
 
