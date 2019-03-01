@@ -578,7 +578,7 @@ class Model(object):
         specified by ``{namespace_uri}local_name``.
 
         Will raise a ``KeyError`` if no variable with the given annotation is
-        found, and a ``RuntimeError`` if more than one variable with the given
+        found, and a ``ValueError`` if more than one variable with the given
         annotation is found.
         """
         symbols = self._get_symbols_by_rdf(
