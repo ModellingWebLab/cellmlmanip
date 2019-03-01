@@ -11,6 +11,7 @@ import rdflib
 import sympy
 
 from cellmlmanip.units import UnitStore
+from cellmlmanip.rdf import create_rdf_node
 
 
 logger = logging.getLogger(__name__)
@@ -566,6 +567,65 @@ class Model(object):
                 return v
 
         raise KeyError('No variable with cmeta id "%s" found.' % str(cmeta_id))
+
+    def get_symbol_by_ontology_term(self, namespace_uri, local_name):
+        """
+        Searches the RDF graph for a variable annotated with the given
+        ``{namespace_uri}local_name`` and returns its symbol.
+
+        Specifically, this method searches for a unique variable annotated with
+        predicate ``http://biomodels.net/biology-qualifiers/is`` and the object
+        specified by ``{namespace_uri}local_name``.
+
+        Will raise a ``KeyError`` if no variable with the given annotation is
+        found, and a ``ValueError`` if more than one variable with the given
+        annotation is found.
+        """
+        symbols = self._get_symbols_by_rdf(
+            ('http://biomodels.net/biology-qualifiers/', 'is'),
+            (namespace_uri, local_name))
+        if len(symbols) == 1:
+            return symbols[0]
+        elif len(symbols) == 0:
+            raise KeyError(
+                'No variable annotated with {' + namespace_uri + '}'
+                + local_name + ' found.')
+        else:
+            raise ValueError(
+                'Multiple variables annotated with {' + namespace_uri + '}'
+                + local_name)
+
+    def _get_symbols_by_rdf(self, predicate, object_=None):
+        """
+        Searches the RDF graph for variables annotated with the given predicate
+        and object (e.g. "is oxmeta:time") and returns the associated symbols.
+
+        Both ``predicate`` and ``object_`` (if given) must be
+        ``(namespace, local_name)`` tuples.
+        """
+        # Convert property and value to RDF nodes
+        # TODO: Eventually a different form for predicate and object may be
+        #       accepted.
+        assert len(predicate) == 2
+        predicate = create_rdf_node(*predicate)
+        if object_ is not None:
+            assert len(object_) == 2
+            object_ = create_rdf_node(*object_)
+
+        # Find symbols
+        symbols = []
+        for result in self.rdf.subjects(predicate, object_):
+            assert isinstance(result, rdflib.URIRef), 'Non-resource annotated.'
+
+            # Get cmeta id from result uri
+            uri = str(result)
+            if uri[0] != '#':
+                # TODO This should eventually be implemented
+                raise NotImplementedError(
+                    'Non-local annotations are not supported.')
+            symbols.append(self.get_symbol_by_cmeta_id(uri[1:]))
+
+        return symbols
 
     def get_value(self, symbol):
         """
