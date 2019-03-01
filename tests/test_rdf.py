@@ -47,7 +47,7 @@ def test_get_symbol_by_ontology_term():
     model = load_model('test_bad_annotations')
 
     # Two variables with the same ID
-    with pytest.raises(RuntimeError) as e:
+    with pytest.raises(ValueError) as e:
         model.get_symbol_by_ontology_term(oxmeta, 'time')
     assert 'Multiple variables annotated with' in str(e)
 
@@ -57,9 +57,6 @@ def test_get_symbol_by_ontology_term():
     assert 'No variable with cmeta id' in str(e)
 
     # Annotation of something that isn't a variable
-    # TODO: At the moment this fails because there is no variable called 'c'.
-    #       We might want to update cellmlmanip to detect that there _is_ a
-    #       componentn called 'c'.
     with pytest.raises(KeyError) as e:
         model.get_symbol_by_ontology_term(
             oxmeta, 'membrane_fast_sodium_current')

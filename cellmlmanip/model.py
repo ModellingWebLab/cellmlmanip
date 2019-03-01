@@ -568,14 +568,14 @@ class Model(object):
 
         raise KeyError('No variable with cmeta id "%s" found.' % str(cmeta_id))
 
-    def get_symbol_by_ontology_term(self, namespace, local_name):
+    def get_symbol_by_ontology_term(self, namespace_uri, local_name):
         """
         Searches the RDF graph for a variable annotated with the given
-        ``namespace:local_name`` and returns its symbol.
+        ``{namespace_uri}local_name`` and returns its symbol.
 
         Specifically, this method searches for a unique variable annotated with
         predicate ``http://biomodels.net/biology-qualifiers/is`` and the object
-        specified by ``namespace + local_name``.
+        specified by ``{namespace_uri}local_name``.
 
         Will raise a ``KeyError`` if no variable with the given annotation is
         found, and a ``RuntimeError`` if more than one variable with the given
@@ -583,16 +583,16 @@ class Model(object):
         """
         symbols = self._get_symbols_by_rdf(
             ('http://biomodels.net/biology-qualifiers/', 'is'),
-            (namespace, local_name))
+            (namespace_uri, local_name))
         if len(symbols) == 1:
             return symbols[0]
         elif len(symbols) == 0:
             raise KeyError(
-                'No variable annotated with ' + namespace + ':' + local_name +
-                ' found.')
+                'No variable annotated with {' + namespace_uri + '}'
+                + local_name + ' found.')
         else:
-            raise RuntimeError(
-                'Multiple variables annotated with ' + namespace + ':'
+            raise ValueError(
+                'Multiple variables annotated with {' + namespace_uri + '}'
                 + local_name)
 
     def _get_symbols_by_rdf(self, predicate, object_=None):

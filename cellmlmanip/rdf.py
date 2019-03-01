@@ -65,13 +65,12 @@ def create_rdf_node(self, node_content=None, fragment_id=None):
 '''
 
 
-def create_rdf_node(namespace, local_name):
+def create_rdf_node(namespace_uri, local_name):
     """
-    Creates and returns an RDF node from the given ``ns_``,
-    ``local_name`` pair.
+    Creates and returns an RDF node ``{namespace_uri}local_name``.
     """
     # Ensure namespace prefix can be appended to
-    if namespace[-1] not in ['#', '/']:
-        namespace = namespace + '#'
+    if namespace_uri[-1] not in ['#', '/']:
+        namespace_uri = namespace_uri + '#'
 
-    return rdflib.Namespace(namespace)[local_name]
+    return rdflib.Namespace(namespace_uri)[local_name]
