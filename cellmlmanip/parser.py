@@ -71,19 +71,13 @@ class Parser(object):
     def _add_units(self, model: etree.Element):
         """  <model> <units> <unit /> </units> </model> """
         units_elements = model.findall(Parser.with_ns(XmlNs.CELLML, 'units'))
-        units_collected = {}
         for units_element in units_elements:
             units_name = units_element.get('name')
-            unit_elements = [dict(t.attrib) for t in units_element.getchildren()]
-
-            # if we didn't find any child <unit> elements
-            if not unit_elements:
-                if units_element.get('base_units') == 'yes':
-                    units_collected[units_name] = [{'base_units': 'yes'}]
+            if units_element.get('base_units'):
+                self.model.add_unit(units_name, unit_attributes=None, base_units=True)
             else:
-                units_collected[units_name] = unit_elements
-
-        self.model.add_unit(units_collected)
+                unit_elements = [dict(t.attrib) for t in units_element.getchildren()]
+                self.model.add_unit(units_name, unit_attributes=unit_elements)
 
     def _add_components(self, model: etree.Element):
         """ <model> <component> </model> """

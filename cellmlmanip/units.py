@@ -8,9 +8,11 @@ import numbers
 import os
 from functools import reduce
 from operator import mul
+from typing import Dict, List
 
 import pint
 import sympy
+from pint import UndefinedUnitError
 from sympy.printing.lambdarepr import LambdaPrinter
 
 
@@ -59,56 +61,31 @@ class UnitStore(object):
         )
         self.ureg: pint.UnitRegistry = pint.UnitRegistry(cellml_unit_definition)
 
-        # Hold on to custom unit definitions
-        self.cellml_definitions = cellml_def if cellml_def else {}
-        logger.debug('Found %d CellML unit definitions', len(self.cellml_definitions))
-
-        # Users are not allowed to redefine the standard unit dictionary
-        assert len(CELLML_UNITS & self.cellml_definitions.keys()) == 0, (
-            'Cannot redefine standard CellML units in <units>'
-        )
-
-        # CellML units that we've defined in unit registry because of call to get_quantity()
-        self.cellml_defined = set()
+        # units that are defined and added to the unit registry, on top of default cellml units
+        self.custom_defined = set()
 
         # Keep reference to the underlying model, to look up the 'dummy_info' dictionary
         self.model = model
 
     def get_quantity(self, unit_name: str):
-        """Given the name of the unit, this will either (i) return a Quantity from the internal
-        store as its already been resolved previously (ii) return the Quantity from Pint if it a
-        built-in name or (iii) construct and return a new Quantity object using the
-        <units><unit></units> definition in the CellML <model>
         """
-        # If this unit is a custom CellML definition and we haven't defined it
-        if unit_name in self.cellml_definitions and unit_name not in self.cellml_defined:
-            try:
-                getattr(self.ureg, unit_name)
-            except pint.UndefinedUnitError:
-                # Create the unit definition and add to the unit registry
-                unit_definition = self._make_pint_unit_definition(unit_name)
-                if unit_definition:
-                    self.ureg.define(unit_definition)
-                self.cellml_defined.add(unit_name)
-
-        # return the defined unit from the registry
+        Returns a pint.Unit from the UnitRegistry with the given name
+        :param unit_name:
+        :return: pint.Unit
+        """
         try:
             resolved_unit = self.ureg.parse_expression(unit_name).units
             return resolved_unit
         except pint.UndefinedUnitError:
-            raise ValueError('Cannot find the unit with name "%s"' % unit_name)
+            raise ValueError('Cannot find unit <%s>' % unit_name)
 
-    def _make_pint_unit_definition(self, cellml_custom_unit):
-        """Uses the CellML definition for 'unit_name' to construct a Pint unit definition string
+    def _make_pint_unit_definition(self, units_name, unit_attributes: List[Dict]):
+        """Uses the CellML definition to construct a Pint unit definition string
         """
         full_unit_expr = []
 
         # For each of the <unit> elements for this unit definition
-        for unit_element in self.cellml_definitions[cellml_custom_unit]:
-            # TODO: what other attributes can a unit have if it have base_units = 'yes'?
-            if 'base_units' in unit_element and unit_element['base_units'] == 'yes':
-                return '%s = [%s]' % (cellml_custom_unit, cellml_custom_unit)
-
+        for unit_element in unit_attributes:
             # Source the <unit units="XXX"> from our store
             matched_unit = self.get_quantity(unit_element['units'])
 
@@ -138,12 +115,13 @@ class UnitStore(object):
         full_unit_expr = '*'.join(full_unit_expr)
 
         # to avoid recursion due to pint prefix magic
-        if cellml_custom_unit == full_unit_expr:
+        # TODO: should we get rid of Pint prefix magic?
+        if units_name == full_unit_expr:
             return None
 
         # Return Pint definition string
-        logger.debug('Unit %s => %s', cellml_custom_unit, full_unit_expr)
-        return '%s = %s' % (cellml_custom_unit, full_unit_expr)
+        logger.debug('Unit %s => %s', units_name, full_unit_expr)
+        return '%s=%s' % (units_name, full_unit_expr)
 
     def is_unit_equal(self, unit1, unit2):
         """Compares two units are equivalent by converting them into base units and comparing the
@@ -201,6 +179,38 @@ class UnitStore(object):
     def get_conversion_factor(self, quantity, to_unit):
         """ Returns the magnitude multiplier required to convert from_unit to to_unit """
         return self.convert_to(quantity, to_unit).magnitude
+
+    def _is_unit_defined(self, name):
+        try:
+            getattr(self.ureg, name)
+            return True
+        except UndefinedUnitError:
+            return False
+
+    def _define_pint_unit(self, definition_string):
+        self.ureg.define(definition_string)
+        self.custom_defined.add(definition_string.split('=')[0].strip())
+
+    def add_custom_unit(self, units_name, unit_attributes):
+        """
+        Define a new Pint unit definition to the unit registry
+        :param units_name:
+        :param unit_attributes:
+        """
+        assert units_name not in CELLML_UNITS, 'Cannot redefine CellML unit <%s>' % units_name
+        unit_definition = self._make_pint_unit_definition(units_name, unit_attributes)
+        if unit_definition is not None:
+            assert not self._is_unit_defined(units_name), 'Unit <%s> already exists' % units_name
+            self._define_pint_unit(unit_definition)
+
+    def add_base_unit(self, units_name):
+        """
+        Define a new base unit in the Pint registry
+        :param units_name:
+        """
+        assert units_name not in CELLML_UNITS, 'Cannot redefine CellML unit <%s>' % units_name
+        assert not self._is_unit_defined(units_name), 'Unit <%s> already exists' % units_name
+        self._define_pint_unit('{name}=[{name}]'.format_map({'name': units_name}))
 
 
 class UnitCalculator(object):

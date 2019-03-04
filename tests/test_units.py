@@ -25,7 +25,9 @@ class TestUnits(object):
 
     @pytest.fixture(scope="class")
     def quantity_store(self):
-        qs = UnitStore(model=None, cellml_def=TestUnits.test_definitions)
+        qs = UnitStore(model=None)
+        for unit_name, unit_attributes in self.test_definitions.items():
+            qs.add_custom_unit(unit_name, unit_attributes)
         return qs
 
     def test_quantity_translation(self, quantity_store):

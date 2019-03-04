@@ -10,8 +10,8 @@ import networkx as nx
 import rdflib
 import sympy
 
-from cellmlmanip.units import UnitStore
 from cellmlmanip.rdf import create_rdf_node
+from cellmlmanip.units import UnitStore
 
 
 logger = logging.getLogger(__name__)
@@ -226,7 +226,7 @@ class Model(object):
         :param name: the name of the model e.g. from <model name="">
         """
         self.name: str = name
-        self.units: 'UnitStore' = None
+        self.units: 'UnitStore' = UnitStore(model=self)
         self.components: Dict[str, Component] = OrderedDict()
         self.connections: List[Tuple] = []
         self.rdf: rdflib.Graph = rdflib.Graph()
@@ -237,10 +237,14 @@ class Model(object):
         """Pretty-print each of the components in this model"""
         return '\n'.join([str(v) for v in self.components.values()])
 
-    def add_unit(self, units_elements: dict):
+    def add_unit(self, units_name: str, unit_attributes: List[Dict] = None, base_units=False):
         """Adds information about <units> in <model>
         """
-        self.units = UnitStore(model=self, cellml_def=units_elements)
+        assert not (unit_attributes and base_units), 'Cannot define base unit with unit attributes'
+        if base_units:
+            self.units.add_base_unit(units_name)
+        else:
+            self.units.add_custom_unit(units_name, unit_attributes)
 
     def add_component(self, component: Component):
         """Adds name to list of <component>s in the <model>
