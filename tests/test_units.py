@@ -52,28 +52,13 @@ class TestUnits(object):
         )
 
         assert quantity_store.is_unit_equal(
-            quantity_store.get_quantity('usec'),
-            unit_registry.microsecond
-        )
-
-        assert quantity_store.is_unit_equal(
             quantity_store.get_quantity('mM_per_ms'),
-            (unit_registry.millimole / unit_registry.liter) / unit_registry.millisecond
-        )
-
-        assert quantity_store.is_unit_equal(
-            quantity_store.get_quantity('milli_mole'),
-            unit_registry.millimole
+            (unit_registry.milli_mole / unit_registry.liter) / unit_registry.ms
         )
 
         assert quantity_store.is_unit_equal(
             quantity_store.get_quantity('mV_per_usec'),
-            unit_registry.millivolt / unit_registry.microsecond
-        )
-
-        assert quantity_store.is_unit_equal(
-            quantity_store.get_quantity('millisecond'),
-            unit_registry.millisecond
+            unit_registry.mV / unit_registry.usec
         )
 
         assert quantity_store.is_unit_equal(
@@ -84,7 +69,7 @@ class TestUnits(object):
     def test_conversion_factor(self, quantity_store):
         ureg = quantity_store.ureg
         assert quantity_store.get_conversion_factor(1*ureg.ms, ureg.second) == 0.001
-        assert quantity_store.get_conversion_factor(1*ureg.volt, ureg.millivolt) == 1000.0
+        assert quantity_store.get_conversion_factor(1*ureg.volt, ureg.mV) == 1000.0
 
         assert quantity_store.get_conversion_factor(
             1 * quantity_store.get_quantity('milli_mole'),

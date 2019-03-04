@@ -40,8 +40,26 @@ CELLML_UNITS = {
 }
 
 CELLML_UNIT_PREFIXES = {
-    'yotta', 'zetta', 'exa', 'peta', 'tera', 'giga', 'mega', 'kilo', 'hecto', 'deka',
-    'deci', 'centi', 'milli', 'micro', 'nano', 'pico', 'femto', 'atto', 'zepto', 'yocto'
+    'yocto': 1e-24,
+    'zepto': 1e-21,
+    'atto':  1e-18,
+    'femto': 1e-15,
+    'pico':  1e-12,
+    'nano':  1e-9,
+    'micro': 1e-6,
+    'milli': 1e-3,
+    'centi': 1e-2,
+    'deci':  1e-1,
+    'deca':  1e+1,
+    'hecto': 1e2,
+    'kilo':  1e3,
+    'mega':  1e6,
+    'giga':  1e9,
+    'tera':  1e12,
+    'peta':  1e15,
+    'exa':   1e18,
+    'zetta': 1e21,
+    'yotta': 1e24
 }
 
 
@@ -97,10 +115,11 @@ class UnitStore(object):
 
             if 'prefix' in unit_element:
                 if unit_element['prefix'] in CELLML_UNIT_PREFIXES:
-                    expr = '%s%s' % (unit_element['prefix'], expr)
+                    power = CELLML_UNIT_PREFIXES[unit_element['prefix']]
                 else:
                     # Assume that prefix is an integer - will CellML validation check?
-                    expr = '(%s * 10**%s)' % (expr, unit_element['prefix'])
+                    power = '1e%s' % unit_element['prefix']
+                expr = '(%s * %s)' % (expr, power)
 
             if 'exponent' in unit_element:
                 expr = '((%s)**%s)' % (expr, unit_element['exponent'])
@@ -113,11 +132,6 @@ class UnitStore(object):
 
         # Join together all the parts of the unit expression
         full_unit_expr = '*'.join(full_unit_expr)
-
-        # to avoid recursion due to pint prefix magic
-        # TODO: should we get rid of Pint prefix magic?
-        if units_name == full_unit_expr:
-            return None
 
         # Return Pint definition string
         logger.debug('Unit %s => %s', units_name, full_unit_expr)
