@@ -68,12 +68,9 @@ class UnitStore(object):
     Wraps the underlying Pint UnitRegistry to provide unit handling for the model's Sympy
     expressions. Getting and checking units is handled by this class.
     """
-    def __init__(self, model, cellml_def=None):
-        """Initialise a QuantityStore instance
-        :param cellml_def: a dictionary of <units> definitions from the CellML model. See parser
-        for format, essentially: {'name of unit': { [ unit attributes ], [ unit attributes ] } }
-        """
-        # Initialise the unit registry
+    def __init__(self, model):
+        """Initialise a UnitStore instance; wraps the unit registry and handles addition of new
+        unit definitions"""
         cellml_unit_definition = os.path.join(
             os.path.dirname(__file__), 'cellml_units.txt'
         )
@@ -85,6 +82,38 @@ class UnitStore(object):
         # Keep reference to the underlying model, to look up the 'dummy_info' dictionary
         self.model = model
 
+    def add_custom_unit(self, units_name, unit_attributes):
+        """
+        Define a new Pint unit definition to the unit registry
+        :param units_name:
+        :param unit_attributes:
+        """
+        assert units_name not in CELLML_UNITS, 'Cannot redefine CellML unit <%s>' % units_name
+        unit_definition = self._make_pint_unit_definition(units_name, unit_attributes)
+        if unit_definition is not None:
+            assert not self._is_unit_defined(units_name), 'Unit <%s> already exists' % units_name
+            self._define_pint_unit(unit_definition)
+
+    def add_base_unit(self, units_name):
+        """
+        Define a new base unit in the Pint registry
+        :param units_name:
+        """
+        assert units_name not in CELLML_UNITS, 'Cannot redefine CellML unit <%s>' % units_name
+        assert not self._is_unit_defined(units_name), 'Unit <%s> already exists' % units_name
+        self._define_pint_unit('{name}=[{name}]'.format_map({'name': units_name}))
+
+    def _is_unit_defined(self, name):
+        try:
+            getattr(self.ureg, name)
+            return True
+        except UndefinedUnitError:
+            return False
+
+    def _define_pint_unit(self, definition_string):
+        self.ureg.define(definition_string)
+        self.custom_defined.add(definition_string.split('=')[0].strip())
+
     def get_quantity(self, unit_name: str):
         """
         Returns a pint.Unit from the UnitRegistry with the given name
@@ -95,7 +124,7 @@ class UnitStore(object):
             resolved_unit = self.ureg.parse_expression(unit_name).units
             return resolved_unit
         except pint.UndefinedUnitError:
-            raise ValueError('Cannot find unit <%s>' % unit_name)
+            raise KeyError('Cannot find unit <%s> in unit registry' % unit_name)
 
     def _make_pint_unit_definition(self, units_name, unit_attributes: List[Dict]):
         """Uses the CellML definition to construct a Pint unit definition string
@@ -193,38 +222,6 @@ class UnitStore(object):
     def get_conversion_factor(self, quantity, to_unit):
         """ Returns the magnitude multiplier required to convert from_unit to to_unit """
         return self.convert_to(quantity, to_unit).magnitude
-
-    def _is_unit_defined(self, name):
-        try:
-            getattr(self.ureg, name)
-            return True
-        except UndefinedUnitError:
-            return False
-
-    def _define_pint_unit(self, definition_string):
-        self.ureg.define(definition_string)
-        self.custom_defined.add(definition_string.split('=')[0].strip())
-
-    def add_custom_unit(self, units_name, unit_attributes):
-        """
-        Define a new Pint unit definition to the unit registry
-        :param units_name:
-        :param unit_attributes:
-        """
-        assert units_name not in CELLML_UNITS, 'Cannot redefine CellML unit <%s>' % units_name
-        unit_definition = self._make_pint_unit_definition(units_name, unit_attributes)
-        if unit_definition is not None:
-            assert not self._is_unit_defined(units_name), 'Unit <%s> already exists' % units_name
-            self._define_pint_unit(unit_definition)
-
-    def add_base_unit(self, units_name):
-        """
-        Define a new base unit in the Pint registry
-        :param units_name:
-        """
-        assert units_name not in CELLML_UNITS, 'Cannot redefine CellML unit <%s>' % units_name
-        assert not self._is_unit_defined(units_name), 'Unit <%s> already exists' % units_name
-        self._define_pint_unit('{name}=[{name}]'.format_map({'name': units_name}))
 
 
 class UnitCalculator(object):
