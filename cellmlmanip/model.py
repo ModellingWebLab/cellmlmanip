@@ -222,17 +222,30 @@ class Variable(object):
     """Represents a <variable> in a CellML model. A component may contain any number of <variable>
     elements, which define variables that may be mathematically related in the equation blocks
     contained in the component. """
-    def __init__(self, *, name, units, symbol: sympy.Symbol=None, initial_value=None,
+    def __init__(self, *, name, units, dummy: sympy.Symbol=None, initial_value=None,
                  public_interface=None, private_interface=None, **kwargs):
         self.name = name
         self.units = units
         self.initial_value = initial_value
         self.public_interface = public_interface
         self.private_interface = private_interface
-        self.symbol = symbol
+        self.dummy = dummy
         self.cmeta_id = kwargs.get('cmeta:id', None)
         self._component_name = kwargs.get('_component_name', None)
         self._original_name = kwargs.get('_original_name', None)
+
+    def __str__(self) -> str:
+        return '%s(%s)' % (
+            type(self).__name__,
+            ', '.join('%s=%s' % item for item in vars(self).items() if item[1])
+        )
+
+
+class NumberWrapper(object):
+    def __init__(self, dummy, units, number):
+        self.dummy = dummy
+        self.units = units
+        self.number = number
 
     def __str__(self) -> str:
         return '%s(%s)' % (
@@ -256,6 +269,8 @@ class Model(object):
         self.dummy_info: Dict[Dict] = defaultdict(dict)
         self.graph: nx.DiGraph = None
         self.variables_x: Dict[str, Variable] = OrderedDict()
+        self.equations_x: List[sympy.Eq] = list()
+        self.numbers_x: Dict[sympy.Dummy, NumberWrapper] = dict()
 
     def __str__(self):
         """Pretty-print each of the components in this model"""
@@ -270,6 +285,18 @@ class Model(object):
         else:
             self.units.add_custom_unit(units_name, unit_attributes)
 
+    def add_equation(self, equation: sympy.Eq):
+        assert isinstance(equation, sympy.Eq)
+        self.equations_x.append(equation)
+
+    def add_number(self, dummy: sympy.Dummy, attributes: Dict):
+        assert 'sympy.Number' in attributes
+        assert isinstance(dummy, sympy.Dummy)
+        assert dummy not in self.numbers_x
+        self.numbers_x[dummy] = NumberWrapper(dummy,
+                                              attributes['cellml:units'],
+                                              attributes['sympy.Number'])
+
     def add_component(self, component: Component):
         """Adds name to list of <component>s in the <model>
         """
@@ -280,11 +307,11 @@ class Model(object):
 
     def add_variable(self, variable: Variable):
         assert variable.name not in self.variables, 'Variable %s already exists' % variable.name
-        assert variable.symbol is None, 'Variable must not have a Sympy Symbol registered'
+        assert variable.dummy is None, 'Variable must not have a Sympy Symbol registered'
 
-        variable.symbol = sympy.Dummy(variable.name)
+        variable.dummy = sympy.Dummy(variable.name)
         self.variables_x[variable.name] = variable
-        return variable.symbol
+        return variable.dummy
 
     def add_rdf(self, rdf: str):
         """ Takes RDF string and stores it in an RDFlib.Graph for the model. Can be called

@@ -116,11 +116,15 @@ class Parser(object):
             # TODO: check whether element can be passed directly without .tostring()
             sympy_exprs = transpiler.parse_string(etree.tostring(math_element, encoding=str))
             component.equations.extend(sympy_exprs)
+            for expr in sympy_exprs:
+                self.model.add_equation(expr)
 
         # Add metadata collected whilst parsing <math> elements to the model
         # if transpiler.metadata:
         #     print(transpiler.metadata)
         component.collect_variable_attributes(transpiler.metadata)
+        for symbol, attributes in transpiler.metadata.items():
+            self.model.add_number(symbol, attributes)
 
     def _add_variables(self, component: Component, component_element: etree.Element):
         """ <model> <component> <variable> </component> </model> """

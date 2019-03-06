@@ -221,3 +221,7 @@ class TestParser(object):
         model = load_model(example_cellml)
         for k, v in model.variables_x.items():
             print(k, v)
+        for e in model.equations_x:
+            print(e)
+        for n, a in model.numbers_x.items():
+            print(str(a))
