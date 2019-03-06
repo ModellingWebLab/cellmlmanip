@@ -334,15 +334,15 @@ class Model(object):
                 yield (component, var_attr)
 
     @staticmethod
-    def _is_not_assigned(variables: Dict):
+    def _is_not_assigned(variable_attributes: Dict):
         """Checks whether a variable gets its value from another component. There are two
         possibilities. Either it has:
             (i) public_interface="out" or
             (ii) private_interface="out" without public_interface="in"
         """
         return (
-            ('private_interface', 'in') not in variables.items() and
-            ('public_interface', 'in') not in variables.items()
+                ('private_interface', 'in') not in variable_attributes.items() and
+                ('public_interface', 'in') not in variable_attributes.items()
         )
 
     def make_connections(self):
