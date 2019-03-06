@@ -45,9 +45,11 @@ class TestParser(object):
 
     def test_variable_find(self, model):
         assert model.find_variable({'cmeta:id': 'time'}) == [{'cmeta:id': 'time',
-                                                              'name': 'time',
+                                                              'name': 'environment$time',
                                                               'public_interface': 'out',
-                                                              'units': 'ms'}]
+                                                              'units': 'ms',
+                                                              '_original_name': 'time',
+                                                              '_component_name': 'environment'}]
         matched = model.find_variable({'cmeta:id': 'sv12'})
         assert len(matched) == 1 and \
             matched[0]['sympy.Dummy'].name == 'single_ode_rhs_const_var$sv1'
@@ -63,10 +65,10 @@ class TestParser(object):
         var_one = model.components[component_1].variables[variable_1]
         var_two = model.components[component_2].variables[variable_2]
         assert component_1 == 'single_independent_ode'
-        assert var_one['name'] == 'time'
+        assert var_one['name'] == 'single_independent_ode$time'
         assert var_one['public_interface'] == 'in'
         assert component_2 == 'environment'
-        assert var_two['name'] == 'time'
+        assert var_two['name'] == 'environment$time'
         assert var_two['public_interface'] == 'out'
 
     def test_connections(self, model):
@@ -211,3 +213,11 @@ class TestParser(object):
         model = load_model(example_cellml)
         assert len(list(model.components['A'].equations)) == 2
         assert len(list(model.equations)) == 2
+
+    def test_new_parser(self):
+        example_cellml = os.path.join(
+            os.path.dirname(__file__), "cellml_files", "test_simple_odes.cellml"
+        )
+        model = load_model(example_cellml)
+        for k, v in model.variables_x.items():
+            print(k, v)

@@ -218,6 +218,29 @@ class Component(object):
         return matches
 
 
+class Variable(object):
+    """Represents a <variable> in a CellML model. A component may contain any number of <variable>
+    elements, which define variables that may be mathematically related in the equation blocks
+    contained in the component. """
+    def __init__(self, *, name, units, symbol: sympy.Symbol=None, initial_value=None,
+                 public_interface=None, private_interface=None, **kwargs):
+        self.name = name
+        self.units = units
+        self.initial_value = initial_value
+        self.public_interface = public_interface
+        self.private_interface = private_interface
+        self.symbol = symbol
+        self.cmeta_id = kwargs.get('cmeta:id', None)
+        self._component_name = kwargs.get('_component_name', None)
+        self._original_name = kwargs.get('_original_name', None)
+
+    def __str__(self) -> str:
+        return '%s(%s)' % (
+            type(self).__name__,
+            ', '.join('%s=%s' % item for item in vars(self).items() if item[1])
+        )
+
+
 class Model(object):
     """Holds all information about a CellML model and exposes it for manipulation (intention!)
     """
@@ -232,6 +255,7 @@ class Model(object):
         self.rdf: rdflib.Graph = rdflib.Graph()
         self.dummy_info: Dict[Dict] = defaultdict(dict)
         self.graph: nx.DiGraph = None
+        self.variables_x: Dict[str, Variable] = OrderedDict()
 
     def __str__(self):
         """Pretty-print each of the components in this model"""
@@ -253,6 +277,14 @@ class Model(object):
             raise ValueError('Component "%s" already exists. Check CellML.' % component.name)
 
         self.components[component.name] = component
+
+    def add_variable(self, variable: Variable):
+        assert variable.name not in self.variables, 'Variable %s already exists' % variable.name
+        assert variable.symbol is None, 'Variable must not have a Sympy Symbol registered'
+
+        variable.symbol = sympy.Dummy(variable.name)
+        self.variables_x[variable.name] = variable
+        return variable.symbol
 
     def add_rdf(self, rdf: str):
         """ Takes RDF string and stores it in an RDFlib.Graph for the model. Can be called
@@ -303,7 +335,7 @@ class Model(object):
             # If this variable does not have a sympy.Dummy (e.g. variable declared but not mathml?)
             if 'sympy.Dummy' not in variable:
                 variable['sympy.Dummy'] = sympy.Dummy(
-                    component.name + SYMPY_SYMBOL_DELIMITER + variable['name']
+                    variable['name']
                 )
 
             # If this variable does not get its value from another component

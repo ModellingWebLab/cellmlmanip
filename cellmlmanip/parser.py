@@ -9,7 +9,7 @@ from typing import Dict
 from lxml import etree
 
 from cellmlmanip import mathml2sympy
-from cellmlmanip.model import SYMPY_SYMBOL_DELIMITER, Component, Model
+from cellmlmanip.model import SYMPY_SYMBOL_DELIMITER, Component, Model, Variable
 
 
 class XmlNs(Enum):
@@ -53,9 +53,10 @@ class Parser(object):
 
         # handle the child elements of <model>
         self._add_units(model_xml)
+        self._add_rdf(model_xml)
+
         self._add_components(model_xml)
         self._add_relationships(model_xml)
-        self._add_rdf(model_xml)
         self._add_connection(model_xml)
 
         return self.model
@@ -89,13 +90,14 @@ class Parser(object):
             component = Component(component_element.get('name'), self.model)
 
             # Add the child elements under <component>
-            self._add_variables(component, component_element)
-            self._add_maths(component, component_element)
+            variables = self._add_variables(component, component_element)
+            # print('variables:\n', variables)
+            self._add_maths(component, component_element, variables)
 
             # Add the component instance to the model
             self.model.add_component(component)
 
-    def _add_maths(self, component: Component, component_element: etree.Element):
+    def _add_maths(self, component: Component, component_element: etree.Element, symbol_lookup):
         """ <model> <component> <math> </component> </model> """
         # get all <math> elements in the component
         math_elements = component_element.findall(Parser.with_ns(XmlNs.MATHML, 'math'))
@@ -106,7 +108,7 @@ class Parser(object):
 
         # reuse transpiler so cache of dummy symbols is preserved across <math> elements
         transpiler = mathml2sympy.Transpiler(
-            dummify=True, symbol_prefix=component.name+SYMPY_SYMBOL_DELIMITER,
+            dummify=True, symbol_prefix=component.name+SYMPY_SYMBOL_DELIMITER, symbol_lookup=symbol_lookup
         )
 
         # for each math element
@@ -116,11 +118,14 @@ class Parser(object):
             component.equations.extend(sympy_exprs)
 
         # Add metadata collected whilst parsing <math> elements to the model
+        # if transpiler.metadata:
+        #     print(transpiler.metadata)
         component.collect_variable_attributes(transpiler.metadata)
 
     def _add_variables(self, component: Component, component_element: etree.Element):
         """ <model> <component> <variable> </component> </model> """
         variable_elements = component_element.findall(Parser.with_ns(XmlNs.CELLML, 'variable'))
+        variable_lookup_symbol = dict()
         for variable_element in variable_elements:
             attributes: Dict = dict(variable_element.attrib)
 
@@ -130,6 +135,15 @@ class Parser(object):
                 attributes['cmeta:id'] = attributes.pop(cmeta_id_attribute)
 
             component.variables[attributes['name']] = attributes
+
+            attributes['_original_name'] = attributes['name']
+            attributes['_component_name'] = component.name
+
+            # mangle the name by prefixing with the component name
+            attributes['name'] = component.name + SYMPY_SYMBOL_DELIMITER + attributes['name']
+            var = Variable(**attributes)
+            variable_lookup_symbol[attributes['name']] = self.model.add_variable(var)
+        return variable_lookup_symbol
 
     def _add_connection(self, model: etree.Element):
         connection_elements = model.findall(Parser.with_ns(XmlNs.CELLML, 'connection'))

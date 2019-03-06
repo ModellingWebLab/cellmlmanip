@@ -17,9 +17,10 @@ logger.setLevel(logging.INFO)
 class Transpiler(object):
     """Transpiler class handles conversion of MathmL to Sympy exprerssions"""
 
-    def __init__(self, dummify: bool = False, symbol_prefix: str = None) -> None:
+    def __init__(self, dummify: bool = False, symbol_prefix: str = None, symbol_lookup=dict()) -> None:
         self.metadata: Dict = dict()
-        self.dummy_symbol_cache = dict()
+
+        self.dummy_symbol_cache = symbol_lookup
         self.dummify: bool = dummify
         self.symbol_prefix = symbol_prefix
 
