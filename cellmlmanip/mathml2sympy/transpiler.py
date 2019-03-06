@@ -18,11 +18,25 @@ class Transpiler(object):
     """Transpiler class handles conversion of MathmL to Sympy exprerssions"""
 
     def __init__(self, dummify: bool = False, symbol_prefix: str = None, symbol_lookup=dict()) -> None:
+        # we create symbols as necessary, as they occur in equations
+        self.error_on_unknown_symbol = False
+
+        # create dummy symbols for variables rather than typical sympy symbols
+        self.dummify: bool = dummify
+
+        # use to store information about dummified numbers (number & units)
         self.metadata: Dict = dict()
 
-        self.dummy_symbol_cache = symbol_lookup
-        self.dummify: bool = dummify
+        # prefix all symbols with given string
         self.symbol_prefix = symbol_prefix
+
+        # for a given variable, get it's symbol from this dictionary
+        self.dummy_symbol_cache = symbol_lookup
+
+        # if a symbol lookup dictionary was supplied
+        if symbol_lookup:
+            # unknown variables in equations are an error
+            self.error_on_unknown_symbol = True
 
         # Mapping MathML tag element names (keys) to appropriate handler for SymPy output (values)
         # These tags require explicit handling because they have children or context etc.
@@ -120,8 +134,13 @@ class Transpiler(object):
         if self.symbol_prefix:
             identifier = self.symbol_prefix + identifier
         if self.dummify:
-            # Return a dummified version of this symbol, picking up from cache
-            return self.dummy_symbol_cache.setdefault(identifier, sympy.Dummy(identifier))
+            if self.error_on_unknown_symbol:
+                assert identifier in self.dummy_symbol_cache, \
+                    '%s not found in symbol dict' % identifier
+                return self.dummy_symbol_cache[identifier]
+            else:
+                # Return a dummified version of this symbol, picking up from cache
+                return self.dummy_symbol_cache.setdefault(identifier, sympy.Dummy(identifier))
         return sympy.Symbol(identifier)
 
     def _cn_handler(self, node):

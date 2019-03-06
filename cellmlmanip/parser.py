@@ -61,6 +61,10 @@ class Parser(object):
 
         return self.model
 
+    @staticmethod
+    def _get_variable_name(component_name, variable_name):
+        return component_name + SYMPY_SYMBOL_DELIMITER + variable_name
+
     def _add_rdf(self, element: etree.Element):
         """Finds all <RDF> definitions under <element> and adds them to the model
 
@@ -108,7 +112,9 @@ class Parser(object):
 
         # reuse transpiler so cache of dummy symbols is preserved across <math> elements
         transpiler = mathml2sympy.Transpiler(
-            dummify=True, symbol_prefix=component.name+SYMPY_SYMBOL_DELIMITER, symbol_lookup=symbol_lookup
+            dummify=True,
+            symbol_prefix=component.name + SYMPY_SYMBOL_DELIMITER,
+            symbol_lookup=symbol_lookup
         )
 
         # for each math element
@@ -144,7 +150,7 @@ class Parser(object):
             attributes['_component_name'] = component.name
 
             # mangle the name by prefixing with the component name
-            attributes['name'] = component.name + SYMPY_SYMBOL_DELIMITER + attributes['name']
+            attributes['name'] = Parser._get_variable_name(component.name, attributes['name'])
             var = Variable(**attributes)
             variable_lookup_symbol[attributes['name']] = self.model.add_variable(var)
         return variable_lookup_symbol
