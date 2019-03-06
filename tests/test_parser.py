@@ -157,9 +157,12 @@ class TestParser(object):
             os.path.dirname(__file__), "cellml_files", "err_connect_to_hidden_component.cellml"
         )
         p = parser.Parser(example_cellml)
-        model = p.parse()
-        with pytest.raises(ValueError, match=r'^Cannot determine the source & target.*'):
+
+        with pytest.raises(ValueError) as value_info:
+            model = p.parse()
             model.make_connections()
+
+        assert 'Cannot determine the source & target' in str(value_info.value)
 
     def test_bad_connection_units(self):
         example_cellml = os.path.join(
@@ -203,8 +206,11 @@ class TestParser(object):
             os.path.dirname(__file__), "cellml_files", "undefined_variable.cellml"
         )
         p = parser.Parser(example_cellml)
-        with pytest.raises(KeyError, match=r'Variable "b" in component "c" could not be found\.'):
+        with pytest.raises(AssertionError) as assert_info:
             p.parse()
+
+        match = 'c$b not found in symbol dict'
+        assert match in str(assert_info.value)
 
     def test_multiple_math_elements(self):
         example_cellml = os.path.join(
@@ -219,8 +225,9 @@ class TestParser(object):
             os.path.dirname(__file__), "cellml_files", "test_simple_odes.cellml"
         )
         model = load_model(example_cellml)
+        print('\n\n')
         for k, v in model.variables_x.items():
-            print(k, v)
+            print( v)
         for e in model.equations_x:
             print(e)
         for n, a in model.numbers_x.items():

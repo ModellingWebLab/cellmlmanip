@@ -3,6 +3,7 @@ This module contains the CellML parser. It reads CellML model and stores model i
 CellML Model class. MathML equations are translated to Sympy. RDF is handled by RDFLib.
 """
 import itertools
+from collections import OrderedDict
 from enum import Enum
 from typing import Dict
 
@@ -22,6 +23,40 @@ class XmlNs(Enum):
     RDF = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#'
 
 
+class ComponentNew:
+    def __init__(self, name):
+        self.name = name
+        self.parent = None
+        self.siblings = set()
+        self.encapsulated = set()
+
+    def set_parent(self, parent_name):
+        """Sets the parent of this component"""
+        if self.parent:
+            raise ValueError('Parent of component %s already %s. Cannot set %s!' % (self.name,
+                                                                                    self.parent,
+                                                                                    parent_name))
+        self.parent = parent_name
+
+    def add_sibling(self, sibling_name):
+        """Adds a sibling for this component"""
+        if sibling_name in self.siblings:
+            raise ValueError('Sibling component %s already added!' % sibling_name)
+        self.siblings.add(sibling_name)
+
+    def add_encapsulated(self, encapsulated_name):
+        """Adds an encapsulated component to this component"""
+        if encapsulated_name in self.encapsulated:
+            raise ValueError('Encapsulated component %s already added!' % encapsulated_name)
+        self.encapsulated.add(encapsulated_name)
+
+    def __str__(self) -> str:
+        return '%s(%s)' % (
+            type(self).__name__,
+            ', '.join('%s=%s' % item for item in vars(self).items() if item[1])
+        )
+
+
 class Parser(object):
     """Handles parsing of CellML files
     """
@@ -38,6 +73,7 @@ class Parser(object):
         """
         self.filepath: str = filepath
         self.model: Model = None
+        self.components: Dict[str, ComponentNew] = OrderedDict()
 
     def parse(self) -> Model:
         """The main method that reads the XML file and extract the relevant parts of CellML model
@@ -57,6 +93,9 @@ class Parser(object):
 
         self._add_components(model_xml)
         self._add_relationships(model_xml)
+
+        print(self.components)
+
         self._add_connection(model_xml)
 
         return self.model
@@ -92,6 +131,7 @@ class Parser(object):
         for component_element in component_elements:
             # create an instance of Component
             component = Component(component_element.get('name'), self.model)
+            self.components[component_element.get('name')] = ComponentNew(component_element.get('name'))
 
             # Add the child elements under <component>
             variables = self._add_variables(component, component_element)
@@ -171,6 +211,74 @@ class Parser(object):
             for variable_0, variable_1 in map_variables:
                 self.model.connections.append(((map_component[0], variable_0),
                                                (map_component[1], variable_1)))
+                print(self._connect(map_component[0],
+                                    variable_0,
+                                    map_component[1],
+                                    variable_1))
+
+    def _connect(self, comp_1, var_1: Variable, comp_2, var_2: Variable):
+        """Takes a CellML connection and attempts to resolve the connect by assigning the target
+        variable to the assigned source variable
+
+        Relevant lines from the CellML specification:
+
+            The set of all components immediately encapsulated by the current
+            component is the encapsulated set.
+
+            Other components encapsulated by the same parent make up the
+            sibling set.
+
+            The interface exposed to the parent component and components in
+            the sibling set is defined by the public_interface attribute. The
+            private_interface attribute defines the interface exposed to
+            components in the encapsulated set. Each interface has three possible
+            values: "in", "out", and "none", where "none" indicates the absence
+            of an interface.
+
+        :param connection: a single connection tuple, created by the CellML parser
+            ((component_1, variable_1), (component_2, variable_2))
+        """
+
+        n1 = self._get_variable_name(comp_1, var_1)
+        n2 = self._get_variable_name(comp_2, var_2)
+
+        V1 = self.model.variables_x[n1]
+        V2 = self.model.variables_x[n2]
+
+        def _are_siblings(comp_a, comp_b):
+            return self.components[comp_a].parent == self.components[comp_b].parent
+
+        def _parent_of(parent_name, child_name):
+            return parent_name == self.components[child_name].parent
+
+        # if the components are siblings (either same parent or top-level)
+        if _are_siblings(comp_1, comp_2):
+            # they are both connected on their public_interface
+            if V1.public_interface == 'out' and V2.public_interface == 'in':
+                return (n1, n2)
+            elif V1.public_interface == 'in' and V2.public_interface == 'out':
+                return (n2, n1)
+        else:
+            # determine which component is parent of the other
+            if _parent_of(comp_1, comp_2):
+                parent_comp, child_comp = comp_1, comp_2
+                parent_var, child_var = var_1, var_2
+                parent_V, child_V = V1, V2
+            else:
+                parent_comp, child_comp = comp_2, comp_1
+                parent_var, child_var = var_2, var_1
+                parent_V, child_V = V2, V1
+
+            # parent/child components are connected using private/public interface, respectively
+            if child_V.public_interface == 'in' and parent_V.private_interface == 'out':
+                return (self._get_variable_name(parent_comp, parent_var),
+                        self._get_variable_name(child_comp, child_var))
+            elif child_V.public_interface == 'out' and parent_V.private_interface == 'in':
+                return (self._get_variable_name(child_comp, child_var),
+                        self._get_variable_name(parent_comp, parent_var))
+
+        raise ValueError('Cannot determine the source & target for connection (%s, %s) - (%s, %s)' %
+                         (comp_1, var_1, comp_2, var_2))
 
     def _add_relationships(self, model: etree.Element):
         group_elements = model.findall(Parser.with_ns(XmlNs.CELLML, 'group'))
@@ -208,6 +316,9 @@ class Parser(object):
                 self.model.components[parent_component].add_encapsulated(child_component)
                 self.model.components[child_component].set_parent(parent_component)
 
+                self.components[parent_component].add_encapsulated(child_component)
+                self.components[child_component].set_parent(parent_component)
+
             # descend into this <component_ref> tag to handle any children
             self._handle_component_ref(component_ref_element, child_component)
 
@@ -217,3 +328,5 @@ class Parser(object):
             for component_a, component_b in itertools.product(siblings, siblings):
                 if component_a != component_b:
                     self.model.components[component_a].add_sibling(component_b)
+                    self.components[component_a].add_sibling(component_b)
+
