@@ -224,13 +224,21 @@ class Variable(object):
     contained in the component. """
     def __init__(self, *, name, units, dummy: sympy.Symbol=None, initial_value=None,
                  public_interface=None, private_interface=None, **kwargs):
+        # Attributes from the <variable> tag in CellML
         self.name = name
         self.units = units
         self.initial_value = initial_value
         self.public_interface = public_interface
         self.private_interface = private_interface
-        self.dummy = dummy
         self.cmeta_id = kwargs.get('cmeta:id', None)
+
+        # The sympy.Dummy symbol representing this variable in equations
+        self.dummy = dummy
+
+        # The sympy.Dummy symbol that is substituted for this variable in equations (a connection)
+        self.assigned = None
+
+        # Internal stuff we might not need eventually and can be removed
         self._component_name = kwargs.get('_component_name', None)
         self._original_name = kwargs.get('_original_name', None)
 
@@ -268,7 +276,9 @@ class Model(object):
         self.rdf: rdflib.Graph = rdflib.Graph()
         self.dummy_info: Dict[Dict] = defaultdict(dict)
         self.graph: nx.DiGraph = None
+
         self.variables_x: Dict[str, Variable] = OrderedDict()
+
         self.equations_x: List[sympy.Eq] = list()
         self.numbers_x: Dict[sympy.Dummy, NumberWrapper] = dict()
 
