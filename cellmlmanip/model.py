@@ -537,7 +537,7 @@ class Model(object):
                 variable = self.find_variable({'dummy': node})
                 assert len(variable) == 1
                 variable = variable.pop()
-                for key in ['cmeta:id', 'name', 'units']:
+                for key in ['cmeta_id', 'name', 'units']:
                     if key in variable:
                         graph.nodes[node][key] = variable[key]
                 if graph.nodes[node].get('variable_type', '') == 'state':
@@ -626,7 +626,7 @@ class Model(object):
         # TODO: Either add an argument to allow derivative symbols to be fetched, or
         #      create a separate method for them.
         for v in self.graph:
-            if self.graph.nodes[v].get('cmeta:id', '') == cmeta_id:
+            if self.graph.nodes[v].get('cmeta_id', '') == cmeta_id:
                 return v
 
         raise KeyError('No variable with cmeta id "%s" found.' % str(cmeta_id))

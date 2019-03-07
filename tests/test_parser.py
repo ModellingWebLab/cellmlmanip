@@ -44,13 +44,13 @@ class TestParser(object):
         assert equation_count == 19  # NOTE: determined by eye!
 
     def test_variable_find(self, model):
-        assert model.find_variable({'cmeta:id': 'time'}) == [{'cmeta:id': 'time',
+        assert model.find_variable({'cmeta_id': 'time'}) == [{'cmeta_id': 'time',
                                                               'name': 'environment$time',
                                                               'public_interface': 'out',
                                                               'units': 'ms',
                                                               '_original_name': 'time',
                                                               '_component_name': 'environment'}]
-        matched = model.find_variable({'cmeta:id': 'sv12'})
+        matched = model.find_variable({'cmeta_id': 'sv12'})
         assert len(matched) == 1 and \
             matched[0]['dummy'].name == 'single_ode_rhs_const_var$sv1'
 

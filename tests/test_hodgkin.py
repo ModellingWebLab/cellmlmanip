@@ -47,15 +47,15 @@ class TestHodgkin:
         free_variable = model.find_variable({'type': 'free'})
         assert len(free_variable) == 1
         free_variable = free_variable[0]
-        assert free_variable['cmeta:id'] == 'time'
+        assert free_variable['cmeta_id'] == 'time'
         assert graph.node[free_variable['dummy']]['variable_type'] == 'free'
-        assert free_variable['cmeta:id'] == graph.node[free_variable['dummy']]['cmeta:id']
+        assert free_variable['cmeta_id'] == graph.node[free_variable['dummy']]['cmeta_id']
 
         state_variables = model.find_variable({'type': 'state'})
         assert len(state_variables) == 4
         state_variable = state_variables[0]
         assert graph.node[state_variable['dummy']]['variable_type'] == 'state'
-        assert state_variable['cmeta:id'] == graph.node[state_variable['dummy']]['cmeta:id']
+        assert state_variable['cmeta_id'] == graph.node[state_variable['dummy']]['cmeta_id']
 
         sorted_nodes = nx.lexicographical_topological_sort(graph, key=str)
 
@@ -71,7 +71,7 @@ class TestHodgkin:
             if not node.is_Derivative:
                 variable = model.find_variable({'dummy': node})
                 assert len(variable) == 1
-                for key in ['cmeta:id', 'name']:
+                for key in ['cmeta_id', 'name']:
                     if key in variable[0]:
                         assert variable[0][key] == graph.nodes[node][key]
 
@@ -106,7 +106,7 @@ class TestHodgkin:
         # check attributes on membrane capacitance
         membrane_Cm = sorted_nodes[2]
         assert membrane_Cm.name == 'membrane$Cm'
-        assert graph.node[membrane_Cm]['cmeta:id'] == 'membrane_capacitance'
+        assert graph.node[membrane_Cm]['cmeta_id'] == 'membrane_capacitance'
         assert graph.node[membrane_Cm]['variable_type'] == 'parameter'
 
     def test_derivative_symbols(self, model):

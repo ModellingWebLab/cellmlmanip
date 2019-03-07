@@ -182,7 +182,7 @@ class Parser(object):
             # Rename key for cmeta_id (remove namespace from attribute)
             cmeta_id_attribute = Parser.with_ns(XmlNs.CMETA, 'id')
             if cmeta_id_attribute in attributes:
-                attributes['cmeta:id'] = attributes.pop(cmeta_id_attribute)
+                attributes['cmeta_id'] = attributes.pop(cmeta_id_attribute)
 
             component.variables[attributes['name']] = attributes
 
