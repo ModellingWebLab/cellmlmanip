@@ -52,7 +52,7 @@ class TestParser(object):
                                                               '_component_name': 'environment'}]
         matched = model.find_variable({'cmeta:id': 'sv12'})
         assert len(matched) == 1 and \
-            matched[0]['sympy.Dummy'].name == 'single_ode_rhs_const_var$sv1'
+            matched[0]['dummy'].name == 'single_ode_rhs_const_var$sv1'
 
     def test_rdf(self, model):
         assert len(model.rdf) == 17

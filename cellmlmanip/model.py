@@ -104,7 +104,7 @@ class Component(object):
             # if the symbol is one that's defined as a <variable> in the component
             variable_name = symbol.name.split(SYMPY_SYMBOL_DELIMITER)[1]
             if variable_name in self.variables:
-                self.variables[variable_name]['sympy.Dummy'] = symbol
+                self.variables[variable_name]['dummy'] = symbol
             else:
                 raise KeyError('Variable "%s" in component "%s" could not be found.' %
                                (variable_name, self.name))
@@ -167,7 +167,7 @@ class Component(object):
         if variable_with_assigned:
             return variable_with_assigned[0]['units']
 
-        variable_with_dummy = self.find_variable({'sympy.Dummy': expr})
+        variable_with_dummy = self.find_variable({'dummy': expr})
         if variable_with_dummy:
             return variable_with_dummy[0]['units']
 
@@ -360,15 +360,15 @@ class Model(object):
         # For each CellML <variable> in the model
         for component, variable in self.variables:
             # If this variable does not have a sympy.Dummy (e.g. variable declared but not mathml?)
-            if 'sympy.Dummy' not in variable:
-                variable['sympy.Dummy'] = sympy.Dummy(
+            if 'dummy' not in variable:
+                variable['dummy'] = sympy.Dummy(
                     variable['name']
                 )
 
             # If this variable does not get its value from another component
             if Model._is_not_assigned(variable):
                 # The assigned variable to this variable *is* the dummy symbol (no assignment)
-                variable['assignment'] = variable['sympy.Dummy']
+                variable['assignment'] = variable['dummy']
 
         # Second, we loop over all model connections and create connections between variables
 
@@ -395,15 +395,15 @@ class Model(object):
         for component, variable in self.variables:
             for index, equation in enumerate(component.equations):
                 # If this variable is used in an equation, it will have been set a sympy.Dummy
-                if 'sympy.Dummy' in variable:
+                if 'dummy' in variable:
                     # If the variable has been assigned [a new dummy symbol]
                     if 'assignment' in variable:
                         # Replace the original dummy with the assign dummy symbol
                         component.equations[index] = equation.xreplace(
-                            {variable['sympy.Dummy']: variable['assignment']}
+                            {variable['dummy']: variable['assignment']}
                         )
                     else:
-                        variable['assignment'] = variable['sympy.Dummy']
+                        variable['assignment'] = variable['dummy']
                 # The variable does not have a sympy.Dummy variable set - why??
                 else:
                     logger.warning('Variable (%s) in component (%s) not assigned a dummy',
@@ -476,13 +476,13 @@ class Model(object):
             if lhs_symbol.is_Derivative:
                 # Get the state symbol and update the variable information
                 state_symbol = lhs_symbol.free_symbols.pop()
-                state_variable = self.find_variable({'sympy.Dummy': state_symbol})
+                state_variable = self.find_variable({'dummy': state_symbol})
                 assert len(state_variable) == 1
                 Model._set_variable_type(state_variable[0], 'state')
 
                 # Get the free symbol and update the variable information
                 free_symbol = set(lhs_symbol.canonical_variables.keys()).pop()
-                free_variable = self.find_variable({'sympy.Dummy': free_symbol})
+                free_variable = self.find_variable({'dummy': free_symbol})
                 assert len(free_variable) == 1
                 Model._set_variable_type(free_variable[0], 'free')
 
@@ -505,7 +505,7 @@ class Model(object):
                     graph.add_edge(rhs_symbol, lhs_symbol)
                 else:
                     # The symbol does not have a node in the graph, get the variable info
-                    variable = self.find_variable({'sympy.Dummy': rhs_symbol})
+                    variable = self.find_variable({'dummy': rhs_symbol})
                     assert len(variable) == 1
                     variable = variable[0]
 
@@ -534,7 +534,7 @@ class Model(object):
 
         for node in graph.nodes:
             if not node.is_Derivative:
-                variable = self.find_variable({'sympy.Dummy': node})
+                variable = self.find_variable({'dummy': node})
                 assert len(variable) == 1
                 variable = variable.pop()
                 for key in ['cmeta:id', 'name', 'units']:
@@ -714,7 +714,7 @@ class Model(object):
             variable['type'] = variable_type
         else:
             logger.warning('Variable %s already has type=="%s". Skip setting "%s"',
-                           variable['sympy.Dummy'], variable['type'], variable_type)
+                           variable['dummy'], variable['type'], variable_type)
 
     def get_symbols(self, expr):
         """Returns the symbols in an expression"""
@@ -828,13 +828,13 @@ class Model(object):
                 # Requires a conversion, so we add an equation to the component that assigns the
                 # target dummy variable to the source variable (unit conversion handled separately)
                 self.components[target_component].equations.append(
-                    sympy.Eq(target_variable['sympy.Dummy'], source_variable['assignment'])
+                    sympy.Eq(target_variable['dummy'], source_variable['assignment'])
                 )
                 logger.info('    New target eq: %s ⟶ %s', target_component,
                             self.components[target_component].equations[-1])
 
                 # The assigned symbol for this variable is itself
-                target_variable['assignment'] = target_variable['sympy.Dummy']
+                target_variable['assignment'] = target_variable['dummy']
             logger.debug('    Updated target: %s ⟶ %s', target_component, target_variable)
             return True
         # The source variable has not been assigned a symbol, so we can't make this connection

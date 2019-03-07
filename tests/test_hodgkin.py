@@ -30,7 +30,7 @@ class TestHodgkin:
     def test_connections(self, model):
         target = model.components['sodium_channel'].variables['h']
         source = model.components['sodium_channel_h_gate'].variables['h']
-        assert target['assignment'] == source['sympy.Dummy']
+        assert target['assignment'] == source['dummy']
 
     def test_equation_units(self, model):
         equation = model.components['sodium_channel'].equations[0]
@@ -48,14 +48,14 @@ class TestHodgkin:
         assert len(free_variable) == 1
         free_variable = free_variable[0]
         assert free_variable['cmeta:id'] == 'time'
-        assert graph.node[free_variable['sympy.Dummy']]['variable_type'] == 'free'
-        assert free_variable['cmeta:id'] == graph.node[free_variable['sympy.Dummy']]['cmeta:id']
+        assert graph.node[free_variable['dummy']]['variable_type'] == 'free'
+        assert free_variable['cmeta:id'] == graph.node[free_variable['dummy']]['cmeta:id']
 
         state_variables = model.find_variable({'type': 'state'})
         assert len(state_variables) == 4
         state_variable = state_variables[0]
-        assert graph.node[state_variable['sympy.Dummy']]['variable_type'] == 'state'
-        assert state_variable['cmeta:id'] == graph.node[state_variable['sympy.Dummy']]['cmeta:id']
+        assert graph.node[state_variable['dummy']]['variable_type'] == 'state'
+        assert state_variable['cmeta:id'] == graph.node[state_variable['dummy']]['cmeta:id']
 
         sorted_nodes = nx.lexicographical_topological_sort(graph, key=str)
 
@@ -69,7 +69,7 @@ class TestHodgkin:
         for node in sorted_nodes:
             # derivative nodes depend on state and free variable nodes
             if not node.is_Derivative:
-                variable = model.find_variable({'sympy.Dummy': node})
+                variable = model.find_variable({'dummy': node})
                 assert len(variable) == 1
                 for key in ['cmeta:id', 'name']:
                     if key in variable[0]:
@@ -90,12 +90,12 @@ class TestHodgkin:
         #                        '/Users/tamuri/Desktop/path.dot')
 
         # free variable should not depend on anything
-        time_dummy = free_variable['sympy.Dummy']
+        time_dummy = free_variable['dummy']
         assert graph.in_degree(time_dummy) == 0
 
         # state variables should not depend on anything
         for variable in state_variables:
-            dummy = variable['sympy.Dummy']
+            dummy = variable['dummy']
             assert graph.in_degree(dummy) == 0
 
         # check a node for dependencies

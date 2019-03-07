@@ -194,7 +194,7 @@ class UnitStore(object):
         # collect the initial values, if specified, for each symbol
         subs = {}
         for symbol in symbols:
-            symbol_info = self.model.find_variable({'sympy.Dummy': symbol})
+            symbol_info = self.model.find_variable({'dummy': symbol})
             if len(symbol_info) == 1:
                 if symbol_info[0].get('initial_value', None):
                     value = float(symbol_info[0]['initial_value'])
