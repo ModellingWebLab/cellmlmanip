@@ -15,7 +15,7 @@ from cellmlmanip.units import UnitStore
 
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
+logger.setLevel(logging.DEBUG)
 
 
 # Delimiter for variables name in Sympy expressions: <component><delimiter><name>
@@ -222,7 +222,7 @@ class Variable(object):
     """Represents a <variable> in a CellML model. A component may contain any number of <variable>
     elements, which define variables that may be mathematically related in the equation blocks
     contained in the component. """
-    def __init__(self, *, name, units, dummy: sympy.Symbol=None, initial_value=None,
+    def __init__(self, name, units, dummy, initial_value=None,
                  public_interface=None, private_interface=None, **kwargs):
         # Attributes from the <variable> tag in CellML
         self.name = name
@@ -236,7 +236,7 @@ class Variable(object):
         self.dummy = dummy
 
         # The sympy.Dummy symbol that is substituted for this variable in equations (a connection)
-        self.assigned = None
+        self.assignment = None
 
         # Internal stuff we might not need eventually and can be removed
         self._component_name = kwargs.get('_component_name', None)
@@ -305,7 +305,7 @@ class Model(object):
         assert 'sympy.Number' in attributes
         assert isinstance(dummy, sympy.Dummy)
         assert dummy not in self.numbers_x
-        self.numbers_x[dummy] = NumberWrapper(attributes['cellml:units'],
+        self.numbers_x[dummy] = NumberWrapper(self.units.get_quantity(attributes['cellml:units']),
                                               attributes['sympy.Number'])
 
     def add_component(self, component: Component):
@@ -316,13 +316,59 @@ class Model(object):
 
         self.components[component.name] = component
 
-    def add_variable(self, variable: Variable):
-        assert variable.name not in self.variables, 'Variable %s already exists' % variable.name
-        assert variable.dummy is None, 'Variable must not have a Sympy Symbol registered'
+    def add_variable(self, *, name, units, initial_value=None, public_interface=None, private_interface=None, **kwargs):
+        assert name not in self.variables, 'Variable %s already exists' % name
 
-        variable.dummy = sympy.Dummy(variable.name)
+        variable = Variable(name=name,
+                            units=self.units.get_quantity(units),
+                            dummy=sympy.Dummy(name),
+                            initial_value=initial_value,
+                            public_interface=public_interface,
+                            private_interface=private_interface,
+                            **kwargs)
         self.variables_x[variable.name] = variable
         return variable.dummy
+
+    def connect_variables(self, source_variable: str, target_variable: str):
+        """Given the source and target component and variable, create a connection by assigning
+        the symbol from the source to the target. If units are not the same, it will add an equation
+        to the target component reflecting the relationship. If a symbol has not been assigned to
+        the source variable, then return False.
+
+        :param source_variable: source variable name
+        :param target_variable: target variable name
+        """
+        logger.debug('Model.connect_variables(%s ⟶ %s)', source_variable, target_variable)
+
+        source_variable = self.variables_x[source_variable]
+        target_variable = self.variables_x[target_variable]
+
+        # If the source variable has already been assigned a final symbol
+        if source_variable.assignment:
+
+            if target_variable.assignment:
+                raise ValueError('Target already assigned to %s before assignment to %s' %
+                                 (target_variable.assignment, source_variable.assignment))
+
+            # If source/target variable is in the same unit
+            if source_variable.units == target_variable.units:
+                # Direct substitution is possible
+                target_variable.assignment = source_variable.assignment
+            else:
+                # Requires a conversion, so we add an equation assigning the target dummy variable
+                # to the source variable
+                self.equations_x.append(
+                    # TODO: do unit conversion here?
+                    sympy.Eq(target_variable.dummy, source_variable.assignment)
+                )
+                logger.info('Connection req. unit conversion: %s', self.equations_x[-1])
+
+                # The assigned symbol for this variable is itself
+                target_variable.assignment = target_variable.dummy
+            logger.debug('Updated target: %s', target_variable)
+            return True
+        # The source variable has not been assigned a symbol, so we can't make this connection
+        return False
 
     def add_rdf(self, rdf: str):
         """ Takes RDF string and stores it in an RDFlib.Graph for the model. Can be called
@@ -355,6 +401,12 @@ class Model(object):
                 ('private_interface', 'in') not in variable_attributes.items() and
                 ('public_interface', 'in') not in variable_attributes.items()
         )
+
+    def assigned_unconnected_variables(self):
+        for variables in self.variables_x.values():
+            if variables.private_interface != 'in' and variables.public_interface != 'in':
+                assert variables.dummy is not None
+                variables.assignment = variables.dummy
 
     def make_connections(self):
         """Uses public/private interface attributes of variables and model connections to assign

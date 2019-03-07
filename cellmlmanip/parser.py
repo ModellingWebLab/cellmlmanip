@@ -3,7 +3,7 @@ This module contains the CellML parser. It reads CellML model and stores model i
 CellML Model class. MathML equations are translated to Sympy. RDF is handled by RDFLib.
 """
 import itertools
-from collections import OrderedDict
+from collections import OrderedDict, deque
 from enum import Enum
 from typing import Dict
 
@@ -93,9 +93,6 @@ class Parser(object):
 
         self._add_components(model_xml)
         self._add_relationships(model_xml)
-
-        print(self.components)
-
         self._add_connection(model_xml)
 
         return self.model
@@ -191,12 +188,12 @@ class Parser(object):
 
             # mangle the name by prefixing with the component name
             attributes['name'] = Parser._get_variable_name(component.name, attributes['name'])
-            var = Variable(**attributes)
-            variable_lookup_symbol[attributes['name']] = self.model.add_variable(var)
+            variable_lookup_symbol[attributes['name']] = self.model.add_variable(**attributes)
         return variable_lookup_symbol
 
     def _add_connection(self, model: etree.Element):
         connection_elements = model.findall(Parser.with_ns(XmlNs.CELLML, 'connection'))
+        source_target_connections = []
         for connection in connection_elements:
             # there can be one <map_component> and multiple <map_variables>
             map_variables = []
@@ -211,10 +208,27 @@ class Parser(object):
             for variable_0, variable_1 in map_variables:
                 self.model.connections.append(((map_component[0], variable_0),
                                                (map_component[1], variable_1)))
-                print(self._connect(map_component[0],
-                                    variable_0,
-                                    map_component[1],
-                                    variable_1))
+                source_target_connections.append(self._connect(map_component[0], variable_0, map_component[1], variable_1))
+
+        # confirm assignment of those variables that are not connected to anything else
+        self.model.assigned_unconnected_variables()
+
+        # make the connections in the model
+        connections_to_process = deque(source_target_connections)
+
+        # For testing: shuffle the order of connections
+        # TODO: REMOVE!
+        from random import shuffle
+        shuffle(connections_to_process)
+
+        # While we still have connections left to process
+        while connections_to_process:
+            # Get connection at front of queue
+            connection = connections_to_process.popleft()
+            success = self.model.connect_variables(*connection)
+            if not success:
+                connections_to_process.append(connection)
+            # TODO: track looping and break if we can't exit
 
     def _connect(self, comp_1, var_1: Variable, comp_2, var_2: Variable):
         """Takes a CellML connection and attempts to resolve the connect by assigning the target
