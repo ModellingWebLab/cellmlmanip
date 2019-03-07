@@ -250,9 +250,11 @@ class Variable(object):
 
 
 class NumberWrapper(object):
-    def __init__(self, dummy, units, number):
-        self.dummy = dummy
+    def __init__(self, units, number):
+        # The units for this number (i.e. from <cn cellml:unit>)
         self.units = units
+
+        # The sympy.Number object representing this number
         self.number = number
 
     def __str__(self) -> str:
@@ -303,8 +305,7 @@ class Model(object):
         assert 'sympy.Number' in attributes
         assert isinstance(dummy, sympy.Dummy)
         assert dummy not in self.numbers_x
-        self.numbers_x[dummy] = NumberWrapper(dummy,
-                                              attributes['cellml:units'],
+        self.numbers_x[dummy] = NumberWrapper(attributes['cellml:units'],
                                               attributes['sympy.Number'])
 
     def add_component(self, component: Component):
