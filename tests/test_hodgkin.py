@@ -67,15 +67,14 @@ class TestHodgkin:
         for node in sorted_nodes:
             # derivative nodes depend on state and free variable nodes
             if not node.is_Derivative:
-                variable = model.find_variable({'dummy': node})
-                assert len(variable) == 1
+                variable = model.get_dummy_data(node)
                 for key in ['cmeta_id', 'name']:
-                    if getattr(variable[0], key, None):
-                        assert getattr(variable[0], key) == graph.nodes[node][key]
+                    if getattr(variable, key, None):
+                        assert getattr(variable, key) == graph.nodes[node][key]
 
                 # only state variables should have initial_values
                 if graph.nodes[node].get('variable_type', '') == 'state':
-                    assert (float(variable[0].initial_value) ==
+                    assert (float(variable.initial_value) ==
                             float(graph.nodes[node]['initial_value']))
                 else:
                     assert 'initial_value' not in graph.nodes[node]

@@ -196,9 +196,7 @@ class UnitStore(object):
         subs = {}
         dummy_info = defaultdict(dict)
         for symbol in symbols:
-            symbol_info = self.model.find_variable({'dummy': symbol})
-            assert len(symbol_info) == 1
-            symbol_info = symbol_info.pop()
+            symbol_info = self.model.get_dummy_data(symbol)
             dummy_info[symbol]['units'] = symbol_info.units
             if symbol_info.number is not None:
                 dummy_info[symbol]['number'] = symbol_info.number

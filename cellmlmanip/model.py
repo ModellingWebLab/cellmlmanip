@@ -87,10 +87,6 @@ class Model(object):
 
         self.equations: List[sympy.Eq] = list()
 
-    def __str__(self):
-        """Pretty-print each of the components in this model"""
-        return '\n'.join([str(v) for v in self.components.values()])
-
     def add_unit(self, units_name: str, unit_attributes: List[Dict] = None, base_units=False):
         """Adds information about <units> in <model>
         """
@@ -108,8 +104,6 @@ class Model(object):
         assert isinstance(dummy, sympy.Dummy)
         assert 'sympy.Number' in attributes
         assert isinstance(attributes['sympy.Number'], sympy.Number)
-        # self.numbers[dummy] = NumberWrapper(self.units.get_quantity(attributes['cellml:units']),
-        #                                     attributes['sympy.Number'])
         self.variables[dummy] = DummyData(DummyData.NUM_NAME_PREFIX + dummy.name,
                                           self.units.get_quantity(attributes['cellml:units']),
                                           dummy,
@@ -130,12 +124,12 @@ class Model(object):
         self.name_to_symbol[variable.name] = variable.dummy
         return variable.dummy
 
-    def get_dummy_data(self, reference: Union[str, sympy.Dummy]) -> DummyData:
-        if isinstance(reference, str):
-            return self.variables[self.name_to_symbol[reference]]
+    def get_dummy_data(self, name_or_instance: Union[str, sympy.Dummy]) -> DummyData:
+        if isinstance(name_or_instance, str):
+            return self.variables[self.name_to_symbol[name_or_instance]]
         else:
-            assert isinstance(reference, sympy.Dummy)
-            return self.variables[reference]
+            assert isinstance(name_or_instance, sympy.Dummy)
+            return self.variables[name_or_instance]
 
     def connect_variables(self, source_variable: str, target_variable: str):
         """Given the source and target component and variable, create a connection by assigning
@@ -233,15 +227,13 @@ class Model(object):
             if lhs_symbol.is_Derivative:
                 # Get the state symbol and update the variable information
                 state_symbol = lhs_symbol.free_symbols.pop()
-                state_variable = self.find_variable({'dummy': state_symbol})
-                assert len(state_variable) == 1
-                Model._set_variable_type(state_variable[0], 'state')
+                state_variable = self.get_dummy_data(state_symbol)
+                Model._set_variable_type(state_variable, 'state')
 
                 # Get the free symbol and update the variable information
                 free_symbol = set(lhs_symbol.canonical_variables.keys()).pop()
-                free_variable = self.find_variable({'dummy': free_symbol})
-                assert len(free_variable) == 1
-                Model._set_variable_type(free_variable[0], 'free')
+                free_variable = self.get_dummy_data(free_symbol)
+                Model._set_variable_type(free_variable, 'free')
 
         # sanity check none of the lhs have the same hash!
         assert len(graph.nodes) == equation_count
@@ -276,10 +268,10 @@ class Model(object):
                         # The variable is a constant or parameter of the model
                         # TODO: Can we tell the difference between a parameter and a constant?
                         # TODO: change to "self." once collect units is in Model class
-                        rhs_variable = self.find_variable({'dummy': rhs_symbol})
-                        if not rhs_variable[0].number is not None:
+                        rhs_variable = self.get_dummy_data(rhs_symbol)
+                        if rhs_variable.number is None:
                             variable.type = 'parameter'
-                            unit = rhs_variable[0].units
+                            unit = rhs_variable.units
                             number = sympy.Dummy(str(variable.initial_value))
                             f = sympy.Float(variable.initial_value)
                             self.add_number(number, {'cellml:units': str(unit), 'sympy.Number': f})
@@ -482,49 +474,6 @@ class Model(object):
             for arg in expr.args:
                 symbols |= self.get_symbols(arg)
         return symbols
-
-    def _connect_with_direction(self,
-                                source_component, source_variable,
-                                target_component, target_variable):
-        """Given the source and target component and variable, create a connection by assigning
-        the symbol from the source to the target. If units are not the same, it will add an equation
-        to the target component reflecting the relationship. If a symbol has not been assigned to
-        the source variable, then return False.
-
-        :param source_component: name of source component
-        :param source_variable: name of source variable
-        :param target_component: name of target component
-        :param target_variable: name of target variable
-        """
-        logger.debug('    Source: %s ⟶ %s', source_component, source_variable)
-        logger.debug('    Target: %s ⟶ %s', target_component, target_variable)
-
-        # If the source variable has already been assigned a final symbol
-        if 'assignment' in source_variable:
-
-            if 'assignment' in target_variable:
-                raise ValueError('Target already assigned to %s before assignment to %s' %
-                                 (target_variable['assignment'], source_variable['assignment']))
-
-            # If source/target variable is in the same unit
-            if source_variable['units'] == target_variable['units']:
-                # Direct substitution is possible
-                target_variable['assignment'] = source_variable['assignment']
-            else:
-                # Requires a conversion, so we add an equation to the component that assigns the
-                # target dummy variable to the source variable (unit conversion handled separately)
-                self.components[target_component].equations.append(
-                    sympy.Eq(target_variable['dummy'], source_variable['assignment'])
-                )
-                logger.info('    New target eq: %s ⟶ %s', target_component,
-                            self.components[target_component].equations[-1])
-
-                # The assigned symbol for this variable is itself
-                target_variable['assignment'] = target_variable['dummy']
-            logger.debug('    Updated target: %s ⟶ %s', target_component, target_variable)
-            return True
-        # The source variable has not been assigned a symbol, so we can't make this connection
-        return False
 
     def find_variable(self, search_dict):
         matches = []
