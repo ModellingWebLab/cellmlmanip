@@ -10,7 +10,7 @@ from typing import Dict
 from lxml import etree
 
 from cellmlmanip import mathml2sympy
-from cellmlmanip.model import SYMPY_SYMBOL_DELIMITER, Model, DummyData
+from cellmlmanip.model import SYMPY_SYMBOL_DELIMITER, DummyData, Model
 
 
 class XmlNs(Enum):
