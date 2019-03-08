@@ -6,6 +6,7 @@ import logging
 import math
 import numbers
 import os
+from collections import defaultdict
 from functools import reduce
 from operator import mul
 from typing import Dict, List
@@ -193,20 +194,25 @@ class UnitStore(object):
 
         # collect the initial values, if specified, for each symbol
         subs = {}
+        dummy_info = defaultdict(dict)
         for symbol in symbols:
-            symbol_info = self.model.find_variable({'dummy': symbol})
+            symbol_info = self.model.find_variable_x({'dummy': symbol})
             if len(symbol_info) == 1:
-                if symbol_info[0].get('initial_value', None):
-                    value = float(symbol_info[0]['initial_value'])
+                symbol_info = symbol_info.pop()
+                dummy_info[symbol]['units'] = symbol_info.units
+                if symbol_info.initial_value:
+                    value = float(symbol_info.initial_value)
                     # we don't substitute symbols if value is 0 due to div by zero errors
                     # check what other impact this has
                     if value != 0.0:
                         subs[symbol] = value
             else:
                 # dummy placeholders for numbers don't have variable information
-                assert 'number' in self.model.dummy_info[symbol]
+                assert symbol in self.model.numbers_x
+                dummy_info[symbol]['number'] = self.model.numbers_x[symbol].number
+                dummy_info[symbol]['units'] = self.model.numbers_x[symbol].units
 
-        unit_calculator = UnitCalculator(self.ureg, self.model.dummy_info, subs)
+        unit_calculator = UnitCalculator(self.ureg, dummy_info, subs)
 
         found = unit_calculator.traverse(expr)
 
@@ -281,14 +287,14 @@ class UnitCalculator(object):
         if expr.is_Symbol:
             # is this symbol is a placeholder for a number
             if 'number' in self.symbols[expr]:
-                r = float(self.symbols[expr]['number']) * self.symbols[expr]['unit']
+                r = float(self.symbols[expr]['number']) * self.symbols[expr]['units']
             else:
                 # if we need to replace this symbol for evaluating units
                 if expr in self.subs:
-                    r = self.ureg.Quantity(self.subs[expr], self.symbols[expr]['unit'])
+                    r = self.ureg.Quantity(self.subs[expr], self.symbols[expr]['units'])
                 else:
                     # otherwise, straightforward Quantity
-                    r = self.ureg.Quantity(expr, self.symbols[expr]['unit'])
+                    r = self.ureg.Quantity(expr, self.symbols[expr]['units'])
             return r
         elif expr.is_Integer:
             r = int(expr) * self.ureg.dimensionless
@@ -410,7 +416,7 @@ class ExpressionWithUnitPrinter(LambdaPrinter):
         self.symbols = symbol_info
 
     def _get_dummy_unit(self, expr):
-        return self.symbols[expr]['unit']
+        return self.symbols[expr]['units']
 
     def _get_dummy_number(self, expr):
         if 'number' in self.symbols[expr]:

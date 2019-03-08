@@ -10,7 +10,7 @@ from typing import Dict
 from lxml import etree
 
 from cellmlmanip import mathml2sympy
-from cellmlmanip.model import SYMPY_SYMBOL_DELIMITER, Component, Model, Variable
+from cellmlmanip.model import SYMPY_SYMBOL_DELIMITER, Model, Variable
 
 
 class XmlNs(Enum):
@@ -127,18 +127,14 @@ class Parser(object):
         # for each component defined in the model
         for component_element in component_elements:
             # create an instance of Component
-            component = Component(component_element.get('name'), self.model)
             self.components[component_element.get('name')] = ComponentNew(component_element.get('name'))
 
             # Add the child elements under <component>
-            variables = self._add_variables(component, component_element)
+            variables = self._add_variables(component_element)
             # print('variables:\n', variables)
-            self._add_maths(component, component_element, variables)
+            self._add_maths(component_element, variables)
 
-            # Add the component instance to the model
-            self.model.add_component(component)
-
-    def _add_maths(self, component: Component, component_element: etree.Element, symbol_lookup):
+    def _add_maths(self, component_element: etree.Element, symbol_lookup):
         """ <model> <component> <math> </component> </model> """
         # get all <math> elements in the component
         math_elements = component_element.findall(Parser.with_ns(XmlNs.MATHML, 'math'))
@@ -150,7 +146,7 @@ class Parser(object):
         # reuse transpiler so cache of dummy symbols is preserved across <math> elements
         transpiler = mathml2sympy.Transpiler(
             dummify=True,
-            symbol_prefix=component.name + SYMPY_SYMBOL_DELIMITER,
+            symbol_prefix=component_element.get('name') + SYMPY_SYMBOL_DELIMITER,
             symbol_lookup=symbol_lookup
         )
 
@@ -158,18 +154,16 @@ class Parser(object):
         for math_element in math_elements:
             # TODO: check whether element can be passed directly without .tostring()
             sympy_exprs = transpiler.parse_string(etree.tostring(math_element, encoding=str))
-            component.equations.extend(sympy_exprs)
             for expr in sympy_exprs:
                 self.model.add_equation(expr)
 
         # Add metadata collected whilst parsing <math> elements to the model
         # if transpiler.metadata:
         #     print(transpiler.metadata)
-        component.collect_variable_attributes(transpiler.metadata)
         for symbol, attributes in transpiler.metadata.items():
             self.model.add_number(symbol, attributes)
 
-    def _add_variables(self, component: Component, component_element: etree.Element):
+    def _add_variables(self, component_element: etree.Element):
         """ <model> <component> <variable> </component> </model> """
         variable_elements = component_element.findall(Parser.with_ns(XmlNs.CELLML, 'variable'))
         variable_lookup_symbol = dict()
@@ -181,13 +175,11 @@ class Parser(object):
             if cmeta_id_attribute in attributes:
                 attributes['cmeta_id'] = attributes.pop(cmeta_id_attribute)
 
-            component.variables[attributes['name']] = attributes
-
             attributes['_original_name'] = attributes['name']
-            attributes['_component_name'] = component.name
+            attributes['_component_name'] = component_element.get('name')
 
             # mangle the name by prefixing with the component name
-            attributes['name'] = Parser._get_variable_name(component.name, attributes['name'])
+            attributes['name'] = Parser._get_variable_name(component_element.get('name'), attributes['name'])
             variable_lookup_symbol[attributes['name']] = self.model.add_variable(**attributes)
         return variable_lookup_symbol
 
@@ -206,8 +198,6 @@ class Parser(object):
                     map_variables.append((child.attrib.get('variable_1'),
                                           child.attrib.get('variable_2')))
             for variable_0, variable_1 in map_variables:
-                self.model.connections.append(((map_component[0], variable_0),
-                                               (map_component[1], variable_1)))
                 source_target_connections.append(self._connect(map_component[0], variable_0, map_component[1], variable_1))
 
         # confirm assignment of those variables that are not connected to anything else
@@ -327,9 +317,6 @@ class Parser(object):
             # if we have a parent component for this child component (i.e. not top-level anonymous)
             if parent_component:
                 # add the relationship in the component
-                self.model.components[parent_component].add_encapsulated(child_component)
-                self.model.components[child_component].set_parent(parent_component)
-
                 self.components[parent_component].add_encapsulated(child_component)
                 self.components[child_component].set_parent(parent_component)
 
@@ -341,6 +328,5 @@ class Parser(object):
             # register each of the siblings with each other
             for component_a, component_b in itertools.product(siblings, siblings):
                 if component_a != component_b:
-                    self.model.components[component_a].add_sibling(component_b)
                     self.components[component_a].add_sibling(component_b)
 
