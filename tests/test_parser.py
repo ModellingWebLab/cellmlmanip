@@ -44,16 +44,16 @@ class TestParser(object):
         assert 'circle_parent' == parser_instance.components['circle_y'].parent
 
     def test_equations_count(self, model):
-        print(len(model.equations_x))
+        print(len(model.equations))
         # Include 19 equations from model + 2 equations added by parser for unit conversion
-        assert len(model.equations_x) == 21  # NOTE: determined by eye!
+        assert len(model.equations) == 21  # NOTE: determined by eye!
 
     def test_variable_find(self, model):
-        match = model.find_variable_x({'cmeta_id': 'time'})
+        match = model.find_variable({'cmeta_id': 'time'})
         assert len(match) == 1
         assert match[0].cmeta_id == 'time' and match[0].name == 'environment$time'
 
-        match = model.find_variable_x({'cmeta_id': 'sv12'})
+        match = model.find_variable({'cmeta_id': 'sv12'})
         assert len(match) == 1 and \
             match[0].dummy.name == 'single_ode_rhs_const_var$sv1'
 
@@ -84,35 +84,35 @@ class TestParser(object):
                        'state_units_conversion2$sv1',
                        'deriv_on_rhs2b$sv1_rate']
         for name in unconnected:
-            variable = model.variables_x[name]
+            variable = model.variables[name]
             assert variable.dummy == variable.assignment
 
     def test_connections(self, model):
         # Check environment component's time variable has propagated
-        environment__time = model.variables_x['environment$time'].dummy
+        environment__time = model.variables['environment$time'].dummy
 
         # We're checking sympy.Dummy objects (same name != same hash)
         assert isinstance(environment__time, sympy.Dummy)
         assert environment__time != sympy.Dummy(environment__time.name)
 
         state_units_conversion2__time = \
-            model.variables_x['state_units_conversion2$time'].assignment
+            model.variables['state_units_conversion2$time'].assignment
         assert environment__time == state_units_conversion2__time
 
         # propagated environment time to inside nested component circle_y
-        circle_y__time = model.variables_x['circle_y$time'].assignment
+        circle_y__time = model.variables['circle_y$time'].assignment
         assert environment__time == circle_y__time
 
         # we have a new equation that links together times in different units
         time_units_conversion2__time = \
-            model.variables_x['time_units_conversion2$time'].assignment
+            model.variables['time_units_conversion2$time'].assignment
         equation = sympy.Eq(time_units_conversion2__time, environment__time)
-        assert equation in model.equations_x
+        assert equation in model.equations
 
     def test_add_units_to_equations(self, model):
         # Eq(Derivative(_single_independent_ode$sv1, _environment$time), _1.00000000000000)
         # mV/millisecond == mV_per_ms
-        test_equation = model.equations_x[0]
+        test_equation = model.equations[0]
         lhs_units = model.units.summarise_units(test_equation.lhs)
         rhs_units = model.units.summarise_units(test_equation.rhs)
         assert model.units.is_unit_equal(rhs_units, lhs_units)
@@ -126,7 +126,7 @@ class TestParser(object):
 
         # Try fixing all units on the RHS so that they match the LHS
         invalid_rhs_lhs_count = 0
-        for index, equation in enumerate(model.equations_x):
+        for index, equation in enumerate(model.equations):
             lhs_units = model.units.summarise_units(equation.lhs)
             rhs_units = model.units.summarise_units(equation.rhs)
             if not model.units.is_unit_equal(lhs_units, rhs_units):
@@ -134,11 +134,11 @@ class TestParser(object):
                 new_rhs = model.units.convert_to(1*rhs_units, lhs_units)
                 # Create a new equality with the converted RHS and replace original
                 new_dummy = sympy.Dummy(str(new_rhs.magnitude))
-                model.numbers_x[new_dummy] = NumberWrapper(((1*lhs_units) / (1*rhs_units)).units,
-                                                           sympy.Float(new_rhs.magnitude))
+                model.numbers[new_dummy] = NumberWrapper(((1 * lhs_units) / (1 * rhs_units)).units,
+                                                         sympy.Float(new_rhs.magnitude))
                 equation = sympy.Eq(equation.lhs, equation.rhs * new_dummy)
                 # Replace the current equation with the same equation multiplied by factor
-                model.equations_x[index] = equation
+                model.equations[index] = equation
                 lhs_units = model.units.summarise_units(equation.lhs)
                 rhs_units = model.units.summarise_units(equation.rhs)
                 # TODO: how to test this?
@@ -150,13 +150,13 @@ class TestParser(object):
         print()
         from cellmlmanip.units import ExpressionWithUnitPrinter
         symbol_info = dict()
-        for var in model.variables_x.values():
+        for var in model.variables.values():
             symbol_info[var.dummy] = {'units': var.units}
-        for d, num in model.numbers_x.items():
+        for d, num in model.numbers.items():
             symbol_info[d] = {'units': num.units, 'number': num.number}
         printer = ExpressionWithUnitPrinter(symbol_info=symbol_info)
         # show equations
-        for index, equation in enumerate(model.equations_x):
+        for index, equation in enumerate(model.equations):
             print('%3d. Eq(%s, %s)' % (index + 1,
                                        printer.doprint(equation.lhs),
                                        printer.doprint(equation.rhs)))
@@ -188,7 +188,7 @@ class TestParser(object):
 
         # then check the lhs/rhs units
         with pytest.raises(AssertionError) as assert_info:
-            for e in model.equations_x:
+            for e in model.equations:
                 model.check_left_right_units_equal(e)
 
         match = ("Units volt (1.0, <Unit('kilogram * meter ** 2 / ampere / second ** 3')>) != "
@@ -201,7 +201,7 @@ class TestParser(object):
         )
         p = parser.Parser(example_cellml)
         model = p.parse()
-        for e in model.equations_x:
+        for e in model.equations:
             model.check_left_right_units_equal(e)
 
         ureg = model.units.ureg
@@ -224,4 +224,4 @@ class TestParser(object):
             os.path.dirname(__file__), "cellml_files", "3.4.2.1.component_with_maths.cellml"
         )
         model = load_model(example_cellml)
-        assert len(list(model.equations_x)) == 2
+        assert len(list(model.equations)) == 2

@@ -83,10 +83,10 @@ class Model(object):
         # self.dummy_info: Dict[Dict] = defaultdict(dict)
         self.graph: nx.DiGraph = None
 
-        self.variables_x: Dict[str, Variable] = OrderedDict()
+        self.variables: Dict[str, Variable] = OrderedDict()
 
-        self.equations_x: List[sympy.Eq] = list()
-        self.numbers_x: Dict[sympy.Dummy, NumberWrapper] = dict()
+        self.equations: List[sympy.Eq] = list()
+        self.numbers: Dict[sympy.Dummy, NumberWrapper] = dict()
 
     def __str__(self):
         """Pretty-print each of the components in this model"""
@@ -103,18 +103,18 @@ class Model(object):
 
     def add_equation(self, equation: sympy.Eq):
         assert isinstance(equation, sympy.Eq)
-        self.equations_x.append(equation)
+        self.equations.append(equation)
 
     def add_number(self, dummy: sympy.Dummy, attributes: Dict):
         assert 'sympy.Number' in attributes
         assert isinstance(dummy, sympy.Dummy)
-        assert dummy not in self.numbers_x
-        self.numbers_x[dummy] = NumberWrapper(self.units.get_quantity(attributes['cellml:units']),
-                                              attributes['sympy.Number'])
+        assert dummy not in self.numbers
+        self.numbers[dummy] = NumberWrapper(self.units.get_quantity(attributes['cellml:units']),
+                                            attributes['sympy.Number'])
 
     def add_variable(self, *, name, units, initial_value=None,
                      public_interface=None, private_interface=None, **kwargs):
-        assert name not in self.variables_x, 'Variable %s already exists' % name
+        assert name not in self.variables, 'Variable %s already exists' % name
 
         variable = Variable(name=name,
                             units=self.units.get_quantity(units),
@@ -123,7 +123,7 @@ class Model(object):
                             public_interface=public_interface,
                             private_interface=private_interface,
                             **kwargs)
-        self.variables_x[variable.name] = variable
+        self.variables[variable.name] = variable
         return variable.dummy
 
     def connect_variables(self, source_variable: str, target_variable: str):
@@ -137,8 +137,8 @@ class Model(object):
         """
         logger.debug('Model.connect_variables(%s ⟶ %s)', source_variable, target_variable)
 
-        source_variable = self.variables_x[source_variable]
-        target_variable = self.variables_x[target_variable]
+        source_variable = self.variables[source_variable]
+        target_variable = self.variables[target_variable]
 
         # If the source variable has already been assigned a final symbol
         if source_variable.assignment:
@@ -152,18 +152,18 @@ class Model(object):
                 # Direct substitution is possible
                 target_variable.assignment = source_variable.assignment
                 # everywhere the target variable is used, replace with source variable
-                for index, equation in enumerate(self.equations_x):
-                    self.equations_x[index] = equation.xreplace(
+                for index, equation in enumerate(self.equations):
+                    self.equations[index] = equation.xreplace(
                         {target_variable.dummy: source_variable.assignment}
                     )
             else:
                 # Requires a conversion, so we add an equation assigning the target dummy variable
                 # to the source variable
-                self.equations_x.append(
+                self.equations.append(
                     # TODO: do unit conversion here?
                     sympy.Eq(target_variable.dummy, source_variable.assignment)
                 )
-                logger.info('Connection req. unit conversion: %s', self.equations_x[-1])
+                logger.info('Connection req. unit conversion: %s', self.equations[-1])
 
                 # The assigned symbol for this variable is itself
                 target_variable.assignment = target_variable.dummy
@@ -191,7 +191,7 @@ class Model(object):
         )
 
     def assigned_unconnected_variables(self):
-        for variables in self.variables_x.values():
+        for variables in self.variables.values():
             if variables.private_interface != 'in' and variables.public_interface != 'in':
                 assert variables.dummy is not None
                 variables.assignment = variables.dummy
@@ -224,7 +224,7 @@ class Model(object):
         equation_count = 0
 
         # for each equation in the model
-        for equation in self.equations_x:
+        for equation in self.equations:
             equation_count += 1
 
             # Determine LHS. We should only every have one symbol (or derivative)
@@ -240,13 +240,13 @@ class Model(object):
             if lhs_symbol.is_Derivative:
                 # Get the state symbol and update the variable information
                 state_symbol = lhs_symbol.free_symbols.pop()
-                state_variable = self.find_variable_x({'dummy': state_symbol})
+                state_variable = self.find_variable({'dummy': state_symbol})
                 assert len(state_variable) == 1
                 Model._set_variable_type(state_variable[0], 'state')
 
                 # Get the free symbol and update the variable information
                 free_symbol = set(lhs_symbol.canonical_variables.keys()).pop()
-                free_variable = self.find_variable_x({'dummy': free_symbol})
+                free_variable = self.find_variable({'dummy': free_symbol})
                 assert len(free_variable) == 1
                 Model._set_variable_type(free_variable[0], 'free')
 
@@ -257,7 +257,7 @@ class Model(object):
         assert len(set([str(x) for x in graph.nodes])) == equation_count
 
         # for each equation in the model
-        for equation in self.equations_x:
+        for equation in self.equations:
             # get the lhs symbol
             lhs_symbol = self.get_symbols(equation.lhs).pop()
 
@@ -269,7 +269,7 @@ class Model(object):
                     graph.add_edge(rhs_symbol, lhs_symbol)
                 else:
                     # The symbol does not have a node in the graph, get the variable info
-                    variable = self.find_variable_x({'dummy': rhs_symbol})
+                    variable = self.find_variable({'dummy': rhs_symbol})
                     assert len(variable) == 1
                     variable = variable[0]
 
@@ -284,12 +284,12 @@ class Model(object):
                         variable.type = 'parameter'
                         # TODO: Can we tell the difference between a parameter and a constant?
                         # TODO: change to "self." once collect units is in Model class
-                        rhs_variable = self.find_variable_x({'dummy': rhs_symbol})
+                        rhs_variable = self.find_variable({'dummy': rhs_symbol})
                         assert len(rhs_variable) == 1
                         unit = rhs_variable[0].units
                         number = sympy.Dummy(str(variable.initial_value))
                         f = sympy.Float(variable.initial_value)
-                        self.numbers_x[number] = NumberWrapper(unit, f)
+                        self.numbers[number] = NumberWrapper(unit, f)
                         graph.add_node(rhs_symbol,
                                        equation=sympy.Eq(rhs_symbol, number),
                                        variable_type='parameter')
@@ -297,7 +297,7 @@ class Model(object):
 
         for node in graph.nodes:
             if not node.is_Derivative:
-                variable = self.find_variable_x({'dummy': node})
+                variable = self.find_variable({'dummy': node})
                 assert len(variable) == 1
                 variable = variable.pop()
                 for key in ['cmeta_id', 'name', 'units']:
@@ -319,8 +319,8 @@ class Model(object):
                 # get any dummy-numbers
                 subs_dict = {}
                 for dummy in dummies:
-                    if dummy in self.numbers_x:
-                        subs_dict[dummy] = self.numbers_x[dummy].number
+                    if dummy in self.numbers:
+                        subs_dict[dummy] = self.numbers[dummy].number
 
                 # if there are any dummy-numbers on the rhs
                 if subs_dict:
@@ -482,73 +482,12 @@ class Model(object):
     def get_symbols(self, expr):
         """Returns the symbols in an expression"""
         symbols = set()
-        if expr.is_Derivative or (expr.is_Dummy and expr not in self.numbers_x):
+        if expr.is_Derivative or (expr.is_Dummy and expr not in self.numbers):
             symbols.add(expr)
         else:
             for arg in expr.args:
                 symbols |= self.get_symbols(arg)
         return symbols
-
-    def _connect(self, connection):
-        """Takes a CellML connection and attempts to resolve the connect by assigning the target
-        variable to the assigned source variable
-
-        Relevant lines from the CellML specification:
-
-            The set of all components immediately encapsulated by the current
-            component is the encapsulated set.
-
-            Other components encapsulated by the same parent make up the
-            sibling set.
-
-            The interface exposed to the parent component and components in
-            the sibling set is defined by the public_interface attribute. The
-            private_interface attribute defines the interface exposed to
-            components in the encapsulated set. Each interface has three possible
-            values: "in", "out", and "none", where "none" indicates the absence
-            of an interface.
-
-        :param connection: a single connection tuple, created by the CellML parser
-            ((component_1, variable_1), (component_2, variable_2))
-        """
-        comp_1, var_1, comp_2, var_2 = self._get_connection_endpoints(connection)
-
-        # keys for lookup
-        pub = 'public_interface'
-        pri = 'private_interface'
-
-        def _are_siblings(comp_a, comp_b):
-            return self.components[comp_a].parent == self.components[comp_b].parent
-
-        def _parent_of(parent_name, child_name):
-            return parent_name == self.components[child_name].parent
-
-        def _has_interface(dic, key, val):
-            return key in dic and dic[key] == val
-
-        # if the components are siblings (either same parent or top-level)
-        if _are_siblings(comp_1, comp_2):
-            # they are both connected on their public_interface
-            if _has_interface(var_1, pub, 'out') and _has_interface(var_2, pub, 'in'):
-                return self._connect_with_direction(comp_1, var_1, comp_2, var_2)
-            elif _has_interface(var_1, pub, 'in') and _has_interface(var_2, pub, 'out'):
-                return self._connect_with_direction(comp_2, var_2, comp_1, var_1)
-        else:
-            # determine which component is parent of the other
-            if _parent_of(comp_1, comp_2):
-                parent_comp, child_comp = comp_1, comp_2
-                parent_var, child_var = var_1, var_2
-            else:
-                parent_comp, child_comp = comp_2, comp_1
-                parent_var, child_var = var_2, var_1
-
-            # parent/child components are connected using private/public interface, respectively
-            if _has_interface(child_var, pub, 'in') and _has_interface(parent_var, pri, 'out'):
-                return self._connect_with_direction(parent_comp, parent_var, child_comp, child_var)
-            elif _has_interface(child_var, pub, 'out') and _has_interface(parent_var, pri, 'in'):
-                return self._connect_with_direction(child_comp, child_var, parent_comp, parent_var)
-
-        raise ValueError('Cannot determine the source & target for connection %s' % str(connection))
 
     def _connect_with_direction(self,
                                 source_component, source_variable,
@@ -593,11 +532,11 @@ class Model(object):
         # The source variable has not been assigned a symbol, so we can't make this connection
         return False
 
-    def find_variable_x(self, search_dict):
+    def find_variable(self, search_dict):
         matches = []
 
         # for each component in this model
-        for variable in self.variables_x.values():
+        for variable in self.variables.values():
             matched = True
             for search_key, search_value in search_dict.items():
                 if not (hasattr(variable, search_key) and

@@ -196,7 +196,7 @@ class UnitStore(object):
         subs = {}
         dummy_info = defaultdict(dict)
         for symbol in symbols:
-            symbol_info = self.model.find_variable_x({'dummy': symbol})
+            symbol_info = self.model.find_variable({'dummy': symbol})
             if len(symbol_info) == 1:
                 symbol_info = symbol_info.pop()
                 dummy_info[symbol]['units'] = symbol_info.units
@@ -208,9 +208,9 @@ class UnitStore(object):
                         subs[symbol] = value
             else:
                 # dummy placeholders for numbers don't have variable information
-                assert symbol in self.model.numbers_x
-                dummy_info[symbol]['number'] = self.model.numbers_x[symbol].number
-                dummy_info[symbol]['units'] = self.model.numbers_x[symbol].units
+                assert symbol in self.model.numbers
+                dummy_info[symbol]['number'] = self.model.numbers[symbol].number
+                dummy_info[symbol]['units'] = self.model.numbers[symbol].units
 
         unit_calculator = UnitCalculator(self.ureg, dummy_info, subs)
 

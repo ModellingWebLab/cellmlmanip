@@ -23,33 +23,33 @@ class TestHodgkin:
 
     def test_counts(self, model):
         # https://models.cellml.org/exposure/5d116522c3b43ccaeb87a1ed10139016/hodgkin_huxley_1952_variant01.cellml/cellml_math
-        assert len(model.equations_x) == 17
+        assert len(model.equations) == 17
 
     def test_connections(self, model):
-        target = model.variables_x['sodium_channel$h']
-        source = model.variables_x['sodium_channel_h_gate$h']
+        target = model.variables['sodium_channel$h']
+        source = model.variables['sodium_channel_h_gate$h']
         assert target.assignment == source.dummy
 
     def test_equation_units(self, model):
-        equation = model.equations_x[2]
+        equation = model.equations[2]
         lhs_units = model.units.summarise_units(equation.lhs)
         assert lhs_units == model.units.ureg.millivolt
 
     def test_check_left_right_units(self, model):
-        for e in model.equations_x:
+        for e in model.equations:
             model.check_left_right_units_equal(e)
 
     def test_equation_graph(self, graph, model):
         assert len(graph.nodes) == 32
 
-        free_variable = model.find_variable_x({'type': 'free'})
+        free_variable = model.find_variable({'type': 'free'})
         assert len(free_variable) == 1
         free_variable = free_variable[0]
         assert free_variable.cmeta_id == 'time'
         assert graph.node[free_variable.dummy]['variable_type'] == 'free'
         assert free_variable.cmeta_id == graph.node[free_variable.dummy]['cmeta_id']
 
-        state_variables = model.find_variable_x({'type': 'state'})
+        state_variables = model.find_variable({'type': 'state'})
         assert len(state_variables) == 4
         state_variable = state_variables[0]
         assert graph.node[state_variable.dummy]['variable_type'] == 'state'
@@ -67,7 +67,7 @@ class TestHodgkin:
         for node in sorted_nodes:
             # derivative nodes depend on state and free variable nodes
             if not node.is_Derivative:
-                variable = model.find_variable_x({'dummy': node})
+                variable = model.find_variable({'dummy': node})
                 assert len(variable) == 1
                 for key in ['cmeta_id', 'name']:
                     if getattr(variable[0], key, None):

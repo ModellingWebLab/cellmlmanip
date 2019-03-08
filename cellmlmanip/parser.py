@@ -250,8 +250,8 @@ class Parser(object):
         n1 = self._get_variable_name(comp_1, var_1)
         n2 = self._get_variable_name(comp_2, var_2)
 
-        V1 = self.model.variables_x[n1]
-        V2 = self.model.variables_x[n2]
+        V1 = self.model.variables[n1]
+        V2 = self.model.variables[n2]
 
         def _are_siblings(comp_a, comp_b):
             return self.components[comp_a].parent == self.components[comp_b].parent
