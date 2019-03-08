@@ -7,6 +7,7 @@ from collections import OrderedDict, deque
 from enum import Enum
 from typing import Dict
 
+import sympy
 from lxml import etree
 
 from cellmlmanip import mathml2sympy
@@ -126,45 +127,22 @@ class Parser(object):
 
         # for each component defined in the model
         for element in component_elements:
-            # create an instance of Component
+            # component are only kept in parser to resolve relationships and connections
             self.components[element.get('name')] = _Component(element.get('name'))
 
-            # Add the child elements under <component>
-            variables = self._add_variables(element)
-            # print('variables:\n', variables)
-            self._add_maths(element, variables)
+            # process the <variable> tags in this component
+            variable_to_symbol = self._add_variables(element)
 
-    def _add_maths(self, component_element: etree.Element, symbol_lookup):
-        """ <model> <component> <math> </component> </model> """
-        # get all <math> elements in the component
-        math_elements = component_element.findall(Parser.with_ns(XmlNs.MATHML, 'math'))
-
-        # nothing to do if we don't have any <math> elements
-        if not math_elements:
-            return
-
-        # reuse transpiler so cache of dummy symbols is preserved across <math> elements
-        transpiler = mathml2sympy.Transpiler(
-            dummify=True,
-            symbol_prefix=component_element.get('name') + SYMPY_SYMBOL_DELIMITER,
-            symbol_lookup=symbol_lookup
-        )
-
-        # for each math element
-        for math_element in math_elements:
-            # TODO: check whether element can be passed directly without .tostring()
-            sympy_exprs = transpiler.parse_string(etree.tostring(math_element, encoding=str))
-            for expr in sympy_exprs:
-                self.model.add_equation(expr)
-
-        # Add metadata collected whilst parsing <math> elements to the model
-        for symbol, attributes in transpiler.metadata.items():
-            self.model.add_number(symbol, attributes)
+            # process the <math> tags in this component
+            self._add_maths(element, variable_to_symbol)
 
     def _add_variables(self, component_element: etree.Element):
         """ <model> <component> <variable> </component> </model> """
         variable_elements = component_element.findall(Parser.with_ns(XmlNs.CELLML, 'variable'))
+
+        # we keep a {variable name: sympy symbol} lookup that we pass to mathml2sympy
         variable_lookup_symbol = dict()
+
         for variable_element in variable_elements:
             attributes: Dict = dict(variable_element.attrib)
 
@@ -173,115 +151,44 @@ class Parser(object):
             if cmeta_id_attribute in attributes:
                 attributes['cmeta_id'] = attributes.pop(cmeta_id_attribute)
 
-            attributes['_original_name'] = attributes['name']
-            attributes['_component_name'] = component_element.get('name')
-
             # mangle the name by prefixing with the component name
             attributes['name'] = Parser._get_variable_name(component_element.get('name'),
                                                            attributes['name'])
+
+            # model.add_variable() returns sympy dummy created for this variable - keep it
             variable_lookup_symbol[attributes['name']] = self.model.add_variable(**attributes)
+
         return variable_lookup_symbol
 
-    def _add_connection(self, model: etree.Element):
-        connection_elements = model.findall(Parser.with_ns(XmlNs.CELLML, 'connection'))
-        source_target_connections = []
-        for connection in connection_elements:
-            # there can be one <map_component> and multiple <map_variables>
-            map_variables = []
-            for child in connection:
-                # There should *always* be at least one <map_component>
-                if child.tag == Parser.with_ns(XmlNs.CELLML, 'map_components'):
-                    map_component = (child.attrib.get('component_1'),
-                                     child.attrib.get('component_2'))
-                elif child.tag == Parser.with_ns(XmlNs.CELLML, 'map_variables'):
-                    map_variables.append((child.attrib.get('variable_1'),
-                                          child.attrib.get('variable_2')))
-            for variable_0, variable_1 in map_variables:
-                source_target_connections.append(self._connect(map_component[0],
-                                                               variable_0,
-                                                               map_component[1],
-                                                               variable_1))
+    def _add_maths(self,
+                   component_element: etree.Element, variable_to_symbol: Dict[str, sympy.Dummy]):
+        """ <model> <component> <math> </component> </model> """
+        # get all <math> elements in the component
+        math_elements = component_element.findall(Parser.with_ns(XmlNs.MATHML, 'math'))
 
-        # make the connections in the model
-        connections_to_process = deque(source_target_connections)
+        # nothing to do if we don't have any <math> elements
+        if not math_elements:
+            return
 
-        # For testing: shuffle the order of connections
-        # TODO: REMOVE!
-        from random import shuffle
-        shuffle(connections_to_process)
+        # reuse transpiler so dummy symbols are kept across <math> elements
+        transpiler = mathml2sympy.Transpiler(
+            dummify=True,
+            symbol_prefix=component_element.get('name') + SYMPY_SYMBOL_DELIMITER,
+            symbol_lookup=variable_to_symbol
+        )
 
-        # While we still have connections left to process
-        while connections_to_process:
-            # Get connection at front of queue
-            connection = connections_to_process.popleft()
-            success = self.model.connect_variables(*connection)
-            if not success:
-                connections_to_process.append(connection)
-            # TODO: track looping and break if we can't exit
+        # for each math element
+        for math_element in math_elements:
+            # TODO: check whether element can be passed directly without .tostring()
+            sympy_exprs = transpiler.parse_string(etree.tostring(math_element, encoding=str))
 
-    def _connect(self, comp_1, var_1: DummyData, comp_2, var_2: DummyData):
-        """Takes a CellML connection and attempts to resolve the connect by assigning the target
-        variable to the assigned source variable
+            # add each equation from <math> to the model
+            for expr in sympy_exprs:
+                self.model.add_equation(expr)
 
-        Relevant lines from the CellML specification:
-
-            The set of all components immediately encapsulated by the current
-            component is the encapsulated set.
-
-            Other components encapsulated by the same parent make up the
-            sibling set.
-
-            The interface exposed to the parent component and components in
-            the sibling set is defined by the public_interface attribute. The
-            private_interface attribute defines the interface exposed to
-            components in the encapsulated set. Each interface has three possible
-            values: "in", "out", and "none", where "none" indicates the absence
-            of an interface.
-
-        :param connection: a single connection tuple, created by the CellML parser
-            ((component_1, variable_1), (component_2, variable_2))
-        """
-
-        n1 = self._get_variable_name(comp_1, var_1)
-        n2 = self._get_variable_name(comp_2, var_2)
-
-        V1 = self.model.get_dummy_data(n1)
-        V2 = self.model.get_dummy_data(n2)
-
-        def _are_siblings(comp_a, comp_b):
-            return self.components[comp_a].parent == self.components[comp_b].parent
-
-        def _parent_of(parent_name, child_name):
-            return parent_name == self.components[child_name].parent
-
-        # if the components are siblings (either same parent or top-level)
-        if _are_siblings(comp_1, comp_2):
-            # they are both connected on their public_interface
-            if V1.public_interface == 'out' and V2.public_interface == 'in':
-                return (n1, n2)
-            elif V1.public_interface == 'in' and V2.public_interface == 'out':
-                return (n2, n1)
-        else:
-            # determine which component is parent of the other
-            if _parent_of(comp_1, comp_2):
-                parent_comp, child_comp = comp_1, comp_2
-                parent_var, child_var = var_1, var_2
-                parent_V, child_V = V1, V2
-            else:
-                parent_comp, child_comp = comp_2, comp_1
-                parent_var, child_var = var_2, var_1
-                parent_V, child_V = V2, V1
-
-            # parent/child components are connected using private/public interface, respectively
-            if child_V.public_interface == 'in' and parent_V.private_interface == 'out':
-                return (self._get_variable_name(parent_comp, parent_var),
-                        self._get_variable_name(child_comp, child_var))
-            elif child_V.public_interface == 'out' and parent_V.private_interface == 'in':
-                return (self._get_variable_name(child_comp, child_var),
-                        self._get_variable_name(parent_comp, parent_var))
-
-        raise ValueError('Cannot determine the source & target for connection (%s, %s) - (%s, %s)' %
-                         (comp_1, var_1, comp_2, var_2))
+        # we have special handling for numbers - they are represented by dummy in the equation
+        for symbol, attributes in transpiler.metadata.items():
+            self.model.add_number(symbol, attributes)
 
     def _add_relationships(self, model: etree.Element):
         group_elements = model.findall(Parser.with_ns(XmlNs.CELLML, 'group'))
@@ -328,3 +235,106 @@ class Parser(object):
             for component_a, component_b in itertools.product(siblings, siblings):
                 if component_a != component_b:
                     self.components[component_a].add_sibling(component_b)
+
+    def _add_connection(self, model: etree.Element):
+        connection_elements = model.findall(Parser.with_ns(XmlNs.CELLML, 'connection'))
+
+        # a list to collect the (source, target) connection tuples
+        connect_from_to = []
+
+        # for each connection in the model
+        for connection in connection_elements:
+            # first child is <map_component>
+            child_0 = connection[0]
+            assert child_0.tag == Parser.with_ns(XmlNs.CELLML, 'map_components')
+            comp_1, comp_2 = (child_0.attrib.get('component_1'),
+                              child_0.attrib.get('component_2'))
+
+            # the remaining children are <map_variables> tags
+            for child in connection[1:]:
+                assert child.tag == Parser.with_ns(XmlNs.CELLML, 'map_variables')
+                connect_from_to.append(
+                    self._determine_connection_direction(comp_1, child.attrib.get('variable_1'),
+                                                         comp_2, child.attrib.get('variable_2'))
+                )
+
+        # we add the connection to the model by first connecting
+        # those variables we know are source variables
+        connections_to_process = deque(connect_from_to)
+
+        # For testing: shuffle the order of connections TODO: REMOVE!
+        from random import shuffle
+        shuffle(connections_to_process)
+
+        # keep processing the list of connections until we've done them all
+        unchanged_loop_count = 0
+        while connections_to_process:
+            # get a connection
+            connection = connections_to_process.popleft()
+
+            # if we did not successfully connect this variable (because, e.g., we don't know the
+            # source of *this* source)
+            if not self.model.connect_variables(*connection):
+                # add it back to the list
+                connections_to_process.append(connection)
+                unchanged_loop_count += 1
+            else:
+                unchanged_loop_count = 0
+
+            if unchanged_loop_count > len(connections_to_process):
+                raise ValueError('Unable to add connections to the model')
+
+    def _determine_connection_direction(self, comp_1, var_1, comp_2, var_2):
+        """Takes a CellML connection and attempts to resolve the connect by assigning the target
+        variable to the assigned source variable
+
+        Relevant lines from the CellML specification:
+
+            The set of all components immediately encapsulated by the current
+            component is the encapsulated set.
+
+            Other components encapsulated by the same parent make up the
+            sibling set.
+
+            The interface exposed to the parent component and components in
+            the sibling set is defined by the public_interface attribute. The
+            private_interface attribute defines the interface exposed to
+            components in the encapsulated set. Each interface has three possible
+            values: "in", "out", and "none", where "none" indicates the absence
+            of an interface.
+
+        :param connection: a single connection tuple, created by the CellML parser
+            ((component_1, variable_1), (component_2, variable_2))
+        """
+        def _are_siblings(comp_a, comp_b):
+            return self.components[comp_a].parent == self.components[comp_b].parent
+
+        def _parent_of(parent_name, child_name):
+            return parent_name == self.components[child_name].parent
+
+        # get the variable information from the model about each end of the connection
+        variable_1 = self.model.get_dummy_data(self._get_variable_name(comp_1, var_1))
+        variable_2 = self.model.get_dummy_data(self._get_variable_name(comp_2, var_2))
+
+        # if the components are siblings (either same parent or top-level)
+        if _are_siblings(comp_1, comp_2):
+            # they are both connected on their public_interface
+            if variable_1.public_interface == 'out' and variable_2.public_interface == 'in':
+                return variable_1.name, variable_2.name
+            elif variable_1.public_interface == 'in' and variable_2.public_interface == 'out':
+                return variable_2.name, variable_1.name
+        else:
+            # determine which component is parent of the other
+            if _parent_of(comp_1, comp_2):
+                parent_var, child_var = variable_1, variable_2
+            else:
+                parent_var, child_var = variable_2, variable_1
+
+            # parent/child components are connected using private/public interface, respectively
+            if child_var.public_interface == 'in' and parent_var.private_interface == 'out':
+                return parent_var.name, child_var.name
+            elif child_var.public_interface == 'out' and parent_var.private_interface == 'in':
+                return child_var.name, parent_var.name
+
+        raise ValueError('Cannot determine the source & target for connection (%s, %s) - (%s, %s)' %
+                         (comp_1, var_1, comp_2, var_2))

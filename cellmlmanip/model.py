@@ -48,7 +48,7 @@ class DummyData(object):
             # This variable will not connect to anything
             self.assignment = self.dummy
         else:
-            # This variable can be connected to another variable
+            # This variable will be connected to another variable
             self.assignment = None
 
         self.type = None
@@ -58,10 +58,6 @@ class DummyData(object):
             assert isinstance(number, sympy.Number)
 
         self.number = number
-
-        # Internal stuff we might not need eventually and can be removed
-        self._component_name = kwargs.get('_component_name', None)
-        self._original_name = kwargs.get('_original_name', None)
 
     def __str__(self) -> str:
         return '%s(%s)' % (
@@ -82,7 +78,7 @@ class Model(object):
         self.rdf: rdflib.Graph = rdflib.Graph()
         self.graph: nx.DiGraph = None
 
-        self.variables: Dict[str, DummyData] = OrderedDict()
+        self.variables: Dict[sympy.Dummy, DummyData] = OrderedDict()
         self.name_to_symbol: Dict[str, sympy.Dummy] = dict()
 
         self.equations: List[sympy.Eq] = list()
