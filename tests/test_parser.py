@@ -153,8 +153,8 @@ class TestParser(object):
         symbol_info = dict()
         for var in model.variables.values():
             symbol_info[var.dummy] = {'units': var.units}
-        for d, num in model.numbers.items():
-            symbol_info[d] = {'units': num.units, 'number': num.number}
+            if var.number is not None:
+                symbol_info[var.dummy]['number'] = var.number
         printer = ExpressionWithUnitPrinter(symbol_info=symbol_info)
         # show equations
         for index, equation in enumerate(model.equations):

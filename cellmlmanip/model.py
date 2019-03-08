@@ -26,6 +26,8 @@ class DummyData(object):
     """Represents a <variable> in a CellML model. A component may contain any number of <variable>
     elements, which define variables that may be mathematically related in the equation blocks
     contained in the component. """
+    NUM_NAME_PREFIX = '{d}NUMBER{d}'.format_map({'d': SYMPY_SYMBOL_DELIMITER})
+
     def __init__(self, name, units, dummy, initial_value=None,
                  public_interface=None, private_interface=None, number=None,
                  **kwargs):
@@ -51,8 +53,9 @@ class DummyData(object):
 
         self.type = None
 
-        if name.startswith('$number$'):
-            assert number is not None
+        if number is not None:
+            assert name.startswith(DummyData.NUM_NAME_PREFIX)
+            assert isinstance(number, sympy.Number)
 
         self.number = number
 
@@ -107,7 +110,7 @@ class Model(object):
         assert isinstance(attributes['sympy.Number'], sympy.Number)
         # self.numbers[dummy] = NumberWrapper(self.units.get_quantity(attributes['cellml:units']),
         #                                     attributes['sympy.Number'])
-        self.variables[dummy] = DummyData('$number$%s' % dummy.name,
+        self.variables[dummy] = DummyData(DummyData.NUM_NAME_PREFIX + dummy.name,
                                           self.units.get_quantity(attributes['cellml:units']),
                                           dummy,
                                           number=attributes['sympy.Number'])
