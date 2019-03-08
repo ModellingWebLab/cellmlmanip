@@ -10,7 +10,7 @@ from typing import Dict
 from lxml import etree
 
 from cellmlmanip import mathml2sympy
-from cellmlmanip.model import SYMPY_SYMBOL_DELIMITER, Model, Variable
+from cellmlmanip.model import SYMPY_SYMBOL_DELIMITER, Model, DummyData
 
 
 class XmlNs(Enum):
@@ -221,7 +221,7 @@ class Parser(object):
                 connections_to_process.append(connection)
             # TODO: track looping and break if we can't exit
 
-    def _connect(self, comp_1, var_1: Variable, comp_2, var_2: Variable):
+    def _connect(self, comp_1, var_1: DummyData, comp_2, var_2: DummyData):
         """Takes a CellML connection and attempts to resolve the connect by assigning the target
         variable to the assigned source variable
 
@@ -247,8 +247,8 @@ class Parser(object):
         n1 = self._get_variable_name(comp_1, var_1)
         n2 = self._get_variable_name(comp_2, var_2)
 
-        V1 = self.model.variables[n1]
-        V2 = self.model.variables[n2]
+        V1 = self.model.get_dummy_data(n1)
+        V2 = self.model.get_dummy_data(n2)
 
         def _are_siblings(comp_a, comp_b):
             return self.components[comp_a].parent == self.components[comp_b].parent

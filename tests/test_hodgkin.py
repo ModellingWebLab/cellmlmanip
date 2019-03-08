@@ -26,8 +26,8 @@ class TestHodgkin:
         assert len(model.equations) == 17
 
     def test_connections(self, model):
-        target = model.variables['sodium_channel$h']
-        source = model.variables['sodium_channel_h_gate$h']
+        target = model.get_dummy_data('sodium_channel$h')
+        source = model.get_dummy_data('sodium_channel_h_gate$h')
         assert target.assignment == source.dummy
 
     def test_equation_units(self, model):

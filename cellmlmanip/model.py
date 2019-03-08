@@ -4,7 +4,7 @@ Classes representing a CellML model and its components
 import logging
 from collections import OrderedDict
 from io import StringIO
-from typing import Dict, List
+from typing import Dict, List, Union
 
 import networkx as nx
 import rdflib
@@ -22,7 +22,7 @@ logger.setLevel(logging.DEBUG)
 SYMPY_SYMBOL_DELIMITER = '$'
 
 
-class Variable(object):
+class DummyData(object):
     """Represents a <variable> in a CellML model. A component may contain any number of <variable>
     elements, which define variables that may be mathematically related in the equation blocks
     contained in the component. """
@@ -89,7 +89,8 @@ class Model(object):
         # self.dummy_info: Dict[Dict] = defaultdict(dict)
         self.graph: nx.DiGraph = None
 
-        self.variables: Dict[str, Variable] = OrderedDict()
+        self.variables: Dict[str, DummyData] = OrderedDict()
+        self.name_to_symbol: Dict[str, sympy.Dummy] = dict()
 
         self.equations: List[sympy.Eq] = list()
         self.numbers: Dict[sympy.Dummy, NumberWrapper] = dict()
@@ -122,15 +123,23 @@ class Model(object):
                      public_interface=None, private_interface=None, **kwargs):
         assert name not in self.variables, 'Variable %s already exists' % name
 
-        variable = Variable(name=name,
-                            units=self.units.get_quantity(units),
-                            dummy=sympy.Dummy(name),
-                            initial_value=initial_value,
-                            public_interface=public_interface,
-                            private_interface=private_interface,
-                            **kwargs)
-        self.variables[variable.name] = variable
+        variable = DummyData(name=name,
+                             units=self.units.get_quantity(units),
+                             dummy=sympy.Dummy(name),
+                             initial_value=initial_value,
+                             public_interface=public_interface,
+                             private_interface=private_interface,
+                             **kwargs)
+        self.variables[variable.dummy] = variable
+        self.name_to_symbol[variable.name] = variable.dummy
         return variable.dummy
+
+    def get_dummy_data(self, reference: Union[str, sympy.Dummy]) -> DummyData:
+        if isinstance(reference, str):
+            return self.variables[self.name_to_symbol[reference]]
+        else:
+            assert isinstance(reference, sympy.Dummy)
+            return self.variables[reference]
 
     def connect_variables(self, source_variable: str, target_variable: str):
         """Given the source and target component and variable, create a connection by assigning
@@ -143,8 +152,8 @@ class Model(object):
         """
         logger.debug('Model.connect_variables(%s ⟶ %s)', source_variable, target_variable)
 
-        source_variable = self.variables[source_variable]
-        target_variable = self.variables[target_variable]
+        source_variable = self.get_dummy_data(source_variable)
+        target_variable = self.get_dummy_data(target_variable)
 
         # If the source variable has already been assigned a final symbol
         if source_variable.assignment:
@@ -183,24 +192,6 @@ class Model(object):
         repeatedly.
         """
         self.rdf.parse(StringIO(rdf))
-
-    @staticmethod
-    def _is_not_assigned(variable_attributes: Dict):
-        """Checks whether a variable gets its value from another component. There are two
-        possibilities. Either it has:
-            (i) public_interface="out" or
-            (ii) private_interface="out" without public_interface="in"
-        """
-        return (
-                ('private_interface', 'in') not in variable_attributes.items() and
-                ('public_interface', 'in') not in variable_attributes.items()
-        )
-
-    def assigned_unconnected_variables(self):
-        for variables in self.variables.values():
-            if variables.private_interface != 'in' and variables.public_interface != 'in':
-                assert variables.dummy is not None
-                variables.assignment = variables.dummy
 
     def check_left_right_units_equal(self, equality: sympy.Eq):
         """Given a Sympy Equality expression, checks that the LHS and RHS have the same units"""

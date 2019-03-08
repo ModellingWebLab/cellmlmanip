@@ -84,28 +84,28 @@ class TestParser(object):
                        'state_units_conversion2$sv1',
                        'deriv_on_rhs2b$sv1_rate']
         for name in unconnected:
-            variable = model.variables[name]
+            variable = model.get_dummy_data(name)
             assert variable.dummy == variable.assignment
 
     def test_connections(self, model):
         # Check environment component's time variable has propagated
-        environment__time = model.variables['environment$time'].dummy
+        environment__time = model.get_dummy_data('environment$time').dummy
 
         # We're checking sympy.Dummy objects (same name != same hash)
         assert isinstance(environment__time, sympy.Dummy)
         assert environment__time != sympy.Dummy(environment__time.name)
 
         state_units_conversion2__time = \
-            model.variables['state_units_conversion2$time'].assignment
+            model.get_dummy_data('state_units_conversion2$time').assignment
         assert environment__time == state_units_conversion2__time
 
         # propagated environment time to inside nested component circle_y
-        circle_y__time = model.variables['circle_y$time'].assignment
+        circle_y__time = model.get_dummy_data('circle_y$time').assignment
         assert environment__time == circle_y__time
 
         # we have a new equation that links together times in different units
         time_units_conversion2__time = \
-            model.variables['time_units_conversion2$time'].assignment
+            model.get_dummy_data('time_units_conversion2$time').assignment
         equation = sympy.Eq(time_units_conversion2__time, environment__time)
         assert equation in model.equations
 
