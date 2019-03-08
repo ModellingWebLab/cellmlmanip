@@ -39,8 +39,14 @@ class Variable(object):
         # The sympy.Dummy symbol representing this variable in equations
         self.dummy = dummy
 
-        # The sympy.Dummy symbol that is substituted for this variable in equations (a connection)
-        self.assignment = None
+        # The sympy.Dummy assigned in place of this variable (via a connection)
+        # If they don't have a public or private 'in' interface
+        if private_interface != 'in' and public_interface != 'in':
+            # This variable will not connect to anything
+            self.assignment = self.dummy
+        else:
+            # This variable can be connected to another variable
+            self.assignment = None
 
         self.type = None
 

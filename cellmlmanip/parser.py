@@ -204,9 +204,6 @@ class Parser(object):
                                                                map_component[1],
                                                                variable_1))
 
-        # confirm assignment of those variables that are not connected to anything else
-        self.model.assigned_unconnected_variables()
-
         # make the connections in the model
         connections_to_process = deque(source_target_connections)
 
