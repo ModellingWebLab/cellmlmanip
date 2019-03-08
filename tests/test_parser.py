@@ -4,7 +4,6 @@ import pytest
 import sympy
 
 from cellmlmanip import load_model, parser
-from cellmlmanip.model import NumberWrapper
 
 
 class TestParser(object):
@@ -134,8 +133,10 @@ class TestParser(object):
                 new_rhs = model.units.convert_to(1*rhs_units, lhs_units)
                 # Create a new equality with the converted RHS and replace original
                 new_dummy = sympy.Dummy(str(new_rhs.magnitude))
-                model.numbers[new_dummy] = NumberWrapper(((1 * lhs_units) / (1 * rhs_units)).units,
-                                                         sympy.Float(new_rhs.magnitude))
+                model.add_number(new_dummy,
+                                 {'cellml:units': str(((1 * lhs_units) / (1 * rhs_units)).units),
+                                  'sympy.Number': sympy.Float(new_rhs.magnitude)}
+                                 )
                 equation = sympy.Eq(equation.lhs, equation.rhs * new_dummy)
                 # Replace the current equation with the same equation multiplied by factor
                 model.equations[index] = equation

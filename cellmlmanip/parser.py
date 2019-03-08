@@ -158,8 +158,6 @@ class Parser(object):
                 self.model.add_equation(expr)
 
         # Add metadata collected whilst parsing <math> elements to the model
-        # if transpiler.metadata:
-        #     print(transpiler.metadata)
         for symbol, attributes in transpiler.metadata.items():
             self.model.add_number(symbol, attributes)
 

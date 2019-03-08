@@ -27,7 +27,8 @@ class DummyData(object):
     elements, which define variables that may be mathematically related in the equation blocks
     contained in the component. """
     def __init__(self, name, units, dummy, initial_value=None,
-                 public_interface=None, private_interface=None, **kwargs):
+                 public_interface=None, private_interface=None, number=None,
+                 **kwargs):
         # Attributes from the <variable> tag in CellML
         self.name = name
         self.units = units
@@ -50,6 +51,11 @@ class DummyData(object):
 
         self.type = None
 
+        if name.startswith('$number$'):
+            assert number is not None
+
+        self.number = number
+
         # Internal stuff we might not need eventually and can be removed
         self._component_name = kwargs.get('_component_name', None)
         self._original_name = kwargs.get('_original_name', None)
@@ -57,22 +63,7 @@ class DummyData(object):
     def __str__(self) -> str:
         return '%s(%s)' % (
             type(self).__name__,
-            ', '.join('%s=%s' % item for item in vars(self).items() if item[1])
-        )
-
-
-class NumberWrapper(object):
-    def __init__(self, units, number):
-        # The units for this number (i.e. from <cn cellml:unit>)
-        self.units = units
-
-        # The sympy.Number object representing this number
-        self.number = number
-
-    def __str__(self) -> str:
-        return '%s(%s)' % (
-            type(self).__name__,
-            ', '.join('%s=%s' % item for item in vars(self).items() if item[1])
+            ', '.join('%s=%s' % item for item in vars(self).items() if item[1] is not None)
         )
 
 
@@ -86,14 +77,12 @@ class Model(object):
         self.name: str = name
         self.units: 'UnitStore' = UnitStore(model=self)
         self.rdf: rdflib.Graph = rdflib.Graph()
-        # self.dummy_info: Dict[Dict] = defaultdict(dict)
         self.graph: nx.DiGraph = None
 
         self.variables: Dict[str, DummyData] = OrderedDict()
         self.name_to_symbol: Dict[str, sympy.Dummy] = dict()
 
         self.equations: List[sympy.Eq] = list()
-        self.numbers: Dict[sympy.Dummy, NumberWrapper] = dict()
 
     def __str__(self):
         """Pretty-print each of the components in this model"""
@@ -113,11 +102,15 @@ class Model(object):
         self.equations.append(equation)
 
     def add_number(self, dummy: sympy.Dummy, attributes: Dict):
-        assert 'sympy.Number' in attributes
         assert isinstance(dummy, sympy.Dummy)
-        assert dummy not in self.numbers
-        self.numbers[dummy] = NumberWrapper(self.units.get_quantity(attributes['cellml:units']),
-                                            attributes['sympy.Number'])
+        assert 'sympy.Number' in attributes
+        assert isinstance(attributes['sympy.Number'], sympy.Number)
+        # self.numbers[dummy] = NumberWrapper(self.units.get_quantity(attributes['cellml:units']),
+        #                                     attributes['sympy.Number'])
+        self.variables[dummy] = DummyData('$number$%s' % dummy.name,
+                                          self.units.get_quantity(attributes['cellml:units']),
+                                          dummy,
+                                          number=attributes['sympy.Number'])
 
     def add_variable(self, *, name, units, initial_value=None,
                      public_interface=None, private_interface=None, **kwargs):
@@ -278,19 +271,19 @@ class Model(object):
                         # TODO: <variable> with initial_value is a parameter & variable without
                         # any variables on RHS is a parameter
                         # The variable is a constant or parameter of the model
-                        variable.type = 'parameter'
                         # TODO: Can we tell the difference between a parameter and a constant?
                         # TODO: change to "self." once collect units is in Model class
                         rhs_variable = self.find_variable({'dummy': rhs_symbol})
-                        assert len(rhs_variable) == 1
-                        unit = rhs_variable[0].units
-                        number = sympy.Dummy(str(variable.initial_value))
-                        f = sympy.Float(variable.initial_value)
-                        self.numbers[number] = NumberWrapper(unit, f)
-                        graph.add_node(rhs_symbol,
-                                       equation=sympy.Eq(rhs_symbol, number),
-                                       variable_type='parameter')
-                        graph.add_edge(rhs_symbol, lhs_symbol)
+                        if not rhs_variable[0].number is not None:
+                            variable.type = 'parameter'
+                            unit = rhs_variable[0].units
+                            number = sympy.Dummy(str(variable.initial_value))
+                            f = sympy.Float(variable.initial_value)
+                            self.add_number(number, {'cellml:units': str(unit), 'sympy.Number': f})
+                            graph.add_node(rhs_symbol,
+                                           equation=sympy.Eq(rhs_symbol, number),
+                                           variable_type='parameter')
+                            graph.add_edge(rhs_symbol, lhs_symbol)
 
         for node in graph.nodes:
             if not node.is_Derivative:
@@ -316,8 +309,9 @@ class Model(object):
                 # get any dummy-numbers
                 subs_dict = {}
                 for dummy in dummies:
-                    if dummy in self.numbers:
-                        subs_dict[dummy] = self.numbers[dummy].number
+                    dummy_data = self.get_dummy_data(dummy)
+                    if dummy_data.number is not None:
+                        subs_dict[dummy] = dummy_data.number
 
                 # if there are any dummy-numbers on the rhs
                 if subs_dict:
@@ -479,7 +473,7 @@ class Model(object):
     def get_symbols(self, expr):
         """Returns the symbols in an expression"""
         symbols = set()
-        if expr.is_Derivative or (expr.is_Dummy and expr not in self.numbers):
+        if expr.is_Derivative or (expr.is_Dummy and not self.get_dummy_data(expr).number):
             symbols.add(expr)
         else:
             for arg in expr.args:

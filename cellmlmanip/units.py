@@ -197,21 +197,18 @@ class UnitStore(object):
         dummy_info = defaultdict(dict)
         for symbol in symbols:
             symbol_info = self.model.find_variable({'dummy': symbol})
-            if len(symbol_info) == 1:
-                symbol_info = symbol_info.pop()
-                dummy_info[symbol]['units'] = symbol_info.units
+            assert len(symbol_info) == 1
+            symbol_info = symbol_info.pop()
+            dummy_info[symbol]['units'] = symbol_info.units
+            if symbol_info.number is not None:
+                dummy_info[symbol]['number'] = symbol_info.number
+            else:
                 if symbol_info.initial_value:
                     value = float(symbol_info.initial_value)
                     # we don't substitute symbols if value is 0 due to div by zero errors
                     # check what other impact this has
                     if value != 0.0:
                         subs[symbol] = value
-            else:
-                # dummy placeholders for numbers don't have variable information
-                assert symbol in self.model.numbers
-                dummy_info[symbol]['number'] = self.model.numbers[symbol].number
-                dummy_info[symbol]['units'] = self.model.numbers[symbol].units
-
         unit_calculator = UnitCalculator(self.ureg, dummy_info, subs)
 
         found = unit_calculator.traverse(expr)
