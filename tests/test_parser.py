@@ -23,7 +23,8 @@ class TestParser(object):
         return model
 
     def test_component_count(self, parser_instance, model):
-        assert len(parser_instance.components) == 21  # grep -c '<component ' test_simple_odes.cellml
+        # grep -c '<component ' test_simple_odes.cellml
+        assert len(parser_instance.components) == 21
 
     def test_group_relationships(self, parser_instance, model):
         assert parser_instance.components['circle_parent'].parent is None
@@ -36,7 +37,8 @@ class TestParser(object):
         assert 'circle_x_sibling' in parser_instance.components['circle_x_source'].siblings
         assert 'circle_x' == parser_instance.components['circle_x_sibling'].parent
 
-        assert 'circle_y_implementation' not in parser_instance.components['circle_parent'].encapsulated
+        assert 'circle_y_implementation' not in \
+               parser_instance.components['circle_parent'].encapsulated
 
         assert 'circle_parent' == parser_instance.components['circle_x'].parent
         assert 'circle_parent' == parser_instance.components['circle_y'].parent
@@ -155,8 +157,9 @@ class TestParser(object):
         printer = ExpressionWithUnitPrinter(symbol_info=symbol_info)
         # show equations
         for index, equation in enumerate(model.equations_x):
-            print('%3d. Eq(%s, %s)' % (index + 1, printer.doprint(equation.lhs),
-                                    printer.doprint(equation.rhs)))
+            print('%3d. Eq(%s, %s)' % (index + 1,
+                                       printer.doprint(equation.lhs),
+                                       printer.doprint(equation.rhs)))
             lhs_units = model.units.summarise_units(equation.lhs)
             rhs_units = model.units.summarise_units(equation.rhs)
             print('     %s %s %s' %
@@ -222,4 +225,3 @@ class TestParser(object):
         )
         model = load_model(example_cellml)
         assert len(list(model.equations_x)) == 2
-

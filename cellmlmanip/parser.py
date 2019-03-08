@@ -23,7 +23,7 @@ class XmlNs(Enum):
     RDF = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#'
 
 
-class ComponentNew:
+class _Component:
     def __init__(self, name):
         self.name = name
         self.parent = None
@@ -73,7 +73,7 @@ class Parser(object):
         """
         self.filepath: str = filepath
         self.model: Model = None
-        self.components: Dict[str, ComponentNew] = OrderedDict()
+        self.components: Dict[str, _Component] = OrderedDict()
 
     def parse(self) -> Model:
         """The main method that reads the XML file and extract the relevant parts of CellML model
@@ -125,14 +125,14 @@ class Parser(object):
         component_elements = model.findall(Parser.with_ns(XmlNs.CELLML, 'component'))
 
         # for each component defined in the model
-        for component_element in component_elements:
+        for element in component_elements:
             # create an instance of Component
-            self.components[component_element.get('name')] = ComponentNew(component_element.get('name'))
+            self.components[element.get('name')] = _Component(element.get('name'))
 
             # Add the child elements under <component>
-            variables = self._add_variables(component_element)
+            variables = self._add_variables(element)
             # print('variables:\n', variables)
-            self._add_maths(component_element, variables)
+            self._add_maths(element, variables)
 
     def _add_maths(self, component_element: etree.Element, symbol_lookup):
         """ <model> <component> <math> </component> </model> """
@@ -179,7 +179,8 @@ class Parser(object):
             attributes['_component_name'] = component_element.get('name')
 
             # mangle the name by prefixing with the component name
-            attributes['name'] = Parser._get_variable_name(component_element.get('name'), attributes['name'])
+            attributes['name'] = Parser._get_variable_name(component_element.get('name'),
+                                                           attributes['name'])
             variable_lookup_symbol[attributes['name']] = self.model.add_variable(**attributes)
         return variable_lookup_symbol
 
@@ -198,7 +199,10 @@ class Parser(object):
                     map_variables.append((child.attrib.get('variable_1'),
                                           child.attrib.get('variable_2')))
             for variable_0, variable_1 in map_variables:
-                source_target_connections.append(self._connect(map_component[0], variable_0, map_component[1], variable_1))
+                source_target_connections.append(self._connect(map_component[0],
+                                                               variable_0,
+                                                               map_component[1],
+                                                               variable_1))
 
         # confirm assignment of those variables that are not connected to anything else
         self.model.assigned_unconnected_variables()
@@ -329,4 +333,3 @@ class Parser(object):
             for component_a, component_b in itertools.product(siblings, siblings):
                 if component_a != component_b:
                     self.components[component_a].add_sibling(component_b)
-

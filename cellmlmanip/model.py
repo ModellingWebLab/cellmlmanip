@@ -2,9 +2,9 @@
 Classes representing a CellML model and its components
 """
 import logging
-from collections import OrderedDict, defaultdict, deque
+from collections import OrderedDict
 from io import StringIO
-from typing import Dict, List, Set, Tuple
+from typing import Dict, List
 
 import networkx as nx
 import rdflib
@@ -112,7 +112,8 @@ class Model(object):
         self.numbers_x[dummy] = NumberWrapper(self.units.get_quantity(attributes['cellml:units']),
                                               attributes['sympy.Number'])
 
-    def add_variable(self, *, name, units, initial_value=None, public_interface=None, private_interface=None, **kwargs):
+    def add_variable(self, *, name, units, initial_value=None,
+                     public_interface=None, private_interface=None, **kwargs):
         assert name not in self.variables_x, 'Variable %s already exists' % name
 
         variable = Variable(name=name,
@@ -599,10 +600,10 @@ class Model(object):
         for variable in self.variables_x.values():
             matched = True
             for search_key, search_value in search_dict.items():
-                if not (hasattr(variable, search_key) and getattr(variable, search_key) == search_value):
+                if not (hasattr(variable, search_key) and
+                        getattr(variable, search_key) == search_value):
                     matched = False
                     break
             if matched:
                 matches.append(variable)
         return matches
-
