@@ -78,7 +78,7 @@ class Model(object):
         self.rdf: rdflib.Graph = rdflib.Graph()
         self.graph: nx.DiGraph = None
 
-        self.variables: Dict[sympy.Dummy, DummyData] = OrderedDict()
+        self.dummy_data: Dict[sympy.Dummy, DummyData] = OrderedDict()
         self.name_to_symbol: Dict[str, sympy.Dummy] = dict()
 
         self.equations: List[sympy.Eq] = list()
@@ -100,14 +100,14 @@ class Model(object):
         assert isinstance(dummy, sympy.Dummy)
         assert 'sympy.Number' in attributes
         assert isinstance(attributes['sympy.Number'], sympy.Number)
-        self.variables[dummy] = DummyData(DummyData.NUM_NAME_PREFIX + dummy.name,
-                                          self.units.get_quantity(attributes['cellml:units']),
-                                          dummy,
-                                          number=attributes['sympy.Number'])
+        self.dummy_data[dummy] = DummyData(DummyData.NUM_NAME_PREFIX + dummy.name,
+                                           self.units.get_quantity(attributes['cellml:units']),
+                                           dummy,
+                                           number=attributes['sympy.Number'])
 
     def add_variable(self, *, name, units, initial_value=None,
                      public_interface=None, private_interface=None, **kwargs):
-        assert name not in self.variables, 'Variable %s already exists' % name
+        assert name not in self.dummy_data, 'Variable %s already exists' % name
 
         variable = DummyData(name=name,
                              units=self.units.get_quantity(units),
@@ -116,16 +116,16 @@ class Model(object):
                              public_interface=public_interface,
                              private_interface=private_interface,
                              **kwargs)
-        self.variables[variable.dummy] = variable
+        self.dummy_data[variable.dummy] = variable
         self.name_to_symbol[variable.name] = variable.dummy
         return variable.dummy
 
     def get_dummy_data(self, name_or_instance: Union[str, sympy.Dummy]) -> DummyData:
         if isinstance(name_or_instance, str):
-            return self.variables[self.name_to_symbol[name_or_instance]]
+            return self.dummy_data[self.name_to_symbol[name_or_instance]]
         else:
             assert isinstance(name_or_instance, sympy.Dummy)
-            return self.variables[name_or_instance]
+            return self.dummy_data[name_or_instance]
 
     def connect_variables(self, source_variable: str, target_variable: str):
         """Given the source and target component and variable, create a connection by assigning
@@ -475,7 +475,7 @@ class Model(object):
         matches = []
 
         # for each component in this model
-        for variable in self.variables.values():
+        for variable in self.dummy_data.values():
             matched = True
             for search_key, search_value in search_dict.items():
                 if not (hasattr(variable, search_key) and
