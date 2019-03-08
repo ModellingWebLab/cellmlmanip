@@ -23,39 +23,37 @@ class TestHodgkin:
 
     def test_counts(self, model):
         # https://models.cellml.org/exposure/5d116522c3b43ccaeb87a1ed10139016/hodgkin_huxley_1952_variant01.cellml/cellml_math
-        assert len(model.components) == 8
-        eq_count = len(list(model.equations))
-        assert eq_count == 17
+        assert len(model.equations_x) == 17
 
     def test_connections(self, model):
-        target = model.components['sodium_channel'].variables['h']
-        source = model.components['sodium_channel_h_gate'].variables['h']
-        assert target['assignment'] == source['dummy']
+        target = model.variables_x['sodium_channel$h']
+        source = model.variables_x['sodium_channel_h_gate$h']
+        assert target.assignment == source.dummy
 
     def test_equation_units(self, model):
-        equation = model.components['sodium_channel'].equations[0]
+        equation = model.equations_x[2]
         lhs_units = model.units.summarise_units(equation.lhs)
         assert lhs_units == model.units.ureg.millivolt
 
     def test_check_left_right_units(self, model):
-        for e in model.equations:
+        for e in model.equations_x:
             model.check_left_right_units_equal(e)
 
     def test_equation_graph(self, graph, model):
         assert len(graph.nodes) == 32
 
-        free_variable = model.find_variable({'type': 'free'})
+        free_variable = model.find_variable_x({'type': 'free'})
         assert len(free_variable) == 1
         free_variable = free_variable[0]
-        assert free_variable['cmeta_id'] == 'time'
-        assert graph.node[free_variable['dummy']]['variable_type'] == 'free'
-        assert free_variable['cmeta_id'] == graph.node[free_variable['dummy']]['cmeta_id']
+        assert free_variable.cmeta_id == 'time'
+        assert graph.node[free_variable.dummy]['variable_type'] == 'free'
+        assert free_variable.cmeta_id == graph.node[free_variable.dummy]['cmeta_id']
 
-        state_variables = model.find_variable({'type': 'state'})
+        state_variables = model.find_variable_x({'type': 'state'})
         assert len(state_variables) == 4
         state_variable = state_variables[0]
-        assert graph.node[state_variable['dummy']]['variable_type'] == 'state'
-        assert state_variable['cmeta_id'] == graph.node[state_variable['dummy']]['cmeta_id']
+        assert graph.node[state_variable.dummy]['variable_type'] == 'state'
+        assert state_variable.cmeta_id == graph.node[state_variable.dummy]['cmeta_id']
 
         sorted_nodes = nx.lexicographical_topological_sort(graph, key=str)
 
@@ -69,15 +67,15 @@ class TestHodgkin:
         for node in sorted_nodes:
             # derivative nodes depend on state and free variable nodes
             if not node.is_Derivative:
-                variable = model.find_variable({'dummy': node})
+                variable = model.find_variable_x({'dummy': node})
                 assert len(variable) == 1
                 for key in ['cmeta_id', 'name']:
-                    if key in variable[0]:
-                        assert variable[0][key] == graph.nodes[node][key]
+                    if getattr(variable[0], key, None):
+                        assert getattr(variable[0], key) == graph.nodes[node][key]
 
                 # only state variables should have initial_values
                 if graph.nodes[node].get('variable_type', '') == 'state':
-                    assert (float(variable[0]['initial_value']) ==
+                    assert (float(variable[0].initial_value) ==
                             float(graph.nodes[node]['initial_value']))
                 else:
                     assert 'initial_value' not in graph.nodes[node]
@@ -90,12 +88,12 @@ class TestHodgkin:
         #                        '/Users/tamuri/Desktop/path.dot')
 
         # free variable should not depend on anything
-        time_dummy = free_variable['dummy']
+        time_dummy = free_variable.dummy
         assert graph.in_degree(time_dummy) == 0
 
         # state variables should not depend on anything
         for variable in state_variables:
-            dummy = variable['dummy']
+            dummy = variable.dummy
             assert graph.in_degree(dummy) == 0
 
         # check a node for dependencies
