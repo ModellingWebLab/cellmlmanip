@@ -99,9 +99,9 @@ class Model(object):
     def add_number(self, dummy: sympy.Dummy, attributes: Dict):
         """Add metadata about a dummy symbol that represents a number in equations"""
         assert isinstance(dummy, sympy.Dummy)
+        assert dummy not in self.dummy_data
         assert 'sympy.Number' in attributes
         assert isinstance(attributes['sympy.Number'], sympy.Number)
-        assert dummy not in self.dummy_data
 
         name = '%sNum%s%s' % (SYMPY_SYMBOL_DELIMITER, dummy.dummy_index, SYMPY_SYMBOL_DELIMITER)
 
@@ -114,7 +114,7 @@ class Model(object):
                      public_interface=None, private_interface=None, **kwargs):
         """Add information about a variable that represents a symbol in equations. Returns the
         sympy.Dummy created by the model to represent the variable in equations"""
-        assert name not in self.dummy_data, 'Variable %s already exists' % name
+        assert name not in self.name_to_symbol, 'Variable %s already exists' % name
 
         variable = DummyData(name=name,
                              units=self.units.get_quantity(units),
