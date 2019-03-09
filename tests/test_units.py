@@ -1,7 +1,7 @@
 import pytest
 import sympy
 
-from cellmlmanip.units import UnitStore, UnitCalculator
+from cellmlmanip.units import UnitStore, UnitCalculator, ExpressionWithUnitPrinter
 
 
 class TestUnits(object):
@@ -110,6 +110,9 @@ class TestUnits(object):
         assert unit_calculator.traverse(sympy.Piecewise((a, x < 1),
                                                         (a + a, x > 1),
                                                         (3 * a, True))).units == ureg.meter
+        assert unit_calculator.traverse(sympy.floor(x)).units == ureg.kilogram
+        result = unit_calculator.traverse(sympy.floor(12.5) * a)
+        assert result.units == ureg.meter and result.magnitude == 12.0*a
 
         # bad unit expressions
         assert unit_calculator.traverse(sympy.exp(3 * c)) is None
@@ -117,3 +120,21 @@ class TestUnits(object):
         assert unit_calculator.traverse(a ** _1) is None
         assert unit_calculator.traverse(sympy.Piecewise((a, x < 1), (b, x > 1), (c, True))) is None
 
+    def test_expression_printer(self, quantity_store):
+        ureg = quantity_store.ureg
+        a, b, c, x, y, z, _1, _2 = [sympy.Dummy(x) for x in ['a', 'b', 'c', 'x', 'y', 'z', '1', '2']]
+        symbol_info = {
+            a: {'units': ureg.meter},
+            b: {'units': ureg.second},
+            c: {'units': ureg.gram},
+            x: {'units': ureg.kilogram},
+            y: {'units': ureg.volt},
+            z: {'units': ureg.ampere},
+            _1: {'units': ureg.kelvin, 'number': sympy.Float(1.0)},
+            _2: {'units': ureg.dimensionless, 'number': sympy.Integer(2)},
+        }
+        printer = ExpressionWithUnitPrinter(symbol_info)
+        assert printer.doprint(a * a) == 'a[meter]**2'
+        assert printer.doprint(a/b) == 'a[meter]/b[second]'
+        assert printer.doprint(_2 * y) == '2.000000[dimensionless]*y[volt]'
+        assert printer.doprint(sympy.Derivative(a, b)) == 'Derivative(a[meter], b[second])'
