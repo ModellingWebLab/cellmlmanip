@@ -1,7 +1,8 @@
 import pytest
 import sympy
 
-from cellmlmanip.units import UnitStore, UnitCalculator, ExpressionWithUnitPrinter
+from cellmlmanip.units import (ExpressionWithUnitPrinter, UnitCalculator,
+                               UnitStore)
 
 
 class TestUnits(object):
