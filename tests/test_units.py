@@ -103,9 +103,17 @@ class TestUnits(object):
         unit_calculator = UnitCalculator(ureg, symbol_info, symbol_subs)
 
         assert unit_calculator.traverse(a + a + a + a).units == ureg.meter
-
         assert unit_calculator.traverse((a * a) / b).units == ureg.meter**2 / ureg.second
-
         assert unit_calculator.traverse(a**_2).units == ureg.meter**2
+        assert unit_calculator.traverse(sympy.sqrt(c ** 2)).units == ureg.gram
+        assert unit_calculator.traverse(sympy.Abs(-2*y)).units == ureg.volt
+        assert unit_calculator.traverse(sympy.Piecewise((a, x < 1),
+                                                        (a + a, x > 1),
+                                                        (3 * a, True))).units == ureg.meter
 
+        # bad unit expressions
         assert unit_calculator.traverse(sympy.exp(3 * c)) is None
+        assert unit_calculator.traverse(a + b + c) is None
+        assert unit_calculator.traverse(a ** _1) is None
+        assert unit_calculator.traverse(sympy.Piecewise((a, x < 1), (b, x > 1), (c, True))) is None
+
