@@ -43,7 +43,6 @@ class TestParser(object):
         assert 'circle_parent' == parser_instance.components['circle_y'].parent
 
     def test_equations_count(self, model):
-        print(len(model.equations))
         # Include 19 equations from model + 2 equations added by parser for unit conversion
         assert len(model.equations) == 21  # NOTE: determined by eye!
 
@@ -157,6 +156,10 @@ class TestParser(object):
                 symbol_info[var.dummy]['number'] = var.number
         printer = ExpressionWithUnitPrinter(symbol_info=symbol_info)
 
+        # show metadata for dummy instances in equations
+        for index, key in enumerate(model.dummy_data.keys()):
+            print('%3d. %s' % (index, str(model.dummy_data[key])))
+
         # show equations
         for index, equation in enumerate(model.equations):
             print('%3d. Eq(%s, %s)' % (index + 1,
@@ -168,6 +171,9 @@ class TestParser(object):
                   (lhs_units,
                    '==' if model.units.is_unit_equal(rhs_units, lhs_units) else '!=',
                    rhs_units))
+
+        dummy_instances, not_found = model.check_dummy_instances()
+        assert len(not_found) == 0
 
     def test_connect_to_hidden_component(self):
         example_cellml = os.path.join(

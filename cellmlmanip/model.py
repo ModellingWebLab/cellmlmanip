@@ -23,10 +23,8 @@ SYMPY_SYMBOL_DELIMITER = '$'
 
 
 class DummyData(object):
-    """Represents a <variable> in a CellML model. A component may contain any number of <variable>
-    elements, which define variables that may be mathematically related in the equation blocks
-    contained in the component. """
-    NUM_NAME_PREFIX = SYMPY_SYMBOL_DELIMITER + 'NUM' + SYMPY_SYMBOL_DELIMITER
+    """Holds information about a Dummy placeholder in set of Sympy equations. Dummy symbols are
+    used to represent variables from the CellMl model or as placeholders for numbers."""
 
     def __init__(self, name, units, dummy, initial_value=None,
                  public_interface=None, private_interface=None, number=None,
@@ -39,7 +37,8 @@ class DummyData(object):
         self.private_interface = private_interface
         self.cmeta_id = kwargs.get('cmeta_id', None)
 
-        # The sympy.Dummy symbol representing this variable in equations
+        # The instance of sympy.Dummy representing this variable in equations
+        assert isinstance(dummy, sympy.Dummy)
         self.dummy = dummy
 
         # The sympy.Dummy assigned in place of this variable (via a connection)
@@ -54,8 +53,8 @@ class DummyData(object):
         self.type = None
 
         if number is not None:
-            assert name.startswith(DummyData.NUM_NAME_PREFIX)
             assert isinstance(number, sympy.Number)
+            self.type = 'number'
 
         self.number = number
 
@@ -93,20 +92,28 @@ class Model(object):
             self.units.add_custom_unit(units_name, unit_attributes)
 
     def add_equation(self, equation: sympy.Eq):
+        """Add an equation to this model. Equation must be a Sympy equality"""
         assert isinstance(equation, sympy.Eq), 'Equation expression must be equality'
         self.equations.append(equation)
 
     def add_number(self, dummy: sympy.Dummy, attributes: Dict):
+        """Add metadata about a dummy symbol that represents a number in equations"""
         assert isinstance(dummy, sympy.Dummy)
         assert 'sympy.Number' in attributes
         assert isinstance(attributes['sympy.Number'], sympy.Number)
-        self.dummy_data[dummy] = DummyData(DummyData.NUM_NAME_PREFIX + dummy.name,
+        assert dummy not in self.dummy_data
+
+        name = '%sNum%s%s' % (SYMPY_SYMBOL_DELIMITER, dummy.dummy_index, SYMPY_SYMBOL_DELIMITER)
+
+        self.dummy_data[dummy] = DummyData(name,
                                            self.units.get_quantity(attributes['cellml:units']),
                                            dummy,
                                            number=attributes['sympy.Number'])
 
     def add_variable(self, *, name, units, initial_value=None,
                      public_interface=None, private_interface=None, **kwargs):
+        """Add information about a variable that represents a symbol in equations. Returns the
+        sympy.Dummy created by the model to represent the variable in equations"""
         assert name not in self.dummy_data, 'Variable %s already exists' % name
 
         variable = DummyData(name=name,
@@ -121,11 +128,33 @@ class Model(object):
         return variable.dummy
 
     def get_dummy_data(self, name_or_instance: Union[str, sympy.Dummy]) -> DummyData:
+        """Look up dummy data for given symbol. Accepts a string name or instance of sympy.Dummy"""
         if isinstance(name_or_instance, str):
             return self.dummy_data[self.name_to_symbol[name_or_instance]]
-        else:
-            assert isinstance(name_or_instance, sympy.Dummy)
-            return self.dummy_data[name_or_instance]
+
+        assert isinstance(name_or_instance, sympy.Dummy)
+        return self.dummy_data[name_or_instance]
+
+    def check_dummy_instances(self):
+        """Check that every symbol in list of equations has a metadata entry. Returns two lists:
+        ({set of dummy instances}, {dummy instances without metadata entry}"""
+
+        # collect list of all dummy instances
+        dummy_instances = set()
+        not_found = set()
+
+        for index, equation in enumerate(self.equations):
+            atoms = equation.atoms()
+            for atom in atoms:
+                # we allow NegativeOne because it is used by sympy to perform division
+                # and represent negative numbers
+                if not isinstance(atom, sympy.numbers.NegativeOne):
+                    dummy_instances.add(atom)
+                    if atom not in self.dummy_data:
+                        logger.critical('%s not found for eq. %s (%s)' % (atom, index, equation))
+                        not_found.add(atom)
+
+        return dummy_instances, not_found
 
     def connect_variables(self, source_variable: str, target_variable: str):
         """Given the source and target component and variable, create a connection by assigning
@@ -268,11 +297,12 @@ class Model(object):
                         if rhs_variable.number is None:
                             variable.type = 'parameter'
                             unit = rhs_variable.units
-                            number = sympy.Dummy(str(variable.initial_value))
-                            f = sympy.Float(variable.initial_value)
-                            self.add_number(number, {'cellml:units': str(unit), 'sympy.Number': f})
+                            dummy = sympy.Dummy(str(variable.initial_value))
+                            number = sympy.Float(variable.initial_value)
+                            self.add_number(dummy, {'cellml:units': str(unit),
+                                                    'sympy.Number': number})
                             graph.add_node(rhs_symbol,
-                                           equation=sympy.Eq(rhs_symbol, number),
+                                           equation=sympy.Eq(rhs_symbol, dummy),
                                            variable_type='parameter')
                             graph.add_edge(rhs_symbol, lhs_symbol)
 
@@ -394,7 +424,7 @@ class Model(object):
             (namespace_uri, local_name))
         if len(symbols) == 1:
             return symbols[0]
-        elif len(symbols) == 0:
+        elif not symbols:
             raise KeyError(
                 'No variable annotated with {' + namespace_uri + '}'
                 + local_name + ' found.')
@@ -472,6 +502,8 @@ class Model(object):
         return symbols
 
     def find_variable(self, search_dict):
+        """Searches for variables by attributes in their DummyData record. Pass a dictionary of
+        {name: value}, where name is one the attributes in DummyData """
         matches = []
 
         # for each component in this model
