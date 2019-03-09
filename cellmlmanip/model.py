@@ -44,11 +44,11 @@ class DummyData(object):
         # The sympy.Dummy assigned in place of this variable (via a connection)
         # If they don't have a public or private 'in' interface
         if private_interface != 'in' and public_interface != 'in':
-            # This variable will not connect to anything
-            self.assignment = self.dummy
+            # This variable is assigned to itself
+            self.assigned_to = self.dummy
         else:
             # This variable will be connected to another variable
-            self.assignment = None
+            self.assigned_to = None
 
         self.type = None
 
@@ -171,32 +171,32 @@ class Model(object):
         target_variable = self.get_dummy_data(target_variable)
 
         # If the source variable has already been assigned a final symbol
-        if source_variable.assignment:
+        if source_variable.assigned_to:
 
-            if target_variable.assignment:
+            if target_variable.assigned_to:
                 raise ValueError('Target already assigned to %s before assignment to %s' %
-                                 (target_variable.assignment, source_variable.assignment))
+                                 (target_variable.assigned_to, source_variable.assigned_to))
 
             # If source/target variable is in the same unit
             if source_variable.units == target_variable.units:
                 # Direct substitution is possible
-                target_variable.assignment = source_variable.assignment
+                target_variable.assigned_to = source_variable.assigned_to
                 # everywhere the target variable is used, replace with source variable
                 for index, equation in enumerate(self.equations):
                     self.equations[index] = equation.xreplace(
-                        {target_variable.dummy: source_variable.assignment}
+                        {target_variable.dummy: source_variable.assigned_to}
                     )
             else:
                 # Requires a conversion, so we add an equation assigning the target dummy variable
                 # to the source variable
                 self.equations.append(
                     # TODO: do unit conversion here?
-                    sympy.Eq(target_variable.dummy, source_variable.assignment)
+                    sympy.Eq(target_variable.dummy, source_variable.assigned_to)
                 )
                 logger.info('Connection req. unit conversion: %s', self.equations[-1])
 
                 # The assigned symbol for this variable is itself
-                target_variable.assignment = target_variable.dummy
+                target_variable.assigned_to = target_variable.dummy
             logger.debug('Updated target: %s', target_variable)
             return True
         # The source variable has not been assigned a symbol, so we can't make this connection
