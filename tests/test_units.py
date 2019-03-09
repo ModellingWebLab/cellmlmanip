@@ -85,7 +85,8 @@ class TestUnits(object):
 
     def test_unit_calculator(self, quantity_store):
         ureg = quantity_store.ureg
-        a, b, c, x, y, z, _1, _2 = [sympy.Dummy(x) for x in ['a', 'b', 'c', 'x', 'y', 'z', '1', '2']]
+        a, b, c, x, y, z, _1, _2 = [sympy.Dummy(x)
+                                    for x in ['a', 'b', 'c', 'x', 'y', 'z', '1', '2']]
 
         symbol_info = {
             a: {'units': ureg.meter},
@@ -122,7 +123,8 @@ class TestUnits(object):
 
     def test_expression_printer(self, quantity_store):
         ureg = quantity_store.ureg
-        a, b, c, x, y, z, _1, _2 = [sympy.Dummy(x) for x in ['a', 'b', 'c', 'x', 'y', 'z', '1', '2']]
+        a, b, c, x, y, z, _1, _2 = [sympy.Dummy(x)
+                                    for x in ['a', 'b', 'c', 'x', 'y', 'z', '1', '2']]
         symbol_info = {
             a: {'units': ureg.meter},
             b: {'units': ureg.second},

@@ -11,7 +11,7 @@ import sympy
 from lxml import etree
 
 from cellmlmanip import mathml2sympy
-from cellmlmanip.model import SYMPY_SYMBOL_DELIMITER, DummyData, Model
+from cellmlmanip.model import SYMPY_SYMBOL_DELIMITER, Model
 
 
 class XmlNs(Enum):
