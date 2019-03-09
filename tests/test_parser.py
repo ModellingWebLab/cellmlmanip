@@ -131,12 +131,12 @@ class TestParser(object):
                 invalid_rhs_lhs_count += 1
                 new_rhs = model.units.convert_to(1*rhs_units, lhs_units)
                 # Create a new equality with the converted RHS and replace original
-                new_dummy = sympy.Dummy(str(new_rhs.magnitude))
-                model.add_number(new_dummy,
-                                 {'cellml:units': str(((1 * lhs_units) / (1 * rhs_units)).units),
+                conversion_factor = sympy.Dummy(str(new_rhs.magnitude))
+                model.add_number(conversion_factor,
+                                 {'cellml:units': str(lhs_units/rhs_units),
                                   'sympy.Number': sympy.Float(new_rhs.magnitude)}
                                  )
-                equation = sympy.Eq(equation.lhs, equation.rhs * new_dummy)
+                equation = sympy.Eq(equation.lhs, equation.rhs * conversion_factor)
                 # Replace the current equation with the same equation multiplied by factor
                 model.equations[index] = equation
                 lhs_units = model.units.summarise_units(equation.lhs)
