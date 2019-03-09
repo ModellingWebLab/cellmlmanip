@@ -151,11 +151,12 @@ class TestParser(object):
         print()
         from cellmlmanip.units import ExpressionWithUnitPrinter
         symbol_info = dict()
-        for var in model.variables.values():
+        for var in model.dummy_data.values():
             symbol_info[var.dummy] = {'units': var.units}
             if var.number is not None:
                 symbol_info[var.dummy]['number'] = var.number
         printer = ExpressionWithUnitPrinter(symbol_info=symbol_info)
+
         # show equations
         for index, equation in enumerate(model.equations):
             print('%3d. Eq(%s, %s)' % (index + 1,
