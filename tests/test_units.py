@@ -1,6 +1,7 @@
 import pytest
+import sympy
 
-from cellmlmanip.units import UnitStore
+from cellmlmanip.units import UnitStore, UnitCalculator
 
 
 class TestUnits(object):
@@ -21,6 +22,7 @@ class TestUnits(object):
         'milli_mole': [{'prefix': 'milli', 'units': 'mole'}],
         'millisecond': [{'prefix': 'milli', 'units': 'second'}],
         'ms_power_prefix': [{'prefix': '-3', 'units': 'second'}],
+        'ms_with_multiplier': [{'multiplier': 0.001, 'units': 'second'}],
     }
 
     @pytest.fixture(scope="class")
@@ -66,6 +68,11 @@ class TestUnits(object):
             unit_registry.millisecond
         )
 
+        assert quantity_store.is_unit_equal(
+            quantity_store.get_quantity('ms_with_multiplier'),
+            unit_registry.millisecond
+        )
+
     def test_conversion_factor(self, quantity_store):
         ureg = quantity_store.ureg
         assert quantity_store.get_conversion_factor(1*ureg.ms, ureg.second) == 0.001
@@ -76,14 +83,29 @@ class TestUnits(object):
             quantity_store.get_quantity('mole')
         ) == 0.001
 
-    def test_unit_extraction(self, quantity_store):
-        pass
-        # TODO: test pint unit extraction from sympy expressions
-        # kq = (5*units.mile/(2*units.hour + 10*units.minute))**(8*units.gram)
-        # assert model.units.summarise_units(eq) == \
-        #        (units.mile/(units.hour + units.minute))**units.gram
+    def test_unit_calculator(self, quantity_store):
+        ureg = quantity_store.ureg
+        a, b, c, x, y, z, _1, _2 = [sympy.Dummy(x) for x in ['a', 'b', 'c', 'x', 'y', 'z', '1', '2']]
 
-        # millivolts = units.Quantity('millivolts', units.voltage, units.milli * units.volts, 'mV')
-        # x, y = sympy.symbols('x y')
-        # eq = (millivolts / units.millisecond)*sympy.Derivative(x, y)
-        # assert model.units.summarise_units(eq) == (millivolts / units.milliseconds)
+        symbol_info = {
+            a: {'units': ureg.meter},
+            b: {'units': ureg.second},
+            c: {'units': ureg.gram},
+            x: {'units': ureg.kilogram},
+            y: {'units': ureg.volt},
+            z: {'units': ureg.ampere},
+            _1: {'units': ureg.kelvin, 'number': sympy.Float(1.0)},
+            _2: {'units': ureg.dimensionless, 'number': sympy.Integer(2)},
+        }
+
+        symbol_subs = {}
+
+        unit_calculator = UnitCalculator(ureg, symbol_info, symbol_subs)
+
+        assert unit_calculator.traverse(a + a + a + a).units == ureg.meter
+
+        assert unit_calculator.traverse((a * a) / b).units == ureg.meter**2 / ureg.second
+
+        assert unit_calculator.traverse(a**_2).units == ureg.meter**2
+
+        assert unit_calculator.traverse(sympy.exp(3 * c)) is None
