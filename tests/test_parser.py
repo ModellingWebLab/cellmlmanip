@@ -175,8 +175,7 @@ class TestParser(object):
         p = parser.Parser(example_cellml)
 
         with pytest.raises(ValueError) as value_info:
-            model = p.parse()
-            model.make_connections()
+            p.parse()
 
         assert 'Cannot determine the source & target' in str(value_info.value)
 
