@@ -26,7 +26,7 @@ class DummyData(object):
     """Represents a <variable> in a CellML model. A component may contain any number of <variable>
     elements, which define variables that may be mathematically related in the equation blocks
     contained in the component. """
-    NUM_NAME_PREFIX = '{d}NUMBER{d}'.format_map({'d': SYMPY_SYMBOL_DELIMITER})
+    NUM_NAME_PREFIX = SYMPY_SYMBOL_DELIMITER + 'NUM' + SYMPY_SYMBOL_DELIMITER
 
     def __init__(self, name, units, dummy, initial_value=None,
                  public_interface=None, private_interface=None, number=None,
@@ -93,7 +93,7 @@ class Model(object):
             self.units.add_custom_unit(units_name, unit_attributes)
 
     def add_equation(self, equation: sympy.Eq):
-        assert isinstance(equation, sympy.Eq)
+        assert isinstance(equation, sympy.Eq), 'Equation expression must be equality'
         self.equations.append(equation)
 
     def add_number(self, dummy: sympy.Dummy, attributes: Dict):

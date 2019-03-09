@@ -13,7 +13,6 @@ from typing import Dict, List
 
 import pint
 import sympy
-from pint import UndefinedUnitError
 from sympy.printing.lambdarepr import LambdaPrinter
 
 
@@ -108,7 +107,7 @@ class UnitStore(object):
         try:
             getattr(self.ureg, name)
             return True
-        except UndefinedUnitError:
+        except pint.UndefinedUnitError:
             return False
 
     def _define_pint_unit(self, definition_string):
@@ -282,31 +281,31 @@ class UnitCalculator(object):
         if expr.is_Symbol:
             # is this symbol is a placeholder for a number
             if 'number' in self.symbols[expr]:
-                r = float(self.symbols[expr]['number']) * self.symbols[expr]['units']
+                out = float(self.symbols[expr]['number']) * self.symbols[expr]['units']
             else:
                 # if we need to replace this symbol for evaluating units
                 if expr in self.subs:
-                    r = self.ureg.Quantity(self.subs[expr], self.symbols[expr]['units'])
+                    out = self.ureg.Quantity(self.subs[expr], self.symbols[expr]['units'])
                 else:
                     # otherwise, straightforward Quantity
-                    r = self.ureg.Quantity(expr, self.symbols[expr]['units'])
-            return r
+                    out = self.ureg.Quantity(expr, self.symbols[expr]['units'])
+            return out
         elif expr.is_Integer:
-            r = int(expr) * self.ureg.dimensionless
-            return r
+            out = int(expr) * self.ureg.dimensionless
+            return out
         elif expr.is_Rational:
             # NOTE: can't send back Rational(1,2) * u.dimensionless
             # Used by Sympy for root e.g. sqrt(x) == Pow(x, Rational(1,2))
-            r = float(expr) * self.ureg.dimensionless
-            return r
+            out = float(expr) * self.ureg.dimensionless
+            return out
 
         elif expr.is_Mul:
             # There are no restrictions on the units of operands
             # The result of this operator has units that are the product of the units on
             # the operands. This product may be simplified according to the rules outlined
             # in Appendix C.3.1.
-            r = reduce(mul, quantity_per_arg)
-            return r
+            out = reduce(mul, quantity_per_arg)
+            return out
 
         # Pow is used by Sympy for exponentiating, roots and division
         elif expr.is_Pow:
@@ -328,31 +327,31 @@ class UnitCalculator(object):
             if base.units == self.ureg.dimensionless:
                 return self.ureg.Quantity(base.magnitude**exponent.magnitude,
                                           self.ureg.dimensionless)
-            else:
-                # if base is not dimensionless, raise quantity (magnitude and unit) to power
-                return base ** exponent
+
+            # base is not dimensionless, raise quantity (magnitude and unit) to power
+            return base ** exponent
 
         elif expr.is_Add:
             # These operators, if applied to more than one operand, require all of their operands
             # to have either equivalent units references, as defined in Appendix C.2.1, or to
             # reference units that have dimensional equivalence, as defined in Appendix C.2.2.
             if self._check_unit_of_quantities_equal(quantity_per_arg):
-                r = quantity_per_arg[0]
-                return r
-            else:
-                logger.warning('Add args do not have the same unit.')
-                return None
+                out = quantity_per_arg[0]
+                return out
+
+            logger.warning('Add args do not have the same unit.')
+            return None
 
         elif expr.is_Piecewise:
             # If unit of each expression in piecewise is the same
             if self._check_unit_of_quantities_equal(quantity_per_arg):
                 # TODO: descend into each condition, and check units are compatible
                 # return one of them for the unit arithmetic
-                r = quantity_per_arg[0]
-                return r
-            else:
-                logger.warning('Piecewise args do not have the same unit.')
-                return None
+                out = quantity_per_arg[0]
+                return out
+
+            logger.warning('Piecewise args do not have the same unit.')
+            return None
 
         elif expr.is_Function:
             # List of functions I've checked
@@ -365,14 +364,14 @@ class UnitCalculator(object):
             elif expr.func == sympy.floor:
                 if isinstance(quantity_per_arg[0].magnitude, sympy.Expr):
                     return 1 * quantity_per_arg[0].units
-                else:
-                    return math.floor(quantity_per_arg[0].magnitude) * quantity_per_arg[0].units
+
+                return math.floor(quantity_per_arg[0].magnitude) * quantity_per_arg[0].units
             elif expr.func == sympy.log:
                 if self._is_dimensionless(quantity_per_arg[0]):
                     return 1 * self.ureg.dimensionless
-                else:
-                    raise ValueError('log args not dimensionless (%s)',
-                                     [x.units for x in quantity_per_arg])
+
+                raise ValueError('log args not dimensionless (%s)' %
+                                 [x.units for x in quantity_per_arg])
             elif expr.func == sympy.exp:
                 # requires operands to have units of dimensionless.
                 # result of these has units of dimensionless.
@@ -382,12 +381,12 @@ class UnitCalculator(object):
                         # return the exponential of the float as dimensionless
                         return self.ureg.Quantity(math.exp(quantity_per_arg[0].magnitude),
                                                   self.ureg.dimensionless)
-                    else:
-                        # magnitude contains an unresolved symbol, we lose it here!
-                        return 1 * self.ureg.dimensionless
-                else:
-                    logger.critical('Exp operand is not dimensionless: %s', expr)
-                    return None
+
+                    # magnitude contains an unresolved symbol, we lose it here!
+                    return 1 * self.ureg.dimensionless
+
+                logger.critical('Exp operand is not dimensionless: %s', expr)
+                return None
 
             # if the function has exactly one dimensionless argument
             if len(quantity_per_arg) == 1 and self._is_dimensionless(quantity_per_arg[0]):
@@ -396,8 +395,8 @@ class UnitCalculator(object):
         elif expr == sympy.pi:
             return math.pi * self.ureg.dimensionless
         elif expr.is_Derivative:
-            r = quantity_per_arg[0] / quantity_per_arg[1]
-            return r
+            out = quantity_per_arg[0] / quantity_per_arg[1]
+            return out
 
         raise NotImplementedError('TODO TODO TODO %s %s' % (expr, sympy.srepr(expr)))
 
@@ -416,12 +415,12 @@ class ExpressionWithUnitPrinter(LambdaPrinter):
     def _get_dummy_number(self, expr):
         if 'number' in self.symbols[expr]:
             return self.symbols[expr]['number']
-        else:
-            return None
+
+        return None
 
     def _print_Dummy(self, expr):
         number = self._get_dummy_number(expr)
-        if number:
+        if number is not None:
             return '%f[%s]' % (number, str(self._get_dummy_unit(expr)))
 
         return '%s[%s]' % (expr.name, str(self._get_dummy_unit(expr)))
