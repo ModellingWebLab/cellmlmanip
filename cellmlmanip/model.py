@@ -66,7 +66,8 @@ class MetaDummy(object):
 
 
 class Model(object):
-    """Holds all information about a CellML model and exposes it for manipulation (intention!)
+    """An unrolled representation of a CellML model, using list of equations and metadata
+    (e.g. units) about symbols used in those equations
     """
     def __init__(self, name: str) -> None:
         """Create a new instance of Model object
@@ -96,7 +97,8 @@ class Model(object):
         assert isinstance(equation, sympy.Eq), 'Equation expression must be equality'
         self.equations.append(equation)
 
-    def add_number(self, *, number: sympy.Number, units: str, dummy: sympy.Dummy=None):
+    def add_number(self, *,
+                   number: sympy.Number, units: str, dummy: sympy.Dummy = None) -> sympy.Dummy:
         """Add metadata about a dummy symbol that represents a number in equations"""
         assert isinstance(number, sympy.Number)
 
@@ -114,22 +116,27 @@ class Model(object):
 
         return self.dummy_metadata[dummy].dummy
 
-    def add_variable(self, *, name: str, units: str, initial_value=None,
-                     public_interface=None, private_interface=None, **kwargs):
+    def add_variable(self, *,
+                     name: str, units: str, initial_value=None,
+                     public_interface=None, private_interface=None, **kwargs) -> sympy.Dummy:
         """Add information about a variable that represents a symbol in equations. Returns the
         sympy.Dummy created by the model to represent the variable in equations"""
         assert name not in self.name_to_symbol, 'Variable %s already exists' % name
 
+        dummy = sympy.Dummy(name)
+
         variable = MetaDummy(name=name,
                              units=self.units.get_quantity(units),
-                             dummy=sympy.Dummy(name),
+                             dummy=dummy,
                              initial_value=initial_value,
                              public_interface=public_interface,
                              private_interface=private_interface,
                              **kwargs)
-        self.dummy_metadata[variable.dummy] = variable
-        self.name_to_symbol[variable.name] = variable.dummy
-        return variable.dummy
+
+        self.dummy_metadata[dummy] = variable
+        self.name_to_symbol[name] = dummy
+
+        return self.dummy_metadata[dummy].dummy
 
     def get_meta_dummy(self, name_or_instance: Union[str, sympy.Dummy]) -> MetaDummy:
         """Look up dummy data for given symbol. Accepts a string name or instance of sympy.Dummy"""

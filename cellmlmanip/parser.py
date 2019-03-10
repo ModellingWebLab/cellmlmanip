@@ -304,9 +304,6 @@ class Parser(object):
             components in the encapsulated set. Each interface has three possible
             values: "in", "out", and "none", where "none" indicates the absence
             of an interface.
-
-        :param connection: a single connection tuple, created by the CellML parser
-            ((component_1, variable_1), (component_2, variable_2))
         """
         def _are_siblings(comp_a, comp_b):
             return self.components[comp_a].parent == self.components[comp_b].parent
