@@ -22,7 +22,7 @@ logger.setLevel(logging.DEBUG)
 SYMPY_SYMBOL_DELIMITER = '$'
 
 
-class DummyData(object):
+class MetaDummy(object):
     """Holds information about a Dummy placeholder in set of Sympy equations. Dummy symbols are
     used to represent variables from the CellMl model or as placeholders for numbers."""
 
@@ -77,7 +77,7 @@ class Model(object):
         self.rdf: rdflib.Graph = rdflib.Graph()
         self.graph: nx.DiGraph = None
 
-        self.dummy_data: Dict[sympy.Dummy, DummyData] = OrderedDict()
+        self.dummy_metadata: Dict[sympy.Dummy, MetaDummy] = OrderedDict()
         self.name_to_symbol: Dict[str, sympy.Dummy] = dict()
 
         self.equations: List[sympy.Eq] = list()
@@ -96,44 +96,48 @@ class Model(object):
         assert isinstance(equation, sympy.Eq), 'Equation expression must be equality'
         self.equations.append(equation)
 
-    def add_number(self, dummy: sympy.Dummy, attributes: Dict):
+    def add_number(self, *, number: sympy.Number, units: str, dummy: sympy.Dummy=None):
         """Add metadata about a dummy symbol that represents a number in equations"""
-        assert isinstance(dummy, sympy.Dummy)
-        assert dummy not in self.dummy_data
-        assert 'sympy.Number' in attributes
-        assert isinstance(attributes['sympy.Number'], sympy.Number)
+        assert isinstance(number, sympy.Number)
+
+        if not dummy:
+            dummy = sympy.Dummy(str(number))
+        else:
+            assert dummy not in self.dummy_metadata
 
         name = '%sNum%s%s' % (SYMPY_SYMBOL_DELIMITER, dummy.dummy_index, SYMPY_SYMBOL_DELIMITER)
 
-        self.dummy_data[dummy] = DummyData(name,
-                                           self.units.get_quantity(attributes['cellml:units']),
-                                           dummy,
-                                           number=attributes['sympy.Number'])
+        self.dummy_metadata[dummy] = MetaDummy(name=name,
+                                               units=self.units.get_quantity(units),
+                                               dummy=dummy,
+                                               number=number)
 
-    def add_variable(self, *, name, units, initial_value=None,
+        return self.dummy_metadata[dummy].dummy
+
+    def add_variable(self, *, name: str, units: str, initial_value=None,
                      public_interface=None, private_interface=None, **kwargs):
         """Add information about a variable that represents a symbol in equations. Returns the
         sympy.Dummy created by the model to represent the variable in equations"""
         assert name not in self.name_to_symbol, 'Variable %s already exists' % name
 
-        variable = DummyData(name=name,
+        variable = MetaDummy(name=name,
                              units=self.units.get_quantity(units),
                              dummy=sympy.Dummy(name),
                              initial_value=initial_value,
                              public_interface=public_interface,
                              private_interface=private_interface,
                              **kwargs)
-        self.dummy_data[variable.dummy] = variable
+        self.dummy_metadata[variable.dummy] = variable
         self.name_to_symbol[variable.name] = variable.dummy
         return variable.dummy
 
-    def get_dummy_data(self, name_or_instance: Union[str, sympy.Dummy]) -> DummyData:
+    def get_meta_dummy(self, name_or_instance: Union[str, sympy.Dummy]) -> MetaDummy:
         """Look up dummy data for given symbol. Accepts a string name or instance of sympy.Dummy"""
         if isinstance(name_or_instance, str):
-            return self.dummy_data[self.name_to_symbol[name_or_instance]]
+            return self.dummy_metadata[self.name_to_symbol[name_or_instance]]
 
         assert isinstance(name_or_instance, sympy.Dummy)
-        return self.dummy_data[name_or_instance]
+        return self.dummy_metadata[name_or_instance]
 
     def check_dummy_instances(self):
         """Check that every symbol in list of equations has a metadata entry. Returns two lists:
@@ -150,7 +154,7 @@ class Model(object):
                 # and represent negative numbers
                 if not isinstance(atom, sympy.numbers.NegativeOne):
                     dummy_instances.add(atom)
-                    if atom not in self.dummy_data:
+                    if atom not in self.dummy_metadata:
                         logger.critical('%s not found for eq. %s (%s)' % (atom, index, equation))
                         not_found.add(atom)
 
@@ -165,10 +169,10 @@ class Model(object):
         :param source_variable: source variable name
         :param target_variable: target variable name
         """
-        logger.debug('Model.connect_variables(%s ⟶ %s)', source_variable, target_variable)
+        logger.debug('connect_variables(%s ⟶ %s)', source_variable, target_variable)
 
-        source_variable = self.get_dummy_data(source_variable)
-        target_variable = self.get_dummy_data(target_variable)
+        source_variable = self.get_meta_dummy(source_variable)
+        target_variable = self.get_meta_dummy(target_variable)
 
         # If the source variable has already been assigned a final symbol
         if source_variable.assigned_to:
@@ -252,12 +256,12 @@ class Model(object):
             if lhs_symbol.is_Derivative:
                 # Get the state symbol and update the variable information
                 state_symbol = lhs_symbol.free_symbols.pop()
-                state_variable = self.get_dummy_data(state_symbol)
+                state_variable = self.get_meta_dummy(state_symbol)
                 Model._set_variable_type(state_variable, 'state')
 
                 # Get the free symbol and update the variable information
                 free_symbol = set(lhs_symbol.canonical_variables.keys()).pop()
-                free_variable = self.get_dummy_data(free_symbol)
+                free_variable = self.get_meta_dummy(free_symbol)
                 Model._set_variable_type(free_variable, 'free')
 
         # sanity check none of the lhs have the same hash!
@@ -293,14 +297,13 @@ class Model(object):
                         # The variable is a constant or parameter of the model
                         # TODO: Can we tell the difference between a parameter and a constant?
                         # TODO: change to "self." once collect units is in Model class
-                        rhs_variable = self.get_dummy_data(rhs_symbol)
+                        rhs_variable = self.get_meta_dummy(rhs_symbol)
                         if rhs_variable.number is None:
-                            variable.type = 'parameter'
+                            Model._set_variable_type(variable, 'parameter')
                             unit = rhs_variable.units
-                            dummy = sympy.Dummy(str(variable.initial_value))
                             number = sympy.Float(variable.initial_value)
-                            self.add_number(dummy, {'cellml:units': str(unit),
-                                                    'sympy.Number': number})
+                            dummy = self.add_number(number=number,
+                                                    units=str(unit))
                             graph.add_node(rhs_symbol,
                                            equation=sympy.Eq(rhs_symbol, dummy),
                                            variable_type='parameter')
@@ -330,7 +333,7 @@ class Model(object):
                 # get any dummy-numbers
                 subs_dict = {}
                 for dummy in dummies:
-                    dummy_data = self.get_dummy_data(dummy)
+                    dummy_data = self.get_meta_dummy(dummy)
                     if dummy_data.number is not None:
                         subs_dict[dummy] = dummy_data.number
 
@@ -494,7 +497,7 @@ class Model(object):
     def get_symbols(self, expr):
         """Returns the symbols in an expression"""
         symbols = set()
-        if expr.is_Derivative or (expr.is_Dummy and not self.get_dummy_data(expr).number):
+        if expr.is_Derivative or (expr.is_Dummy and not self.get_meta_dummy(expr).number):
             symbols.add(expr)
         else:
             for arg in expr.args:
@@ -507,7 +510,7 @@ class Model(object):
         matches = []
 
         # for each component in this model
-        for variable in self.dummy_data.values():
+        for variable in self.dummy_metadata.values():
             matched = True
             for search_key, search_value in search_dict.items():
                 if not (hasattr(variable, search_key) and

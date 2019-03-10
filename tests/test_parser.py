@@ -82,28 +82,28 @@ class TestParser(object):
                        'state_units_conversion2$sv1',
                        'deriv_on_rhs2b$sv1_rate']
         for name in unconnected:
-            variable = model.get_dummy_data(name)
+            variable = model.get_meta_dummy(name)
             assert variable.dummy == variable.assigned_to
 
     def test_connections(self, model):
         # Check environment component's time variable has propagated
-        environment__time = model.get_dummy_data('environment$time').dummy
+        environment__time = model.get_meta_dummy('environment$time').dummy
 
         # We're checking sympy.Dummy objects (same name != same hash)
         assert isinstance(environment__time, sympy.Dummy)
         assert environment__time != sympy.Dummy(environment__time.name)
 
         state_units_conversion2__time = \
-            model.get_dummy_data('state_units_conversion2$time').assigned_to
+            model.get_meta_dummy('state_units_conversion2$time').assigned_to
         assert environment__time == state_units_conversion2__time
 
         # propagated environment time to inside nested component circle_y
-        circle_y__time = model.get_dummy_data('circle_y$time').assigned_to
+        circle_y__time = model.get_meta_dummy('circle_y$time').assigned_to
         assert environment__time == circle_y__time
 
         # we have a new equation that links together times in different units
         time_units_conversion2__time = \
-            model.get_dummy_data('time_units_conversion2$time').assigned_to
+            model.get_meta_dummy('time_units_conversion2$time').assigned_to
         equation = sympy.Eq(time_units_conversion2__time, environment__time)
         assert equation in model.equations
 
@@ -131,12 +131,9 @@ class TestParser(object):
                 invalid_rhs_lhs_count += 1
                 new_rhs = model.units.convert_to(1*rhs_units, lhs_units)
                 # Create a new equality with the converted RHS and replace original
-                conversion_factor = sympy.Dummy(str(new_rhs.magnitude))
-                model.add_number(conversion_factor,
-                                 {'cellml:units': str(lhs_units/rhs_units),
-                                  'sympy.Number': sympy.Float(new_rhs.magnitude)}
-                                 )
-                equation = sympy.Eq(equation.lhs, equation.rhs * conversion_factor)
+                scaling_factor_dummy = model.add_number(number=sympy.Float(new_rhs.magnitude),
+                                                        units=str(lhs_units/rhs_units))
+                equation = sympy.Eq(equation.lhs, equation.rhs * scaling_factor_dummy)
                 # Replace the current equation with the same equation multiplied by factor
                 model.equations[index] = equation
                 lhs_units = model.units.summarise_units(equation.lhs)
@@ -150,15 +147,15 @@ class TestParser(object):
         print()
         from cellmlmanip.units import ExpressionWithUnitPrinter
         symbol_info = dict()
-        for var in model.dummy_data.values():
+        for var in model.dummy_metadata.values():
             symbol_info[var.dummy] = {'units': var.units}
             if var.number is not None:
                 symbol_info[var.dummy]['number'] = var.number
         printer = ExpressionWithUnitPrinter(symbol_info=symbol_info)
 
         # show metadata for dummy instances in equations
-        for index, key in enumerate(model.dummy_data.keys()):
-            print('%3d. %s' % (index, str(model.dummy_data[key])))
+        for index, key in enumerate(model.dummy_metadata.keys()):
+            print('%3d. %s' % (index, str(model.dummy_metadata[key])))
 
         # show equations
         for index, equation in enumerate(model.equations):

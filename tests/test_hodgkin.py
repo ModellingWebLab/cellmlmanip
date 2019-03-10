@@ -26,8 +26,8 @@ class TestHodgkin:
         assert len(model.equations) == 17
 
     def test_connections(self, model):
-        target = model.get_dummy_data('sodium_channel$h')
-        source = model.get_dummy_data('sodium_channel_h_gate$h')
+        target = model.get_meta_dummy('sodium_channel$h')
+        source = model.get_meta_dummy('sodium_channel_h_gate$h')
         assert target.assigned_to == source.dummy
 
     def test_equation_units(self, model):
@@ -67,7 +67,7 @@ class TestHodgkin:
         for node in sorted_nodes:
             # derivative nodes depend on state and free variable nodes
             if not node.is_Derivative:
-                variable = model.get_dummy_data(node)
+                variable = model.get_meta_dummy(node)
                 for key in ['cmeta_id', 'name']:
                     if getattr(variable, key, None):
                         assert getattr(variable, key) == graph.nodes[node][key]
