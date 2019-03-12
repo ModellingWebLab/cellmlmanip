@@ -6,7 +6,6 @@ import logging
 import math
 import numbers
 import os
-from collections import defaultdict
 from functools import reduce
 from operator import mul
 from typing import Dict, List
@@ -14,6 +13,7 @@ from typing import Dict, List
 import pint
 import sympy
 from sympy.printing.lambdarepr import LambdaPrinter
+
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)

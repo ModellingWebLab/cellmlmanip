@@ -455,13 +455,11 @@ class Model(object):
         if len(symbols) == 1:
             return symbols[0]
         elif not symbols:
-            raise KeyError(
-                'No variable annotated with {' + namespace_uri + '}'
-                + local_name + ' found.')
+            raise KeyError('No variable annotated with {%s}%s found.' %
+                           (namespace_uri, local_name))
         else:
-            raise ValueError(
-                'Multiple variables annotated with {' + namespace_uri + '}'
-                + local_name)
+            raise ValueError('Multiple variables annotated with {%s}%s' %
+                             (namespace_uri, local_name))
 
     def _get_symbols_by_rdf(self, predicate, object_=None):
         """
@@ -517,7 +515,7 @@ class Model(object):
     def _set_variable_type(variable, variable_type):
         if not variable.type:
             variable.type = variable_type
-        else:
+        elif variable.type != variable_type:
             logger.warning('Variable %s already has type=="%s". Skip setting "%s"',
                            variable.dummy, variable.type, variable_type)
 
