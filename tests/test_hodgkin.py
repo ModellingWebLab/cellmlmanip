@@ -39,6 +39,13 @@ class TestHodgkin:
         for e in model.equations:
             model.check_left_right_units_equal(e)
 
+    def test_model_checks(self, model):
+        dummy_instances, not_found = model.check_dummy_metadata()
+        assert len(not_found) == 0
+
+        cmeta_ok = model.check_cmeta_id()
+        assert cmeta_ok
+
     def test_equation_graph(self, graph, model):
         assert len(graph.nodes) == 32
 

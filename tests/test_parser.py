@@ -146,12 +146,7 @@ class TestParser(object):
     def test_print_eq(self, model):
         print()
         from cellmlmanip.units import ExpressionWithUnitPrinter
-        symbol_info = dict()
-        for var in model.dummy_metadata.values():
-            symbol_info[var.dummy] = {'units': var.units}
-            if var.number is not None:
-                symbol_info[var.dummy]['number'] = var.number
-        printer = ExpressionWithUnitPrinter(symbol_info=symbol_info)
+        printer = ExpressionWithUnitPrinter(symbol_info=model.dummy_metadata)
 
         # show metadata for dummy instances in equations
         for index, key in enumerate(model.dummy_metadata.keys()):
@@ -169,8 +164,11 @@ class TestParser(object):
                    '==' if model.units.is_unit_equal(rhs_units, lhs_units) else '!=',
                    rhs_units))
 
-        dummy_instances, not_found = model.check_dummy_instances()
+        dummy_instances, not_found = model.check_dummy_metadata()
         assert len(not_found) == 0
+
+        cmeta_ok = model.check_cmeta_id()
+        assert cmeta_ok
 
     def test_connect_to_hidden_component(self):
         example_cellml = os.path.join(

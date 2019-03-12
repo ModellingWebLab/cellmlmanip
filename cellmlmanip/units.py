@@ -15,7 +15,6 @@ import pint
 import sympy
 from sympy.printing.lambdarepr import LambdaPrinter
 
-
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
@@ -186,32 +185,12 @@ class UnitStore(object):
     def summarise_units(self, expr: sympy.Expr):
         """Given a Sympy expression, will get the lambdified string to evaluate units
         """
-
-        # TODO: move this!
-        # get all the symbols in this expression
-        symbols = expr.atoms(sympy.Symbol)
-
-        # collect the initial values, if specified, for each symbol
-        subs = {}
-        dummy_info = defaultdict(dict)
-        for symbol in symbols:
-            symbol_info = self.model.get_meta_dummy(symbol)
-            dummy_info[symbol]['units'] = symbol_info.units
-            if symbol_info.number is not None:
-                dummy_info[symbol]['number'] = symbol_info.number
-            else:
-                if symbol_info.initial_value:
-                    value = float(symbol_info.initial_value)
-                    # we don't substitute symbols if value is 0 due to div by zero errors
-                    # check what other impact this has
-                    if value != 0.0:
-                        subs[symbol] = value
-        unit_calculator = UnitCalculator(self.ureg, dummy_info, subs)
+        unit_calculator = UnitCalculator(self.ureg, self.model.dummy_metadata)
 
         found = unit_calculator.traverse(expr)
 
         if found is None:
-            printer = ExpressionWithUnitPrinter(symbol_info=self.model.dummy_info)
+            printer = ExpressionWithUnitPrinter(symbol_info=self.model.dummy_metadata)
             logger.fatal('Could not summaries units: %s', expr)
             logger.fatal('-> %s', printer.doprint(expr))
             return None
@@ -227,15 +206,13 @@ class UnitStore(object):
 class UnitCalculator(object):
     """Evaluates a Sympy expression to determine its units. Note: only supports subset of Sympy
     math"""
-    def __init__(self, unit_registry, symbol_info, symbol_subs):
+    def __init__(self, unit_registry, dummy_metadata):
         """
         :param unit_registry: instance of Pint UnitRegistry
-        :param symbol_info: dictionary mapping symbol to 'unit' and, if applicable, 'number'
-        :param symbol_subs: dictionary mapping symbol to its numerical replacement
+        :param dummy_metadata: a dictionary providing {dummy: MetaDummy} lookup
         """
         self.ureg: pint.UnitRegistry = unit_registry
-        self.symbols = symbol_info
-        self.subs = symbol_subs
+        self.dummy_metadata = dummy_metadata
 
     def _check_unit_of_quantities_equal(self, list_of_quantities):
         """checks whether all units in list are equivalent
@@ -279,16 +256,22 @@ class UnitCalculator(object):
 
         # Terminal atoms in expressions (Integers and Rationals are used by Sympy itself)
         if expr.is_Symbol:
+            if expr not in self.dummy_metadata:
+                raise KeyError('Metadata entry not found for dummy symbol "%s"' % expr)
+
+            metadata = self.dummy_metadata[expr]
+
             # is this symbol is a placeholder for a number
-            if 'number' in self.symbols[expr]:
-                out = float(self.symbols[expr]['number']) * self.symbols[expr]['units']
+            if metadata.is_number:
+                out = float(metadata.number) * metadata.units
             else:
-                # if we need to replace this symbol for evaluating units
-                if expr in self.subs:
-                    out = self.ureg.Quantity(self.subs[expr], self.symbols[expr]['units'])
+                #  if this symbol has an initial value (that is not zero)
+                if metadata.initial_value:
+                    # substitute with the initial value for unit arithmetic
+                    out = self.ureg.Quantity(float(metadata.initial_value), metadata.units)
                 else:
-                    # otherwise, straightforward Quantity
-                    out = self.ureg.Quantity(expr, self.symbols[expr]['units'])
+                    # otherwise, keep the symbol
+                    out = self.ureg.Quantity(expr, metadata.units)
             return out
         elif expr.is_Integer:
             out = int(expr) * self.ureg.dimensionless
@@ -403,19 +386,16 @@ class UnitCalculator(object):
 
 class ExpressionWithUnitPrinter(LambdaPrinter):
     """ A Sympy expression printer that prints the expression with unit information """
-    def __init__(self, symbol_info=None):
+    def __init__(self, symbol_info):
         super().__init__()
-        if symbol_info is None:
-            symbol_info = dict()
         self.symbols = symbol_info
 
     def _get_dummy_unit(self, expr):
-        return self.symbols[expr]['units']
+        return self.symbols[expr].units
 
     def _get_dummy_number(self, expr):
-        if 'number' in self.symbols[expr]:
-            return self.symbols[expr]['number']
-
+        if self.symbols[expr].is_number:
+            return self.symbols[expr].number
         return None
 
     def _print_Dummy(self, expr):

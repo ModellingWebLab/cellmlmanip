@@ -58,6 +58,11 @@ class MetaDummy(object):
 
         self.number = number
 
+    @property
+    def is_number(self):
+        """Indicates whether this dummy instance is used as a placeholder for a number"""
+        return self.number is not None
+
     def __str__(self) -> str:
         return '%s(%s)' % (
             type(self).__name__,
@@ -146,7 +151,7 @@ class Model(object):
         assert isinstance(name_or_instance, sympy.Dummy)
         return self.dummy_metadata[name_or_instance]
 
-    def check_dummy_instances(self):
+    def check_dummy_metadata(self):
         """Check that every symbol in list of equations has a metadata entry. Returns two lists:
         ({set of dummy instances}, {dummy instances without metadata entry}"""
 
@@ -166,6 +171,18 @@ class Model(object):
                         not_found.add(atom)
 
         return dummy_instances, not_found
+
+    def check_cmeta_id(self):
+        """Checks that every variable with a cmeta_id is a source variable"""
+        is_okay = True
+        for variable in self.dummy_metadata.values():
+            if not variable.is_number:
+                if variable.cmeta_id:
+                    if variable.dummy != variable.assigned_to:
+                        is_okay = False
+                        logger.critical('%s has cmeta id but is assigned to %s',
+                                        variable.dummy, variable.assigned_to)
+        return is_okay
 
     def connect_variables(self, source_variable: str, target_variable: str):
         """Given the source and target component and variable, create a connection by assigning
@@ -211,6 +228,9 @@ class Model(object):
             logger.debug('Updated target: %s', target_variable)
             return True
         # The source variable has not been assigned a symbol, so we can't make this connection
+        logger.info('The source variable has not been assigned to a symbol '
+                    '(i.e. expecting a connection): %s ⟶ %s',
+                    target_variable.name, source_variable.name)
         return False
 
     def add_rdf(self, rdf: str):
