@@ -46,6 +46,9 @@ class TestHodgkin:
         cmeta_ok = model.check_cmeta_id()
         assert cmeta_ok
 
+        variable_assignment_ok = model.check_dummy_assignment()
+        assert variable_assignment_ok
+
     def test_equation_graph(self, graph, model):
         assert len(graph.nodes) == 32
 

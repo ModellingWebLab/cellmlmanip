@@ -170,6 +170,10 @@ class TestParser(object):
         cmeta_ok = model.check_cmeta_id()
         assert cmeta_ok
 
+        variable_assignment_ok = model.check_dummy_assignment()
+        assert variable_assignment_ok
+
+
     def test_connect_to_hidden_component(self):
         example_cellml = os.path.join(
             os.path.dirname(__file__), "cellml_files", "err_connect_to_hidden_component.cellml"

@@ -184,6 +184,30 @@ class Model(object):
                                         variable.dummy, variable.assigned_to)
         return is_okay
 
+    def check_dummy_assignment(self):
+        """Every non-number dummy symbol in the model should be assigned to itself or a source
+        variable. The source variable must be assigned to itself"""
+        is_okay = True
+        for variable in self.dummy_metadata.values():
+            if not variable.is_number:
+                # either the variable is assigned to itself
+                if variable.dummy == variable.assigned_to:
+                    continue
+
+                # or the variable is assigned to a source variable
+                source_dummy = self.dummy_metadata[variable.assigned_to]
+
+                # the source dummy must be assigned to itself
+                if source_dummy.dummy == source_dummy.assigned_to:
+                    continue
+
+                is_okay = False
+                logger.critical('%s is assigned to %s, which is assigned to %s',
+                                variable.dummy,
+                                variable.assigned_to,
+                                source_dummy.assigned_to)
+        return is_okay
+
     def connect_variables(self, source_variable: str, target_variable: str):
         """Given the source and target component and variable, create a connection by assigning
         the symbol from the source to the target. If units are not the same, it will add an equation
