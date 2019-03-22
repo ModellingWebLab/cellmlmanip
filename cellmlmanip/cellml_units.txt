@@ -28,7 +28,6 @@ katal = mole / second
 liter = 1e-3 * metre ** 3 = litre
 lumen = candela * steradian
 lux = lumen / meter ** 2
-molar = mole / (1e-3 * meter ** 3)
 newton = kilogram * meter / second ** 2
 ohm = volt / ampere
 pascal = newton / meter ** 2
