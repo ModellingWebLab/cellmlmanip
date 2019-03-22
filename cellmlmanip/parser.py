@@ -113,28 +113,35 @@ class Parser(object):
     def _add_units(self, model: etree.Element):
         """  <model> <units> <unit /> </units> </model> """
         units_elements = model.findall(Parser.with_ns(XmlNs.CELLML, 'units'))
+
+        from cellmlmanip.units import CELLML_UNITS
+        units_found = set(CELLML_UNITS)
+
         definitions_to_add = OrderedDict()
         for units_element in units_elements:
             units_name = units_element.get('name')
             # base units can be added immediately
             if units_element.get('base_units'):
                 self.model.add_unit(units_name, unit_attributes=None, base_units=True)
+                units_found.add(units_name)
             # all other units are collected
             else:
                 unit_elements = [dict(t.attrib) for t in units_element.getchildren()]
                 definitions_to_add[units_name] = unit_elements
 
-        from cellmlmanip.units import CELLML_UNITS
-        units_found = set(CELLML_UNITS)
-
+        # while we still have units to add
         while definitions_to_add:
+            # get the a definition
             unit_name, unit_elements = definitions_to_add.popitem()
+            # check whether unit is defined in terms of units that we know about
             add_now = True
             for unit in unit_elements:
                 if unit['units'] not in units_found:
+                    # definition included unknown units - add to the end of the list
                     definitions_to_add[unit_name] = unit_elements
                     definitions_to_add.move_to_end(unit_name, last=False)
                     add_now = False
+            # unit is defined in terms of known units - ok to add
             if add_now:
                 self.model.add_unit(unit_name, unit_attributes=unit_elements)
                 units_found.add(unit_name)
