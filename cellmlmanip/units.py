@@ -11,8 +11,11 @@ from operator import mul
 from typing import Dict, List
 
 import pint
+from pint.converters import ScaleConverter
+from pint.definitions import UnitDefinition
 import sympy
 from sympy.printing.lambdarepr import LambdaPrinter
+
 
 
 logger = logging.getLogger(__name__)
@@ -88,10 +91,19 @@ class UnitStore(object):
         :param unit_attributes:
         """
         assert units_name not in CELLML_UNITS, 'Cannot redefine CellML unit <%s>' % units_name
+
         unit_definition = self._make_pint_unit_definition(units_name, unit_attributes)
+
         if unit_definition is not None:
             assert not self._is_unit_defined(units_name), 'Unit <%s> already exists' % units_name
-            self._define_pint_unit(unit_definition)
+
+            # check whether the definition is dimensionless (e.g. a dimensionless scaling factor)
+            definition = self.ureg.parse_expression(unit_definition.split('=')[1])
+            if definition.dimensionless:
+                # dimensionless units can't be created using definition strings
+                unit_definition = UnitDefinition(units_name, '', (), ScaleConverter(definition.magnitude))
+
+            self._define_pint_unit(units_name, unit_definition)
 
     def add_base_unit(self, units_name):
         """
@@ -100,7 +112,7 @@ class UnitStore(object):
         """
         assert units_name not in CELLML_UNITS, 'Cannot redefine CellML unit <%s>' % units_name
         assert not self._is_unit_defined(units_name), 'Unit <%s> already exists' % units_name
-        self._define_pint_unit('{name}=[{name}]'.format_map({'name': units_name}))
+        self._define_pint_unit(units_name, '{name}=[{name}]'.format_map({'name': units_name}))
 
     def _is_unit_defined(self, name):
         try:
@@ -109,9 +121,9 @@ class UnitStore(object):
         except pint.UndefinedUnitError:
             return False
 
-    def _define_pint_unit(self, definition_string):
-        self.ureg.define(definition_string)
-        self.custom_defined.add(definition_string.split('=')[0].strip())
+    def _define_pint_unit(self, units_name, definition_string_or_instance):
+        self.ureg.define(definition_string_or_instance)
+        self.custom_defined.add(units_name)
 
     def get_quantity(self, unit_name: str):
         """
