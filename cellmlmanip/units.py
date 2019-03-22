@@ -11,10 +11,11 @@ from operator import mul
 from typing import Dict, List
 
 import pint
+import sympy
 from pint.converters import ScaleConverter
 from pint.definitions import UnitDefinition
-import sympy
 from sympy.printing.lambdarepr import LambdaPrinter
+
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
