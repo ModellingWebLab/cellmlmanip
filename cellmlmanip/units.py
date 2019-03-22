@@ -99,9 +99,12 @@ class UnitStore(object):
 
             # check whether the definition is dimensionless (e.g. a dimensionless scaling factor)
             definition = self.ureg.parse_expression(unit_definition.split('=')[1])
+            # if the unit is dimensionless
             if definition.dimensionless:
+                # get the scale factor by converting the quantity to dimensionless
+                scale_factor = definition.to(self.ureg.dimensionless)
                 # dimensionless units can't be created using definition strings
-                unit_definition = UnitDefinition(units_name, '', (), ScaleConverter(definition.magnitude))
+                unit_definition = UnitDefinition(units_name, '', (), ScaleConverter(scale_factor))
 
             self._define_pint_unit(units_name, unit_definition)
 
@@ -334,7 +337,7 @@ class UnitCalculator(object):
                 out = quantity_per_arg[0]
                 return out
 
-            logger.warning('Add args do not have the same unit.')
+            logger.warning('Add args do not have the same unit: %s', expr)
             return None
 
         elif expr.is_Piecewise:
