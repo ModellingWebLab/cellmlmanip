@@ -16,8 +16,6 @@ from pint.definitions import UnitDefinition
 import sympy
 from sympy.printing.lambdarepr import LambdaPrinter
 
-
-
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
@@ -281,7 +279,7 @@ class UnitCalculator(object):
                 out = float(metadata.number) * metadata.units
             else:
                 #  if this symbol has an initial value (that is not zero)
-                if metadata.initial_value:
+                if metadata.initial_value and metadata.initial_value != 0.0:
                     # substitute with the initial value for unit arithmetic
                     out = self.ureg.Quantity(float(metadata.initial_value), metadata.units)
                 else:

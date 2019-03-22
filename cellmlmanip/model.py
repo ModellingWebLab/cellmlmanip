@@ -130,6 +130,9 @@ class Model(object):
 
         dummy = sympy.Dummy(name)
 
+        if initial_value is not None:
+            initial_value = float(initial_value)
+
         variable = MetaDummy(name=name,
                              units=self.units.get_quantity(units),
                              dummy=dummy,
@@ -207,6 +210,10 @@ class Model(object):
                                 variable.assigned_to,
                                 source_dummy.assigned_to)
         return is_okay
+
+    def check_variables_in_equations(self):
+        """Every variable we have should have been used in an equation."""
+        pass
 
     def connect_variables(self, source_variable: str, target_variable: str):
         """Given the source and target component and variable, create a connection by assigning
@@ -544,10 +551,14 @@ class Model(object):
                            variable.dummy, variable.type, variable_type)
 
     def get_symbols(self, expr):
-        """Returns the symbols in an expression"""
+        """Returns the symbols in an expression. Works differently to Sympy atoms() because a
+        Derivative instance is regarded as a single symbol"""
         symbols = set()
+
+        # if this expression is a derivative or a dummy symbol which is not a number placeholder
         if expr.is_Derivative or (expr.is_Dummy and not self.get_meta_dummy(expr).number):
             symbols.add(expr)
+        # otherwise, descend into sub-expressions and collect symbols
         else:
             for arg in expr.args:
                 symbols |= self.get_symbols(arg)
