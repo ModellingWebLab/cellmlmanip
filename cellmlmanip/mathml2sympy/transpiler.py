@@ -1,5 +1,4 @@
-"""
-Parses Content MathML and returns equivalent SymPy expressions
+"""Parses Content MathML and returns equivalent SymPy expressions
 
 Content Markup specification: https://www.w3.org/TR/MathML2/chapter4.html
 """
@@ -67,15 +66,13 @@ class Transpiler(object):
             self.handlers[tag_name] = self._simple_operator_handler
 
     def parse_string(self, xml_string) -> List[sympy.Expr]:
-        """
-        Reads MathML content from a string and returns equivalent SymPy expressions
+        """Reads MathML content from a string and returns equivalent SymPy expressions
         """
         dom = minidom.parseString(xml_string)
         return self.parse_dom(dom.childNodes[0])
 
     def parse_dom(self, math_dom_element) -> List[sympy.Expr]:
-        """
-        Accepts a <math> node of DOM structure and returns equivalent SymPy expressions.
+        """Accepts a <math> node of DOM structure and returns equivalent SymPy expressions.
         Note: math_dom_element must point the <math> XmlNode, not the root XmlDocument
 
         :param math_dom_element: <math> XmlNode object of a MathML DOM structure
@@ -84,8 +81,7 @@ class Transpiler(object):
         return self.transpile(math_dom_element)
 
     def transpile(self, xml_node):
-        """
-        Descends the given MathML element node and calls the corresponding handler for child
+        """Descends the given MathML element node and calls the corresponding handler for child
         elements. Returns the SymPy expression of node
         :param xml_node: a DOM element of parsed MathML
         :return: a list of SymPy expressions
@@ -120,8 +116,7 @@ class Transpiler(object):
     # MATHML ELEMENT HANDLERS ######################################################################
 
     def _math_handler(self, node):
-        """
-        Descend XML node <math>...</math>
+        """Descend XML node <math>...</math>
         """
         result = self.transpile(node)
         return result
@@ -129,8 +124,7 @@ class Transpiler(object):
     # TOKEN ELEMENTS ###############################################################################
 
     def _ci_handler(self, node):
-        """
-        MathML:  https://www.w3.org/TR/MathML2/chapter4.html#contm.ci
+        """MathML:  https://www.w3.org/TR/MathML2/chapter4.html#contm.ci
         SymPy: http://docs.sympy.org/latest/modules/core.html#id17
         """
         identifier = node.childNodes[0].data.strip()
@@ -147,8 +141,7 @@ class Transpiler(object):
         return sympy.Symbol(identifier)
 
     def _cn_handler(self, node):
-        """
-        MathML: https://www.w3.org/TR/MathML2/chapter4.html#contm.cn
+        """MathML: https://www.w3.org/TR/MathML2/chapter4.html#contm.cn
         SymPy: http://docs.sympy.org/latest/modules/core.html#number
         """
 
@@ -185,8 +178,7 @@ class Transpiler(object):
     # BASIC CONTENT ELEMENTS #######################################################################
 
     def _apply_handler(self, node):
-        """
-        https://www.w3.org/TR/MathML2/chapter4.html#contm.apply
+        """https://www.w3.org/TR/MathML2/chapter4.html#contm.apply
         """
         result = self.transpile(node)
 
@@ -199,8 +191,7 @@ class Transpiler(object):
         return expression
 
     def _piecewise_handler(self, node):
-        """
-        MathML: https://www.w3.org/TR/MathML2/chapter4.html#contm.piecewise
+        """MathML: https://www.w3.org/TR/MathML2/chapter4.html#contm.piecewise
         SymPy: http://docs.sympy.org/latest/modules/functions/elementary.html#piecewise
 
         constructor, zero or more <piece>, zero or one <otherwise>
@@ -209,8 +200,7 @@ class Transpiler(object):
         return sympy.Piecewise(*result)
 
     def _piece_handler(self, node):
-        """
-        MathML: https://www.w3.org/TR/MathML2/chapter4.html#contm.piecewise
+        """MathML: https://www.w3.org/TR/MathML2/chapter4.html#contm.piecewise
         Returns a 2-tuple defining an expression and condition
         <piece> element contains exactly two children
         """
@@ -220,8 +210,7 @@ class Transpiler(object):
         return result[0], result[1]
 
     def _otherwise_handler(self, node):
-        """
-        MathML: https://www.w3.org/TR/MathML2/chapter4.html#contm.piecewise
+        """MathML: https://www.w3.org/TR/MathML2/chapter4.html#contm.piecewise
         Returns a 2-tuple defining an expression and condition
         """
         result = self.transpile(node)
@@ -232,8 +221,7 @@ class Transpiler(object):
     # ARITHMETIC, ALGEBRA AND LOGIC ################################################################
 
     def _minus_handler(self, node):
-        """
-        https://www.w3.org/TR/MathML2/chapter4.html#contm.minus
+        """https://www.w3.org/TR/MathML2/chapter4.html#contm.minus
         unary arithmetic operator OR binary arithmetic operator
 
         From http://docs.sympy.org/latest/tutorial/manipulation.html:
@@ -252,8 +240,7 @@ class Transpiler(object):
         return _wrapped_minus
 
     def _divide_handler(self, node):
-        """
-        https://www.w3.org/TR/MathML2/chapter4.html#contm.divide
+        """https://www.w3.org/TR/MathML2/chapter4.html#contm.divide
         binary arithmetic operator
         There is no class in SymPy for division. Rather, division is represented by a power of -1.
 
@@ -264,8 +251,7 @@ class Transpiler(object):
         return _wrapped_divide
 
     def _power_handler(self, node):
-        """
-        https://www.w3.org/TR/MathML2/chapter4.html#contm.power
+        """https://www.w3.org/TR/MathML2/chapter4.html#contm.power
         binary arithmetic operator
         equivalent to sympy.Pow(a, b)
         """
@@ -274,8 +260,7 @@ class Transpiler(object):
         return _wrapped_power
 
     def _root_handler(self, node):
-        """
-        https://www.w3.org/TR/MathML2/chapter4.html#contm.root
+        """https://www.w3.org/TR/MathML2/chapter4.html#contm.root
         operator taking qualifiers
 
         Nasty:
@@ -292,8 +277,7 @@ class Transpiler(object):
         return _wrapped_root
 
     def _degree_handler(self, node):
-        """
-        https://www.w3.org/TR/MathML2/chapter4.html#contm.degree
+        """https://www.w3.org/TR/MathML2/chapter4.html#contm.degree
         Meaning of <degree> depends on context! We implement it for order of <bvar> in <diff> and
         the kind of root in <root>
         """
@@ -306,8 +290,7 @@ class Transpiler(object):
     # CALCULUS AND VECTOR CALCULUS #################################################################
 
     def _diff_handler(self, node):
-        """
-        https://www.w3.org/TR/MathML2/chapter4.html#contm.diff
+        """https://www.w3.org/TR/MathML2/chapter4.html#contm.diff
         operator taking qualifiers
         TODO: clean up dummification if possible
         """
@@ -341,8 +324,7 @@ class Transpiler(object):
         return _wrapped_diff
 
     def _bvar_handler(self, node):
-        """
-        https://www.w3.org/TR/MathML2/chapter4.html#contm.bvar
+        """https://www.w3.org/TR/MathML2/chapter4.html#contm.bvar
         NASTY: bvar element depends on the context it is being used
         In a derivative, it indicates the variable with respect to which a function is being
         differentiated.
@@ -361,8 +343,7 @@ class Transpiler(object):
     # ELEMENTARY CLASSICAL FUNCTIONS ###############################################################
 
     def _log_handler(self, node):
-        """
-        https://www.w3.org/TR/MathML2/chapter4.html#contm.log
+        """https://www.w3.org/TR/MathML2/chapter4.html#contm.log
         operator taking qualifiers or a unary calculus operator
         """
         def _wrapped_log(first_element, second_element=None):
@@ -375,8 +356,7 @@ class Transpiler(object):
         return _wrapped_log
 
     def _logbase_handler(self, node):
-        """
-        Qualifier for <log>
+        """Qualifier for <log>
 
         The log function accepts only the logbase schema. If present, the logbase schema denotes the
         base with respect to which the logarithm is being taken. Otherwise, the log is assumed to be
@@ -389,8 +369,7 @@ class Transpiler(object):
         return self.transpile(node)[0]
 
     def _get_nary_relation_callback(self, sympy_relation):
-        """
-        Wraps the Sympy binary relation to handle n-ary MathML relations
+        """Wraps the Sympy binary relation to handle n-ary MathML relations
 
         :param sympy_relation: handle for binary Sympy relation (Eq, Le, Lt, Ge, Gt)
         :return: callback used by the apply_handler to handle n-ary relations
@@ -407,8 +386,7 @@ class Transpiler(object):
         return _wrapper_relational
 
     def _simple_operator_handler(self, node):
-        """
-        This function handles simple MathML <tagName> to sympy.Class operators, where no unique
+        """This function handles simple MathML <tagName> to sympy.Class operators, where no unique
         handling of tag children etc. is required.
         """
         tag_name = node.tagName

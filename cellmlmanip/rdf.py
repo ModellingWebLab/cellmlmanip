@@ -1,6 +1,4 @@
-"""
-Module for working with RDF data.
-"""
+"""Module for working with RDF data."""
 # import logging
 import rdflib
 
@@ -66,9 +64,7 @@ def create_rdf_node(self, node_content=None, fragment_id=None):
 
 
 def create_rdf_node(namespace_uri, local_name):
-    """
-    Creates and returns an RDF node ``{namespace_uri}local_name``.
-    """
+    """Creates and returns an RDF node ``{namespace_uri}local_name``."""
     # Ensure namespace prefix can be appended to
     if namespace_uri[-1] not in ['#', '/']:
         namespace_uri = namespace_uri + '#'

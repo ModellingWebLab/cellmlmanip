@@ -1,6 +1,6 @@
-"""
-This module contains the CellML parser. It reads CellML model and stores model information in a
-CellML Model class. MathML equations are translated to Sympy. RDF is handled by RDFLib.
+"""This module contains the CellML parser and related classes. It reads a CellML model and stores
+model information in the cellmlmanip.Model class. MathML equations are translated to Sympy. RDF is
+handled by RDFLib.
 """
 import itertools
 from collections import OrderedDict, deque
@@ -15,9 +15,7 @@ from cellmlmanip.model import SYMPY_SYMBOL_DELIMITER, Model
 
 
 class XmlNs(Enum):
-    """
-    Standard namespaces present in CellML documents
-    """
+    """Namespaces in CellML documents"""
     CELLML = 'http://www.cellml.org/cellml/1.0#'
     CMETA = 'http://www.cellml.org/metadata/1.0#'
     MATHML = 'http://www.w3.org/1998/Math/MathML'
@@ -25,6 +23,8 @@ class XmlNs(Enum):
 
 
 class _Component:
+    """This hold information about a CellML component. It's for internal-use only. Once the parser
+    has created the flattened cellmlmanip.Model instance, components are no longer used"""
     def __init__(self, name):
         self.name = name
         self.parent = None
@@ -51,16 +51,9 @@ class _Component:
             raise ValueError('Encapsulated component %s already added!' % encapsulated_name)
         self.encapsulated.add(encapsulated_name)
 
-    def __str__(self) -> str:
-        return '%s(%s)' % (
-            type(self).__name__,
-            ', '.join('%s=%s' % item for item in vars(self).items() if item[1])
-        )
-
 
 class Parser(object):
-    """Handles parsing of CellML files
-    """
+    """Handles parsing of CellML files"""
 
     @staticmethod
     def with_ns(ns_enum, name):
@@ -104,7 +97,6 @@ class Parser(object):
 
     def _add_rdf(self, element: etree.Element):
         """Finds all <RDF> definitions under <element> and adds them to the model
-
         :param element: the CellML parent element to search for children RDF tags
         """
         for rdf in element.iter(Parser.with_ns(XmlNs.RDF, 'RDF')):
@@ -114,34 +106,37 @@ class Parser(object):
         """  <model> <units> <unit /> </units> </model> """
         units_elements = model.findall(Parser.with_ns(XmlNs.CELLML, 'units'))
 
+        # get list of built-in cellml units
         from cellmlmanip.units import CELLML_UNITS
         units_found = set(CELLML_UNITS)
 
+        # get all the units defined in the cellml model
         definitions_to_add = OrderedDict()
         for units_element in units_elements:
             units_name = units_element.get('name')
-            # base units can be added immediately
+            # if it's a defined base unit, we can be add immediately to the model
             if units_element.get('base_units'):
                 self.model.add_unit(units_name, unit_attributes=None, base_units=True)
                 units_found.add(units_name)
-            # all other units are collected
+            # all other units are collected (because they may depend on further user-defined units)
             else:
                 unit_elements = [dict(t.attrib) for t in units_element.getchildren()]
                 definitions_to_add[units_name] = unit_elements
 
         # while we still have units to add
         while definitions_to_add:
-            # get the a definition
+            # get a definition from the top of the list
             unit_name, unit_elements = definitions_to_add.popitem()
-            # check whether unit is defined in terms of units that we know about
+            # check whether this unit is defined in terms of units that we know about
             add_now = True
             for unit in unit_elements:
+                # if defined in terms of units we don't know about
                 if unit['units'] not in units_found:
-                    # definition included unknown units - add to the end of the list
+                    # defer adding this units - add if back to the end of the list
                     definitions_to_add[unit_name] = unit_elements
                     definitions_to_add.move_to_end(unit_name, last=False)
                     add_now = False
-            # unit is defined in terms of known units - ok to add
+            # unit is defined in terms of known units - ok to add to model
             if add_now:
                 self.model.add_unit(unit_name, unit_attributes=unit_elements)
                 units_found.add(unit_name)
@@ -204,7 +199,6 @@ class Parser(object):
 
         # for each math element
         for math_element in math_elements:
-            # TODO: check whether element can be passed directly without .tostring()
             sympy_exprs = transpiler.parse_string(etree.tostring(math_element, encoding=str))
 
             # add each equation from <math> to the model

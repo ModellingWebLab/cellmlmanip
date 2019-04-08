@@ -1,6 +1,4 @@
-"""
-Classes representing a CellML model and its components
-"""
+"""Classes to represent a flattened CellML model and metadata about its variables"""
 import logging
 from collections import OrderedDict
 from io import StringIO
@@ -24,7 +22,8 @@ SYMPY_SYMBOL_DELIMITER = '$'
 
 class MetaDummy(object):
     """Holds information about a Dummy placeholder in set of Sympy equations. Dummy symbols are
-    used to represent variables from the CellMl model or as placeholders for numbers."""
+    used to represent variables from the CellMl model or as placeholders for numbers.
+    """
 
     def __init__(self, name, units, dummy, initial_value=None,
                  public_interface=None, private_interface=None, number=None,
@@ -104,9 +103,11 @@ class Model(object):
 
     def add_number(self, *,
                    number: sympy.Number, units: str, dummy: sympy.Dummy = None) -> sympy.Dummy:
-        """Add metadata about a dummy symbol that represents a number in equations"""
+        """Add metadata about a dummy symbol that represents a number in equations. Returns the
+        sympy.Dummy object used to represent this number"""
         assert isinstance(number, sympy.Number)
 
+        # Create a dummy object if necessary
         if not dummy:
             dummy = sympy.Dummy(str(number))
         else:
@@ -114,6 +115,7 @@ class Model(object):
 
         name = '%sNum%s%s' % (SYMPY_SYMBOL_DELIMITER, dummy.dummy_index, SYMPY_SYMBOL_DELIMITER)
 
+        # store metadata information about the number
         self.dummy_metadata[dummy] = MetaDummy(name=name,
                                                units=self.units.get_quantity(units),
                                                dummy=dummy,
@@ -265,7 +267,7 @@ class Model(object):
         return False
 
     def add_rdf(self, rdf: str):
-        """ Takes RDF string and stores it in an RDFlib.Graph for the model. Can be called
+        """Takes RDF string and stores it in an RDFlib.Graph for the model. Can be called
         repeatedly.
         """
         self.rdf.parse(StringIO(rdf))
@@ -310,7 +312,6 @@ class Model(object):
             graph.add_node(lhs_symbol, equation=equation)
 
             # If LHS is a derivative
-            # TODO: should be in perhaps collect_variable_attributes() but after connections made?
             if lhs_symbol.is_Derivative:
                 # Get the state symbol and update the variable information
                 state_symbol = lhs_symbol.free_symbols.pop()
@@ -350,13 +351,10 @@ class Model(object):
                         graph.add_node(rhs_symbol, equation=None, variable_type=variable.type)
                         graph.add_edge(rhs_symbol, lhs_symbol)
                     else:
-                        # TODO: <variable> with initial_value is a parameter & variable without
-                        # any variables on RHS is a parameter
-                        # The variable is a constant or parameter of the model
-                        # TODO: Can we tell the difference between a parameter and a constant?
-                        # TODO: change to "self." once collect units is in Model class
+                        # if the variable on the right-hand side is a number
                         rhs_variable = self.get_meta_dummy(rhs_symbol)
                         if rhs_variable.number is None:
+                            # this variable is a parameter - add to graph and connect to lhs
                             Model._set_variable_type(variable, 'parameter')
                             unit = rhs_variable.units
                             number = sympy.Float(variable.initial_value)
@@ -367,6 +365,8 @@ class Model(object):
                                            variable_type='parameter')
                             graph.add_edge(rhs_symbol, lhs_symbol)
 
+        # add metadata about each node directly to the graph
+        # TODO: necessary? remove?
         for node in graph.nodes:
             if not node.is_Derivative:
                 variable = self.find_variable({'dummy': node})
@@ -379,7 +379,6 @@ class Model(object):
                     if variable.initial_value:
                         graph.nodes[node]['initial_value'] = sympy.Float(variable.initial_value)
 
-        # TODO: the replacement of dummy-number placeholders can happen above?
         # for each node in the graph
         for node in graph.nodes:
             # if an equation exists for this node
@@ -388,7 +387,7 @@ class Model(object):
                 # get all the dummy symbols on the RHS
                 dummies = equation.rhs.atoms(sympy.Dummy)
 
-                # get any dummy-numbers
+                # get any dummy symbols which are placeholders for numbers
                 subs_dict = {}
                 for dummy in dummies:
                     dummy_data = self.get_meta_dummy(dummy)
@@ -397,7 +396,7 @@ class Model(object):
 
                 # if there are any dummy-numbers on the rhs
                 if subs_dict:
-                    # replace the equation with a new equation with rhs subbed with real numbers
+                    # replace the equation with one with the rhs subbed with real numbers
                     graph.nodes[node]['equation'] = sympy.Eq(equation.lhs,
                                                              equation.rhs.subs(subs_dict))
 
@@ -405,6 +404,7 @@ class Model(object):
         return graph
 
     def get_equations_for(self, symbols):
+        """Get all equations for given collection of symbols"""
         graph = self.get_equation_graph()
         sorted_symbols = nx.lexicographical_topological_sort(graph, key=str)
 
@@ -432,20 +432,17 @@ class Model(object):
         return eqs
 
     def get_derivative_symbols(self):
-        """
-        Returns a list of derivative symbols found in the given model graph.
+        """Returns a list of derivative symbols found in the given model graph.
         """
         return [v for v in self.graph if isinstance(v, sympy.Derivative)]
 
     def get_state_symbols(self):
-        """
-        Returns a list of state variables found in the given model graph.
+        """Returns a list of state variables found in the given model graph.
         """
         return [v.args[0] for v in self.get_derivative_symbols()]
 
     def get_free_variable_symbol(self):
-        """
-        Returns the free variable of the given model graph.
+        """Returns the free variable of the given model graph.
         """
         for v in self.graph:
             if self.graph.nodes[v].get('variable_type', '') == 'free':
@@ -455,8 +452,7 @@ class Model(object):
         raise ValueError('No free variable set in model.')  # pragma: no cover
 
     def get_symbol_by_cmeta_id(self, cmeta_id):
-        """
-        Searches the given graph and returns the symbol for the variable with the
+        """Searches the given graph and returns the symbol for the variable with the
         given cmeta_id.
         """
         # TODO: Either add an argument to allow derivative symbols to be fetched, or
@@ -468,8 +464,7 @@ class Model(object):
         raise KeyError('No variable with cmeta id "%s" found.' % str(cmeta_id))
 
     def get_symbol_by_ontology_term(self, namespace_uri, local_name):
-        """
-        Searches the RDF graph for a variable annotated with the given
+        """Searches the RDF graph for a variable annotated with the given
         ``{namespace_uri}local_name`` and returns its symbol.
 
         Specifically, this method searches for a unique variable annotated with
@@ -493,8 +488,7 @@ class Model(object):
                              (namespace_uri, local_name))
 
     def _get_symbols_by_rdf(self, predicate, object_=None):
-        """
-        Searches the RDF graph for variables annotated with the given predicate
+        """Searches the RDF graph for variables annotated with the given predicate
         and object (e.g. "is oxmeta:time") and returns the associated symbols.
 
         Both ``predicate`` and ``object_`` (if given) must be
@@ -525,8 +519,7 @@ class Model(object):
         return symbols
 
     def get_value(self, symbol):
-        """
-        Returns the evaluated value of the given symbol's RHS.
+        """Returns the evaluated value of the given symbol's RHS.
         """
         # Find RHS
         rhs = self.graph.nodes[symbol]['equation'].rhs
@@ -535,8 +528,7 @@ class Model(object):
         return float(rhs.evalf())
 
     def get_initial_value(self, symbol):
-        """
-        Returns the initial value of the given symbol
+        """Returns the initial value of the given symbol
         :param symbol: Sympy Dummy object of required symbol
         :return: float of initial value
         """
