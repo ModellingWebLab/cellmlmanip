@@ -51,6 +51,7 @@ CELLML_UNIT_PREFIXES = {
     'centi': 1e-2,
     'deci':  1e-1,
     'deca':  1e+1,
+    'deka':  1e+1,
     'hecto': 1e2,
     'kilo':  1e3,
     'mega':  1e6,
@@ -60,6 +61,21 @@ CELLML_UNIT_PREFIXES = {
     'exa':   1e18,
     'zetta': 1e21,
     'yotta': 1e24
+}
+
+TRIG_FUNCTIONS = {
+    'arccos', 'arccosh',
+    'arccot', 'arccoth',
+    'arccsc', 'arccsch',
+    'arcsec', 'arcsech',
+    'arcsin', 'arcsinh',
+    'arctan', 'arctanh',
+    'cos', 'cosh',
+    'cot', 'coth',
+    'csc', 'csch',
+    'sec', 'sech',
+    'sin', 'sinh',
+    'tan', 'tanh',
 }
 
 
@@ -386,6 +402,9 @@ class UnitCalculator(object):
 
                 logger.critical('Exp operand is not dimensionless: %s', expr)
                 return None
+            # trig. function on any dimensionless operand is dimensionless
+            elif str(expr.func) in TRIG_FUNCTIONS and self._is_dimensionless(quantity_per_arg[0]):
+                return 1 * self.ureg.dimensionless
 
             # if the function has exactly one dimensionless argument
             if len(quantity_per_arg) == 1 and self._is_dimensionless(quantity_per_arg[0]):
