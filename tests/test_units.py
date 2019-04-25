@@ -1,5 +1,5 @@
 import pytest
-import sympy
+import sympy as sp
 
 from cellmlmanip.model import MetaDummy
 from cellmlmanip.units import (ExpressionWithUnitPrinter, UnitCalculator,
@@ -87,43 +87,47 @@ class TestUnits(object):
 
     def test_unit_calculator(self, quantity_store):
         ureg = quantity_store.ureg
-        a, b, c, x, y, z, _1, _2 = [sympy.Dummy(x)
-                                    for x in ['a', 'b', 'c', 'x', 'y', 'z', '1', '2']]
+        a, b, c, d, x, y, z, _1, _2 = [sp.Dummy(x)
+                                       for x in ['a', 'b', 'c', 'd', 'x', 'y', 'z', '1', '2']]
 
         symbol_info = {
             a: MetaDummy('a', ureg.meter, a),
             b:  MetaDummy('b', ureg.second, b),
             c:  MetaDummy('c', ureg.gram, c),
+            d:  MetaDummy('d', ureg.meter, d),
             x:  MetaDummy('x', ureg.kilogram, x),
             y:  MetaDummy('y', ureg.volt, y),
             z:  MetaDummy('z', ureg.ampere, z),
-            _1: MetaDummy('_1', ureg.kelvin, _1, number=sympy.Float(1.0)),
-            _2: MetaDummy('_2', ureg.dimensionless, _2, number=sympy.Integer(2)),
+            _1: MetaDummy('_1', ureg.kelvin, _1, number=sp.Float(1.0)),
+            _2: MetaDummy('_2', ureg.dimensionless, _2, number=sp.Integer(2)),
         }
 
         unit_calculator = UnitCalculator(ureg, symbol_info)
 
         assert unit_calculator.traverse(a + a + a + a).units == ureg.meter
+        assert unit_calculator.traverse(a + 2*a + 3*a + 4*a).units == ureg.meter
         assert unit_calculator.traverse((a * a) / b).units == ureg.meter**2 / ureg.second
         assert unit_calculator.traverse(a**_2).units == ureg.meter**2
-        assert unit_calculator.traverse(sympy.sqrt(c ** 2)).units == ureg.gram
-        assert unit_calculator.traverse(sympy.Abs(-2*y)).units == ureg.volt
-        assert unit_calculator.traverse(sympy.Piecewise((a, x < 1),
-                                                        (a + a, x > 1),
-                                                        (3 * a, True))).units == ureg.meter
-        assert unit_calculator.traverse(sympy.floor(x)).units == ureg.kilogram
-        result = unit_calculator.traverse(sympy.floor(12.5) * a)
+        assert unit_calculator.traverse(sp.sqrt(c ** 2)).units == ureg.gram
+        assert unit_calculator.traverse(sp.Abs(-2*y)).units == ureg.volt
+        assert unit_calculator.traverse(sp.Piecewise((a, x < 1),
+                                                     (a + a, x > 1),
+                                                     (3 * a, True))).units == ureg.meter
+        assert unit_calculator.traverse(sp.floor(x)).units == ureg.kilogram
+        result = unit_calculator.traverse(sp.floor(12.5) * a)
         assert result.units == ureg.meter and result.magnitude == 12.0*a
 
+        assert unit_calculator.traverse(sp.sqrt(a*d)).units == ureg.meter
+
         # bad unit expressions
-        assert unit_calculator.traverse(sympy.exp(3 * c)) is None
+        assert unit_calculator.traverse(sp.exp(3 * c)) is None
         assert unit_calculator.traverse(a + b + c) is None
         assert unit_calculator.traverse(a ** _1) is None
-        assert unit_calculator.traverse(sympy.Piecewise((a, x < 1), (b, x > 1), (c, True))) is None
+        assert unit_calculator.traverse(sp.Piecewise((a, x < 1), (b, x > 1), (c, True))) is None
 
     def test_expression_printer(self, quantity_store):
         ureg = quantity_store.ureg
-        a, b, c, x, y, z, _1, _2 = [sympy.Dummy(x)
+        a, b, c, x, y, z, _1, _2 = [sp.Dummy(x)
                                     for x in ['a', 'b', 'c', 'x', 'y', 'z', '1', '2']]
         symbol_info = {
             a: MetaDummy('a', ureg.meter, a),
@@ -132,11 +136,11 @@ class TestUnits(object):
             x:  MetaDummy('x', ureg.kilogram, x),
             y:  MetaDummy('y', ureg.volt, y),
             z:  MetaDummy('z', ureg.ampere, z),
-            _1: MetaDummy('_1', ureg.kelvin, _1, number=sympy.Float(1.0)),
-            _2: MetaDummy('_2', ureg.dimensionless, _2, number=sympy.Integer(2)),
+            _1: MetaDummy('_1', ureg.kelvin, _1, number=sp.Float(1.0)),
+            _2: MetaDummy('_2', ureg.dimensionless, _2, number=sp.Integer(2)),
         }
         printer = ExpressionWithUnitPrinter(symbol_info)
         assert printer.doprint(a * a) == 'a[meter]**2'
         assert printer.doprint(a/b) == 'a[meter]/b[second]'
         assert printer.doprint(_2 * y) == '2.000000[dimensionless]*y[volt]'
-        assert printer.doprint(sympy.Derivative(a, b)) == 'Derivative(a[meter], b[second])'
+        assert printer.doprint(sp.Derivative(a, b)) == 'Derivative(a[meter], b[second])'
