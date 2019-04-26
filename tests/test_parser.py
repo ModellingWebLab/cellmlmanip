@@ -186,8 +186,8 @@ class TestParser(object):
         )
         p = parser.Parser(example_cellml)
 
-        import pint
-        with pytest.raises(pint.errors.DimensionalityError) as dim_error:
+        from pint.errors import DimensionalityError
+        with pytest.raises(DimensionalityError) as dim_error:
             p.parse()
 
         match = ("Cannot convert from 'second' ([time]) to "
