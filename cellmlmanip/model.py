@@ -217,53 +217,61 @@ class Model(object):
         """Every variable we have should have been used in an equation."""
         pass
 
-    def connect_variables(self, source_variable: str, target_variable: str):
+    def connect_variables(self, source_name: str, target_name: str):
         """Given the source and target component and variable, create a connection by assigning
         the symbol from the source to the target. If units are not the same, it will add an equation
         to the target component reflecting the relationship. If a symbol has not been assigned to
         the source variable, then return False.
 
-        :param source_variable: source variable name
-        :param target_variable: target variable name
+        :param source_name: source variable name
+        :param target_name: target variable name
         """
-        logger.debug('connect_variables(%s ⟶ %s)', source_variable, target_variable)
+        logger.debug('connect_variables(%s ⟶ %s)', source_name, target_name)
 
-        source_variable = self.get_meta_dummy(source_variable)
-        target_variable = self.get_meta_dummy(target_variable)
+        source = self.get_meta_dummy(source_name)
+        target = self.get_meta_dummy(target_name)
 
         # If the source variable has already been assigned a final symbol
-        if source_variable.assigned_to:
+        if source.assigned_to:
 
-            if target_variable.assigned_to:
+            if target.assigned_to:
                 raise ValueError('Target already assigned to %s before assignment to %s' %
-                                 (target_variable.assigned_to, source_variable.assigned_to))
+                                 (target.assigned_to, source.assigned_to))
 
             # If source/target variable is in the same unit
-            if source_variable.units == target_variable.units:
+            if source.units == target.units:
                 # Direct substitution is possible
-                target_variable.assigned_to = source_variable.assigned_to
+                target.assigned_to = source.assigned_to
                 # everywhere the target variable is used, replace with source variable
                 for index, equation in enumerate(self.equations):
                     self.equations[index] = equation.xreplace(
-                        {target_variable.dummy: source_variable.assigned_to}
+                        {target.dummy: source.assigned_to}
                     )
+            # Otherwise, this connection requires a conversion
             else:
-                # Requires a conversion, so we add an equation assigning the target dummy variable
-                # to the source variable
-                self.equations.append(
-                    # TODO: do unit conversion here?
-                    sympy.Eq(target_variable.dummy, source_variable.assigned_to)
-                )
+                # Get the scaling factor required to convert source units to target units
+                factor = self.units.convert_to(1 * source.units, target.units).magnitude
+
+                # Dummy to represent this factor in equations, having units for conversion
+                factor_dummy = self.add_number(number=sympy.Float(factor),
+                                               units=str(target.units / source.units))
+
+                # Add an equations making the connection with the required conversion
+                self.equations.append(sympy.Eq(target.dummy, source.assigned_to * factor_dummy))
+
                 logger.info('Connection req. unit conversion: %s', self.equations[-1])
 
                 # The assigned symbol for this variable is itself
-                target_variable.assigned_to = target_variable.dummy
-            logger.debug('Updated target: %s', target_variable)
+                target.assigned_to = target.dummy
+
+            logger.debug('Updated target: %s', target)
+
             return True
+
         # The source variable has not been assigned a symbol, so we can't make this connection
         logger.info('The source variable has not been assigned to a symbol '
                     '(i.e. expecting a connection): %s ⟶ %s',
-                    target_variable.name, source_variable.name)
+                    target.name, source.name)
         return False
 
     def add_rdf(self, rdf: str):

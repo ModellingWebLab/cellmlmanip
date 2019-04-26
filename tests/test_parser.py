@@ -104,8 +104,11 @@ class TestParser(object):
         # we have a new equation that links together times in different units
         time_units_conversion2__time = \
             model.get_meta_dummy('time_units_conversion2$time').assigned_to
-        equation = sympy.Eq(time_units_conversion2__time, environment__time)
-        assert equation in model.equations
+        # equation = sympy.Eq(time_units_conversion2__time, environment__time)
+        equation = [e for e in model.equations if e.lhs == time_units_conversion2__time]
+        assert len(equation) == 1
+        equation = equation.pop()
+        assert len(equation.rhs.find(environment__time)) == 1
 
     def test_add_units_to_equations(self, model):
         # Eq(Derivative(_single_independent_ode$sv1, _environment$time), _1.00000000000000)
@@ -115,30 +118,23 @@ class TestParser(object):
         rhs_units = model.units.summarise_units(test_equation.rhs)
         assert model.units.is_unit_equal(rhs_units, lhs_units)
 
-        # TODO: We should find two equations with different lhs/rhs units
+        # two connected variables required conversion:
         # 1. time_units_conversion1
-        #    Eq(_time_units_conversion1$time, _environment$time) second millisecond
+        #    Eq(_time_units_conversion1$time, _environment$time) second != millisecond
         # 2. time_units_conversion2
-        #    Eq(_time_units_conversion2$time, _environment$time) microsecond millisecond
-        # Make test to check two are unequal, fix them, then check equal
+        #    Eq(_time_units_conversion2$time, _environment$time) microsecond != millisecond
 
-        # Try fixing all units on the RHS so that they match the LHS
+        require_conversion = [model.get_meta_dummy('time_units_conversion1$time').assigned_to,
+                              model.get_meta_dummy('time_units_conversion2$time').assigned_to]
+
+        # find the equations that define these variables that require conversion
         invalid_rhs_lhs_count = 0
         for index, equation in enumerate(model.equations):
-            lhs_units = model.units.summarise_units(equation.lhs)
-            rhs_units = model.units.summarise_units(equation.rhs)
-            if not model.units.is_unit_equal(lhs_units, rhs_units):
+            if equation.lhs in require_conversion:
+                # the lhs and rhs units should be equal
                 invalid_rhs_lhs_count += 1
-                new_rhs = model.units.convert_to(1*rhs_units, lhs_units)
-                # Create a new equality with the converted RHS and replace original
-                scaling_factor_dummy = model.add_number(number=sympy.Float(new_rhs.magnitude),
-                                                        units=str(lhs_units/rhs_units))
-                equation = sympy.Eq(equation.lhs, equation.rhs * scaling_factor_dummy)
-                # Replace the current equation with the same equation multiplied by factor
-                model.equations[index] = equation
                 lhs_units = model.units.summarise_units(equation.lhs)
                 rhs_units = model.units.summarise_units(equation.rhs)
-                # TODO: how to test this?
                 assert model.units.is_unit_equal(lhs_units, rhs_units)
         assert invalid_rhs_lhs_count == 2
 
@@ -189,16 +185,15 @@ class TestParser(object):
             os.path.dirname(__file__), "cellml_files", "err_bad_connection_units.cellml"
         )
         p = parser.Parser(example_cellml)
-        model = p.parse()
 
-        # then check the lhs/rhs units
-        with pytest.raises(AssertionError) as assert_info:
-            for e in model.equations:
-                model.check_left_right_units_equal(e)
+        import pint
+        with pytest.raises(pint.errors.DimensionalityError) as dim_error:
+            model = p.parse()
 
-        match = ("Units volt (1.0, <Unit('kilogram * meter ** 2 / ampere / second ** 3')>) != "
-                 "second (1.0, <Unit('second')>)")
-        assert match in str(assert_info.value)
+        match = ("Cannot convert from 'second' ([time]) to "
+                 "'volt' ([length] ** 2 * [mass] / [current] / [time] ** 3)")
+
+        assert match in str(dim_error.value)
 
     def test_algebraic(self):
         example_cellml = os.path.join(
