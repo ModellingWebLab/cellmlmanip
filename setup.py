@@ -17,7 +17,7 @@ setup(
     license=license_,
     packages=find_packages(exclude=('tests', 'docs')),
     package_data={'cellmlmanip': ['cellml_units.txt']},
-    include_package_date=True,
+    include_package_data=True,
     install_requires=[
         'lxml>=4',
         'networkx>=2',
