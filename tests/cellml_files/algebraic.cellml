@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+This model is designed to test parsing of a purely algebraic model, i.e. no ODEs.
+It also tests handling of novel base units, and a model that's a single component.
+-->
+<model name="algebraic" cmeta:id="algebraic"
+   xmlns="http://www.cellml.org/cellml/1.0#"
+   xmlns:cellml="http://www.cellml.org/cellml/1.0#"
+   xmlns:cmeta="http://www.cellml.org/metadata/1.0#">
+
+   <units name="new_base" base_units="yes"/>
+   <units name="derived">
+      <unit units="new_base"/>
+      <unit units="second" exponent="-1"/>
+   </units>
+
+   <component name="model">
+      <variable name="a" units="derived" cmeta:id="a"/>
+      <variable name="b" units="derived" cmeta:id="b"/>
+      <variable name="c" units="new_base" cmeta:id="c"/>
+      <variable name="d" units="new_base" cmeta:id="d"/>
+      <math xmlns="http://www.w3.org/1998/Math/MathML">
+         <!-- a = b - c/2{secs} -->
+         <apply><eq/>
+            <ci>a</ci>
+            <apply><minus/>
+               <ci>b</ci>
+               <apply><divide/>
+                  <ci>c</ci>
+                  <cn cellml:units="second">2</cn>
+               </apply>
+            </apply>
+         </apply>
+         <!-- b = 15 + (d+c)*{1/secs} -->
+         <apply><eq/>
+            <ci>b</ci>
+            <apply><plus/>
+               <cn cellml:units="derived">15</cn>
+               <apply><times/>
+                  <apply><plus/>
+                     <ci>d</ci>
+                     <ci>c</ci>
+                  </apply>
+                  <apply><divide/>
+                     <cn cellml:units="dimensionless">1</cn>
+                     <cn cellml:units="second">1</cn>
+                  </apply>
+               </apply>
+            </apply>
+         </apply>
+         <!-- c = d*2 - 3 -->
+         <apply><eq/>
+            <ci>c</ci>
+            <apply><minus/>
+               <apply><times/>
+                  <ci>d</ci>
+                  <cn cellml:units="dimensionless">2</cn>
+               </apply>
+               <cn cellml:units="new_base">3</cn>
+            </apply>
+         </apply>
+         <!-- d = 1 -->
+         <apply><eq/>
+            <ci>d</ci>
+            <cn cellml:units="new_base">1</cn>
+         </apply>
+      </math>
+   </component>
+
+   <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+            xmlns:bqbiol="http://biomodels.net/biology-qualifiers/">
+      <rdf:Description rdf:about="#a">
+         <bqbiol:is rdf:resource="urn:test-ns#a"/>
+      </rdf:Description>
+      <rdf:Description rdf:about="#b">
+         <bqbiol:is rdf:resource="urn:test-ns#b"/>
+      </rdf:Description>
+      <rdf:Description rdf:about="#c">
+         <bqbiol:is rdf:resource="urn:test-ns#c"/>
+      </rdf:Description>
+      <rdf:Description rdf:about="#d">
+         <bqbiol:is rdf:resource="urn:test-ns#d"/>
+      </rdf:Description>
+   </rdf:RDF>
+    
+</model>

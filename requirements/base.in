@@ -1,1 +1,5 @@
+lxml
+pint
+rdflib
+networkx
 sympy

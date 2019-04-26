@@ -1,6 +1,7 @@
 import os
 from xml.dom import pulldom
 
+import pytest
 import sympy
 
 from cellmlmanip import mathml2sympy
@@ -11,12 +12,13 @@ class TestParser(object):
     @staticmethod
     def make_mathml(content_xml):
         xml = '<?xml version="1.0"?>' \
-              '<math xmlns="http://www.w3.org/1998/Math/MathML">%s</math>' % content_xml
+              '<math xmlns="http://www.w3.org/1998/Math/MathML" ' \
+              'xmlns:cellml="http://www.cellml.org/cellml/1.0#">%s</math>' % content_xml
         return xml
 
     def assert_equal(self, content_xml, sympy_expression):
         mathml_string = self.make_mathml(content_xml)
-        transpiled_sympy = mathml2sympy.parse_string(mathml_string)
+        transpiled_sympy = mathml2sympy.Transpiler().parse_string(mathml_string)
         assert transpiled_sympy == sympy_expression
 
     def test_symbol(self):
@@ -45,6 +47,11 @@ class TestParser(object):
         self.assert_equal('<apply><minus/><ci>x</ci><ci>y</ci></apply>',
                           [sympy.Symbol('x') - sympy.Symbol('y')])
 
+    def test_minus_nary(self):
+        with pytest.raises(TypeError):
+            self.assert_equal('<apply><minus/><ci>x</ci><ci>y</ci><ci>z</ci></apply>',
+                              [sympy.Symbol('x') - sympy.Symbol('y') - sympy.Symbol('z')])
+
     def test_negative(self):
         self.assert_equal('<apply><minus/><ci>x</ci></apply>',
                           [-sympy.Symbol('x')])
@@ -52,6 +59,11 @@ class TestParser(object):
     def test_divide(self):
         self.assert_equal('<apply><divide/><ci>a</ci><ci>b</ci></apply>',
                           [sympy.Symbol('a') / sympy.Symbol('b')])
+
+    def test_divide_nary(self):
+        with pytest.raises(TypeError):
+            self.assert_equal('<apply><divide/><ci>a</ci><ci>b</ci><ci>c</ci></apply>',
+                              [sympy.Symbol('a') / sympy.Symbol('b') / sympy.Symbol('c')])
 
     def test_eq(self):
         self.assert_equal('<apply><eq/><ci>a</ci><ci>b</ci></apply>',
@@ -184,7 +196,7 @@ class TestParser(object):
         mathml_xml = '<math xmlns="http://www.w3.org/1998/Math/MathML" ' \
                      'xmlns:cellml="http://www.cellml.org/cellml/1.0#"> <apply><cn ' \
                      'cellml:units="dimensionless">3</cn></apply></math> '
-        transpiled_sympy = mathml2sympy.parse_string(mathml_xml)
+        transpiled_sympy = mathml2sympy.Transpiler().parse_string(mathml_xml)
         assert transpiled_sympy == [sympy.Number(3.0)]
 
     def test_diff_eq(self):
@@ -228,8 +240,32 @@ class TestParser(object):
         self.assert_equal('<apply><arctanh/><ci>x</ci></apply>',
                           [sympy.atanh(sympy.Symbol('x'))])
 
-    def test_noble_1962(self):
-        cellml_path = os.path.join(os.path.dirname(__file__), "noble_model_1962.cellml")
+    def test_cn_units(self):
+        mathml = self.make_mathml('<apply>'
+                                  '<eq/>'
+                                  '<cn cellml:units="s">2.0</cn>'
+                                  '<cn cellml:units="ms">2000.0</cn>'
+                                  '</apply>')
+        transpiler = mathml2sympy.Transpiler(dummify=True)
+        sympy_exprs = transpiler.parse_string(mathml)
+        metadata = transpiler.metadata
+        for number in sympy_exprs[0].free_symbols:
+            assert metadata[number]['sympy.Number'] == sympy.Number(float(number.name))
+            if float(number.name) == 2.0:
+                assert metadata[number]['cellml:units'] == 's'
+
+    def test_prefix(self):
+        mathml = self.make_mathml('<apply><ci>x</ci></apply>')
+        transpiler = mathml2sympy.Transpiler(symbol_prefix="test__")
+        sympy_expr = transpiler.parse_string(mathml)
+        assert sympy_expr[0] == sympy.Symbol('test__x')
+
+    def test_hodgkin_1952(self):
+        cellml_path = os.path.join(
+            os.path.dirname(__file__),
+            "cellml_files",
+            "hodgkin_huxley_squid_axon_model_1952_modified.cellml"
+        )
 
         document = pulldom.parse(cellml_path)
         components = []
@@ -238,7 +274,7 @@ class TestParser(object):
                 document.expandNode(node)
                 components.append(node)
         for component in components:
-            eqs = mathml2sympy.parse_dom(component)
+            eqs = mathml2sympy.Transpiler().parse_dom(component)
             for eq in eqs:
                 pass
                 # print(eq)

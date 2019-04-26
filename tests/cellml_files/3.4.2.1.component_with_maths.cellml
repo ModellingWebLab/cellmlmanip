@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- CellML 1.0, 3.4.2.1: Components can contain mathml:math elements -->
+<model name="component_with_maths"
+       xmlns="http://www.cellml.org/cellml/1.0#"
+       xmlns:cellml="http://www.cellml.org/cellml/1.0#">
+    <component name="A">
+        <variable name="a" units="dimensionless" />
+        <variable name="b" units="dimensionless" />
+        <math xmlns="http://www.w3.org/1998/Math/MathML">
+            <apply>
+                <eq/>
+                <ci>a</ci>
+                <cn cellml:units="dimensionless">1</cn>
+            </apply>
+        </math>
+        <math xmlns="http://www.w3.org/1998/Math/MathML">
+            <apply>
+                <eq/>
+                <ci>b</ci>
+                <cn cellml:units="dimensionless">2</cn>
+            </apply>
+        </math>
+    </component>
+</model>

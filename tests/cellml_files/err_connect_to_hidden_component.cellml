@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<model name="error_model_example" cmeta:id="error_model_example"
+       xmlns="http://www.cellml.org/cellml/1.0#"
+       xmlns:cmeta="http://www.cellml.org/metadata/1.0#">
+
+    <component name="parent">
+        <variable name="time2" public_interface="in" units="second"/>
+    </component>
+
+    <component name="child">
+        <variable name="time" public_interface="out" units="second"/>
+        <variable name="time2" public_interface="out" units="second"/>
+    </component>
+
+    <component name="other">
+        <variable name="time" public_interface="in" units="second"/>
+    </component>
+
+    <!-- This isn't allowed as child is hidden from other -->
+    <connection>
+        <map_components component_1="child" component_2="other"/>
+        <map_variables variable_1="time" variable_2="time"/>
+    </connection>
+
+    <!-- This isn't allowed as the private_interface within parent is none -->
+    <connection>
+        <map_components component_1="child" component_2="parent"/>
+        <map_variables variable_1="time2" variable_2="time2"/>
+    </connection>
+
+    <group>
+        <relationship_ref relationship="encapsulation"/>
+        <component_ref component="parent">
+            <component_ref component="child"/>
+        </component_ref>
+    </group>
+
+</model>

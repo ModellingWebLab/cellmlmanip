@@ -61,6 +61,14 @@ For annotations, we check:
       <unit units="mV" exponent="1"/>
       <unit prefix="micro" units="second" exponent="-1"/>
    </units>
+   <units name="volt_per_ms">
+      <unit units="volt" exponent="1"/>
+      <unit units="ms" exponent="-1"/>
+   </units>
+   <units name="uV_per_ms">
+      <unit units="uV" exponent="1"/>
+      <unit units="ms" exponent="-1"/>
+   </units>
    <units name="mM">
       <unit prefix="milli" units="mole"/>
       <unit units="litre" exponent="-1"/>
@@ -157,6 +165,7 @@ For annotations, we check:
             </apply>
             <ci>a</ci>
          </apply>
+         <!-- This also checks we can have multiple equations in a single <math> -->
          <apply><eq/>
             <ci>a</ci>
             <cn cellml:units="mV_per_ms">-1</cn>
@@ -275,6 +284,7 @@ For annotations, we check:
       <variable name="time" public_interface="in" units="ms"/>
       <variable name="y" units="mM" cmeta:id="y1" initial_value="1" public_interface="out"/>
       <variable name="x" units="mM" public_interface="in"/>
+      <variable name="rhs" units="mM_per_ms"/>
       <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:bqbiol="http://biomodels.net/biology-qualifiers/">
          <rdf:Description rdf:about="#y1">
             <bqbiol:is rdf:resource="https://chaste.comlab.ox.ac.uk/cellml/ns/oxford-metadata#extracellular_calcium_concentration"/>
@@ -290,6 +300,13 @@ For annotations, we check:
                </bvar>
                <ci>y</ci>
             </apply>
+            <ci>rhs</ci>
+         </apply>
+      </math>
+      <!-- This also checks we can have multiple <math> elements in a component -->
+      <math xmlns="http://www.w3.org/1998/Math/MathML">
+         <apply><eq/>
+            <ci>rhs</ci>
             <apply><times/>
                <ci>x</ci>
                <cn cellml:units="per_ms">1</cn>
@@ -450,7 +467,7 @@ For annotations, we check:
                </bvar>
                <ci>sv1</ci>
             </apply>
-            <cn cellml:units="mV_per_s">0.001</cn>
+            <cn cellml:units="volt_per_ms">0.001</cn>
          </apply>
       </math>
    </component>
@@ -459,7 +476,7 @@ For annotations, we check:
       <!-- sv1_rate = d(sv1)/d(time), where sv1 & time are connected to parent state_units_conversion1 -->
       <variable name="time" public_interface="in" units="ms"/>
       <variable name="sv1" units="volt" public_interface="in"/>
-      <variable name="sv1_rate" units="mV_per_s" cmeta:id="sv1_rate1b"/>
+      <variable name="sv1_rate" units="volt_per_ms" cmeta:id="sv1_rate1b"/>
       <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:bqbiol="http://biomodels.net/biology-qualifiers/">
          <rdf:Description rdf:about="#sv1_rate1b">
             <bqbiol:is rdf:resource="https://chaste.comlab.ox.ac.uk/cellml/ns/oxford-metadata#slow_time_dependent_potassium_current_conductance"/>
@@ -500,7 +517,7 @@ For annotations, we check:
                </bvar>
                <ci>sv1</ci>
             </apply>
-            <cn cellml:units="mV_per_usec">1000</cn>
+            <cn cellml:units="uV_per_ms">1000</cn>
          </apply>
       </math>
    </component>
@@ -509,7 +526,7 @@ For annotations, we check:
       <!-- sv1_rate = d(sv1)/d(time), where sv1 & time are connected to parent state_units_conversion2 -->
       <variable name="time" public_interface="in" units="ms"/>
       <variable name="sv1" units="uV" public_interface="in"/>
-      <variable name="sv1_rate" units="mV_per_usec" cmeta:id="sv1_rate2b"/>
+      <variable name="sv1_rate" units="uV_per_ms" cmeta:id="sv1_rate2b"/>
       <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:bqbiol="http://biomodels.net/biology-qualifiers/">
          <rdf:Description rdf:about="#sv1_rate2b">
             <bqbiol:is rdf:resource="https://chaste.comlab.ox.ac.uk/cellml/ns/oxford-metadata#rapid_time_dependent_potassium_current_conductance"/>
