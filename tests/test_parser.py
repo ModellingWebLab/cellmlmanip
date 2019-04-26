@@ -225,3 +225,16 @@ class TestParser(object):
         )
         model = load_model(example_cellml)
         assert len(list(model.equations)) == 2
+
+    def test_bad_unit_definitions(self):
+        bad_unit_models = ['5.4.2.2.unit_cycle_1.cellml',
+                           '5.4.2.2.unit_cycle_3.cellml',
+                           '5.4.2.2.unit_units_invalid.cellml']
+        for bad_unit_model in bad_unit_models:
+            example_cellml = os.path.join(
+                os.path.dirname(__file__), "cellml_files", bad_unit_model
+            )
+            p = parser.Parser(example_cellml)
+            with pytest.raises(ValueError) as value_error:
+                p.parse()
+            assert 'Cannot create units' in str(value_error.value)
