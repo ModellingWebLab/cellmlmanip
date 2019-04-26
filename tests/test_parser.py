@@ -188,7 +188,7 @@ class TestParser(object):
 
         import pint
         with pytest.raises(pint.errors.DimensionalityError) as dim_error:
-            model = p.parse()
+            p.parse()
 
         match = ("Cannot convert from 'second' ([time]) to "
                  "'volt' ([length] ** 2 * [mass] / [current] / [time] ** 3)")
