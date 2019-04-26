@@ -567,8 +567,8 @@ class Model(object):
         return symbols
 
     def find_variable(self, search_dict):
-        """Searches for variables by attributes in their DummyData record. Pass a dictionary of
-        {name: value}, where name is one the attributes in DummyData """
+        """Searches for variables by attributes in their MetaDummy record. Pass a dictionary of
+        {name: value}, where name is one the attributes in MetaDummy """
         matches = []
 
         # for each component in this model
