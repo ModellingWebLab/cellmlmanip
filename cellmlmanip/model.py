@@ -384,8 +384,10 @@ class Model(object):
                     if getattr(variable, key):
                         graph.nodes[node][key] = getattr(variable, key)
                 if graph.nodes[node].get('variable_type', '') == 'state':
-                    if variable.initial_value:
+                    if variable.initial_value is not None:
                         graph.nodes[node]['initial_value'] = sympy.Float(variable.initial_value)
+                if variable.type is not None:
+                    graph.nodes[node]['variable_type'] = variable.type
 
         # for each node in the graph
         for node in graph.nodes:
