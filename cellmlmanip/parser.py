@@ -123,6 +123,7 @@ class Parser(object):
                 unit_elements = [dict(t.attrib) for t in units_element.getchildren()]
                 definitions_to_add[units_name] = unit_elements
 
+        iteration = 0
         # while we still have units to add
         while definitions_to_add:
             # get a definition from the top of the list
@@ -136,10 +137,21 @@ class Parser(object):
                     definitions_to_add[unit_name] = unit_elements
                     definitions_to_add.move_to_end(unit_name, last=False)
                     add_now = False
+
             # unit is defined in terms of known units - ok to add to model
             if add_now:
                 self.model.add_unit(unit_name, unit_attributes=unit_elements)
                 units_found.add(unit_name)
+                iteration = 0
+                continue
+
+            # we did not add any units in this iteration - make note
+            iteration += 1
+
+            # exit if we have not been able to add any units in the entire list of definitions
+            if iteration > len(definitions_to_add):
+                raise ValueError('Cannot create units %s. '
+                                 'Cycles or unknown units.' % definitions_to_add)
 
     def _add_components(self, model: etree.Element):
         """ <model> <component> </model> """
