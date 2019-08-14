@@ -16,4 +16,3 @@ build: off
 
 test_script:
   - "%PYTHON%\\python.exe -m pytest"
-
