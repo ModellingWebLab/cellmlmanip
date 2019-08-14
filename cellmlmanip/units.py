@@ -274,6 +274,9 @@ class UnitCalculator(object):
             # Treat each sub-function an argument (& ignore the condition)
             for arg in expr.args:
                 quantity_per_arg.append(self.traverse(arg[0]))
+        elif expr.is_Derivative:
+            quantity_per_arg.append(self.traverse(expr.args[0]))
+            quantity_per_arg.append(self.traverse(expr.args[1][0]))
         else:
             # Otherwise, collect the quantity for each argument of the expression
             for arg in expr.args:
@@ -443,7 +446,7 @@ class ExpressionWithUnitPrinter(LambdaPrinter):
     def _print_Derivative(self, expr):
         state_dummy = expr.free_symbols.pop()
         state_unit = self._get_dummy_unit(state_dummy)
-        free_dummy = set(expr.canonical_variables.keys()).pop()
+        free_dummy = expr.variables[0]
         free_unit = self._get_dummy_unit(free_dummy)
         return 'Derivative(%s[%s], %s[%s])' % (state_dummy.name,
                                                str(state_unit),

@@ -165,15 +165,12 @@ class Model(object):
         not_found = set()
 
         for index, equation in enumerate(self.equations):
-            atoms = equation.atoms()
+            atoms = equation.atoms(sympy.Dummy)
             for atom in atoms:
-                # we allow NegativeOne because it is used by sympy to perform division
-                # and represent negative numbers
-                if not isinstance(atom, sympy.numbers.NegativeOne):
-                    dummy_instances.add(atom)
-                    if atom not in self.dummy_metadata:
-                        logger.critical('%s not found for eq. %s (%s)' % (atom, index, equation))
-                        not_found.add(atom)
+                dummy_instances.add(atom)
+                if atom not in self.dummy_metadata:
+                    logger.critical('%s not found for eq. %s (%s)' % (atom, index, equation))
+                    not_found.add(atom)
 
         return dummy_instances, not_found
 
@@ -327,7 +324,7 @@ class Model(object):
                 Model._set_variable_type(state_variable, 'state')
 
                 # Get the free symbol and update the variable information
-                free_symbol = set(lhs_symbol.canonical_variables.keys()).pop()
+                free_symbol = lhs_symbol.variables[0]
                 free_variable = self.get_meta_dummy(free_symbol)
                 Model._set_variable_type(free_variable, 'free')
 
