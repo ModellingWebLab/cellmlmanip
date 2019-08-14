@@ -48,25 +48,21 @@ def test_get_symbol_by_ontology_term():
     model = load_model('test_bad_annotations')
 
     # Two variables with the same ID
-    with pytest.raises(ValueError) as e:
+    with pytest.raises(ValueError, match='Multiple variables annotated with'):
         model.get_symbol_by_ontology_term(oxmeta, 'time')
-        assert 'Multiple variables annotated with' in str(e)
 
     # Annotation with a cmeta id that doesn't exist
-    with pytest.raises(KeyError) as e:
-        model.get_symbol_by_ontology_term(oxmeta, 'membrane_potential')
-    assert 'No variable with cmeta id' in str(e)
+    with pytest.raises(KeyError, match='No variable with cmeta id'):
+        model.get_symbol_by_ontology_term(oxmeta, 'membrane_potential')    
 
     # Annotation of something that isn't a variable
-    with pytest.raises(KeyError) as e:
+    with pytest.raises(KeyError, match='No variable with cmeta id'):
         model.get_symbol_by_ontology_term(
             oxmeta, 'membrane_fast_sodium_current')
-    assert 'No variable with cmeta id' in str(e)
 
     # Non-local annotation
     # TODO: Add support to allow non-local (but valid, i.e. referring to the
     #       current model) references.
-    with pytest.raises(NotImplementedError) as e:
+    with pytest.raises(NotImplementedError, match='Non-local annotations'):
         model.get_symbol_by_ontology_term(
             oxmeta, 'membrane_persistent_sodium_current')
-    assert 'Non-local annotations' in str(e)
