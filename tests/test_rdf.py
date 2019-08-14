@@ -50,7 +50,7 @@ def test_get_symbol_by_ontology_term():
     # Two variables with the same ID
     with pytest.raises(ValueError) as e:
         model.get_symbol_by_ontology_term(oxmeta, 'time')
-    assert 'Multiple variables annotated with' in str(e)
+        assert 'Multiple variables annotated with' in str(e)
 
     # Annotation with a cmeta id that doesn't exist
     with pytest.raises(KeyError) as e:
