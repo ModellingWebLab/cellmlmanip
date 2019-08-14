@@ -1,0 +1,18 @@
+branches:
+  only:
+    - master
+
+environment:
+
+  matrix:
+    - PYTHON: "C:\\Python36-x64"
+
+install:
+  - "%PYTHON%\\python.exe --version"
+  - "%PYTHON%\\python.exe -m pip install --upgrade pip setuptools wheel"
+  - "%PYTHON%\\python.exe -m pip install .[test]"
+
+build: off
+
+test_script:
+  - "%PYTHON%\\python.exe -m pytest"
