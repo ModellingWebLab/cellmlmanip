@@ -3,4 +3,4 @@
 
 flake8
 isort
-pip-tools
+pip-tools>=4.0.0
