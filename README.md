@@ -8,7 +8,7 @@ CellML loading and model equation manipulation
 Set up a virtual environment, and install requirements:
 ```sh
 conda create -n cellmlmanip python=3.6
-source activate cellmlmanip
+conda activate cellmlmanip
 pip install -r requirements/dev.txt
 pip install -e .
 ```

@@ -4,18 +4,23 @@
 #
 #    pip-compile --output-file=test.txt test.in
 #
-decorator==4.3.0          # via networkx
+atomicwrites==1.3.0       # via pytest
+attrs==19.1.0             # via packaging, pytest
+decorator==4.4.0          # via networkx
+importlib-metadata==0.19  # via pluggy, pytest
 isodate==0.6.0            # via rdflib
 lxml==4.4.1
-mpmath==1.0.0             # via sympy
-networkx==2.2
-pint==0.8.1
-py==1.4.34                # via pytest
-pyparsing==2.2.0          # via rdflib
-pytest==3.2.0
+more-itertools==7.2.0     # via pytest
+mpmath==1.1.0             # via sympy
+networkx==2.3
+packaging==19.1           # via pytest
+pint==0.9
+pluggy==0.12.0            # via pytest
+py==1.8.0                 # via pytest
+pyparsing==2.4.2          # via packaging, rdflib
+pytest==5.0.1
 rdflib==4.2.2
-six==1.11.0               # via isodate
-sympy==1.1.1
-
-# The following packages are considered to be unsafe in a requirements file:
-# setuptools==41.1.0        # via pytest
+six==1.12.0               # via isodate, packaging
+sympy==1.4
+wcwidth==0.1.7            # via pytest
+zipp==0.5.2               # via importlib-metadata
