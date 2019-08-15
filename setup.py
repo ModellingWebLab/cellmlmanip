@@ -23,7 +23,7 @@ setup(
         'networkx>=2',
         'pint>=0.8.1',
         'rdflib>=4',
-        'sympy==1.4',
+        'sympy>=1.2',
     ],
     extras_require={
         'test': [
