@@ -14,8 +14,10 @@ matrix:
 install:
   if [ $PIN_REQUIREMENTS -eq 1 ]; then
     pip install --no-deps -r requirements/test.txt;
+    pip install --no-deps .[test];
+  else
+    pip install .[test];
   fi;
-  pip install .[test];
 script:
   - pytest --cov --cov-config=cellmlmanip/.coveragerc
   - flake8

@@ -3,8 +3,7 @@ omit =
 source = cellmlmanip
 branch = True
 
-[html]
-directory = ../coverage/html
-
-[xml]
-output = ../coverage/coverage.xml
+[report]
+exclude_lines =
+    pragma: no cover
+    raise NotImplementedError
