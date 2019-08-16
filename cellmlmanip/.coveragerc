@@ -1,6 +1,6 @@
 [run]
 omit =
-source = .
+source = cellmlmanip
 branch = True
 
 [html]
