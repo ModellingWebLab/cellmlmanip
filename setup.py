@@ -27,7 +27,11 @@ setup(
     ],
     extras_require={
         'test': [
+            'codecov',
+            'flake8',
+            'isort',
             'pytest>=3.2',
+            'pytest-cov',
         ],
     },
 )
