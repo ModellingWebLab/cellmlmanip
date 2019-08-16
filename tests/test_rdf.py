@@ -53,7 +53,7 @@ def test_get_symbol_by_ontology_term():
 
     # Annotation with a cmeta id that doesn't exist
     with pytest.raises(KeyError, match='No variable with cmeta id'):
-        model.get_symbol_by_ontology_term(oxmeta, 'membrane_potential')    
+        model.get_symbol_by_ontology_term(oxmeta, 'membrane_potential')
 
     # Annotation of something that isn't a variable
     with pytest.raises(KeyError, match='No variable with cmeta id'):

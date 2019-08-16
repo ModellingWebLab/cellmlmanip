@@ -206,7 +206,7 @@ class TestParser(object):
 
         ureg = model.units.ureg
         assert str(ureg.get_dimensionality(ureg.new_base)) == '[new_base]'
-        assert ureg.get_base_units(ureg.new_base/ureg.second) == ureg.get_base_units(ureg.derived)
+        assert ureg.get_base_units(ureg.new_base / ureg.second) == ureg.get_base_units(ureg.derived)
 
     def test_undefined_variable(self):
         example_cellml = os.path.join(
