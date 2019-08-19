@@ -207,7 +207,7 @@ class TestParser(object):
                           '><apply><divide/><apply><minus/><apply><plus/><ci>i_Stim</ci><ci>i_Na'
                           '</ci><ci>i_K</ci><ci>i_L</ci></apply></apply><ci>Cm</ci></apply'
                           '></apply>',
-                          [sympy.Eq(sympy.Derivative(V(t), t), -(i_Stim+i_Na+i_K+i_L) / Cm)])
+                          [sympy.Eq(sympy.Derivative(V(t), t), -(i_Stim + i_Na + i_K + i_L) / Cm)])
 
     def test_scientific_notation(self):
         self.assert_equal('<cn type="e-notation">1.234<sep/>5</cn>', [sympy.Number(1.234e5)])

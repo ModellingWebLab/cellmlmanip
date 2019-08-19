@@ -18,6 +18,7 @@ setup(
     packages=find_packages(exclude=('tests', 'docs')),
     package_data={'cellmlmanip': ['cellml_units.txt']},
     include_package_data=True,
+    python_requires='>=3.6',
     install_requires=[
         'lxml>=4',
         'networkx>=2',
@@ -27,7 +28,11 @@ setup(
     ],
     extras_require={
         'test': [
+            'codecov',
+            'flake8',
+            'isort',
             'pytest>=3.2',
+            'pytest-cov',
         ],
     },
 )
