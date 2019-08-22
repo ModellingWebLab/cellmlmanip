@@ -89,13 +89,29 @@ class TestUnits(object):
     def test_add_custom_unit(self):
         unitstore = UnitStore(model=None)
         assert (unitstore._is_unit_defined('newbaseunit') is False)
-        unit_attributes = [dict({'multiplier': 2, 'units': 'second'})]
+        unit_attributes = [{'multiplier': 2, 'units': 'second'}]
         unitstore.add_custom_unit('newbaseunit', unit_attributes)
         assert (unitstore._is_unit_defined('newbaseunit') is True)
+
+    def test_add_custom_unit_existing(self):
+        unitstore = UnitStore(model=None)
+        unit_attributes = [{'multiplier': 1, 'units': 'second'}]
+        with pytest.raises(AssertionError):
+            unitstore.add_custom_unit('second', unit_attributes)
+            pytest.fail("Cannot redefine CellML unit <second>")
+            pass
 
     def test_is_unit_defined(self, quantity_store):
         assert (quantity_store._is_unit_defined('ms') is True)
         assert (quantity_store._is_unit_defined('not_a_unit') is False)
+
+    def test_make_pint_unit_definition(self, quantity_store):
+        unit_attributes = [{'prefix': -3, 'units': 'metre'},
+                           {'prefix': 'milli', 'exponent': -1, 'units': 'second'},
+                           {'multiplier': 2, 'units': 'kilograms'}
+                           ]
+        assert(quantity_store._make_pint_unit_definition('kg_mm_per_ms', unit_attributes) ==
+               'kg_mm_per_ms=(meter * 1e-3)*(((second * 0.001))**-1)*(2 * kilogram)')
 
     # Test UnitCalculator class
 
