@@ -42,6 +42,7 @@ class TestUnits(object):
         # Units defined in the test CellML <model>:
         for name in TestUnits.test_definitions.keys():
             quantity_store.get_quantity(name)
+            # what is being tested ??
 
         # Pint built-in units
         assert quantity_store.is_unit_equal(
@@ -84,6 +85,19 @@ class TestUnits(object):
             1 * quantity_store.get_quantity('milli_mole'),
             quantity_store.get_quantity('mole')
         ) == 0.001
+
+    def test_add_custom_unit(self):
+        unitstore = UnitStore(model=None)
+        assert (unitstore._is_unit_defined('newbaseunit') is False)
+        unit_attributes = [dict({'multiplier': 2, 'units': 'second'})]
+        unitstore.add_custom_unit('newbaseunit', unit_attributes)
+        assert (unitstore._is_unit_defined('newbaseunit') is True)
+
+    def test_is_unit_defined(self, quantity_store):
+        assert (quantity_store._is_unit_defined('ms') is True)
+        assert (quantity_store._is_unit_defined('not_a_unit') is False)
+
+    # Test UnitCalculator class
 
     def test_unit_calculator(self, quantity_store):
         ureg = quantity_store.ureg
@@ -144,3 +158,4 @@ class TestUnits(object):
         assert printer.doprint(a / b) == 'a[meter]/b[second]'
         assert printer.doprint(_2 * y) == '2.000000[dimensionless]*y[volt]'
         assert printer.doprint(sp.Derivative(a, b)) == 'Derivative(a[meter], b[second])'
+

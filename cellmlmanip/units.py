@@ -99,8 +99,10 @@ class UnitStore(object):
 
     def add_custom_unit(self, units_name, unit_attributes):
         """Define a new Pint unit definition to the unit registry
-        :param units_name:
-        :param unit_attributes:
+        :param units_name: name of unit to add - cannot be an existing CellML unit
+        :param unit_attributes: dict object for unit
+            {'multiplier': float, 'units': string, 'exponent': integer, 'prefix': string/integer}
+            Not all fields necessary but 'units' must match a unit in Pint registry
         """
         assert units_name not in CELLML_UNITS, 'Cannot redefine CellML unit <%s>' % units_name
 
@@ -122,13 +124,17 @@ class UnitStore(object):
 
     def add_base_unit(self, units_name):
         """Define a new base unit in the Pint registry
-        :param units_name:
+        :param units_name: string name of unit to add
         """
         assert units_name not in CELLML_UNITS, 'Cannot redefine CellML unit <%s>' % units_name
         assert not self._is_unit_defined(units_name), 'Unit <%s> already exists' % units_name
         self._define_pint_unit(units_name, '{name}=[{name}]'.format_map({'name': units_name}))
 
     def _is_unit_defined(self, name):
+        """ Check whether the unit already exists in Pint registry
+        :param name: string name of the unit
+        :return: True if exists, else False
+        """
         try:
             getattr(self.ureg, name)
             return True
