@@ -113,6 +113,15 @@ class TestUnits(object):
         unitstore.add_custom_unit('newunit', unit_attributes)
         assert (unitstore._is_unit_defined('newunit') is True)
 
+    def test_add_custom_unit_3(self):
+        unitstore = UnitStore(model=None)
+        assert (unitstore._is_unit_defined('newunit') is False)
+        # add a new unit called 'newunit' which consists of
+        # (metre per second)
+        unit_attributes = [{'units': 'metre'}, {'units': 'second', 'exponent': -1}]
+        unitstore.add_custom_unit('newunit', unit_attributes)
+        assert (unitstore._is_unit_defined('newunit') is True)
+
     def test_add_custom_unit_existing(self):
         unitstore = UnitStore(model=None)
         unit_attributes = [{'multiplier': 1, 'units': 'second'}]
