@@ -88,10 +88,30 @@ class TestUnits(object):
 
     def test_add_custom_unit(self):
         unitstore = UnitStore(model=None)
-        assert (unitstore._is_unit_defined('newbaseunit') is False)
+        assert (unitstore._is_unit_defined('newunit') is False)
+        # add a new unit called 'newunit' which consists of
+        # (2 * second) - I know not realistic
         unit_attributes = [{'multiplier': 2, 'units': 'second'}]
-        unitstore.add_custom_unit('newbaseunit', unit_attributes)
-        assert (unitstore._is_unit_defined('newbaseunit') is True)
+        unitstore.add_custom_unit('newunit', unit_attributes)
+        assert (unitstore._is_unit_defined('newunit') is True)
+
+    def test_add_custom_unit_1(self):
+        unitstore = UnitStore(model=None)
+        assert (unitstore._is_unit_defined('newunit') is False)
+        # add a new unit called 'newunit' which consists of
+        # (millimetres)
+        unit_attributes = [{'prefix': 'milli', 'units': 'metre'}]
+        unitstore.add_custom_unit('newunit', unit_attributes)
+        assert (unitstore._is_unit_defined('newunit') is True)
+
+    def test_add_custom_unit_2(self):
+        unitstore = UnitStore(model=None)
+        assert (unitstore._is_unit_defined('newunit') is False)
+        # add a new unit called 'newunit' which consists of
+        # (milliVolts)
+        unit_attributes = [{'prefix': -3, 'units': 'volt'}]
+        unitstore.add_custom_unit('newunit', unit_attributes)
+        assert (unitstore._is_unit_defined('newunit') is True)
 
     def test_add_custom_unit_existing(self):
         unitstore = UnitStore(model=None)
