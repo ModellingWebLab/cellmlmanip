@@ -35,7 +35,7 @@ class TestModelUnits():
         assert equation[0].rhs == 1.0
 
         symbolB = model.get_symbol_by_cmeta_id("b")
-        # Note calling this function a second time adds to the list of
+        # Note calling this function a second time adds to the list of equations
         # I'm not sure that is expected behaviour -
         # I have only asked for equations for 'b'
         equation1 = model.get_equations_for([symbolB])
