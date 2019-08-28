@@ -15,3 +15,5 @@ def test_add_preferred_custom_unit_name(model):
     assert str(model.units.summarise_units(time_var)) == "ms"
     model.units.add_preferred_custom_unit_name('millisecond', [{'prefix': 'milli', 'units': 'second'}])
     assert str(model.units.summarise_units(time_var)) == "millisecond"
+    model.units.add_preferred_custom_unit_name('millisecond', [{'prefix': 'milli', 'units': 'second'}])
+    assert str(model.units.summarise_units(time_var)) == "millisecond"
