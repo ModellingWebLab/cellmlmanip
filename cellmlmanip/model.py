@@ -1,4 +1,4 @@
-"""Classes to represent a flattened CellML model and metadata about its variables"""
+﻿"""Classes to represent a flattened CellML model and metadata about its variables"""
 import logging
 from collections import OrderedDict
 from io import StringIO
@@ -461,7 +461,7 @@ class Model(object):
     def _get_symbol_by_cmeta_id(self, cmeta_id):
         """Searches the given graph and returns the symbol for the variable with the given cmeta_id.
         PLEASE NOTE this does NOT get the oxmeta tag to get that use
-        get_symbol_by_ontology_term("https://chaste.comlab.ox.ac.uk/cellml/ns/oxford-metadata",
+        get_symbol_by_ontology_term("https://chaste.comlab.ox.ac.uk/cellml/ns/oxford-metadata#",
                                     "cytosolic_calcium_concentration")
         """
         for v in self.graph:
