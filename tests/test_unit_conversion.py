@@ -2,7 +2,7 @@ import pytest
 import os
 import cellmlmanip
 
-OXMETA = "https://chaste.comlab.ox.ac.uk/cellml/ns/oxford-metadata"
+OXMETA = "https://chaste.comlab.ox.ac.uk/cellml/ns/oxford-metadata#"
 
 
 @pytest.fixture
