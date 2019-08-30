@@ -15,8 +15,8 @@ def test_add_preferred_custom_unit_name(model):
     assert str(model.units.summarise_units(time_var)) == "ms"
     model.units.add_preferred_custom_unit_name('millisecond', [{'prefix': 'milli', 'units': 'second'}])
     assert str(model.units.summarise_units(time_var)) == "millisecond"
-    ''' add_custom_unit does not allow adding already existing units but add_preferred_custom_unit_name does since we
-    cannot know in advance if a model will already have the unit named this way. To test this we add the same unit
-    again'''
+    # add_custom_unit does not allow adding already existing units but add_preferred_custom_unit_name does since we
+    # cannot know in advance if a model will already have the unit named this way. To test this we add the same unit
+    # again
     model.units.add_preferred_custom_unit_name('millisecond', [{'prefix': 'milli', 'units': 'second'}])
     assert str(model.units.summarise_units(time_var)) == "millisecond"
