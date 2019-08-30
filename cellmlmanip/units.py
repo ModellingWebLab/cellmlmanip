@@ -120,6 +120,22 @@ class UnitStore(object):
 
             self._define_pint_unit(units_name, unit_definition)
 
+    def add_preferred_custom_unit_name(self, units_name, unit_attributes):
+        """Set a prefered name for all equivalent custom units. If it does not exist yet, also define a new Pint unit
+        definition to the unit registry.
+        PLEASE NOTE: not retrospective, assumes you are not adding new expressions to the model.
+        It also does not do any unit conversions, only works on equivalent units with different names.
+        :param units_name: the prefered name for this unit and all units in the model that are equivalent
+        :param unit_attributes:
+        """
+        try:
+            self.add_custom_unit(units_name, unit_attributes)
+        except AssertionError:
+            pass  # Unit already exists, but that is not a problem
+        for dummy in list(self.model.dummy_metadata.items()):
+            if self.is_unit_equal(dummy[1].units, getattr(self.ureg, units_name)):
+                dummy[1].units = getattr(self.ureg, units_name)
+
     def add_base_unit(self, units_name):
         """Define a new base unit in the Pint registry
         :param units_name:
