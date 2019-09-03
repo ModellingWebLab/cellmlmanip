@@ -412,6 +412,7 @@ class Model(object):
 
     def get_equations_for(self, symbols, lexicographical_sort=True):
         """Get all equations for given collection of symbols
+        
         lexicographical_sort indicates whether the result will be sorted in lexicographical order"""
         graph = self.get_equation_graph()
         if lexicographical_sort:
