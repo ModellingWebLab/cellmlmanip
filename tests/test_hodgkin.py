@@ -6,6 +6,7 @@ import sympy
 
 from cellmlmanip import load_model
 
+OXMETA = "https://chaste.comlab.ox.ac.uk/cellml/ns/oxford-metadata#"
 
 class TestHodgkin:
     @pytest.fixture(scope="class")
@@ -240,3 +241,21 @@ class TestHodgkin:
             expected = evaluated_derivatives[state_symbol.name]
             actual = evaluated_deriv
             assert float(actual) == pytest.approx(expected)
+
+    def test_get_symbol_by_ontology_term(self, graph, model):
+        membrane_voltage_var = model.get_symbol_by_ontology_term(OXMETA, "membrane_voltage")
+        assert (isinstance(membrane_voltage_var, sympy.symbol.Dummy))
+        assert str(membrane_voltage_var)=="_membrane$V"
+
+    def test_get_equations_for(self, graph, model):
+        # Get equations for membrane_fast_sodium_current both ordered and unordered
+        membrane_fast_sodium_current = model.get_symbol_by_ontology_term(OXMETA, "membrane_fast_sodium_current")
+        equations = model.get_equations_for([membrane_fast_sodium_current])
+        unordered_equations = model.get_equations_for([membrane_fast_sodium_current], False)
+        # There should be 4 in this model
+        assert len(equations) == len(unordered_equations) == 4
+        #Each equation should be both in the ordered and unordered equations
+        for eq in equations:
+            assert(eq in unordered_equations)
+        for eq in unordered_equations:
+            assert(eq in equations)            
