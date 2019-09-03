@@ -410,10 +410,15 @@ class Model(object):
         self.graph = graph
         return graph
 
-    def get_equations_for(self, symbols):
-        """Get all equations for given collection of symbols"""
-        graph = self.get_equation_graph()
-        sorted_symbols = nx.lexicographical_topological_sort(graph, key=str)
+    def get_equations_for(self, symbols, lexicographical_sort=True):
+        """Get all equations for given collection of symbols
+        optional parameter lexicographical_sort indicates whether the result will be sorted in lexicographical order or not"""
+        graph = self.get_equation_graph()        
+        if lexicographical_sort:
+            sorted_symbols = nx.lexicographical_topological_sort(graph, key=str)
+        else:
+            sorted_symbols = nx.topological_sort(graph)
+
 
         # Create set of symbols for which we require equations
         required_symbols = set()
