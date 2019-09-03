@@ -412,8 +412,10 @@ class Model(object):
 
     def get_equations_for(self, symbols, lexicographical_sort=True):
         """Get all equations for given collection of symbols
-        
-        lexicographical_sort indicates whether the result will be sorted in lexicographical order"""
+
+        Results are sorted in topographical order.
+        Lexicographical_sort indicates whether the result is sorted in lexicographical order first
+        """
         graph = self.get_equation_graph()
         if lexicographical_sort:
             sorted_symbols = nx.lexicographical_topological_sort(graph, key=str)
