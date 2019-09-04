@@ -414,7 +414,8 @@ class Model(object):
         """Get all equations for given collection of symbols
 
         Results are sorted in topographical order.
-        Lexicographical_sort indicates whether the result is sorted in lexicographical order first
+        :param symbols: the symbols to get the equations for
+        :param lexicographical_sort: indicates whether the result is sorted in lexicographical order first
         """
         graph = self.get_equation_graph()
         if lexicographical_sort:

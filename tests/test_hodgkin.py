@@ -257,6 +257,28 @@ class TestHodgkin:
         assert len(equations) == len(unordered_equations) == 4
         # Each equation should be both in the ordered and unordered equations
         for eq in equations:
-            assert(eq in unordered_equations)
+            assert eq in unordered_equations
         for eq in unordered_equations:
-            assert(eq in equations)
+            assert eq in equations
+
+        # Expected equations
+        ref_eq = [sympy.Eq(sympy.Dummy('membrane$E_R'), sympy.numbers.Float(-75.0)),
+                  sympy.Eq(sympy.Dummy('sodium_channel$E_Na'),
+                           sympy.add.Add(sympy.Dummy('membrane$E_R'), sympy.numbers.Float(115.0))),
+                  sympy.Eq(sympy.Dummy('sodium_channel$g_Na'), sympy.numbers.Float(120.0)),
+                  sympy.Eq(sympy.Dummy('sodium_channel$i_Na'),
+                           sympy.Dummy('sodium_channel_m_gate$m') ** 3.0 * sympy.Dummy('sodium_channel$g_Na') *
+                           sympy.Dummy('sodium_channel_h_gate$h') * (sympy.Dummy('membrane$V') -
+                           sympy.Dummy('sodium_channel$E_Na')))
+                  ]
+
+        # Expected ordering for not lexicographical sorted equations
+        unordered_ref_eq = [ref_eq[2], ref_eq[0], ref_eq[1], ref_eq[3]]
+
+        # Check equations against expected equations
+        for i in range(len(equations)):
+            assert str(equations[i]) == str(ref_eq[i])
+
+        # Check not lexicographical sorted equations against expected equations
+        for i in range(len(unordered_equations)):
+            assert str(unordered_equations[i]) == str(unordered_ref_eq[i])
