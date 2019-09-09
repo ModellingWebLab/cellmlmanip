@@ -262,16 +262,16 @@ class TestHodgkin:
         annotation = model.get_ontology_terms_by_symbol(membrane_voltage_var)
         assert len(annotation) == 1
         assert annotation[0] == "membrane_voltage"
-        
+
     def tesy_has_ontology_annotation(self, model):
         membrane_voltage_var = model.get_symbol_by_ontology_term(OXMETA, "membrane_voltage")
-        assert model.has_ontology_annotation(membrane_voltage_var, OXMETA) == True
+        assert model.has_ontology_annotation(membrane_voltage_var, OXMETA)
 
         # Repeat test with wrong namespace
-        assert model.has_ontology_annotation(membrane_voltage_var, 'http://www.nottingam.ac.uk/') == False        
+        assert not model.has_ontology_annotation(membrane_voltage_var, 'http://www.nottingam.ac.uk/')
 
         # Repeat test without specifying namespace
-        assert model.has_ontology_annotation(membrane_voltage_var) == True
+        assert model.has_ontology_annotation(membrane_voltage_var)
 
     def test_get_equations_for(self, graph, model):
         # Get equations for membrane_fast_sodium_current both ordered and unordered

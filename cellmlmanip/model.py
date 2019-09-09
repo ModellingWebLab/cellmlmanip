@@ -535,12 +535,14 @@ class Model(object):
 
     def get_ontology_terms_by_symbol(self, symbol, namespace_uri=None):
         """Searches the RDF graph for the annotation ``{namespace_uri}annotation_name``
-        for the given symbol and returns ``annotation_name`` if the annotation exists, otherwise None
+        for the given symbol and returns ``annotation_name`` and optionally restricted
+        to a specific ``{namespace_uri}annotation_name``
 
-        Specifically, this method searches for a unique ``annotation_name`` for
+        Specifically, this method searches for a ``annotation_name`` for
         subject symbol
         predicate ``http://biomodels.net/biology-qualifiers/is`` and the object
-        specified by ``{namespace_uri}annotation_name``.
+        specified by ``{namespace_uri}annotation_name``
+        for a specific ``{namespace_uri}`` if set, otherwise for any namespace_uri
 
         Will return a list of term names.
         """
@@ -563,6 +565,18 @@ class Model(object):
         return ontology_terms
 
     def has_ontology_annotation(self, symbol, namespace_uri=None):
+        """Searches the RDF graph for the annotation ``{namespace_uri}annotation_name``
+        for the given symbol and returns whether it has annotation, optionally restricted
+        to a specific ``{namespace_uri}annotation_name``
+
+        Specifically, this method searches for a ``annotation_name`` for
+        subject symbol
+        predicate ``http://biomodels.net/biology-qualifiers/is`` and the object
+        specified by ``{namespace_uri}annotation_name``
+        for a specific ``{namespace_uri}`` if set, otherwise for any namespace_uri
+
+        Will return a boolean.
+        """
         return len(self.get_ontology_terms_by_symbol(symbol, namespace_uri)) == 0
 
     def get_value(self, symbol):
