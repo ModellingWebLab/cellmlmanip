@@ -551,7 +551,7 @@ class Model(object):
         if cmeta_id:
             predicate = ('http://biomodels.net/biology-qualifiers/', 'is')
             predicate = create_rdf_node(*predicate)
-            for delimeter in ('#', '/'):  # Look for terms using either possible namespace delimitor
+            for delimeter in ('#', '/'):  # Look for terms using either possible namespace delimiter
                 subject = rdflib.term.URIRef(delimeter + cmeta_id)
                 for object in self.rdf.objects(subject, predicate):
                     # We are only interested in annotation within the namespace
