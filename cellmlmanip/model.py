@@ -552,20 +552,18 @@ class Model(object):
             namespace_delimters = ['#', '/']
             for delimeter in namespace_delimters:
                 subject = rdflib.term.URIRef(delimeter + cmeta_id)
-                print(delimeter + cmeta_id)
-                print('bla\n')
                 for object in self.rdf.objects(subject, predicate):
                     # We are only interested in annotation within the namespace
-                    print(namespace_uri)
-                    print(str(object))
                     if namespace_uri is None:
                         uri_parts = str(object).split(delimeter)
-                        if len(uri_parts) > 1:
-                            ontology_terms.append(uri_parts[-1])
+                        ontology_terms.append(uri_parts[-1])
                     else:
                         if(str(object).startswith(namespace_uri)):
                             ontology_terms.append(str(object).replace(namespace_uri, ''))
         return ontology_terms
+
+    def has_ontology_annotation(self, symbol, namespace_uri=None):
+        return len(self.get_ontology_terms_by_symbol(symbol, namespace_uri)) == 0
 
     def get_value(self, symbol):
         """Returns the evaluated value of the given symbol's RHS.
