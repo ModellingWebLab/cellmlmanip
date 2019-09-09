@@ -69,7 +69,7 @@ def test_get_symbol_by_ontology_term():
             OXMETA, 'membrane_persistent_sodium_current')
 
 
-def test_get_ontology_term_by_symbol():
+def test_get_ontology_terms_by_symbol():
     # Test bad annotations
     model = load_model('test_bad_annotations')
 
@@ -79,3 +79,13 @@ def test_get_ontology_term_by_symbol():
         if str(variable) == '_c$v3':
             annotations = model.get_ontology_terms_by_symbol(variable, OXMETA)
             assert len(annotations) == 0
+
+def test_has_ontology_term_by_symbol():
+    # Test bad annotations
+    model = load_model('test_bad_annotations')
+
+    # Get v3 from the model, as it does not have cmeta_id, to test this part of the code
+    equation_graph = model.get_equation_graph()
+    for variable in equation_graph:
+        if str(variable) == '_c$v3':
+            assert not model.has_ontology_annotation(variable, OXMETA)

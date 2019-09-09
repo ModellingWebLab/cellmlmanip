@@ -248,7 +248,7 @@ class TestHodgkin:
         assert (isinstance(membrane_voltage_var, sympy.symbol.Dummy))
         assert str(membrane_voltage_var) == "_membrane$V"
 
-    def test_get_ontology_term_by_symbol(self, model):
+    def test_get_ontology_terms_by_symbol(self, model):
         membrane_voltage_var = model.get_symbol_by_ontology_term(OXMETA, "membrane_voltage")
         annotation = model.get_ontology_terms_by_symbol(membrane_voltage_var, OXMETA)
         assert len(annotation) == 1
