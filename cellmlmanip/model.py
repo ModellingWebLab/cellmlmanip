@@ -565,7 +565,7 @@ class Model(object):
                         # We are expecting ontology terms for this subject and this namespace to be unique
                         raise ValueError('Multiple annotations found for {%s}%s' %
                                          (namespace_uri, cmeta_id))
-                ontology_term = uri[1]
+                    ontology_term = uri[1]
         return ontology_term
 
     def get_value(self, symbol):
