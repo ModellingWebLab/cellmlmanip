@@ -72,7 +72,6 @@ def test_get_symbol_by_ontology_term():
 def test_get_ontology_term_by_symbol():
     # Test bad annotations
     model = load_model('test_bad_annotations')
-    v1 = model.get_symbol_by_cmeta_id('v1')
 
     # Get v3 from the model, as it does not have cmeta_id, to test this part of the code
     equation_graph = model.get_equation_graph()
