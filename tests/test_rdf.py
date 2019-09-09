@@ -77,3 +77,7 @@ def test_get_ontology_term_by_symbol():
     # v1 has 2 annotatios for the OXMETA namespace
     with pytest.raises(ValueError, match='Multiple annotations found for'):
         model.get_ontology_term_by_symbol(OXMETA, v1)
+
+    # v1 has 2 annotatios for the OXMETA namespace, check with namespace not ending in #
+    with pytest.raises(ValueError, match='Multiple annotations found for'):
+        model.get_ontology_term_by_symbol(OXMETA[:-1], v1)
