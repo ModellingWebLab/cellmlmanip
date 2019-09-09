@@ -556,12 +556,9 @@ class Model(object):
                 subject = rdflib.term.URIRef(delimeter + cmeta_id)
                 for object in self.rdf.objects(subject, predicate):
                     # We are only interested in annotation within the namespace
-                    if namespace_uri is None:
+                    if namespace_uri is None or str(object).startswith(namespace_uri):
                         uri_parts = str(object).split(delimeter)
                         ontology_terms.append(uri_parts[-1])
-                    else:
-                        if(str(object).startswith(namespace_uri)):
-                            ontology_terms.append(str(object).replace(namespace_uri, ''))
         return ontology_terms
 
     def has_ontology_annotation(self, symbol, namespace_uri=None):
