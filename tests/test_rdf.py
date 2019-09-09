@@ -78,6 +78,7 @@ def test_get_ontology_term_by_symbol():
     with pytest.raises(ValueError, match='Multiple annotations found for'):
         model.get_ontology_term_by_symbol(OXMETA, v1)
 
-    # v1 has 2 annotatios for the OXMETA namespace, check with namespace not ending in #
-    with pytest.raises(ValueError, match='Multiple annotations found for'):
-        model.get_ontology_term_by_symbol(OXMETA[:-1], v1)
+    # v_no_ann has no annotation
+    v_no_ann = model.get_symbol_by_cmeta_id('v_no_ann')
+    annotation = model.get_ontology_term_by_symbol(OXMETA, v_no_ann)
+    assert annotation is None

@@ -5,6 +5,7 @@
     * annotation referencing a cmeta:id that doesn't exist
     * or something that isn't a cmeta:id
     * annotating something that isn't a variable
+	* double annotation of a variable
 -->
 <model name="test_bad_annotations" cmeta:id="test_bad_annotations"
    xmlns="http://www.cellml.org/cellml/1.0#"
@@ -14,6 +15,7 @@
 <component name="c" cmeta:id="c">
     <variable name="v1" cmeta:id="v1" units="second" initial_value="0" />
     <variable name="v2" cmeta:id="v2" units="second" initial_value="1" />
+	<variable name="v_no_ann" cmeta:id="v_no_ann" units="second" initial_value="2" />
 
     <!-- Temporary variable to make sure cellmlmanip maintains v1 and v2 -->
     <variable name="v3" units="second"/>
@@ -25,6 +27,7 @@
                 <plus />
                 <ci>v1</ci>
                 <ci>v2</ci>
+                <ci>v_no_ann</ci>
             </apply>
         </apply>
     </math>
