@@ -38,6 +38,11 @@
     <rdf:Description rdf:about="#v2">
         <bqbiol:is rdf:resource="https://chaste.comlab.ox.ac.uk/cellml/ns/oxford-metadata#time"/>
     </rdf:Description>
+	
+    <!-- Two annotations on the same variable -->
+    <rdf:Description rdf:about="#v1">
+        <bqbiol:is rdf:resource="https://chaste.comlab.ox.ac.uk/cellml/ns/oxford-metadata#voltage"/>
+    </rdf:Description>
 
     <!-- cmeta:id doesn't exist -->
     <rdf:Description rdf:about="#missing">
