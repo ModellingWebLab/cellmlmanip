@@ -68,11 +68,12 @@ def test_get_symbol_by_ontology_term():
         model.get_symbol_by_ontology_term(
             OXMETA, 'membrane_persistent_sodium_current')
 
+
 def test_get_ontology_term_by_symbol():
     # Test bad annotations
     model = load_model('test_bad_annotations')
-    v1 =  model.get_symbol_by_cmeta_id('v1')
-    
-    #v1 has 2 annotatios for the OXMETA namespace
+    v1 = model.get_symbol_by_cmeta_id('v1')
+
+    # v1 has 2 annotatios for the OXMETA namespace
     with pytest.raises(ValueError, match='Multiple annotations found for'):
         model.get_ontology_term_by_symbol(OXMETA, v1)
