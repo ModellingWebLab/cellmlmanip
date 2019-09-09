@@ -80,6 +80,7 @@ def test_get_ontology_terms_by_symbol():
             annotations = model.get_ontology_terms_by_symbol(variable, OXMETA)
             assert len(annotations) == 0
 
+
 def test_has_ontology_term_by_symbol():
     # Test bad annotations
     model = load_model('test_bad_annotations')

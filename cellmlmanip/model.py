@@ -577,7 +577,7 @@ class Model(object):
 
         Will return a boolean.
         """
-        return len(self.get_ontology_terms_by_symbol(symbol, namespace_uri)) == 0
+        return len(self.get_ontology_terms_by_symbol(symbol, namespace_uri)) != 0
 
     def get_value(self, symbol):
         """Returns the evaluated value of the given symbol's RHS.
