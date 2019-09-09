@@ -255,7 +255,7 @@ class TestHodgkin:
 
         # test with no trailing # in namespace
         annotation = model.get_ontology_term_by_symbol(OXMETA[:-1], membrane_voltage_var)
-        assert annotation == "membrane_voltage"        
+        assert annotation == "membrane_voltage"
 
         # Test with namespace we know isn't there, also pass namespace without and without trailing #
         annotation = model.get_ontology_term_by_symbol("http://www.nottingham.ac.uk#", membrane_voltage_var)
@@ -263,7 +263,7 @@ class TestHodgkin:
 
         # Test with namespace we know isn't there, also pass namespace without and without trailing #
         annotation = model.get_ontology_term_by_symbol("http://www.nottingham.ac.uk", membrane_voltage_var)
-        assert annotation is None        
+        assert annotation is None
 
     def test_get_equations_for(self, graph, model):
         # Get equations for membrane_fast_sodium_current both ordered and unordered
