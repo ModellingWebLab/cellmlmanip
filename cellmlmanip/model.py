@@ -533,40 +533,39 @@ class Model(object):
 
         return symbols
 
-    def get_ontology_term_by_symbol(self, namespace_uri, symbol):
-        """Searches the RDF graph for a variable annotated with the given
-        ``{namespace_uri}local_name`` and returns its symbol.
+    def get_ontology_terms_by_symbol(self, symbol, namespace_uri=None):
+        """Searches the RDF graph for the annotation ``{namespace_uri}annotation_name``
+        for the given symbol and returns ``annotation_name`` if the annotation exists, otherwise None
 
-        Searches the RDF graph for the annotation ``{namespace_uri}annotation_name``
-        vor the given symbol and returns ``annotaion_name`` if the annotation exists, otherwise None
-
-        Specifically, this method searches for a unique ``annotaion_name`` for
+        Specifically, this method searches for a unique ``annotation_name`` for
         subject symbol
         predicate ``http://biomodels.net/biology-qualifiers/is`` and the object
-        specified by ``{namespace_uri}annotaion_name``.
+        specified by ``{namespace_uri}annotation_name``.
 
-        Will return ``None`` if no annotation is found,
-        and will raise a ``ValueError`` if more than one annotation is found.
+        Will return a list of term names.
         """
-        ontology_term = None
+        ontology_terms = []
         cmeta_id = self.graph.nodes[symbol].get('cmeta_id', None)
         if cmeta_id:
-            # Make sure our namespace ends in #
-            if namespace_uri[-1] != '#':
-                namespace_uri = namespace_uri + '#'
-            subject = rdflib.term.URIRef('#' + cmeta_id)
             predicate = ('http://biomodels.net/biology-qualifiers/', 'is')
             predicate = create_rdf_node(*predicate)
-            for objeect in self.rdf.objects(subject, predicate):
-                uri = str(objeect).split('#')
-                assert(len(uri) == 2)  # not expecting multiple hastags in the url
-                if uri[0] + '#' == namespace_uri:
-                    if ontology_term is not None:
-                        # We are expecting ontology terms for this subject and this namespace to be unique
-                        raise ValueError('Multiple annotations found for {%s}%s' %
-                                         (namespace_uri, cmeta_id))
-                    ontology_term = uri[1]
-        return ontology_term
+            namespace_delimters = ['#', '/']
+            for delimeter in namespace_delimters:
+                subject = rdflib.term.URIRef(delimeter + cmeta_id)
+                print(delimeter + cmeta_id)
+                print('bla\n')
+                for object in self.rdf.objects(subject, predicate):
+                    # We are only interested in annotation within the namespace
+                    print(namespace_uri)
+                    print(str(object))
+                    if namespace_uri is None:
+                        uri_parts = str(object).split(delimeter)
+                        if len(uri_parts) > 1:
+                            ontology_terms.append(uri_parts[-1])
+                    else:
+                        if(str(object).startswith(namespace_uri)):
+                            ontology_terms.append(str(object).replace(namespace_uri, ''))
+        return ontology_terms
 
     def get_value(self, symbol):
         """Returns the evaluated value of the given symbol's RHS.

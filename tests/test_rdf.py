@@ -74,13 +74,9 @@ def test_get_ontology_term_by_symbol():
     model = load_model('test_bad_annotations')
     v1 = model.get_symbol_by_cmeta_id('v1')
 
-    # v1 has 2 annotatios for the OXMETA namespace
-    with pytest.raises(ValueError, match='Multiple annotations found for'):
-        model.get_ontology_term_by_symbol(OXMETA, v1)
-
     # Get v3 from the model, as it does not have cmeta_id, to test this part of the code
     equation_graph = model.get_equation_graph()
     for variable in equation_graph:
         if str(variable) == '_c$v3':
-            annotation = model.get_ontology_term_by_symbol(OXMETA, variable)
-            assert annotation is None
+            annotations = model.get_ontology_term_by_symbol(OXMETA, variable)
+            assert len(annotations) == 0

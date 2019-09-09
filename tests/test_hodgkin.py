@@ -250,12 +250,19 @@ class TestHodgkin:
 
     def test_get_ontology_term_by_symbol(self, model):
         membrane_voltage_var = model.get_symbol_by_ontology_term(OXMETA, "membrane_voltage")
-        annotation = model.get_ontology_term_by_symbol(OXMETA, membrane_voltage_var)
-        assert annotation == "membrane_voltage"
+        annotation = model.get_ontology_terms_by_symbol(membrane_voltage_var, OXMETA)
+        assert len(annotation) == 1
+        assert annotation[0] == "membrane_voltage"
 
-        # Test with namespace we know isn't there, also pass namespace without trailing #
-        annotation = model.get_ontology_term_by_symbol("http://www.nottingham.ac.uk", membrane_voltage_var)
-        assert annotation is None
+        # Repeat test with wrong namespace
+        annotation = model.get_ontology_terms_by_symbol(membrane_voltage_var, 'http://www.nottingam.ac.uk/')
+        print(annotation)
+        assert len(annotation) == 0
+
+        # Repeat test without specifying namespace
+        annotation = model.get_ontology_terms_by_symbol(membrane_voltage_var)
+        assert len(annotation) == 1
+        assert annotation[0] == "membrane_voltage"
 
     def test_get_equations_for(self, graph, model):
         # Get equations for membrane_fast_sodium_current both ordered and unordered
