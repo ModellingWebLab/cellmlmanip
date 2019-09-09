@@ -78,5 +78,5 @@ def test_get_ontology_term_by_symbol():
     equation_graph = model.get_equation_graph()
     for variable in equation_graph:
         if str(variable) == '_c$v3':
-            annotations = model.get_ontology_terms_by_symbol(OXMETA, variable)
+            annotations = model.get_ontology_terms_by_symbol(variable, OXMETA)
             assert len(annotations) == 0
