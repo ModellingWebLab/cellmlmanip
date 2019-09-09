@@ -248,6 +248,11 @@ class TestHodgkin:
         assert (isinstance(membrane_voltage_var, sympy.symbol.Dummy))
         assert str(membrane_voltage_var) == "_membrane$V"
 
+    def test_get_ontology_term_by_symbol(self, graph, model):
+        membrane_voltage_var = model.get_symbol_by_ontology_term(OXMETA, "membrane_voltage")
+        annotation = model.get_ontology_term_by_symbol(OXMETA, membrane_voltage_var)
+        assert annotation == "membrane_voltage"
+
     def test_get_equations_for(self, graph, model):
         # Get equations for membrane_fast_sodium_current both ordered and unordered
         membrane_fast_sodium_current = model.get_symbol_by_ontology_term(OXMETA, "membrane_fast_sodium_current")
