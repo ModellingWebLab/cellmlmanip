@@ -1,8 +1,8 @@
 import pytest
-import sympy as sp
 import os
 
-from cellmlmanip import load_model, parser
+from cellmlmanip import parser
+
 
 class TestModelUnits():
     @pytest.fixture(scope="class")
@@ -41,7 +41,7 @@ class TestModelUnits():
         equation1 = model.get_equations_for([symbolB])
         assert len(equation1) == 2
         assert equation1[1].lhs == symbolB
-        assert equation1[1].rhs == 2.0/symbolA
+        assert equation1[1].rhs == 2.0 / symbolA
 
     def test_units(self, parser_instance, model):
         model.get_equation_graph(True)  # set up the graph - it is not automatic
