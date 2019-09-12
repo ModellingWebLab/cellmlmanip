@@ -533,6 +533,48 @@ class Model(object):
 
         return symbols
 
+    def get_ontology_terms_by_symbol(self, symbol, namespace_uri=None):
+        """Searches the RDF graph for the annotation ``{namespace_uri}annotation_name``
+        for the given symbol and returns ``annotation_name`` and optionally restricted
+        to a specific ``{namespace_uri}annotation_name``
+
+        Specifically, this method searches for a ``annotation_name`` for
+        subject symbol
+        predicate ``http://biomodels.net/biology-qualifiers/is`` and the object
+        specified by ``{namespace_uri}annotation_name``
+        for a specific ``{namespace_uri}`` if set, otherwise for any namespace_uri
+
+        Will return a list of term names.
+        """
+        ontology_terms = []
+        cmeta_id = self.graph.nodes[symbol].get('cmeta_id', None)
+        if cmeta_id:
+            predicate = ('http://biomodels.net/biology-qualifiers/', 'is')
+            predicate = create_rdf_node(*predicate)
+            for delimeter in ('#', '/'):  # Look for terms using either possible namespace delimiter
+                subject = rdflib.term.URIRef(delimeter + cmeta_id)
+                for object in self.rdf.objects(subject, predicate):
+                    # We are only interested in annotation within the namespace
+                    if namespace_uri is None or str(object).startswith(namespace_uri):
+                        uri_parts = str(object).split(delimeter)
+                        ontology_terms.append(uri_parts[-1])
+        return ontology_terms
+
+    def has_ontology_annotation(self, symbol, namespace_uri=None):
+        """Searches the RDF graph for the annotation ``{namespace_uri}annotation_name``
+        for the given symbol and returns whether it has annotation, optionally restricted
+        to a specific ``{namespace_uri}annotation_name``
+
+        Specifically, this method searches for a ``annotation_name`` for
+        subject symbol
+        predicate ``http://biomodels.net/biology-qualifiers/is`` and the object
+        specified by ``{namespace_uri}annotation_name``
+        for a specific ``{namespace_uri}`` if set, otherwise for any namespace_uri
+
+        Will return a boolean.
+        """
+        return len(self.get_ontology_terms_by_symbol(symbol, namespace_uri)) != 0
+
     def get_value(self, symbol):
         """Returns the evaluated value of the given symbol's RHS.
         """
