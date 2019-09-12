@@ -263,7 +263,7 @@ class TestHodgkin:
         assert len(annotation) == 1
         assert annotation[0] == "membrane_voltage"
 
-    def tesy_has_ontology_annotation(self, model):
+    def test_has_ontology_annotation(self, model):
         membrane_voltage_var = model.get_symbol_by_ontology_term(OXMETA, "membrane_voltage")
         assert model.has_ontology_annotation(membrane_voltage_var, OXMETA)
 
