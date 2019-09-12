@@ -178,6 +178,12 @@ class TestUnits(object):
 
         assert unit_calculator.traverse(sp.sqrt(a * d)).units == ureg.meter
 
+        assert unit_calculator.traverse(a + d).units == ureg.meter
+
+        # TO DO: add test for a derivative
+        assert unit_calculator.traverse(_1).units == ureg.kelvin
+        assert unit_calculator.traverse(sp.sympify("1.0")).units == ureg.kelvin
+
         # bad unit expressions
         assert unit_calculator.traverse(sp.exp(3 * c)) is None
         assert unit_calculator.traverse(a + b + c) is None

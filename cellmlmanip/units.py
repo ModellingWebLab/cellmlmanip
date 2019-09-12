@@ -328,13 +328,21 @@ class UnitCalculator(object):
                     # otherwise, keep the symbol
                     out = self.ureg.Quantity(expr, metadata.units)
             return out
-        elif expr.is_Integer:
-            out = int(expr) * self.ureg.dimensionless
-            return out
-        elif expr.is_Rational:
-            # NOTE: can't send back Rational(1,2) * u.dimensionless
-            # Used by Sympy for root e.g. sqrt(x) == Pow(x, Rational(1,2))
-            out = float(expr) * self.ureg.dimensionless
+        elif expr.is_Number:
+            units = self.ureg.dimensionless
+            for key in self.dummy_metadata:
+                metadata = self.dummy_metadata[key]
+                if metadata.number and metadata.number == expr and metadata.units:
+                    units = metadata.units
+                    break
+            if expr.is_Integer:
+                out = int(expr) * units
+            elif expr.is_Rational:
+                # NOTE: can't send back Rational(1,2) * u.dimensionless
+                # Used by Sympy for root e.g. sqrt(x) == Pow(x, Rational(1,2))
+                out = float(expr) * units
+            else:
+                out = float(expr) * units
             return out
 
         elif expr.is_Mul:

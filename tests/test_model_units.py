@@ -53,7 +53,7 @@ class TestModelUnits:
         # this fails but it should not
         # the number 1 has clearly marked units of 'ms'
         # NOTE it fails in the function UnitCalculator::traverse
-#        assert model.units.summarise_units(equation[0].rhs) == 'ms'
+        assert model.units.summarise_units(equation[0].rhs) == 'ms'
 
         symbol_b = model.get_symbol_by_cmeta_id("b")
         equation = model.get_equations_for([symbol_b])
