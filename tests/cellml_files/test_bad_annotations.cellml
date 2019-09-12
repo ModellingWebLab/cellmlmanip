@@ -5,6 +5,7 @@
     * annotation referencing a cmeta:id that doesn't exist
     * or something that isn't a cmeta:id
     * annotating something that isn't a variable
+	* double annotation of a variable
 -->
 <model name="test_bad_annotations" cmeta:id="test_bad_annotations"
    xmlns="http://www.cellml.org/cellml/1.0#"
@@ -38,7 +39,7 @@
     <rdf:Description rdf:about="#v2">
         <bqbiol:is rdf:resource="https://chaste.comlab.ox.ac.uk/cellml/ns/oxford-metadata#time"/>
     </rdf:Description>
-
+	
     <!-- cmeta:id doesn't exist -->
     <rdf:Description rdf:about="#missing">
         <bqbiol:is rdf:resource="https://chaste.comlab.ox.ac.uk/cellml/ns/oxford-metadata#membrane_potential"/>

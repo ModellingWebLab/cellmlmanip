@@ -1,4 +1,4 @@
-"""Classes to represent a flattened CellML model and metadata about its variables"""
+﻿"""Classes to represent a flattened CellML model and metadata about its variables"""
 import logging
 from collections import OrderedDict
 from io import StringIO
@@ -410,10 +410,18 @@ class Model(object):
         self.graph = graph
         return graph
 
-    def get_equations_for(self, symbols):
-        """Get all equations for given collection of symbols"""
+    def get_equations_for(self, symbols, lexicographical_sort=True):
+        """Get all equations for given collection of symbols
+
+        Results are sorted in topographical order.
+        :param symbols: the symbols to get the equations for
+        :param lexicographical_sort: indicates whether the result is sorted in lexicographical order first
+        """
         graph = self.get_equation_graph()
-        sorted_symbols = nx.lexicographical_topological_sort(graph, key=str)
+        if lexicographical_sort:
+            sorted_symbols = nx.lexicographical_topological_sort(graph, key=str)
+        else:
+            sorted_symbols = nx.topological_sort(graph)
 
         # Create set of symbols for which we require equations
         required_symbols = set()
@@ -459,11 +467,11 @@ class Model(object):
         raise ValueError('No free variable set in model.')  # pragma: no cover
 
     def get_symbol_by_cmeta_id(self, cmeta_id):
-        """Searches the given graph and returns the symbol for the variable with the
-        given cmeta_id.
+        """Searches the given graph and returns the symbol for the variable with the given cmeta_id.
+        PLEASE NOTE this does NOT get the oxmeta tag to get that use
+        get_symbol_by_ontology_term("https://chaste.comlab.ox.ac.uk/cellml/ns/oxford-metadata#",
+                                    "cytosolic_calcium_concentration")
         """
-        # TODO: Either add an argument to allow derivative symbols to be fetched, or
-        #      create a separate method for them.
         for v in self.graph:
             if self.graph.nodes[v].get('cmeta_id', '') == cmeta_id:
                 return v
@@ -524,6 +532,48 @@ class Model(object):
             symbols.append(self.get_symbol_by_cmeta_id(uri[1:]))
 
         return symbols
+
+    def get_ontology_terms_by_symbol(self, symbol, namespace_uri=None):
+        """Searches the RDF graph for the annotation ``{namespace_uri}annotation_name``
+        for the given symbol and returns ``annotation_name`` and optionally restricted
+        to a specific ``{namespace_uri}annotation_name``
+
+        Specifically, this method searches for a ``annotation_name`` for
+        subject symbol
+        predicate ``http://biomodels.net/biology-qualifiers/is`` and the object
+        specified by ``{namespace_uri}annotation_name``
+        for a specific ``{namespace_uri}`` if set, otherwise for any namespace_uri
+
+        Will return a list of term names.
+        """
+        ontology_terms = []
+        cmeta_id = self.graph.nodes[symbol].get('cmeta_id', None)
+        if cmeta_id:
+            predicate = ('http://biomodels.net/biology-qualifiers/', 'is')
+            predicate = create_rdf_node(*predicate)
+            for delimeter in ('#', '/'):  # Look for terms using either possible namespace delimiter
+                subject = rdflib.term.URIRef(delimeter + cmeta_id)
+                for object in self.rdf.objects(subject, predicate):
+                    # We are only interested in annotation within the namespace
+                    if namespace_uri is None or str(object).startswith(namespace_uri):
+                        uri_parts = str(object).split(delimeter)
+                        ontology_terms.append(uri_parts[-1])
+        return ontology_terms
+
+    def has_ontology_annotation(self, symbol, namespace_uri=None):
+        """Searches the RDF graph for the annotation ``{namespace_uri}annotation_name``
+        for the given symbol and returns whether it has annotation, optionally restricted
+        to a specific ``{namespace_uri}annotation_name``
+
+        Specifically, this method searches for a ``annotation_name`` for
+        subject symbol
+        predicate ``http://biomodels.net/biology-qualifiers/is`` and the object
+        specified by ``{namespace_uri}annotation_name``
+        for a specific ``{namespace_uri}`` if set, otherwise for any namespace_uri
+
+        Will return a boolean.
+        """
+        return len(self.get_ontology_terms_by_symbol(symbol, namespace_uri)) != 0
 
     def get_value(self, symbol):
         """Returns the evaluated value of the given symbol's RHS.

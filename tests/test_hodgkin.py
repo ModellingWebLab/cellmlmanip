@@ -6,6 +6,8 @@ import sympy
 
 from cellmlmanip import load_model
 
+OXMETA = "https://chaste.comlab.ox.ac.uk/cellml/ns/oxford-metadata#"
+
 
 class TestHodgkin:
     @pytest.fixture(scope="class")
@@ -240,3 +242,68 @@ class TestHodgkin:
             expected = evaluated_derivatives[state_symbol.name]
             actual = evaluated_deriv
             assert float(actual) == pytest.approx(expected)
+
+    def test_get_symbol_by_ontology_term(self, graph, model):
+        membrane_voltage_var = model.get_symbol_by_ontology_term(OXMETA, "membrane_voltage")
+        assert (isinstance(membrane_voltage_var, sympy.symbol.Dummy))
+        assert str(membrane_voltage_var) == "_membrane$V"
+
+    def test_get_ontology_terms_by_symbol(self, model):
+        membrane_voltage_var = model.get_symbol_by_ontology_term(OXMETA, "membrane_voltage")
+        annotation = model.get_ontology_terms_by_symbol(membrane_voltage_var, OXMETA)
+        assert len(annotation) == 1
+        assert annotation[0] == "membrane_voltage"
+
+        # Repeat test with wrong namespace
+        annotation = model.get_ontology_terms_by_symbol(membrane_voltage_var, 'http://www.nottingam.ac.uk/')
+        assert len(annotation) == 0
+
+        # Repeat test without specifying namespace
+        annotation = model.get_ontology_terms_by_symbol(membrane_voltage_var)
+        assert len(annotation) == 1
+        assert annotation[0] == "membrane_voltage"
+
+    def test_has_ontology_annotation(self, model):
+        membrane_voltage_var = model.get_symbol_by_ontology_term(OXMETA, "membrane_voltage")
+        assert model.has_ontology_annotation(membrane_voltage_var, OXMETA)
+
+        # Repeat test with wrong namespace
+        assert not model.has_ontology_annotation(membrane_voltage_var, 'http://www.nottingam.ac.uk/')
+
+        # Repeat test without specifying namespace
+        assert model.has_ontology_annotation(membrane_voltage_var)
+
+    def test_get_equations_for(self, graph, model):
+        # Get equations for membrane_fast_sodium_current both ordered and unordered
+        membrane_fast_sodium_current = model.get_symbol_by_ontology_term(OXMETA, "membrane_fast_sodium_current")
+        equations = model.get_equations_for([membrane_fast_sodium_current])
+        unordered_equations = model.get_equations_for([membrane_fast_sodium_current], False)
+        # There should be 4 in this model
+        assert len(equations) == len(unordered_equations) == 4
+        # Each equation should be both in the ordered and unordered equations
+        for eq in equations:
+            assert eq in unordered_equations
+        for eq in unordered_equations:
+            assert eq in equations
+
+        # Expected equations
+        ref_eq = [sympy.Eq(sympy.Dummy('membrane$E_R'), sympy.numbers.Float(-75.0)),
+                  sympy.Eq(sympy.Dummy('sodium_channel$E_Na'),
+                           sympy.add.Add(sympy.Dummy('membrane$E_R'), sympy.numbers.Float(115.0))),
+                  sympy.Eq(sympy.Dummy('sodium_channel$g_Na'), sympy.numbers.Float(120.0)),
+                  sympy.Eq(sympy.Dummy('sodium_channel$i_Na'),
+                           sympy.Dummy('sodium_channel_m_gate$m') ** 3.0 * sympy.Dummy('sodium_channel$g_Na') *
+                           sympy.Dummy('sodium_channel_h_gate$h') * (sympy.Dummy('membrane$V') -
+                           sympy.Dummy('sodium_channel$E_Na')))
+                  ]
+
+        # Expected ordering for not lexicographical sorted equations
+        unordered_ref_eq = [ref_eq[2], ref_eq[0], ref_eq[1], ref_eq[3]]
+
+        # Check equations against expected equations
+        for i in range(len(equations)):
+            assert str(equations[i]) == str(ref_eq[i])
+
+        # Check not lexicographical sorted equations against expected equations
+        for i in range(len(unordered_equations)):
+            assert str(unordered_equations[i]) == str(unordered_ref_eq[i])
