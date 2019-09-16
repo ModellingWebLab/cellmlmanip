@@ -282,7 +282,8 @@ class TestHodgkin:
         equations = model.get_equations_for([membrane_fast_sodium_current, membrane_stimulus_current_offset])
         input_ordered_equations = model.get_equations_for(
             [membrane_fast_sodium_current, membrane_stimulus_current_offset,
-             membrane_stimulus_current_period], True, [membrane_stimulus_current_period])
+             membrane_stimulus_current_offset, membrane_stimulus_current_period],
+            True, [membrane_stimulus_current_period])
 
         # There should be 10 in this model
         assert len(equations) == len(input_ordered_equations) == 5

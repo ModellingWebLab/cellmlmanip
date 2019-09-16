@@ -429,8 +429,7 @@ class Model(object):
                 ancestors = [a for a in graph.predecessors(parent)]
                 ancestors.sort(key=str)
                 for a in ancestors:
-                    if a not in parents:
-                        to_process.appendleft(a)
+                    to_process.appendleft(a)
                 if parent not in parents:
                     parents.insert(0, parent)
             return parents
