@@ -430,8 +430,7 @@ class Model(object):
                 ancestors.sort(key=str)
                 for a in ancestors:
                     to_process.appendleft(a)
-                if parent not in parents:
-                    parents.insert(0, parent)
+                parents.insert(0, parent)
             return parents
 
         # Create list of symbols for which we require equations (list instead of set, in order to preserve order)
@@ -439,8 +438,7 @@ class Model(object):
         for output in symbols:
             if output not in required_symbols and output not in excluded_symbols:
                 for p in get_parents(output):
-                    if p not in required_symbols:
-                        required_symbols.append(p)
+                    required_symbols.append(p)
 
         eqs = []
 
