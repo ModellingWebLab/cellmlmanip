@@ -7,6 +7,7 @@ from typing import Dict, List, Union
 import networkx as nx
 import rdflib
 import sympy
+from collections import deque
 
 from cellmlmanip.rdf import create_rdf_node
 from cellmlmanip.units import UnitStore
@@ -410,27 +411,49 @@ class Model(object):
         self.graph = graph
         return graph
 
-    def get_equations_for(self, symbols, lexicographical_sort=True):
+    def get_equations_for(self, symbols, sort_by_input_symbols=False, excluded_symbols=[]):
         """Get all equations for given collection of symbols
 
         Results are sorted in topographical order.
         :param symbols: the symbols to get the equations for
-        :param lexicographical_sort: indicates whether the result is sorted in lexicographical order first
+        :param sort_by_input_symbols: indicates whether the sorting in symbols determines the sorting of the output
+        :param excluded_symbols: list of symbols to exlcude
         """
         graph = self.get_equation_graph()
-        if lexicographical_sort:
-            sorted_symbols = nx.lexicographical_topological_sort(graph, key=str)
-        else:
-            sorted_symbols = nx.topological_sort(graph)
 
-        # Create set of symbols for which we require equations
-        required_symbols = set()
+        def get_parents(node, graph=graph):
+            parents = []
+            to_process = deque()
+            to_process.appendleft(node)
+            while len(to_process) > 0:
+                parent = to_process.popleft()
+                ancestors = [a for a in graph.predecessors(parent)]
+                ancestors.sort(key=str)
+                for a in ancestors:
+                    if a not in parents:
+                        to_process.appendleft(a)
+                if parent not in parents:
+                    parents.insert(0, parent)
+            return parents
+
+        # Create list of symbols for which we require equations (list instead of set, in order to preserve order)
+        required_symbols = []
         for output in symbols:
-            required_symbols.add(output)
-            required_symbols.update(nx.ancestors(graph, output))
+            if output not in required_symbols and output not in excluded_symbols:
+                for p in get_parents(output):
+                    if p not in required_symbols:
+                        required_symbols.append(p)
+                if output not in required_symbols:
+                    required_symbols.append(output)
 
         eqs = []
-        for symbol in sorted_symbols:
+
+        if sort_by_input_symbols:
+            to_search_in = required_symbols
+        else:
+            to_search_in = nx.lexicographical_topological_sort(graph, key=str)
+
+        for symbol in to_search_in:
             # Ignore symbols we don't need
             if symbol not in required_symbols:
                 continue

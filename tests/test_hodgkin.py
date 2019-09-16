@@ -276,34 +276,39 @@ class TestHodgkin:
     def test_get_equations_for(self, graph, model):
         # Get equations for membrane_fast_sodium_current both ordered and unordered
         membrane_fast_sodium_current = model.get_symbol_by_ontology_term(OXMETA, "membrane_fast_sodium_current")
-        equations = model.get_equations_for([membrane_fast_sodium_current])
-        unordered_equations = model.get_equations_for([membrane_fast_sodium_current], False)
-        # There should be 4 in this model
-        assert len(equations) == len(unordered_equations) == 4
+        membrane_stimulus_current_offset = model.get_symbol_by_ontology_term(OXMETA, "membrane_stimulus_current_offset")
+        membrane_stimulus_current_period = model.get_symbol_by_ontology_term(OXMETA, "membrane_stimulus_current_period")
+
+        equations = model.get_equations_for([membrane_fast_sodium_current, membrane_stimulus_current_offset])
+        input_ordered_equations = model.get_equations_for(
+            [membrane_fast_sodium_current, membrane_stimulus_current_offset,
+             membrane_stimulus_current_period], True, [membrane_stimulus_current_period])
+
+        # There should be 10 in this model
+        assert len(equations) == len(input_ordered_equations) == 5
         # Each equation should be both in the ordered and unordered equations
         for eq in equations:
-            assert eq in unordered_equations
-        for eq in unordered_equations:
+            assert eq in input_ordered_equations
+        for eq in input_ordered_equations:
             assert eq in equations
-
         # Expected equations
         ref_eq = [sympy.Eq(sympy.Dummy('membrane$E_R'), sympy.numbers.Float(-75.0)),
+                  sympy.Eq(sympy.Dummy('membrane$stim_start'), sympy.numbers.Float(10.0)),
                   sympy.Eq(sympy.Dummy('sodium_channel$E_Na'),
                            sympy.add.Add(sympy.Dummy('membrane$E_R'), sympy.numbers.Float(115.0))),
                   sympy.Eq(sympy.Dummy('sodium_channel$g_Na'), sympy.numbers.Float(120.0)),
                   sympy.Eq(sympy.Dummy('sodium_channel$i_Na'),
                            sympy.Dummy('sodium_channel_m_gate$m') ** 3.0 * sympy.Dummy('sodium_channel$g_Na') *
                            sympy.Dummy('sodium_channel_h_gate$h') * (sympy.Dummy('membrane$V') -
-                           sympy.Dummy('sodium_channel$E_Na')))
-                  ]
+                           sympy.Dummy('sodium_channel$E_Na')))]
 
         # Expected ordering for not lexicographical sorted equations
-        unordered_ref_eq = [ref_eq[2], ref_eq[0], ref_eq[1], ref_eq[3]]
+        unordered_ref_eq = [ref_eq[0], ref_eq[2], ref_eq[3], ref_eq[4], ref_eq[1]]
 
         # Check equations against expected equations
         for i in range(len(equations)):
             assert str(equations[i]) == str(ref_eq[i])
 
         # Check not lexicographical sorted equations against expected equations
-        for i in range(len(unordered_equations)):
-            assert str(unordered_equations[i]) == str(unordered_ref_eq[i])
+        for i in range(len(input_ordered_equations)):
+            assert str(input_ordered_equations[i]) == str(unordered_ref_eq[i])
