@@ -420,6 +420,8 @@ class UnitCalculator(object):
             elif expr.func == sympy.log:
                 if self._is_dimensionless(quantity_per_arg[0]):
                     return 1 * self.ureg.dimensionless
+                # SK: why raise an exception here when anything else that fails
+                # return None
                 raise ValueError('log args not dimensionless (%s)' %
                                  [x.units for x in quantity_per_arg])
             elif expr.func == sympy.exp:
