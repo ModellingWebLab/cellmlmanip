@@ -441,8 +441,6 @@ class Model(object):
                 for p in get_parents(output):
                     if p not in required_symbols:
                         required_symbols.append(p)
-                if output not in required_symbols:
-                    required_symbols.append(output)
 
         eqs = []
 
