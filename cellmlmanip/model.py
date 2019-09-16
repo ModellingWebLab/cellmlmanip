@@ -1,13 +1,12 @@
 ﻿"""Classes to represent a flattened CellML model and metadata about its variables"""
 import logging
-from collections import OrderedDict
+from collections import OrderedDict, deque
 from io import StringIO
 from typing import Dict, List, Union
 
 import networkx as nx
 import rdflib
 import sympy
-from collections import deque
 
 from cellmlmanip.rdf import create_rdf_node
 from cellmlmanip.units import UnitStore
