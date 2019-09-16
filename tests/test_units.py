@@ -41,8 +41,7 @@ class TestUnits(object):
 
         # Units defined in the test CellML <model>:
         for name in TestUnits.test_definitions.keys():
-            quantity_store.get_quantity(name)
-            # what is being tested ??
+            assert quantity_store.get_quantity(name) != unit_registry.Quantity(1)
 
         # Pint built-in units
         assert quantity_store.is_unit_equal(
