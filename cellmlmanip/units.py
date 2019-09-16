@@ -403,9 +403,7 @@ class UnitCalculator(object):
 
         elif expr.is_Function:
             # List of functions that have been checked
-            # SK: I'm not sure that this is accurate - we handle any trig function
-            # but until I added one to tests none were tested so - not sure what we mean by checked
-            if str(expr.func) not in ['cos', 'acos', 'exp', 'floor', 'log', 'Abs', 'tanh']:
+            if str(expr.func) not in ['cos', 'acos', 'exp', 'floor', 'log', 'Abs', 'tanh', 'ceiling']:
                 logger.warning('Have not checked unit arithmetic for function %s', expr.func)
 
             # Handle these functions explicitly
@@ -414,9 +412,13 @@ class UnitCalculator(object):
             elif expr.func == sympy.floor:
                 # if we're flooring a sympy expression
                 if isinstance(quantity_per_arg[0].magnitude, sympy.Expr):
-                    # return 1...?
                     return 1 * quantity_per_arg[0].units
                 return math.floor(quantity_per_arg[0].magnitude) * quantity_per_arg[0].units
+            elif expr.func == sympy.ceiling:
+                # if we're ceiling a sympy expression
+                if isinstance(quantity_per_arg[0].magnitude, sympy.Expr):
+                    return 1 * quantity_per_arg[0].units
+                return math.ceil(quantity_per_arg[0].magnitude) * quantity_per_arg[0].units
             elif expr.func == sympy.log:
                 if self._is_dimensionless(quantity_per_arg[0]):
                     return 1 * self.ureg.dimensionless

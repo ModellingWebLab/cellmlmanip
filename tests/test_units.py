@@ -145,8 +145,8 @@ class TestUnits(object):
 
     def test_unit_calculator(self, quantity_store):
         ureg = quantity_store.ureg
-        a, b, c, d, x, y, z, n, _1, _2 = [sp.Dummy(x)
-                                          for x in ['a', 'b', 'c', 'd', 'x', 'y', 'z', 'n', '1', '2']]
+        a, b, c, d, x, y, z, n, _1, _2, _25 = [sp.Dummy(x)
+                                               for x in ['a', 'b', 'c', 'd', 'x', 'y', 'z', 'n', '1', '2', '2.5']]
 
         symbol_info = {
             a: MetaDummy('a', ureg.meter, a),
@@ -159,6 +159,7 @@ class TestUnits(object):
             n: MetaDummy('n', ureg.dimensionless, n),
             _1: MetaDummy('_1', ureg.kelvin, _1, number=sp.Float(1.0)),
             _2: MetaDummy('_2', ureg.dimensionless, _2, number=sp.Integer(2)),
+            _25: MetaDummy('_2.5', ureg.dimensionless, _25, number=sp.Float(2.5)),
         }
 
         unit_calculator = UnitCalculator(ureg, symbol_info)
@@ -176,6 +177,8 @@ class TestUnits(object):
         result = unit_calculator.traverse(sp.floor(12.5) * a)
         assert result.units == ureg.meter and result.magnitude == 12.0 * a
         assert unit_calculator.traverse(sp.floor(_1)).units == ureg.kelvin
+        result = unit_calculator.traverse(sp.floor(_25))
+        assert result.units == ureg.dimensionless and result.magnitude == 2.0
 
         assert unit_calculator.traverse(sp.sqrt(a * d)).units == ureg.meter
 
@@ -197,9 +200,16 @@ class TestUnits(object):
         assert unit_calculator.traverse(sp.sin(n)).units == ureg.dimensionless
         assert unit_calculator.traverse(sp.pi).units == ureg.dimensionless
 
+        assert unit_calculator.traverse(sp.ceiling(x)).units == ureg.kilogram
+        result = unit_calculator.traverse(sp.ceiling(12.6) * a)
+        assert result.units == ureg.meter and result.magnitude == 13.0 * a
+        assert unit_calculator.traverse(sp.ceiling(_1)).units == ureg.kelvin
+        result = unit_calculator.traverse(sp.ceiling(_25))
+        assert result.units == ureg.dimensionless and result.magnitude == 3.0
+
         # this is a generic test of a function with one dimensionless argument
         # ceiling should probably be handled explicitly
-        assert unit_calculator.traverse(sp.ceiling(n)).units == ureg.dimensionless
+        assert unit_calculator.traverse(sp.sign(n)).units == ureg.dimensionless
 
         # bad unit expressions
         assert unit_calculator.traverse(sp.exp(3 * c)) is None
