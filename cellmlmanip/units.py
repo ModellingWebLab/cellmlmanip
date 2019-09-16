@@ -403,6 +403,8 @@ class UnitCalculator(object):
 
         elif expr.is_Function:
             # List of functions that have been checked
+            # SK: I'm not sure that this is accurate - we handle any trig function
+            # but until I added one to tests none were tested so - not sure what we mean by checked
             if str(expr.func) not in ['cos', 'acos', 'exp', 'floor', 'log', 'Abs', 'tanh']:
                 logger.warning('Have not checked unit arithmetic for function %s', expr.func)
 
@@ -431,6 +433,8 @@ class UnitCalculator(object):
                                                   self.ureg.dimensionless)
 
                     # magnitude contains an unresolved symbol, we lose it here!
+                    # we don't lose it - the unit will be dimensionless - we are just not able to
+                    # determine the magnitude of the result
                     return 1 * self.ureg.dimensionless
 
                 logger.critical('Exp operand is not dimensionless: %s', expr)

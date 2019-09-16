@@ -146,8 +146,8 @@ class TestUnits(object):
 
     def test_unit_calculator(self, quantity_store):
         ureg = quantity_store.ureg
-        a, b, c, d, x, y, z, _1, _2 = [sp.Dummy(x)
-                                       for x in ['a', 'b', 'c', 'd', 'x', 'y', 'z', '1', '2']]
+        a, b, c, d, x, y, z, n, _1, _2 = [sp.Dummy(x)
+                                          for x in ['a', 'b', 'c', 'd', 'x', 'y', 'z', 'n', '1', '2']]
 
         symbol_info = {
             a: MetaDummy('a', ureg.meter, a),
@@ -157,6 +157,7 @@ class TestUnits(object):
             x: MetaDummy('x', ureg.kilogram, x),
             y: MetaDummy('y', ureg.volt, y),
             z: MetaDummy('z', ureg.ampere, z),
+            n: MetaDummy('n', ureg.dimensionless, n),
             _1: MetaDummy('_1', ureg.kelvin, _1, number=sp.Float(1.0)),
             _2: MetaDummy('_2', ureg.dimensionless, _2, number=sp.Integer(2)),
         }
@@ -175,20 +176,43 @@ class TestUnits(object):
         assert unit_calculator.traverse(sp.floor(x)).units == ureg.kilogram
         result = unit_calculator.traverse(sp.floor(12.5) * a)
         assert result.units == ureg.meter and result.magnitude == 12.0 * a
+        assert unit_calculator.traverse(sp.floor(_1)).units == ureg.kelvin
 
         assert unit_calculator.traverse(sp.sqrt(a * d)).units == ureg.meter
 
         assert unit_calculator.traverse(a + d).units == ureg.meter
 
-        # TO DO: add test for a derivative
         assert unit_calculator.traverse(_1).units == ureg.kelvin
         assert unit_calculator.traverse(sp.sympify("1.0")).units == ureg.kelvin
+
+        dadb = sp.diff(a * b, b)
+        assert unit_calculator.traverse(dadb).units == ureg.meter
+
+        dadb = sp.Derivative(a * b, b)
+        assert unit_calculator.traverse(dadb).units == ureg.meter
+
+        assert unit_calculator.traverse(sp.log(_2)).units == ureg.dimensionless
+        assert unit_calculator.traverse(sp.log(n)).units == ureg.dimensionless
+        assert unit_calculator.traverse(sp.exp(_2)).units == ureg.dimensionless
+        assert unit_calculator.traverse(sp.exp(n)).units == ureg.dimensionless
+        assert unit_calculator.traverse(sp.sin(n)).units == ureg.dimensionless
+        assert unit_calculator.traverse(sp.pi).units == ureg.dimensionless
+
+        # this is a generic test of a function with one dimensionless argument
+        # ceiling should probably be handled explicitly
+        assert unit_calculator.traverse(sp.ceiling(n)).units == ureg.dimensionless
 
         # bad unit expressions
         assert unit_calculator.traverse(sp.exp(3 * c)) is None
         assert unit_calculator.traverse(a + b + c) is None
         assert unit_calculator.traverse(a ** _1) is None
         assert unit_calculator.traverse(sp.Piecewise((a, x < 1), (b, x > 1), (c, True))) is None
+        assert unit_calculator.traverse(a ** n) is None
+        assert unit_calculator.traverse(a + a ** n) is None
+
+        # exceptions
+        with pytest.raises(ValueError):
+            unit_calculator.traverse(sp.log(a))
 
     def test_expression_printer(self, quantity_store):
         ureg = quantity_store.ureg
