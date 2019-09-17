@@ -286,9 +286,15 @@ class UnitStore(object):
         """
         unit_calculator = UnitCalculator(self.ureg, self.model.dummy_metadata)
 
-        found = unit_calculator.traverse(expr)
-
-        if found is None:
+        try:
+            found = unit_calculator.traverse(expr)
+        except UnitError as error:
+            printer = ExpressionWithUnitPrinter(symbol_info=self.model.dummy_metadata)
+            logger.fatal('Could not summaries units: %s', expr)
+            logger.fatal(error.message)
+            logger.fatal('-> %s', printer.doprint(expr))
+            return None
+        except ValueError:
             printer = ExpressionWithUnitPrinter(symbol_info=self.model.dummy_metadata)
             logger.fatal('Could not summaries units: %s', expr)
             logger.fatal('-> %s', printer.doprint(expr))
@@ -339,6 +345,7 @@ class UnitCalculator(object):
         """descends the Sympy expression and performs Pint unit arithmetic on sub-expressions
         :param expr: a Sympy expression
         :returns: the quantity (i.e. expression * unit) of the expression
+        :throws:
         """
         # collect the units for each argument of the expression (might be sub-expression)
         quantity_per_arg = []
