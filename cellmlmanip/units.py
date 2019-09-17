@@ -79,6 +79,58 @@ TRIG_FUNCTIONS = {
 }
 
 
+class UnitError(Exception):
+    """ base class for unit errors
+    """
+    pass
+
+
+class InvalidUnitsError(UnitError):
+    """ generic invalid units error
+    @param expression -- input expression in which the error occurred
+    """
+
+    def __init__(self, expression):
+        self.expression = expression
+        self.message = 'The units of this expression cannot be calculated.'
+
+
+class InputArgumentsInvalidUnitsError(UnitError):
+    """ error when the arguments to a function have incorrect units
+    @param expression -- input expression in which the error occurred
+    """
+
+    def __init__(self, expression):
+        self.expression = expression
+        self.message = 'The arguments to this expression should all have the same units.'
+
+
+class InputArgumentsMustBeDimensionlessError(UnitError):
+    """ error when the arguments to a function have incorrect units when they should be dimensionless
+    @param expression -- input expression in which the error occurred
+    """
+
+    def __init__(self, expression, position=''):
+        self.expression = expression
+        if position.__len__() == 0:
+            self.message = 'The arguments to this expression should be dimensionless.'
+        else:
+            self.message = 'The %s argument to this expression should be dimensionless.' % position
+
+
+class InputArgumentMustBeNumberError(UnitError):
+    """ error when the input argument must be a number
+    @param expression -- input expression in which the error occurred
+    """
+
+    def __init__(self, expression, position=''):
+        self.expression = expression
+        if position.__len__() == 0:
+            self.message = 'The argument to this expression should be a number.'
+        else:
+            self.message = 'The %s argument to this expression should be a number.' % position
+
+
 class UnitStore(object):
     """Wraps the underlying Pint UnitRegistry to provide unit handling for the model's Sympy
     expressions. Getting and checking units is handled by this class.
@@ -307,7 +359,7 @@ class UnitCalculator(object):
         # if there was an error determining the quantity of an argument
         if None in quantity_per_arg:
             # error
-            return None
+            raise InvalidUnitsError('%s' % expr)
 
         # Terminal atoms in expressions (Integers and Rationals are used by Sympy itself)
         if expr.is_Symbol:
@@ -361,13 +413,13 @@ class UnitCalculator(object):
             # exponent must be dimensionless
             if exponent.units != self.ureg.dimensionless:
                 logger.critical('Exponent of pow is not dimensionless %s', expr)
-                return None
+                raise InputArgumentsMustBeDimensionlessError('%s' % expr, 'second')
 
             if not isinstance(exponent.magnitude, (sympy.Number, numbers.Number)):
                 logger.critical('Exponent of pow is not a number (is %s): %s',
                                 type(exponent.magnitude).__name__,
                                 expr)
-                return None
+                raise InputArgumentMustBeNumberError('%s' % expr, 'second')
 
             # if base is dimensionless, return is dimensionless
             if base.units == self.ureg.dimensionless:
@@ -389,7 +441,7 @@ class UnitCalculator(object):
                 return out
 
             logger.warning('Add args do not have the same unit: %s', expr)
-            return None
+            raise InputArgumentsInvalidUnitsError('%s' % expr)
 
         elif expr.is_Piecewise:
             # If unit of each expression in piecewise is the same
@@ -399,7 +451,7 @@ class UnitCalculator(object):
                 return out
 
             logger.warning('Piecewise args do not have the same unit.')
-            return None
+            raise InputArgumentsInvalidUnitsError('%s' % expr)
 
         elif expr.is_Function:
             # List of functions that have been checked
@@ -422,10 +474,7 @@ class UnitCalculator(object):
             elif expr.func == sympy.log:
                 if self._is_dimensionless(quantity_per_arg[0]):
                     return 1 * self.ureg.dimensionless
-                # SK: why raise an exception here when anything else that fails
-                # return None
-                raise ValueError('log args not dimensionless (%s)' %
-                                 [x.units for x in quantity_per_arg])
+                raise InputArgumentsMustBeDimensionlessError('%s' % expr)
             elif expr.func == sympy.exp:
                 # requires operands to have units of dimensionless.
                 # result of these has units of dimensionless.
@@ -442,10 +491,12 @@ class UnitCalculator(object):
                     return 1 * self.ureg.dimensionless
 
                 logger.critical('Exp operand is not dimensionless: %s', expr)
-                return None
+                raise InputArgumentsMustBeDimensionlessError('%s' % expr)
             # trig. function on any dimensionless operand is dimensionless
-            elif str(expr.func) in TRIG_FUNCTIONS and self._is_dimensionless(quantity_per_arg[0]):
-                return 1 * self.ureg.dimensionless
+            elif str(expr.func) in TRIG_FUNCTIONS:
+                if self._is_dimensionless(quantity_per_arg[0]):
+                    return 1 * self.ureg.dimensionless
+                raise InputArgumentsMustBeDimensionlessError('%s' % expr)
 
             # if the function has exactly one dimensionless argument
             if len(quantity_per_arg) == 1 and self._is_dimensionless(quantity_per_arg[0]):

@@ -3,7 +3,9 @@ import sympy as sp
 
 from cellmlmanip.model import MetaDummy
 from cellmlmanip.units import (ExpressionWithUnitPrinter, UnitCalculator,
-                               UnitStore)
+                               UnitStore, InputArgumentsInvalidUnitsError,
+                               InputArgumentsMustBeDimensionlessError,
+                               InputArgumentMustBeNumberError)
 
 
 class TestUnits(object):
@@ -164,42 +166,30 @@ class TestUnits(object):
 
         unit_calculator = UnitCalculator(ureg, symbol_info)
 
+        # units of numbers
+        assert unit_calculator.traverse(_1).units == ureg.kelvin
+        assert unit_calculator.traverse(sp.sympify("1.0")).units == ureg.kelvin
+        assert unit_calculator.traverse(_2).units == ureg.dimensionless
+        assert unit_calculator.traverse(sp.sympify("2")).units == ureg.dimensionless
+        assert unit_calculator.traverse(_25).units == ureg.dimensionless
+        assert unit_calculator.traverse(sp.sympify("2.5")).units == ureg.dimensionless
+        assert unit_calculator.traverse(sp.sympify("12")).units == ureg.dimensionless
+
+        # functions were all args should have same unit
+        # and this is the unit that will be returned
+        # pass cases
         assert unit_calculator.traverse(a + a + a + a).units == ureg.meter
         assert unit_calculator.traverse(a + 2*a + 3*a + 4*a).units == ureg.meter  # noqa: E226
-        assert unit_calculator.traverse((a * a) / b).units == ureg.meter**2 / ureg.second
-        assert unit_calculator.traverse(a**_2).units == ureg.meter**2
-        assert unit_calculator.traverse(sp.sqrt(c ** 2)).units == ureg.gram
+        assert unit_calculator.traverse(2 * a - a).units == ureg.meter
+        assert unit_calculator.traverse(a + d).units == ureg.meter
+        assert unit_calculator.traverse(a - d).units == ureg.meter
         assert unit_calculator.traverse(sp.Abs(-2 * y)).units == ureg.volt
-        assert unit_calculator.traverse(sp.Piecewise((a, x < 1),
-                                                     (a + a, x > 1),
-                                                     (3 * a, True))).units == ureg.meter
         assert unit_calculator.traverse(sp.floor(x)).units == ureg.kilogram
         result = unit_calculator.traverse(sp.floor(12.5) * a)
         assert result.units == ureg.meter and result.magnitude == 12.0 * a
         assert unit_calculator.traverse(sp.floor(_1)).units == ureg.kelvin
         result = unit_calculator.traverse(sp.floor(_25))
         assert result.units == ureg.dimensionless and result.magnitude == 2.0
-
-        assert unit_calculator.traverse(sp.sqrt(a * d)).units == ureg.meter
-
-        assert unit_calculator.traverse(a + d).units == ureg.meter
-
-        assert unit_calculator.traverse(_1).units == ureg.kelvin
-        assert unit_calculator.traverse(sp.sympify("1.0")).units == ureg.kelvin
-
-        dadb = sp.diff(a * b, b)
-        assert unit_calculator.traverse(dadb).units == ureg.meter
-
-        dadb = sp.Derivative(a * b, b)
-        assert unit_calculator.traverse(dadb).units == ureg.meter
-
-        assert unit_calculator.traverse(sp.log(_2)).units == ureg.dimensionless
-        assert unit_calculator.traverse(sp.log(n)).units == ureg.dimensionless
-        assert unit_calculator.traverse(sp.exp(_2)).units == ureg.dimensionless
-        assert unit_calculator.traverse(sp.exp(n)).units == ureg.dimensionless
-        assert unit_calculator.traverse(sp.sin(n)).units == ureg.dimensionless
-        assert unit_calculator.traverse(sp.pi).units == ureg.dimensionless
-
         assert unit_calculator.traverse(sp.ceiling(x)).units == ureg.kilogram
         result = unit_calculator.traverse(sp.ceiling(12.6) * a)
         assert result.units == ureg.meter and result.magnitude == 13.0 * a
@@ -207,21 +197,92 @@ class TestUnits(object):
         result = unit_calculator.traverse(sp.ceiling(_25))
         assert result.units == ureg.dimensionless and result.magnitude == 3.0
 
+        # functions were all args should have same unit
+        # and this is the unit that will be returned
+        # fail cases
+        with pytest.raises(InputArgumentsInvalidUnitsError):
+            unit_calculator.traverse(a + b)
+        try:
+            unit_calculator.traverse(a + b)
+        except InputArgumentsInvalidUnitsError as err:
+            assert err.message == 'The arguments to this expression should all have the same units.'
+            assert err.expression == '_a + _b'
+        with pytest.raises(InputArgumentsInvalidUnitsError):
+            unit_calculator.traverse(a - b)
+        try:
+            unit_calculator.traverse(a - b)
+        except InputArgumentsInvalidUnitsError as err:
+            assert err.message == 'The arguments to this expression should all have the same units.'
+            assert err.expression == '_a - _b'
+        try:
+            sp.floor(x, y)
+        except TypeError as err:
+            assert err.args[0] == 'floor takes exactly 1 argument (2 given)'
+
+        # special case - piecewise
+        assert unit_calculator.traverse(sp.Piecewise((a, x < 1),
+                                                     (a + a, x > 1),
+                                                     (3 * a, True))).units == ureg.meter
+        # fail special case -piecewise
+        with pytest.raises(InputArgumentsInvalidUnitsError):
+            unit_calculator.traverse(sp.Piecewise((a, x < 1), (b, x > 1), (c, True)))
+        try:
+            unit_calculator.traverse(sp.Piecewise((a, x < 1), (b, x > 1), (c, True)))
+        except InputArgumentsInvalidUnitsError as err:
+            assert err.message == 'The arguments to this expression should all have the same units.'
+            assert err.expression == 'Piecewise((_a, _x < 1), (_b, _x > 1), (_c, True))'
+
+        # cases with any units allowed as arguments
+        assert unit_calculator.traverse((a * a) / b).units == ureg.meter**2 / ureg.second
+
+        # root and power
+        assert unit_calculator.traverse(a**_2).units == ureg.meter**2
+        assert unit_calculator.traverse(sp.sqrt(c ** 2)).units == ureg.gram
+        assert unit_calculator.traverse(sp.sqrt(a * d)).units == ureg.meter
+        # root and power fails
+        expr = a ** _1
+        with pytest.raises(InputArgumentsMustBeDimensionlessError):
+            unit_calculator.traverse(expr)
+        try:
+            unit_calculator.traverse(expr)
+        except InputArgumentsMustBeDimensionlessError as err:
+            assert err.message == 'The second argument to this expression should be dimensionless.'
+            assert err.expression == '_a**_1'
+        expr = a + a ** n
+        with pytest.raises(InputArgumentMustBeNumberError):
+            unit_calculator.traverse(expr)
+        try:
+            unit_calculator.traverse(expr)
+        except InputArgumentMustBeNumberError as err:
+            assert err.message == 'The second argument to this expression should be a number.'
+            assert err.expression == '_a**_n'
+
+        # special case - derivative
+        dadb = sp.diff(a * b, b)
+        assert unit_calculator.traverse(dadb).units == ureg.meter
+
+        dadb = sp.Derivative(a * b, b)
+        assert unit_calculator.traverse(dadb).units == ureg.meter
+
+        # log and exponent
+        assert unit_calculator.traverse(sp.log(_2)).units == ureg.dimensionless
+        assert unit_calculator.traverse(sp.log(n)).units == ureg.dimensionless
+        assert unit_calculator.traverse(sp.exp(_2)).units == ureg.dimensionless
+        assert unit_calculator.traverse(sp.exp(n)).units == ureg.dimensionless
+        # log and exponent - fails
+#        assert unit_calculator.traverse(sp.exp(3 * c)) is None
+#        with pytest.raises(ValueError):
+#            unit_calculator.traverse(sp.log(a))
+
+        # trig functions
+        assert unit_calculator.traverse(sp.sin(n)).units == ureg.dimensionless
+        # trig functions - fails
+
+        # constants
+        assert unit_calculator.traverse(sp.pi).units == ureg.dimensionless
+
         # this is a generic test of a function with one dimensionless argument
-        # ceiling should probably be handled explicitly
         assert unit_calculator.traverse(sp.sign(n)).units == ureg.dimensionless
-
-        # bad unit expressions
-        assert unit_calculator.traverse(sp.exp(3 * c)) is None
-        assert unit_calculator.traverse(a + b + c) is None
-        assert unit_calculator.traverse(a ** _1) is None
-        assert unit_calculator.traverse(sp.Piecewise((a, x < 1), (b, x > 1), (c, True))) is None
-        assert unit_calculator.traverse(a ** n) is None
-        assert unit_calculator.traverse(a + a ** n) is None
-
-        # exceptions
-        with pytest.raises(ValueError):
-            unit_calculator.traverse(sp.log(a))
 
     def test_expression_printer(self, quantity_store):
         ureg = quantity_store.ureg
