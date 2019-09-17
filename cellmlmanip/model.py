@@ -430,8 +430,6 @@ class Model(object):
                 ancestors = [a for a in graph.predecessors(parent)]
                 for sym in sorted_symbols:
                     if sym in ancestors:
-                        #ancestors.sort(key=str)
-                        #for a in ancestors:
                         to_process.appendleft(sym)
                 parents.insert(0, parent)
             return parents
