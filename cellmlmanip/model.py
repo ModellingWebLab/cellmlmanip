@@ -419,17 +419,20 @@ class Model(object):
         :param excluded_symbols: list of symbols to exlcude
         """
         graph = self.get_equation_graph()
+        sorted_symbols = [s for s in nx.topological_sort(graph)]
 
-        def get_parents(node, graph=graph):
+        def get_parents(node, graph=graph, sorted_symbols=sorted_symbols):
             parents = []
             to_process = deque()
             to_process.appendleft(node)
             while len(to_process) > 0:
                 parent = to_process.popleft()
                 ancestors = [a for a in graph.predecessors(parent)]
-                ancestors.sort(key=str)
-                for a in ancestors:
-                    to_process.appendleft(a)
+                for sym in sorted_symbols:
+                    if sym in ancestors:
+                        #ancestors.sort(key=str)
+                        #for a in ancestors:
+                        to_process.appendleft(sym)
                 parents.insert(0, parent)
             return parents
 

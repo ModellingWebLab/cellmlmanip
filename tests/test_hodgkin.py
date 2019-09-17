@@ -283,9 +283,9 @@ class TestHodgkin:
         input_ordered_equations = model.get_equations_for(
             [membrane_fast_sodium_current, membrane_stimulus_current_offset,
              membrane_stimulus_current_offset, membrane_stimulus_current_period],
-            True, [membrane_stimulus_current_period])
+            sort_by_input_symbols=True, excluded_symbols=[membrane_stimulus_current_period])
 
-        # There should be 10 in this model
+        # There should be 5 in this model
         assert len(equations) == len(input_ordered_equations) == 5
         # Each equation should be both in the ordered and unordered equations
         for eq in equations:
@@ -304,7 +304,7 @@ class TestHodgkin:
                            sympy.Dummy('sodium_channel$E_Na')))]
 
         # Expected ordering for not lexicographical sorted equations
-        unordered_ref_eq = [ref_eq[0], ref_eq[2], ref_eq[3], ref_eq[4], ref_eq[1]]
+        unordered_ref_eq = [ref_eq[3], ref_eq[0], ref_eq[2], ref_eq[4], ref_eq[1]]
 
         # Check equations against expected equations
         for i in range(len(equations)):
