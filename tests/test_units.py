@@ -147,8 +147,9 @@ class TestUnits(object):
 
     def test_unit_calculator(self, quantity_store):
         ureg = quantity_store.ureg
-        a, b, c, d, x, y, z, n, _1, _2, _25 = [sp.Dummy(x)
-                                               for x in ['a', 'b', 'c', 'd', 'x', 'y', 'z', 'n', '1', '2', '2.5']]
+        a, b, c, d, x, y, z, n, _1, _2, _25, av, a2 = [sp.Dummy(x)
+                                                       for x in ['a', 'b', 'c', 'd', 'x', 'y', 'z', 'n',
+                                                                 '1', '2', '2.5', 'av', 'a2']]
 
         symbol_info = {
             a: MetaDummy('a', ureg.meter, a),
@@ -162,6 +163,8 @@ class TestUnits(object):
             _1: MetaDummy('_1', ureg.kelvin, _1, number=sp.Float(1.0)),
             _2: MetaDummy('_2', ureg.dimensionless, _2, number=sp.Integer(2)),
             _25: MetaDummy('_2.5', ureg.dimensionless, _25, number=sp.Float(2.5)),
+            av: MetaDummy('av', ureg.meter, av, initial_value=2),
+            a2: MetaDummy('a2', ureg.meter**2, av, initial_value=4),
         }
 
         unit_calculator = UnitCalculator(ureg, symbol_info)
@@ -256,6 +259,14 @@ class TestUnits(object):
         except InputArgumentMustBeNumberError as err:
             assert err.message == 'The second argument to this expression should be a number.'
             assert err.expression == '_a**_n'
+
+        # bizarre cases
+        expr = av ** _25
+        result = unit_calculator.traverse(expr)
+        assert result.units == ureg.meter**2.5  # and result.magnitude == 5.6568
+        expr = sp.root(av, _25)
+        result = unit_calculator.traverse(expr)
+        assert result.units == ureg.meter**0.4  # and result.magnitude == 1.319507
 
         # special case - derivative
         dadb = sp.diff(a * b, b)
