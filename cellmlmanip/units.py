@@ -299,6 +299,12 @@ class UnitStore(object):
             logger.fatal('Could not summaries units: %s', expr)
             logger.fatal('-> %s', printer.doprint(expr))
             return None
+        except KeyError as error:
+            printer = ExpressionWithUnitPrinter(symbol_info=self.model.dummy_metadata)
+            logger.fatal('Could not summaries units: %s', expr)
+            logger.fatal(error.message)
+            logger.fatal('-> %s', printer.doprint(expr))
+            return None
 
         logger.debug('summarise_units(%s) ⟶ %s', expr, found.units)
         return found.units
@@ -462,7 +468,8 @@ class UnitCalculator(object):
 
         elif expr.is_Function:
             # List of functions that have been checked
-            if str(expr.func) not in ['cos', 'acos', 'exp', 'floor', 'log', 'Abs', 'tanh', 'ceiling']:
+            if str(expr.func) not in ['cos', 'acos', 'exp', 'floor', 'log', 'Abs', 'tanh', 'ceiling',
+                                      'pow', 'root']:
                 logger.warning('Have not checked unit arithmetic for function %s', expr.func)
 
             # Handle these functions explicitly
