@@ -439,7 +439,8 @@ class Model(object):
         for output in symbols:
             if output not in required_symbols and output not in excluded_symbols:
                 for p in get_parents(output):
-                    required_symbols.append(p)
+                    if p not in excluded_symbols and p not in required_symbols:
+                        required_symbols.append(p)
 
         eqs = []
 

@@ -273,7 +273,7 @@ class TestHodgkin:
         # Repeat test without specifying namespace
         assert model.has_ontology_annotation(membrane_voltage_var)
 
-    def test_get_equations_for(self, graph, model):
+    def test_get_equations_for(self, model):
         # Get equations for membrane_fast_sodium_current both ordered and unordered
         membrane_fast_sodium_current = model.get_symbol_by_ontology_term(OXMETA, "membrane_fast_sodium_current")
         membrane_stimulus_current_offset = model.get_symbol_by_ontology_term(OXMETA, "membrane_stimulus_current_offset")
@@ -282,16 +282,26 @@ class TestHodgkin:
         equations = model.get_equations_for([membrane_fast_sodium_current, membrane_stimulus_current_offset])
         input_ordered_equations = model.get_equations_for(
             [membrane_fast_sodium_current, membrane_stimulus_current_offset,
+             membrane_stimulus_current_period],
+            sort_by_input_symbols=True, excluded_symbols=[membrane_stimulus_current_period])
+
+        input_ordered_equations_duplicates = model.get_equations_for(
+            [membrane_fast_sodium_current, membrane_stimulus_current_offset,
              membrane_stimulus_current_offset, membrane_stimulus_current_period],
             sort_by_input_symbols=True, excluded_symbols=[membrane_stimulus_current_period])
 
         # There should be 5 in this model
-        assert len(equations) == len(input_ordered_equations) == 5
+        assert len(equations) == len(input_ordered_equations) == len(input_ordered_equations_duplicates) == 5
         # Each equation should be both in the ordered and unordered equations
         for eq in equations:
             assert eq in input_ordered_equations
+            assert eq in input_ordered_equations_duplicates
         for eq in input_ordered_equations:
             assert eq in equations
+            assert eq in input_ordered_equations_duplicates
+        for eq in input_ordered_equations_duplicates:
+            assert eq in equations
+            assert eq in input_ordered_equations
         # Expected equations
         ref_eq = [sympy.Eq(sympy.Dummy('membrane$E_R'), sympy.numbers.Float(-75.0)),
                   sympy.Eq(sympy.Dummy('membrane$stim_start'), sympy.numbers.Float(10.0)),
@@ -305,11 +315,17 @@ class TestHodgkin:
 
         # Expected ordering for not lexicographical sorted equations
         unordered_ref_eq = [ref_eq[3], ref_eq[0], ref_eq[2], ref_eq[4], ref_eq[1]]
+        # Reference equations for input_ordered_equations with duplicates should be the same
+        unordered_duplicates_ref_eq = unordered_ref_eq
 
         # Check equations against expected equations
         for i in range(len(equations)):
             assert str(equations[i]) == str(ref_eq[i])
 
-        # Check not lexicographical sorted equations against expected equations
+        # Check not input_ordered equations equations against expected equations
         for i in range(len(input_ordered_equations)):
             assert str(input_ordered_equations[i]) == str(unordered_ref_eq[i])
+
+        # Check not input_ordered equations with duplicates equations against expected equations
+        for i in range(len(input_ordered_equations_duplicates)):
+            assert str(input_ordered_equations_duplicates[i]) == str(unordered_duplicates_ref_eq[i])
