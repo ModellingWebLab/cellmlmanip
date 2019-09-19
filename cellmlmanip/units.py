@@ -481,6 +481,10 @@ class UnitCalculator(object):
             # following discussion with Michael we decided that since a
             # variable in cellml can never have a boolean value then
             # we should not encounter expression that return booleans
+            # but cellml spec says these should have same arguments so
+            # log this
+            if not self._check_unit_of_quantities_equal(quantity_per_arg):
+                logger.warning('Relational args do not have the same unit: %s', expr)
             logger.critical('Boolean return: %s', expr)
             raise BooleanUnitsError('%s' % expr)
 
