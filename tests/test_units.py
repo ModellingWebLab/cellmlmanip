@@ -5,7 +5,8 @@ from cellmlmanip.model import MetaDummy
 from cellmlmanip.units import (ExpressionWithUnitPrinter, UnitCalculator,
                                UnitStore, InputArgumentsInvalidUnitsError,
                                InputArgumentsMustBeDimensionlessError,
-                               InputArgumentMustBeNumberError)
+                               InputArgumentMustBeNumberError,
+                               BooleanUnitsError)
 
 
 class TestUnits(object):
@@ -267,6 +268,11 @@ class TestUnits(object):
         expr = sp.root(av, _25)
         result = unit_calculator.traverse(expr)
         assert result.units == ureg.meter**0.4  # and result.magnitude == 1.319507
+
+        # relational operators throw an exception
+        expr = a > _1
+        with pytest.raises(BooleanUnitsError):
+            unit_calculator.traverse(expr)
 
         # special case - derivative
         dadb = sp.diff(a * b, b)

@@ -130,6 +130,17 @@ class InputArgumentMustBeNumberError(UnitError):
         else:
             self.message = 'The %s argument to this expression should be a number.' % position
 
+class BooleanUnitsError(UnitError):
+    """ error when being asked for units of an expression that will return a boolean
+    @param expression -- input expression in which the error occurred
+    """
+
+    def __init__(self, expression):
+        self.expression = expression
+        self.message = 'This expression involves boolean values which do not conform to' \
+                       'unit dimensionality rules.'
+
+
 
 class UnitStore(object):
     """Wraps the underlying Pint UnitRegistry to provide unit handling for the model's Sympy
@@ -465,6 +476,13 @@ class UnitCalculator(object):
 
             logger.warning('Piecewise args do not have the same unit.')
             raise InputArgumentsInvalidUnitsError('%s' % expr)
+
+        elif expr.is_Relational:
+            # following discussion with Michael we decided that since a
+            # variable in cellml can never have a boolean value then
+            # we should not encounter expression that return booleans
+            logger.critical('Boolean return: %s', expr)
+            raise BooleanUnitsError('%s' % expr)
 
         elif expr.is_Function:
             # List of functions that have been checked
