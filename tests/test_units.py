@@ -284,19 +284,64 @@ class TestUnits(object):
         # log and exponent
         assert unit_calculator.traverse(sp.log(_2)).units == ureg.dimensionless
         assert unit_calculator.traverse(sp.log(n)).units == ureg.dimensionless
+        assert unit_calculator.traverse(sp.ln(_2)).units == ureg.dimensionless
+        assert unit_calculator.traverse(sp.log(n, _2)).units == ureg.dimensionless
+        assert unit_calculator.traverse(sp.log(_2, 3)).units == ureg.dimensionless
         assert unit_calculator.traverse(sp.exp(_2)).units == ureg.dimensionless
         assert unit_calculator.traverse(sp.exp(n)).units == ureg.dimensionless
         # log and exponent - fails
-#        assert unit_calculator.traverse(sp.exp(3 * c)) is None
-#        with pytest.raises(ValueError):
-#            unit_calculator.traverse(sp.log(a))
+        expr = sp.log(a)
+        with pytest.raises(InputArgumentsMustBeDimensionlessError):
+            unit_calculator.traverse(expr)
+        try:
+            unit_calculator.traverse(expr)
+        except InputArgumentsMustBeDimensionlessError as err:
+            assert err.message == 'The arguments to this expression should be dimensionless.'
+            assert err.expression == 'log(_a)'
+        expr = sp.log(_2, av)
+        with pytest.raises(InputArgumentsMustBeDimensionlessError):
+            unit_calculator.traverse(expr)
+        try:
+            unit_calculator.traverse(expr)
+        except InputArgumentsMustBeDimensionlessError as err:
+            assert err.message == 'The arguments to this expression should be dimensionless.'
+            assert err.expression == 'log(_av)'
+        expr = sp.exp(av)
+        with pytest.raises(InputArgumentsMustBeDimensionlessError):
+            unit_calculator.traverse(expr)
+        try:
+            unit_calculator.traverse(expr)
+        except InputArgumentsMustBeDimensionlessError as err:
+            assert err.message == 'The arguments to this expression should be dimensionless.'
+            assert err.expression == 'exp(_av)'
 
         # trig functions
         assert unit_calculator.traverse(sp.sin(n)).units == ureg.dimensionless
         # trig functions - fails
+        expr = sp.cos(av)
+        with pytest.raises(InputArgumentsMustBeDimensionlessError):
+            unit_calculator.traverse(expr)
+        try:
+            unit_calculator.traverse(expr)
+        except InputArgumentsMustBeDimensionlessError as err:
+            assert err.message == 'The arguments to this expression should be dimensionless.'
+            assert err.expression == 'cos(_av)'
 
         # constants
         assert unit_calculator.traverse(sp.pi).units == ureg.dimensionless
+        assert unit_calculator.traverse(sp.E).units == ureg.dimensionless
+        assert unit_calculator.traverse(sp.oo).units == ureg.dimensionless
+        assert unit_calculator.traverse(sp.nan).units == ureg.dimensionless
+
+        expr = sp.true
+        with pytest.raises(BooleanUnitsError):
+            unit_calculator.traverse(expr)
+        try:
+            unit_calculator.traverse(expr)
+        except BooleanUnitsError as err:
+            assert err.message == 'This expression involves boolean values which do not conform to ' \
+                                  'unit dimensionality rules.'
+            assert err.expression == 'True'
 
         # this is a generic test of a function with one dimensionless argument
         assert unit_calculator.traverse(sp.sign(n)).units == ureg.dimensionless

@@ -138,7 +138,7 @@ class BooleanUnitsError(UnitError):
 
     def __init__(self, expression):
         self.expression = expression
-        self.message = 'This expression involves boolean values which do not conform to' \
+        self.message = 'This expression involves boolean values which do not conform to ' \
                        'unit dimensionality rules.'
 
 
@@ -488,6 +488,12 @@ class UnitCalculator(object):
             logger.critical('Boolean return: %s', expr)
             raise BooleanUnitsError('%s' % expr)
 
+        elif expr.is_Boolean:
+            # following discussion with Michael we decided that since a
+            # variable in cellml can never have a boolean value then
+            # we should not encounter expression that return booleans
+            raise BooleanUnitsError('%s' % expr)
+
         elif expr.is_Function:
             # List of functions that have been checked
             if str(expr.func) not in ['cos', 'acos', 'exp', 'floor', 'log', 'Abs', 'tanh', 'ceiling',
@@ -540,6 +546,12 @@ class UnitCalculator(object):
                 return 1 * self.ureg.dimensionless
         elif expr == sympy.pi:
             return math.pi * self.ureg.dimensionless
+        elif expr == sympy.E:
+            return math.e * self.ureg.dimensionless
+        elif expr == sympy.oo:
+            return math.inf * self.ureg.dimensionless
+        elif expr == sympy.nan:
+            return math.nan * self.ureg.dimensionless
         elif expr.is_Derivative:
             out = quantity_per_arg[0] / quantity_per_arg[1]
             return out
