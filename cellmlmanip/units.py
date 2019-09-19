@@ -95,6 +95,16 @@ class InvalidUnitsError(UnitError):
         self.message = 'The units of this expression cannot be calculated.'
 
 
+class UnexpectedMathUnitsError(UnitError):
+    """ error when math is outside the set of MathML expected
+    @param expression -- input expression in which the error occurred
+    """
+
+    def __init__(self, expression):
+        self.expression = expression
+        self.message = 'The math used by this expression is not supported.'
+
+
 class InputArgumentsInvalidUnitsError(UnitError):
     """ error when the arguments to a function have incorrect units
     @param expression -- input expression in which the error occurred
@@ -362,17 +372,27 @@ class UnitCalculator(object):
         """descends the Sympy expression and performs Pint unit arithmetic on sub-expressions
         :param expr: a Sympy expression
         :returns: the quantity (i.e. expression * unit) of the expression
-        :throws:
+        :throws: KeyError - if variable not found in metadata
+                 InvalidUnitsError - if expression just cannot calculate
+                 UnexpectedMathUnitsError - if math is not supported
+                 BooleanUnitsError - if math returns booleans
+                 InputArgumentsMustBeDimensionlessError - if input arguments should be dimensionless
+                 InputArgumentsInvalidUnitsError - if input arguments should have same units
+                 InputArgumentMustBeNumberError - if one of input arguments should be a number
+        NOTE: Sympy will throw exceptions if the expression is badly formed before we even get here
         """
         # collect the units for each argument of the expression (might be sub-expression)
         quantity_per_arg = []
 
-        # If the expression is a piecewise
+        # need to work out units of each child atom of the expression
+        # piecewise and derivatives are special cases
         if expr.is_Piecewise:
-            # Treat each sub-function an argument (& ignore the condition)
+            # Treat each sub-function an argument (& ignore the conditional statements)
             for arg in expr.args:
                 quantity_per_arg.append(self.traverse(arg[0]))
         elif expr.is_Derivative:
+            # In a derivative expression the first argument is function to be differentiated
+            # the second argument is a tuple of which the first is symbol of the differentiator(?)
             quantity_per_arg.append(self.traverse(expr.args[0]))
             quantity_per_arg.append(self.traverse(expr.args[1][0]))
         else:
@@ -380,12 +400,15 @@ class UnitCalculator(object):
             for arg in expr.args:
                 quantity_per_arg.append(self.traverse(arg))
 
-        # if there was an error determining the quantity of an argument
+        # if there was an error determining the quantity of an argument quit now
+        # we shouldnt ever get here as an exception should already be thrown
         if None in quantity_per_arg:
-            # error
             raise InvalidUnitsError('%s' % expr)
 
         # Terminal atoms in expressions (Integers and Rationals are used by Sympy itself)
+        # I have gone through any flag that sympy might use
+        # some of which will be redundant - but if we happen to come across it will throw
+        # an exception to tell us a model is very unexpected
         if expr.is_Symbol:
             if expr not in self.dummy_metadata:
                 raise KeyError('Metadata entry not found for dummy symbol "%s"' % expr)
@@ -404,6 +427,7 @@ class UnitCalculator(object):
                     # otherwise, keep the symbol
                     out = self.ureg.Quantity(expr, metadata.units)
             return out
+
         elif expr.is_Number:
             units = self.ureg.dimensionless
             for key in self.dummy_metadata:
@@ -517,6 +541,10 @@ class UnitCalculator(object):
                 if self._is_dimensionless(quantity_per_arg[0]):
                     return 1 * self.ureg.dimensionless
                 raise InputArgumentsMustBeDimensionlessError('%s' % expr)
+            elif expr.func == sympy.factorial:
+                if self._is_dimensionless(quantity_per_arg[0]):
+                    return 1 * self.ureg.dimensionless
+                raise InputArgumentsMustBeDimensionlessError('%s' % expr)
             elif expr.func == sympy.exp:
                 # requires operands to have units of dimensionless.
                 # result of these has units of dimensionless.
@@ -544,6 +572,12 @@ class UnitCalculator(object):
             if len(quantity_per_arg) == 1 and self._is_dimensionless(quantity_per_arg[0]):
                 # assume the result is dimensionless
                 return 1 * self.ureg.dimensionless
+
+        elif expr.is_Derivative:
+            out = quantity_per_arg[0] / quantity_per_arg[1]
+            return out
+
+        # constants in cellml that are all specified as dimensionless
         elif expr == sympy.pi:
             return math.pi * self.ureg.dimensionless
         elif expr == sympy.E:
@@ -552,10 +586,20 @@ class UnitCalculator(object):
             return math.inf * self.ureg.dimensionless
         elif expr == sympy.nan:
             return math.nan * self.ureg.dimensionless
-        elif expr.is_Derivative:
-            out = quantity_per_arg[0] / quantity_per_arg[1]
-            return out
+        elif (expr.is_AlgebraicNumber or
+              expr.is_Equality or
+              expr.is_Indexed or
+              expr.isMatAdd or
+              expr.is_MatMul or
+              expr.is_Matrix or
+              expr.isOrder or
+              expr.is_Point or
+              expr.is_Poly or
+              expr.is_Vector or
+              expr.is_Wild):
+            raise UnexpectedMathUnitsError(expr)
 
+        # leave the final catch in but should no longer get here
         raise NotImplementedError('TODO TODO TODO %s %s' % (expr, sympy.srepr(expr)))
 
 

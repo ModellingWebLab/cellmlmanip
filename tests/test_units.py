@@ -343,7 +343,36 @@ class TestUnits(object):
                                   'unit dimensionality rules.'
             assert err.expression == 'True'
 
+        # factorial needs its own catch
+        assert unit_calculator.traverse(sp.factorial(n)).units == ureg.dimensionless
+        expr = sp.factorial(av)
+        with pytest.raises(InputArgumentsMustBeDimensionlessError):
+            unit_calculator.traverse(expr)
+        try:
+            unit_calculator.traverse(expr)
+        except InputArgumentsMustBeDimensionlessError as err:
+            assert err.message == 'The arguments to this expression should be dimensionless.'
+            assert err.expression == 'factorial(_av)'
+
+        # logic functions throw an exception
+        expr = a & b
+        with pytest.raises(BooleanUnitsError):
+            unit_calculator.traverse(expr)
+        try:
+            unit_calculator.traverse(expr)
+        except BooleanUnitsError as err:
+            assert err.message == 'This expression involves boolean values which do not conform to ' \
+                                  'unit dimensionality rules.'
+            assert err.expression == '_a & _b'
+
+        # check that not gets caught as it is listed separately
+        # does indeed get caught by is_Boolean
+        expr = ~a
+        with pytest.raises(BooleanUnitsError):
+            unit_calculator.traverse(expr)
+
         # this is a generic test of a function with one dimensionless argument
+        # this uses a function that is not in cellml - just to check the logic
         assert unit_calculator.traverse(sp.sign(n)).units == ureg.dimensionless
 
     def test_expression_printer(self, quantity_store):
