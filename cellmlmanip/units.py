@@ -130,6 +130,7 @@ class InputArgumentMustBeNumberError(UnitError):
         else:
             self.message = 'The %s argument to this expression should be a number.' % position
 
+
 class BooleanUnitsError(UnitError):
     """ error when being asked for units of an expression that will return a boolean
     @param expression -- input expression in which the error occurred
@@ -139,7 +140,6 @@ class BooleanUnitsError(UnitError):
         self.expression = expression
         self.message = 'This expression involves boolean values which do not conform to' \
                        'unit dimensionality rules.'
-
 
 
 class UnitStore(object):
