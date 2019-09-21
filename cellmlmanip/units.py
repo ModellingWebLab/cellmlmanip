@@ -460,11 +460,11 @@ class UnitCalculator(object):
 
             # exponent must be dimensionless
             if exponent.units != self.ureg.dimensionless:
-                logger.critical('Exponent of pow is not dimensionless %s', expr)
+                logger.critical('Exponent of Pow is not dimensionless %s', expr)
                 raise InputArgumentsMustBeDimensionlessError('%s' % expr, 'second')
 
             if not isinstance(exponent.magnitude, (sympy.Number, numbers.Number)):
-                logger.critical('Exponent of pow is not a number (is %s): %s',
+                logger.critical('Exponent of Pow is not a number (is %s): %s',
                                 type(exponent.magnitude).__name__,
                                 expr)
                 raise InputArgumentMustBeNumberError('%s' % expr, 'second')
@@ -521,7 +521,7 @@ class UnitCalculator(object):
         elif expr.is_Function:
             # List of functions that have been checked
             if str(expr.func) not in ['cos', 'acos', 'exp', 'floor', 'log', 'Abs', 'tanh', 'ceiling',
-                                      'pow', 'root']:
+                                      'Pow', 'root']:
                 logger.warning('Have not checked unit arithmetic for function %s', expr.func)
 
             # Handle these functions explicitly
