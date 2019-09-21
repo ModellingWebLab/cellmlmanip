@@ -6,7 +6,8 @@ from cellmlmanip.units import (ExpressionWithUnitPrinter, UnitCalculator,
                                UnitStore, InputArgumentsInvalidUnitsError,
                                InputArgumentsMustBeDimensionlessError,
                                InputArgumentMustBeNumberError,
-                               BooleanUnitsError)
+                               BooleanUnitsError,
+                               UnexpectedMathUnitsError)
 
 
 class TestUnits(object):
@@ -182,6 +183,7 @@ class TestUnits(object):
         # functions were all args should have same unit
         # and this is the unit that will be returned
         # pass cases
+        assert unit_calculator.traverse(-a).units == ureg.meter
         assert unit_calculator.traverse(a + a + a + a).units == ureg.meter
         assert unit_calculator.traverse(a + 2*a + 3*a + 4*a).units == ureg.meter  # noqa: E226
         assert unit_calculator.traverse(2 * a - a).units == ureg.meter
@@ -374,6 +376,20 @@ class TestUnits(object):
         # this is a generic test of a function with one dimensionless argument
         # this uses a function that is not in cellml - just to check the logic
         assert unit_calculator.traverse(sp.sign(n)).units == ureg.dimensionless
+
+        expr = sp.symbols('cat')
+        with pytest.raises(KeyError):
+            unit_calculator.traverse(expr)
+
+        expr = sp.Matrix([[1, 0], [0, 1]])
+        with pytest.raises(UnexpectedMathUnitsError):
+            unit_calculator.traverse(expr)
+
+        N = sp.Matrix([[1, 0], [0, 1]])
+        M = sp.Matrix([[1, 0], [0, 1]])
+        expr = M + N
+        with pytest.raises(UnexpectedMathUnitsError):
+            unit_calculator.traverse(expr)
 
     def test_expression_printer(self, quantity_store):
         ureg = quantity_store.ureg

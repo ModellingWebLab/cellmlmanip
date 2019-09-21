@@ -133,12 +133,9 @@ class InputArgumentMustBeNumberError(UnitError):
     @param expression -- input expression in which the error occurred
     """
 
-    def __init__(self, expression, position=''):
+    def __init__(self, expression, position):
         self.expression = expression
-        if position.__len__() == 0:
-            self.message = 'The argument to this expression should be a number.'
-        else:
-            self.message = 'The %s argument to this expression should be a number.' % position
+        self.message = 'The %s argument to this expression should be a number.' % position
 
 
 class BooleanUnitsError(UnitError):
@@ -384,6 +381,8 @@ class UnitCalculator(object):
         # collect the units for each argument of the expression (might be sub-expression)
         quantity_per_arg = []
 
+        if expr.is_Matrix:
+            raise UnexpectedMathUnitsError(expr)
         # need to work out units of each child atom of the expression
         # piecewise and derivatives are special cases
         if expr.is_Piecewise:
@@ -586,17 +585,7 @@ class UnitCalculator(object):
             return math.inf * self.ureg.dimensionless
         elif expr == sympy.nan:
             return math.nan * self.ureg.dimensionless
-        elif (expr.is_AlgebraicNumber or
-              expr.is_Equality or
-              expr.is_Indexed or
-              expr.isMatAdd or
-              expr.is_MatMul or
-              expr.is_Matrix or
-              expr.isOrder or
-              expr.is_Point or
-              expr.is_Poly or
-              expr.is_Vector or
-              expr.is_Wild):
+        else:
             raise UnexpectedMathUnitsError(expr)
 
         # leave the final catch in but should no longer get here
