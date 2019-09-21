@@ -33,7 +33,7 @@ class TestModelBadUnits:
         # this does not raise and error
         # instead it returns 2 dimensionless
         # with pytest.raises(units.UnitError):
-        out = model.units.summarise_units(equation[0].rhs)
+        model.units.summarise_units(equation[0].rhs)
 
         assert equation[1].lhs == symbol_b
         assert equation[1].rhs == symbol_a**1.0
