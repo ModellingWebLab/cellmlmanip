@@ -250,7 +250,7 @@ class UnitStore(object):
                                        self.summarise_units(symbol2))
             return True
         except pint.errors.DimensionalityError:
-            return False        
+            return False
 
 
 class UnitCalculator(object):
