@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<model name="component_with_units"
+       xmlns="http://www.cellml.org/cellml/1.0#"
+       xmlns:cellml="http://www.cellml.org/cellml/1.0#"
+       xmlns:cmeta="http://www.cellml.org/metadata/1.0#">
+
+    <units name="ms">
+       <unit units="second" prefix="milli"/>
+    </units>
+    <units name="per_ms">
+       <unit units="ms" exponent="-1"/>
+    </units>
+
+    <component name="A">
+        <variable name="a" units="ms" cmeta:id="a"/>
+        <variable name="b" units="per_ms" cmeta:id="b"/>
+        <math xmlns="http://www.w3.org/1998/Math/MathML">
+            <apply>
+                <eq/>
+                <ci>a</ci>
+                <cn cellml:units="ms">1</cn>
+            </apply>
+            <apply>
+                <eq/>
+                <ci>b</ci>
+                <apply>
+                    <divide/>
+                    <cn cellml:units="dimensionless">2</cn>
+                    <ci> a </ci>
+                </apply>
+            </apply>
+        </math>
+    </component>
+</model>
