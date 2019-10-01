@@ -391,6 +391,10 @@ class TestUnits(object):
         with pytest.raises(UnexpectedMathUnitsError):
             unit_calculator.traverse(expr)
 
+        expr = sp.cos(x).series(x, 0, 10)
+        with pytest.raises(UnexpectedMathUnitsError):
+            unit_calculator.traverse(expr)
+
     def test_expression_printer(self, quantity_store):
         ureg = quantity_store.ureg
         a, b, c, x, y, z, _1, _2 = [sp.Dummy(x)
