@@ -364,6 +364,8 @@ class UnitCalculator(object):
         # collect the units for each argument of the expression (might be sub-expression)
         quantity_per_arg = []
 
+        # weirdly if you create a symbol for a matrix is does not have the is_Piecewise
+        # and so crashes rather than hit the catch at the end that should catch anything we dont support
         if expr.is_Matrix:
             raise UnexpectedMathUnitsError(expr)
         # need to work out units of each child atom of the expression
