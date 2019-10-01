@@ -131,6 +131,7 @@ class InputArgumentsMustBeDimensionlessError(UnitError):
 class InputArgumentMustBeNumberError(UnitError):
     """ error when the input argument must be a number
     @param expression -- input expression in which the error occurred
+    @param position -- the position of the argument with error i.e. first/second
     """
 
     def __init__(self, expression, position):
