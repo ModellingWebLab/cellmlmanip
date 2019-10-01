@@ -85,7 +85,7 @@ class UnitError(Exception):
     pass
 
 
-class InvalidUnitsError(UnitError):
+class UnitsCannotBeCalculatedError(UnitError):
     """ generic invalid units error
     @param expression -- input expression in which the error occurred
     """
@@ -353,7 +353,7 @@ class UnitCalculator(object):
         :param expr: a Sympy expression
         :returns: the quantity (i.e. expression * unit) of the expression
         :throws: KeyError - if variable not found in metadata
-                 InvalidUnitsError - if expression just cannot calculate
+                 UnitsCannotBeCalculatedError - if expression just cannot calculate
                  UnexpectedMathUnitsError - if math is not supported
                  BooleanUnitsError - if math returns booleans
                  InputArgumentsMustBeDimensionlessError - if input arguments should be dimensionless
@@ -383,9 +383,9 @@ class UnitCalculator(object):
                 quantity_per_arg.append(self.traverse(arg))
 
         # if there was an error determining the quantity of an argument quit now
-        # we shouldnt ever get here as an exception should already be thrown
+        # we shouldn't ever get here as an exception should already be thrown
         if None in quantity_per_arg:
-            raise InvalidUnitsError('%s' % expr)
+            raise UnitsCannotBeCalculatedError('%s' % expr)
 
         # Terminal atoms in expressions (Integers and Rationals are used by Sympy itself)
         # I have gone through any flag that sympy might use
