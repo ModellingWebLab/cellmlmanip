@@ -568,11 +568,8 @@ class UnitCalculator(object):
             return math.inf * self.ureg.dimensionless
         elif expr == sympy.nan:
             return math.nan * self.ureg.dimensionless
-        else:
-            raise UnexpectedMathUnitsError(str(expr))
 
-        # leave the final catch in but should no longer get here
-        raise NotImplementedError('TODO TODO TODO %s %s' % (expr, sympy.srepr(expr)))
+        raise UnexpectedMathUnitsError(str(expr))
 
 
 class ExpressionWithUnitPrinter(LambdaPrinter):
