@@ -1,4 +1,4 @@
-"""Unit handling for CellML models, using the Pint unit library (replaces previous
+﻿"""Unit handling for CellML models, using the Pint unit library (replaces previous
 Sympy-units implementation
 """
 import logging
@@ -242,6 +242,15 @@ class UnitStore(object):
     def get_conversion_factor(self, quantity, to_unit):
         """Returns the magnitude multiplier required to convert from_unit to to_unit """
         return self.convert_to(quantity, to_unit).magnitude
+
+    def dimensionally_equivalent(self, symbol1, symbol2):
+        """Returns whether symbol1 and symbol2 are dimensionally_equivalent (same units ignogging a calling factor)"""
+        try:
+            self.get_conversion_factor(1 * self.summarise_units(symbol1),
+                                       self.summarise_units(symbol2))
+            return True
+        except pint.errors.DimensionalityError:
+            return False
 
 
 class UnitCalculator(object):
