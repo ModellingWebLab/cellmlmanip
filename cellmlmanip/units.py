@@ -301,26 +301,10 @@ class UnitStore(object):
 
     def summarise_units(self, expr: sympy.Expr):
         """Given a Sympy expression, will get the lambdified string to evaluate units
+        the call to UnitCalculator:traverse will throw an error if units are bad/cannot be calculated
         """
         unit_calculator = UnitCalculator(self.ureg, self.model.dummy_metadata)
         found = unit_calculator.traverse(expr)
-        # except UnitError as error:
-        #     printer = ExpressionWithUnitPrinter(symbol_info=self.model.dummy_metadata)
-        #     logger.fatal('Could not summaries units: %s', expr)
-        #     logger.fatal(error.message)
-        #     logger.fatal('-> %s', printer.doprint(expr))
-        #     return None
-        # except ValueError:
-        #     printer = ExpressionWithUnitPrinter(symbol_info=self.model.dummy_metadata)
-        #     logger.fatal('Could not summaries units: %s', expr)
-        #     logger.fatal('-> %s', printer.doprint(expr))
-        #     return None
-        # except KeyError as error:
-        #     printer = ExpressionWithUnitPrinter(symbol_info=self.model.dummy_metadata)
-        #     logger.fatal('Could not summaries units: %s', expr)
-        #     logger.fatal(error.message)
-        #     logger.fatal('-> %s', printer.doprint(expr))
-        #     return None
 
         logger.debug('summarise_units(%s) ⟶ %s', expr, found.units)
         return found.units
