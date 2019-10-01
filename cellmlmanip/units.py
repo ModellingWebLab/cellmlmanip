@@ -411,6 +411,11 @@ class UnitCalculator(object):
                     # otherwise, keep the symbol
                     out = self.ureg.Quantity(expr, metadata.units)
             return out
+        elif expr == sympy.oo:
+            return math.inf * self.ureg.dimensionless
+
+        elif expr == sympy.nan:
+            return math.nan * self.ureg.dimensionless
 
         elif expr.is_Number:
             units = self.ureg.dimensionless
@@ -566,10 +571,6 @@ class UnitCalculator(object):
             return math.pi * self.ureg.dimensionless
         elif expr == sympy.E:
             return math.e * self.ureg.dimensionless
-        elif expr == sympy.oo:
-            return math.inf * self.ureg.dimensionless
-        elif expr == sympy.nan:
-            return math.nan * self.ureg.dimensionless
 
         raise UnexpectedMathUnitsError(str(expr))
 
