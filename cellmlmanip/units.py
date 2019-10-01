@@ -569,7 +569,7 @@ class UnitCalculator(object):
         elif expr == sympy.nan:
             return math.nan * self.ureg.dimensionless
         else:
-            raise UnexpectedMathUnitsError(expr)
+            raise UnexpectedMathUnitsError(str(expr))
 
         # leave the final catch in but should no longer get here
         raise NotImplementedError('TODO TODO TODO %s %s' % (expr, sympy.srepr(expr)))
