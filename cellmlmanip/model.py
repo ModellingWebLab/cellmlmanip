@@ -27,6 +27,7 @@ class MetaDummy(object):
 
     def __init__(self, name, units, dummy, initial_value=None,
                  public_interface=None, private_interface=None, number=None,
+                 order_added=None,
                  **kwargs):
         # Attributes from the <variable> tag in CellML
         self.name = name
@@ -34,6 +35,7 @@ class MetaDummy(object):
         self.initial_value = initial_value
         self.public_interface = public_interface
         self.private_interface = private_interface
+        self.order_added = order_added
         self.cmeta_id = kwargs.get('cmeta_id', None)
 
         # The instance of sympy.Dummy representing this variable in equations
@@ -87,6 +89,8 @@ class Model(object):
 
         self.equations: List[sympy.Eq] = list()
 
+        self._variable_order_added = -1
+
     def add_unit(self, units_name: str, unit_attributes: List[Dict] = None, base_units=False):
         """Adds information about <units> in <model>
         """
@@ -135,12 +139,14 @@ class Model(object):
         if initial_value is not None:
             initial_value = float(initial_value)
 
+        self._variable_order_added += 1
         variable = MetaDummy(name=name,
                              units=self.units.get_quantity(units),
                              dummy=dummy,
                              initial_value=initial_value,
                              public_interface=public_interface,
                              private_interface=private_interface,
+                             order_added=self._variable_order_added,
                              **kwargs)
 
         self.dummy_metadata[dummy] = variable
@@ -451,10 +457,16 @@ class Model(object):
         """
         return [v for v in self.graph if isinstance(v, sympy.Derivative)]
 
-    def get_state_symbols(self):
+    def get_state_symbols(self, order_by_order_added=False):
         """Returns a list of state variables found in the given model graph.
+        order_by_order_added indicates whether state_symbols are sorted in the order they appear in the model
+        (otherwise orderin is determined by the other in equations)
         """
-        return [v.args[0] for v in self.get_derivative_symbols()]
+        state_symbols = [v.args[0] for v in self.get_derivative_symbols()]
+        if not order_by_order_added:
+            return state_symbols
+        else:
+            return sorted(state_symbols, key=lambda state_var: self.get_meta_dummy(state_var).order_added)
 
     def get_free_variable_symbol(self):
         """Returns the free variable of the given model graph.
