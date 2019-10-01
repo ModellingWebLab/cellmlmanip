@@ -600,7 +600,7 @@ class Model(object):
                            variable.dummy, variable.type, variable_type)
 
     def get_symbols(self, expressions):
-        """Returns the symbols in a collectiion of expressions. Works differently to Sympy atoms() because a
+        """Returns the symbols in a collection of expressions. Works differently to Sympy atoms() because a
         Derivative instance is regarded as a single symbol"""
         symbols = set()
 
