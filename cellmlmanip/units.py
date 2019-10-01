@@ -385,7 +385,7 @@ class UnitCalculator(object):
         # if there was an error determining the quantity of an argument quit now
         # we shouldn't ever get here as an exception should already be thrown
         if None in quantity_per_arg:  # pragma: no cover
-            raise UnitsCannotBeCalculatedError('%s' % expr)
+            raise UnitsCannotBeCalculatedError(str(expr))
 
         # Terminal atoms in expressions (Integers and Rationals are used by Sympy itself)
         # I have gone through any flag that sympy might use
@@ -443,13 +443,13 @@ class UnitCalculator(object):
             # exponent must be dimensionless
             if exponent.units != self.ureg.dimensionless:
                 logger.critical('Exponent of Pow is not dimensionless %s', expr)
-                raise InputArgumentsMustBeDimensionlessError('%s' % expr, 'second')
+                raise InputArgumentsMustBeDimensionlessError(str(expr), 'second')
 
             if not isinstance(exponent.magnitude, (sympy.Number, numbers.Number)):
                 logger.critical('Exponent of Pow is not a number (is %s): %s',
                                 type(exponent.magnitude).__name__,
                                 expr)
-                raise InputArgumentMustBeNumberError('%s' % expr, 'second')
+                raise InputArgumentMustBeNumberError(str(expr), 'second')
 
             # if base is dimensionless, return is dimensionless
             if base.units == self.ureg.dimensionless:
@@ -471,7 +471,7 @@ class UnitCalculator(object):
                 return out
 
             logger.warning('Add args do not have the same unit: %s', expr)
-            raise InputArgumentsInvalidUnitsError('%s' % expr)
+            raise InputArgumentsInvalidUnitsError(str(expr))
 
         elif expr.is_Piecewise:
             # If unit of each expression in piecewise is the same
@@ -481,7 +481,7 @@ class UnitCalculator(object):
                 return out
 
             logger.warning('Piecewise args do not have the same unit.')
-            raise InputArgumentsInvalidUnitsError('%s' % expr)
+            raise InputArgumentsInvalidUnitsError(str(expr))
 
         elif expr.is_Relational:
             # following discussion with Michael we decided that since a
@@ -492,13 +492,13 @@ class UnitCalculator(object):
             if not self._check_unit_of_quantities_equal(quantity_per_arg):
                 logger.warning('Relational args do not have the same unit: %s', expr)
             logger.critical('Boolean return: %s', expr)
-            raise BooleanUnitsError('%s' % expr)
+            raise BooleanUnitsError(str(expr))
 
         elif expr.is_Boolean:
             # following discussion with Michael we decided that since a
             # variable in cellml can never have a boolean value then
             # we should not encounter expression that return booleans
-            raise BooleanUnitsError('%s' % expr)
+            raise BooleanUnitsError(str(expr))
 
         elif expr.is_Function:
             # List of functions that have been checked
@@ -522,11 +522,11 @@ class UnitCalculator(object):
             elif expr.func == sympy.log:
                 if self._is_dimensionless(quantity_per_arg[0]):
                     return 1 * self.ureg.dimensionless
-                raise InputArgumentsMustBeDimensionlessError('%s' % expr)
+                raise InputArgumentsMustBeDimensionlessError(str(expr))
             elif expr.func == sympy.factorial:
                 if self._is_dimensionless(quantity_per_arg[0]):
                     return 1 * self.ureg.dimensionless
-                raise InputArgumentsMustBeDimensionlessError('%s' % expr)
+                raise InputArgumentsMustBeDimensionlessError(str(expr))
             elif expr.func == sympy.exp:
                 # requires operands to have units of dimensionless.
                 # result of these has units of dimensionless.
@@ -543,12 +543,12 @@ class UnitCalculator(object):
                     return 1 * self.ureg.dimensionless
 
                 logger.critical('Exp operand is not dimensionless: %s', expr)
-                raise InputArgumentsMustBeDimensionlessError('%s' % expr)
+                raise InputArgumentsMustBeDimensionlessError(str(expr))
             # trig. function on any dimensionless operand is dimensionless
             elif str(expr.func) in TRIG_FUNCTIONS:
                 if self._is_dimensionless(quantity_per_arg[0]):
                     return 1 * self.ureg.dimensionless
-                raise InputArgumentsMustBeDimensionlessError('%s' % expr)
+                raise InputArgumentsMustBeDimensionlessError(str(expr))
 
             # if the function has exactly one dimensionless argument
             if len(quantity_per_arg) == 1 and self._is_dimensionless(quantity_per_arg[0]):
