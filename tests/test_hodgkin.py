@@ -307,10 +307,3 @@ class TestHodgkin:
         # Check not lexicographical sorted equations against expected equations
         for i in range(len(unordered_equations)):
             assert str(unordered_equations[i]) == str(unordered_ref_eq[i])
-
-    def test_dimensionally_equivalent(self, model):
-        membrane_stimulus_current_offset = model.get_symbol_by_ontology_term(OXMETA, "membrane_stimulus_current_offset")
-        membrane_stimulus_current_period = model.get_symbol_by_ontology_term(OXMETA, "membrane_stimulus_current_period")
-        membrane_voltage = model.get_symbol_by_ontology_term(OXMETA, "membrane_voltage")
-        assert model.units.dimensionally_equivalent(membrane_stimulus_current_offset, membrane_stimulus_current_period)
-        assert not model.units.dimensionally_equivalent(membrane_stimulus_current_offset, membrane_voltage)
