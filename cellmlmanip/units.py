@@ -244,7 +244,7 @@ class UnitStore(object):
         return self.convert_to(quantity, to_unit).magnitude
 
     def dimensionally_equivalent(self, symbol1, symbol2):
-        """Returns whether symbol1 and symbol2 are dimensionally_equivalent (same units ignoring a calling factor)"""
+        """Returns whether symbol1 and symbol2 are dimensionally_equivalent (same units ignogging a calling factor)"""
         try:
             self.get_conversion_factor(1 * self.summarise_units(symbol1),
                                        self.summarise_units(symbol2))
