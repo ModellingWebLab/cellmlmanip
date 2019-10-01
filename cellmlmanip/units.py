@@ -384,7 +384,7 @@ class UnitCalculator(object):
 
         # if there was an error determining the quantity of an argument quit now
         # we shouldn't ever get here as an exception should already be thrown
-        if None in quantity_per_arg:
+        if None in quantity_per_arg:  # pragma: no cover
             raise UnitsCannotBeCalculatedError('%s' % expr)
 
         # Terminal atoms in expressions (Integers and Rationals are used by Sympy itself)
