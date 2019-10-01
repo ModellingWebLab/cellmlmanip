@@ -309,7 +309,7 @@ class Model(object):
             equation_count += 1
 
             # Determine LHS. We should only every have one symbol (or derivative)
-            lhs_symbol = self.get_symbols(equation.lhs)
+            lhs_symbol = self.get_symbols_for([equation.lhs])
             assert len(lhs_symbol) == 1
             lhs_symbol = lhs_symbol.pop()
 
@@ -337,10 +337,10 @@ class Model(object):
         # for each equation in the model
         for equation in self.equations:
             # get the lhs symbol
-            lhs_symbol = self.get_symbols(equation.lhs).pop()
+            lhs_symbol = self.get_symbols_for([equation.lhs]).pop()
 
             # for each of the symbols on the rhs of the equation
-            for rhs_symbol in self.get_symbols(equation.rhs):
+            for rhs_symbol in self.get_symbols_for([equation.rhs]):
                 # if the symbol maps to a node in the graph
                 if rhs_symbol in graph.node:
                     # add the dependency edge
@@ -599,18 +599,19 @@ class Model(object):
             logger.warning('Variable %s already has type=="%s". Skip setting "%s"',
                            variable.dummy, variable.type, variable_type)
 
-    def get_symbols(self, expr):
-        """Returns the symbols in an expression. Works differently to Sympy atoms() because a
-        Derivative instance is regarded as a single symbol"""
+    def get_symbols_for(self, expressions):
+        """Returns the symbols in a collection of expressions.
+        Please Note: derivative instance is regarded as a single symbol rather than treated as expressions"""
         symbols = set()
 
-        # if this expression is a derivative or a dummy symbol which is not a number placeholder
-        if expr.is_Derivative or (expr.is_Dummy and not self.get_meta_dummy(expr).number):
-            symbols.add(expr)
-        # otherwise, descend into sub-expressions and collect symbols
-        else:
-            for arg in expr.args:
-                symbols |= self.get_symbols(arg)
+        for expr in expressions:
+            # if this expression is a derivative or a dummy symbol which is not a number placeholder
+            if expr.is_Derivative or (expr.is_Dummy and not self.get_meta_dummy(expr).number):
+                symbols.add(expr)
+            # otherwise, descend into sub-expressions and collect symbols
+            else:
+                for arg in expr.args:
+                    symbols |= self.get_symbols_for([arg])
         return symbols
 
     def find_variable(self, search_dict):
