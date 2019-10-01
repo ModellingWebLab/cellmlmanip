@@ -10,6 +10,9 @@
     <units name="per_ms">
        <unit units="ms" exponent="-1"/>
     </units>
+    <units name="us">
+       <unit units="second" prefix="micro"/>
+    </units>
 
     <component name="A">
         <variable name="a" units="ms" cmeta:id="a"/>
@@ -28,6 +31,17 @@
                     <cn cellml:units="dimensionless">2</cn>
                     <ci> a </ci>
                 </apply>
+            </apply>
+        </math>
+    </component>
+    <component name="B">
+        <variable name="b_1" units="ms" cmeta:id="b_1"/>
+        <variable name="b_2" units="us" cmeta:id="b_2"/>
+        <math xmlns="http://www.w3.org/1998/Math/MathML">
+            <apply>
+                <eq/>
+                <ci>b_1</ci>
+                <cn cellml:units="ms">5</cn>
             </apply>
         </math>
     </component>
