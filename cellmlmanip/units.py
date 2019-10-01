@@ -419,8 +419,7 @@ class UnitCalculator(object):
 
         elif expr.is_Number:
             units = self.ureg.dimensionless
-            for key in self.dummy_metadata:
-                metadata = self.dummy_metadata[key]
+            for dummy, metadata in self.dummy_metadata.items():
                 if metadata.number and metadata.number == expr and metadata.units:
                     units = metadata.units
                     break
