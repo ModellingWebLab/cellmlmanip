@@ -89,8 +89,6 @@ class Model(object):
 
         self.equations: List[sympy.Eq] = list()
 
-        self._variable_order_added = -1
-
     def add_unit(self, units_name: str, unit_attributes: List[Dict] = None, base_units=False):
         """Adds information about <units> in <model>
         """
@@ -139,14 +137,13 @@ class Model(object):
         if initial_value is not None:
             initial_value = float(initial_value)
 
-        self._variable_order_added += 1
         variable = MetaDummy(name=name,
                              units=self.units.get_quantity(units),
                              dummy=dummy,
                              initial_value=initial_value,
                              public_interface=public_interface,
                              private_interface=private_interface,
-                             order_added=self._variable_order_added,
+                             order_added=len(self.dummy_metadata),
                              **kwargs)
 
         self.dummy_metadata[dummy] = variable
