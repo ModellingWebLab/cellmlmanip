@@ -338,15 +338,22 @@ class UnitStore(object):
         logger.debug('summarise_units(%s) ⟶ %s', expr, found.units)
         return found.units
 
-    def get_conversion_factor(self, quantity, to_unit):
-        """Returns the magnitude multiplier required to convert from_unit to to_unit
-        :param quantity: the Unit to be converted, multiplied by '1' to form a Quantity object
-        :param to_unit: Unit object into which the first units should be converted
-        :return the magnitude of the resulting conversion factor
-        """
-        return self.convert_to(quantity, to_unit).magnitude
+    def get_conversion_factor(self, to_unit=None, from_unit=None, quantity=None, expression=None):
+        """Returns the magnitude multiplier required to convert a unit to the specified unit.
 
-    def get_convers_factor(self, to_unit=None, quantity=None, from_unit=None, expression=None):
+        Note this will work on either a unit, a quantity or an expression. If more than one
+        of these arguments is given the result will be calculated on the first encountered
+        in the order: from_unit, quantity, expression
+
+        :param to_unit: Unit object into which the units should be converted
+        :param from_unit: the Unit to be converted
+        :param quantity: the Unit to be converted, multiplied by '1' to form a Quantity object
+        :param expression: an expression from which the Unit is evaluated before conversion
+
+        :return: the magnitude of the resulting conversion factor
+
+        :throws: AssertionError if no target unit is specified or no source unit is specified
+        """
         assert to_unit is not None, 'No unit given as target of conversion'
         assert quantity is not None or from_unit is not None or expression is not None, \
             'No unit given as source of conversion'
@@ -359,14 +366,14 @@ class UnitStore(object):
 
     def dimensionally_equivalent(self, symbol1, symbol2):
         """Returns whether two expressions, symbol1 and symbol2,
-         are dimensionally_equivalent (same units ignorging a calling factor).
+         are dimensionally_equivalent (same units ignoring a calling factor).
         :param symbol1: the first expression to compare
-        :param unit2: the second expression to compare
+        :param symbol2: the second expression to compare
         :return True if units are equal (regardless of quantity), False otherwise
         """
         try:
-            self.get_conversion_factor(1 * self.summarise_units(symbol1),
-                                       self.summarise_units(symbol2))
+            self.get_conversion_factor(from_unit=self.summarise_units(symbol1),
+                                       to_unit=self.summarise_units(symbol2))
             return True
         except pint.errors.DimensionalityError:
             return False
