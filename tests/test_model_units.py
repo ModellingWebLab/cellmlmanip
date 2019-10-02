@@ -58,11 +58,3 @@ class TestModelUnits:
         assert model.units.summarise_units(equation[1].rhs) == '1 / ms'
         assert model.units.is_unit_equal(model.units.summarise_units(equation[1].lhs),
                                          model.units.summarise_units(equation[1].rhs))
-
-    def test_conversion_factor(self, parser_instance, model):
-        model.get_equation_graph(True)  # set up the graph - it is not automatic
-        symbol_b1 = model.get_symbol_by_cmeta_id("b_1")
-        equation = model.get_equations_for([symbol_b1])
-        factor = model.units.get_conversion_factor(1 * model.units.summarise_units(equation[0].lhs),
-                                                   model.units.ureg('us').units)
-        assert factor == 1000

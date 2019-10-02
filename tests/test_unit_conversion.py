@@ -10,6 +10,11 @@ def model():
     return cellmlmanip.load_model(os.path.join(os.path.dirname(__file__), 'cellml_files', "test_simple_odes.cellml"))
 
 
+@pytest.fixture
+def simple_model():
+    return cellmlmanip.load_model(os.path.join(os.path.dirname(__file__), 'cellml_files', "simple_model_units.cellml"))
+
+
 def test_add_preferred_custom_unit_name(model):
     time_var = model.get_symbol_by_ontology_term(OXMETA, "time")
     assert str(model.units.summarise_units(time_var)) == "ms"
@@ -20,3 +25,12 @@ def test_add_preferred_custom_unit_name(model):
     # again
     model.units.add_preferred_custom_unit_name('millisecond', [{'prefix': 'milli', 'units': 'second'}])
     assert str(model.units.summarise_units(time_var)) == "millisecond"
+
+
+def test_conversion_factor(simple_model):
+    simple_model.get_equation_graph(True)  # set up the graph - it is not automatic
+    symbol_b1 = simple_model.get_symbol_by_cmeta_id("b_1")
+    equation = simple_model.get_equations_for([symbol_b1])
+    factor = simple_model.units.get_conversion_factor(1 * simple_model.units.summarise_units(equation[0].lhs),
+                                                      simple_model.units.ureg('us').units)
+    assert factor == 1000
