@@ -36,9 +36,10 @@ class TestStateSymbols:
             '_Ca_independent_transient_outward_K_current_s3_gate$s3, _delayed_rectifier_K_current_z_gate$z, '\
             '_delayed_rectifier_K_current_pa_gate$p_a, _delayed_rectifier_K_current_pi_gate$p_i, '\
             '_intracellular_ion_concentrations$Na_i, _intracellular_ion_concentrations$K_i, '\
-            '_intracellular_ion_concentrations$Ca_i, _intracellular_Ca_buffering$O_C, _intracellular_Ca_buffering$O_TC,'\
-            ' _intracellular_Ca_buffering$O_TMgC, _intracellular_Ca_buffering$O_TMgMg, '\
-            '_cleft_space_ion_concentrations$K_c, _Ca_handling_by_the_SR$O_Calse, _Ca_handling_by_the_SR$Ca_rel, '\
+            '_intracellular_ion_concentrations$Ca_i, _intracellular_Ca_buffering$O_C, '\
+            '_intracellular_Ca_buffering$O_TC, _intracellular_Ca_buffering$O_TMgC, '\
+            '_intracellular_Ca_buffering$O_TMgMg, _cleft_space_ion_concentrations$K_c, '\
+            '_Ca_handling_by_the_SR$O_Calse, _Ca_handling_by_the_SR$Ca_rel, '\
             '_Ca_handling_by_the_SR$Ca_up, _Ca_handling_by_the_SR$F1, _Ca_handling_by_the_SR$F2, '\
             '_Ca_handling_by_the_SR$F3]'
         assert str(state_symbols_ordered_by_input) == \
