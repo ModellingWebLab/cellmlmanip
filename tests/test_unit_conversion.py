@@ -56,3 +56,19 @@ def test_conversion_factor(simple_model):
     assert simple_model.units.get_conversion_factor(to_unit=to_unit, from_unit=from_unit) == 1000
     # expression to unit
     assert simple_model.units.get_conversion_factor(to_unit=to_unit, expression=expression) == 1000
+
+
+def test_conversion_factor_same_units(simple_model):
+    simple_model.get_equation_graph(True)  # set up the graph - it is not automatic
+    symbol_b = simple_model.get_symbol_by_cmeta_id("b")
+    equation = simple_model.get_equations_for([symbol_b])
+    expression = equation[1].rhs
+    to_unit = simple_model.units.ureg('per_ms').units
+    from_unit = simple_model.units.summarise_units(expression)
+    quantity = 1 * from_unit
+    # quantity to unit
+    assert simple_model.units.get_conversion_factor(to_unit=to_unit, quantity=quantity) == 1
+    # unit to unit
+    assert simple_model.units.get_conversion_factor(to_unit=to_unit, from_unit=from_unit) == 1
+    # expression to unit
+    assert simple_model.units.get_conversion_factor(to_unit=to_unit, expression=expression) == 1
