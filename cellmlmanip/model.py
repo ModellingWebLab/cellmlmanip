@@ -457,7 +457,7 @@ class Model(object):
     def get_state_symbols(self, order_by_order_added=False):
         """Returns a list of state variables found in the given model graph.
         order_by_order_added indicates whether state_symbols are sorted in the order they appear in the model
-        (otherwise orderin is determined by the other in equations)
+        (otherwise ordering is determined by the order in equations)
         """
         state_symbols = [v.args[0] for v in self.get_derivative_symbols()]
         if not order_by_order_added:
