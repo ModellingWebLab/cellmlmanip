@@ -35,6 +35,7 @@ def test_conversion_factor_original(simple_model):
                                                       simple_model.units.ureg('us').units)
     assert factor == 1000
 
+
 def test_convers_factor(simple_model):
     simple_model.get_equation_graph(True)  # set up the graph - it is not automatic
     symbol_b1 = simple_model.get_symbol_by_cmeta_id("b_1")
@@ -43,4 +44,15 @@ def test_convers_factor(simple_model):
     to_unit = simple_model.units.ureg('us').units
     from_unit = simple_model.units.summarise_units(expression)
     quantity = 1 * from_unit
+    # quantity to unit
     assert simple_model.units.get_convers_factor(to_unit=to_unit, quantity=quantity) == 1000
+    # no target unit
+    with pytest.raises(AssertionError):
+        simple_model.units.get_convers_factor()
+    # no source unit
+    with pytest.raises(AssertionError):
+        simple_model.units.get_convers_factor(to_unit=to_unit)
+    # unit to unit
+    assert simple_model.units.get_convers_factor(to_unit=to_unit, from_unit=from_unit) == 1000
+    # expression to unit
+    assert simple_model.units.get_convers_factor(to_unit=to_unit, expression=expression) == 1000

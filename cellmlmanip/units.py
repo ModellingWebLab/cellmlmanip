@@ -347,8 +347,15 @@ class UnitStore(object):
         return self.convert_to(quantity, to_unit).magnitude
 
     def get_convers_factor(self, to_unit=None, quantity=None, from_unit=None, expression=None):
-
-        return self.convert_to(quantity, to_unit).magnitude
+        assert to_unit is not None, 'No unit given as target of conversion'
+        assert quantity is not None or from_unit is not None or expression is not None, \
+            'No unit given as source of conversion'
+        if from_unit is not None:
+            return self.convert_to(1 * from_unit, to_unit).magnitude
+        elif quantity is not None:
+            return self.convert_to(quantity, to_unit).magnitude
+        else:
+            return self.convert_to(1 * self.summarise_units(expression), to_unit).magnitude
 
     def dimensionally_equivalent(self, symbol1, symbol2):
         """Returns whether two expressions, symbol1 and symbol2,
