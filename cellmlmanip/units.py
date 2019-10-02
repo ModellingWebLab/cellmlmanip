@@ -346,6 +346,10 @@ class UnitStore(object):
         """
         return self.convert_to(quantity, to_unit).magnitude
 
+    def get_convers_factor(self, to_unit=None, quantity=None, from_unit=None, expression=None):
+
+        return self.convert_to(quantity, to_unit).magnitude
+
     def dimensionally_equivalent(self, symbol1, symbol2):
         """Returns whether two expressions, symbol1 and symbol2,
          are dimensionally_equivalent (same units ignorging a calling factor).
