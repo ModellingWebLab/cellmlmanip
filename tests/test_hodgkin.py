@@ -136,7 +136,11 @@ class TestHodgkin:
         _potassium_channel_n_gate$n
         """
         state_symbols = model.get_state_symbols()
-        assert len(state_symbols) == 4
+        state_symbols_ordered_by_input = model.get_state_symbols(order_by_order_added=True)
+        assert len(state_symbols) == len(state_symbols_ordered_by_input) == 4
+        assert set(state_symbols) == set(state_symbols_ordered_by_input)
+        assert str(state_symbols) == str(state_symbols_ordered_by_input) == \
+            '[_membrane$V, _sodium_channel_m_gate$m, _sodium_channel_h_gate$h, _potassium_channel_n_gate$n]'
 
     def test_free_variable_symbol(self, model):
         """
