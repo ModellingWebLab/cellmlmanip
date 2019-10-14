@@ -13,6 +13,7 @@ import pint
 import sympy
 from pint.converters import ScaleConverter
 from pint.definitions import UnitDefinition
+from pint.registry import UnitRegistry
 from sympy.printing.lambdarepr import LambdaPrinter
 
 
@@ -338,7 +339,11 @@ class UnitStore(object):
         logger.debug('summarise_units(%s) ⟶ %s', expr, found.units)
         return found.units
 
-    def get_conversion_factor(self, to_unit=None, from_unit=None, quantity=None, expression=None):
+    def get_conversion_factor(self,
+                              to_unit,
+                              from_unit=None,
+                              quantity=None,
+                              expression=None):
         """Returns the magnitude multiplier required to convert a unit to the specified unit.
 
         Note this will work on either a unit, a quantity or an expression. If more than one
@@ -354,14 +359,20 @@ class UnitStore(object):
 
         :throws: AssertionError if no target unit is specified or no source unit is specified
         """
-        assert to_unit is not None, 'No unit given as target of conversion'
+        assert to_unit is not None, 'No unit given as target of conversion; to_unit argument is required'
         assert quantity is not None or from_unit is not None or expression is not None, \
-            'No unit given as source of conversion'
+            'No unit given as source of conversion; please use one of from_unit, quantity or expression'
+        assert [from_unit, quantity, expression].count(None) == 2, \
+            'Multiple target specified; please use only one of from_unit, quantity or expression'
+
         if from_unit is not None:
+            assert isinstance(from_unit, self.ureg.Unit), 'from_unit must be of type pint:Unit'
             return self.convert_to(1 * from_unit, to_unit).magnitude
         elif quantity is not None:
+            assert isinstance(quantity, self.ureg.Quantity), 'quantity must be of type pint:Quantity'
             return self.convert_to(quantity, to_unit).magnitude
         else:
+            assert isinstance(expression, sympy.Expr), 'expression must be of type Sympy expression'
             return self.convert_to(1 * self.summarise_units(expression), to_unit).magnitude
 
     def dimensionally_equivalent(self, symbol1, symbol2):

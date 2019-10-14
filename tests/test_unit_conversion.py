@@ -36,7 +36,7 @@ def test_conversion_factor_original(simple_model):
     assert factor == 1000
 
 
-def test_conversion_factor(simple_model):
+def test_conversion_factor_bad_types(simple_model):
     simple_model.get_equation_graph(True)  # set up the graph - it is not automatic
     symbol_b1 = simple_model.get_symbol_by_cmeta_id("b_1")
     equation = simple_model.get_equations_for([symbol_b1])
@@ -44,21 +44,65 @@ def test_conversion_factor(simple_model):
     to_unit = simple_model.units.ureg('us').units
     from_unit = simple_model.units.summarise_units(expression)
     quantity = 1 * from_unit
-    # quantity to unit
-    assert simple_model.units.get_conversion_factor(to_unit=to_unit, quantity=quantity) == 1000
-    # no target unit
-    with pytest.raises(AssertionError):
-        simple_model.units.get_conversion_factor()
     # no source unit
-    with pytest.raises(AssertionError):
+    try:
         simple_model.units.get_conversion_factor(to_unit=to_unit)
+    except AssertionError as err:
+        assert err.args[0] == 'No unit given as source of conversion; ' \
+                              'please use one of from_unit, quantity or expression'
+    try:
+        simple_model.units.get_conversion_factor(to_unit)
+    except AssertionError as err:
+        assert err.args[0] == 'No unit given as source of conversion; ' \
+                              'please use one of from_unit, quantity or expression'
+    # no target unit
+    try:
+        simple_model.units.get_conversion_factor(from_unit=from_unit)
+    except TypeError as err:
+        assert err.args[0] == 'get_conversion_factor() missing 1 required positional argument: \'to_unit\''
+    # multiple sources
+    try:
+        simple_model.units.get_conversion_factor(to_unit, from_unit=from_unit, quantity=quantity)
+    except AssertionError as err:
+        assert err.args[0] == 'Multiple target specified; please use only one of from_unit, quantity or expression'
+    #incorrect types
+    try:
+        simple_model.units.get_conversion_factor(to_unit, from_unit=quantity)
+    except AssertionError as err:
+        assert err.args[0] == 'from_unit must be of type pint:Unit'
+    try:
+        simple_model.units.get_conversion_factor(to_unit, quantity=from_unit)
+    except AssertionError as err:
+        assert err.args[0] == 'quantity must be of type pint:Quantity'
+    try:
+        simple_model.units.get_conversion_factor(to_unit, expression=quantity)
+    except AssertionError as err:
+        assert err.args[0] == 'expression must be of type Sympy expression'
+
     # unit to unit
     assert simple_model.units.get_conversion_factor(to_unit=to_unit, from_unit=from_unit) == 1000
+    # quantity to unit
+    assert simple_model.units.get_conversion_factor(to_unit=to_unit, quantity=quantity) == 1000
     # expression to unit
     assert simple_model.units.get_conversion_factor(to_unit=to_unit, expression=expression) == 1000
 
 
 def test_conversion_factor_same_units(simple_model):
+    simple_model.get_equation_graph(True)  # set up the graph - it is not automatic
+    symbol_b = simple_model.get_symbol_by_cmeta_id("b")
+    equation = simple_model.get_equations_for([symbol_b])
+    expression = equation[1].rhs
+    to_unit = simple_model.units.ureg('per_ms').units
+    from_unit = simple_model.units.summarise_units(expression)
+    quantity = 1 * from_unit
+    # quantity to unit
+    assert simple_model.units.get_conversion_factor(to_unit=to_unit, quantity=quantity) == 1
+    # unit to unit
+    assert simple_model.units.get_conversion_factor(to_unit=to_unit, from_unit=from_unit) == 1
+    # expression to unit
+    assert simple_model.units.get_conversion_factor(to_unit=to_unit, expression=expression) == 1
+
+def test_conversion_factor(simple_model):
     simple_model.get_equation_graph(True)  # set up the graph - it is not automatic
     symbol_b = simple_model.get_symbol_by_cmeta_id("b")
     equation = simple_model.get_equations_for([symbol_b])
