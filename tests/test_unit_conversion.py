@@ -45,23 +45,23 @@ def test_conversion_factor_bad_types(simple_model):
     from_unit = simple_model.units.summarise_units(expression)
     quantity = 1 * from_unit
     # no source unit
-    with pytest.raises(AssertionError, match='^No unit given as source*'):
+    with pytest.raises(AssertionError, match='^No unit given as source.*'):
         simple_model.units.get_conversion_factor(to_unit=to_unit)
-    with pytest.raises(AssertionError, match='^No unit given as source*'):
+    with pytest.raises(AssertionError, match='^No unit given as source.*'):
         simple_model.units.get_conversion_factor(to_unit)
 
     # no target unit
     with pytest.raises(TypeError):
         simple_model.units.get_conversion_factor(from_unit=from_unit)
     # multiple sources
-    with pytest.raises(AssertionError, match='^Multiple target *'):
+    with pytest.raises(AssertionError, match='^Multiple target.*'):
         simple_model.units.get_conversion_factor(to_unit, from_unit=from_unit, quantity=quantity)
     # incorrect types
-    with pytest.raises(AssertionError, match='^from_unit must be of type pint:Unit'):
+    with pytest.raises(AssertionError, match='^from_unit must be of type pint:Unit$'):
         simple_model.units.get_conversion_factor(to_unit, from_unit=quantity)
-    with pytest.raises(AssertionError, match='^quantity must be of type pint:Quantity'):
+    with pytest.raises(AssertionError, match='^quantity must be of type pint:Quantity$'):
         simple_model.units.get_conversion_factor(to_unit, quantity=from_unit)
-    with pytest.raises(AssertionError, match='^expression must be of type Sympy expression'):
+    with pytest.raises(AssertionError, match='^expression must be of type Sympy expression$'):
         simple_model.units.get_conversion_factor(to_unit, expression=quantity)
 
     # unit to unit
