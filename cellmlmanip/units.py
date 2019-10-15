@@ -346,9 +346,8 @@ class UnitStore(object):
                               expression=None):
         """Returns the magnitude multiplier required to convert a unit to the specified unit.
 
-        Note this will work on either a unit, a quantity or an expression. If more than one
-        of these arguments is given the result will be calculated on the first encountered
-        in the order: from_unit, quantity, expression
+        Note this will work on either a unit, a quantity or an expression, but requires only
+        one of these arguments.
 
         :param to_unit: Unit object into which the units should be converted
         :param from_unit: the Unit to be converted
