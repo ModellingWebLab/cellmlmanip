@@ -45,39 +45,24 @@ def test_conversion_factor_bad_types(simple_model):
     from_unit = simple_model.units.summarise_units(expression)
     quantity = 1 * from_unit
     # no source unit
-    try:
+    with pytest.raises(AssertionError, match='^No unit given as source*'):
         simple_model.units.get_conversion_factor(to_unit=to_unit)
-    except AssertionError as err:
-        assert err.args[0] == 'No unit given as source of conversion; ' \
-                              'please use one of from_unit, quantity or expression'
-    try:
+    with pytest.raises(AssertionError, match='^No unit given as source*'):
         simple_model.units.get_conversion_factor(to_unit)
-    except AssertionError as err:
-        assert err.args[0] == 'No unit given as source of conversion; ' \
-                              'please use one of from_unit, quantity or expression'
+
     # no target unit
-    try:
+    with pytest.raises(TypeError):
         simple_model.units.get_conversion_factor(from_unit=from_unit)
-    except TypeError as err:
-        assert err.args[0] == 'get_conversion_factor() missing 1 required positional argument: \'to_unit\''
     # multiple sources
-    try:
+    with pytest.raises(AssertionError, match='^Multiple target *'):
         simple_model.units.get_conversion_factor(to_unit, from_unit=from_unit, quantity=quantity)
-    except AssertionError as err:
-        assert err.args[0] == 'Multiple target specified; please use only one of from_unit, quantity or expression'
     #incorrect types
-    try:
+    with pytest.raises(AssertionError, match='^from_unit must be of type pint:Unit'):
         simple_model.units.get_conversion_factor(to_unit, from_unit=quantity)
-    except AssertionError as err:
-        assert err.args[0] == 'from_unit must be of type pint:Unit'
-    try:
+    with pytest.raises(AssertionError, match='^quantity must be of type pint:Quantity'):
         simple_model.units.get_conversion_factor(to_unit, quantity=from_unit)
-    except AssertionError as err:
-        assert err.args[0] == 'quantity must be of type pint:Quantity'
-    try:
+    with pytest.raises(AssertionError, match='^expression must be of type Sympy expression'):
         simple_model.units.get_conversion_factor(to_unit, expression=quantity)
-    except AssertionError as err:
-        assert err.args[0] == 'expression must be of type Sympy expression'
 
     # unit to unit
     assert simple_model.units.get_conversion_factor(to_unit=to_unit, from_unit=from_unit) == 1000
