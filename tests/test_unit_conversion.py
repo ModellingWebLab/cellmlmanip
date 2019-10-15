@@ -56,7 +56,7 @@ def test_conversion_factor_bad_types(simple_model):
     # multiple sources
     with pytest.raises(AssertionError, match='^Multiple target *'):
         simple_model.units.get_conversion_factor(to_unit, from_unit=from_unit, quantity=quantity)
-    #incorrect types
+    # incorrect types
     with pytest.raises(AssertionError, match='^from_unit must be of type pint:Unit'):
         simple_model.units.get_conversion_factor(to_unit, from_unit=quantity)
     with pytest.raises(AssertionError, match='^quantity must be of type pint:Quantity'):
@@ -87,17 +87,3 @@ def test_conversion_factor_same_units(simple_model):
     # expression to unit
     assert simple_model.units.get_conversion_factor(to_unit=to_unit, expression=expression) == 1
 
-def test_conversion_factor(simple_model):
-    simple_model.get_equation_graph(True)  # set up the graph - it is not automatic
-    symbol_b = simple_model.get_symbol_by_cmeta_id("b")
-    equation = simple_model.get_equations_for([symbol_b])
-    expression = equation[1].rhs
-    to_unit = simple_model.units.ureg('per_ms').units
-    from_unit = simple_model.units.summarise_units(expression)
-    quantity = 1 * from_unit
-    # quantity to unit
-    assert simple_model.units.get_conversion_factor(to_unit=to_unit, quantity=quantity) == 1
-    # unit to unit
-    assert simple_model.units.get_conversion_factor(to_unit=to_unit, from_unit=from_unit) == 1
-    # expression to unit
-    assert simple_model.units.get_conversion_factor(to_unit=to_unit, expression=expression) == 1

@@ -13,7 +13,6 @@ import pint
 import sympy
 from pint.converters import ScaleConverter
 from pint.definitions import UnitDefinition
-from pint.registry import UnitRegistry
 from sympy.printing.lambdarepr import LambdaPrinter
 
 
