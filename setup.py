@@ -1,4 +1,5 @@
-from setuptools import setup, find_packages
+from setuptools import find_packages, setup
+
 
 with open('README.md') as f:
     readme = f.read()
@@ -18,7 +19,7 @@ setup(
     packages=find_packages(exclude=('tests', 'docs')),
     package_data={'cellmlmanip': ['cellml_units.txt']},
     include_package_data=True,
-    python_requires='>=3.6',
+    python_requires='>=3.5',
     install_requires=[
         'lxml>=4',
         'networkx>=2.1',

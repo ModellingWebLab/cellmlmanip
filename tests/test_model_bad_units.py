@@ -1,8 +1,8 @@
-import pytest
 import os
 
-from cellmlmanip import parser
-from cellmlmanip import units
+import pytest
+
+from cellmlmanip import parser, units
 
 
 class TestModelBadUnits:
@@ -41,4 +41,3 @@ class TestModelBadUnits:
         # this does raise an error
         with pytest.raises(units.UnitError):
             model.units.summarise_units(equation[1].rhs)
-
