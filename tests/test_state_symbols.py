@@ -28,6 +28,7 @@ class TestStateSymbols:
         state_symbols = model.get_state_symbols()
         state_symbols_ordered_by_input = model.get_state_symbols(order_by_order_added=True)
         assert len(state_symbols) == len(state_symbols_ordered_by_input) == 29
+        assert set(state_symbols) == set(state_symbols_ordered_by_input)
         assert str(state_symbols_ordered_by_input) == \
             '[_membrane$V, _sodium_current_m_gate$m, _sodium_current_h1_gate$h1, _sodium_current_h2_gate$h2, '\
             '_L_type_Ca_channel_d_L_gate$d_L, _L_type_Ca_channel_f_L_gate$f_L, '\
