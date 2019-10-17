@@ -15,9 +15,10 @@ class Transpiler(object):
     """
     Handles conversion of MathmL to Sympy exprerssions.
 
-    :param dummify: A bool that ???
-    :param symbol_prefix: A str that ???
-    :param symbol_lookup: A dict mapping ..?
+    :param dummify: Set to ``True`` to create dummy symbols for variables instead of sympy Symbols
+    :param symbol_prefix: An optional prefix to add to all symbols
+    :param symbol_lookup: A dict mapping variable names (including the optional ``symbol_prefix``) to
+        predefined Symbol or Dummy objects
     """
 
     def __init__(self, dummify=False, symbol_prefix=None, symbol_lookup=dict()):

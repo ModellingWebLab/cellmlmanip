@@ -96,11 +96,12 @@ class Model(object):
 
     def add_unit(self, units_name, unit_attributes=None, base_units=False):
         """
-        Adds information about <units> in <model>
+        Adds information about <units> in <model>.
 
         :param units_name: A string name
-        :param unit_attributes: An optional list of dictionaries containing ???
-        :base_units: An optional bool that determines ???
+        :param unit_attributes: An optional list of dictionaries containing unit attributes. See
+            :meth:`UnitStore.add_custom_unit()`.
+        :base_units: Set to ``True`` to define a new base unit.
         """
         assert not (unit_attributes and base_units), 'Cannot define base unit with unit attributes'
         if base_units:
@@ -117,7 +118,6 @@ class Model(object):
         assert isinstance(equation, sympy.Eq), 'Equation expression must be equality'
         self.equations.append(equation)
 
-    # TODO: Do we need the * here?
     def add_number(self, *, number, units, dummy=None):
         """
         Add metadata about a dummy symbol that represents a number in equations.
