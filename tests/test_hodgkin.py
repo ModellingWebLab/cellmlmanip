@@ -279,43 +279,45 @@ class TestHodgkin:
         assert model.has_ontology_annotation(membrane_voltage_var)
 
     def test_get_equations_for(self, graph, model):
-        # Get equations for membrane_fast_sodium_current both ordered and unordered
-        membrane_fast_sodium_current = model.get_symbol_by_ontology_term(OXMETA, "membrane_fast_sodium_current")
+
+        # Test get_equations_for with topgraphical lexicographical ordering
+
+        # Get ordered equations
+        membrane_fast_sodium_current = model.get_symbol_by_ontology_term(OXMETA, 'membrane_fast_sodium_current')
         equations = model.get_equations_for([membrane_fast_sodium_current])
-        unordered_equations = model.get_equations_for([membrane_fast_sodium_current], False)
+
         # There should be 4 in this model
-        assert len(equations) == len(unordered_equations) == 4
-        # Each equation should be both in the ordered and unordered equations
-        for eq in equations:
-            assert eq in unordered_equations
-        for eq in unordered_equations:
-            assert eq in equations
+        assert len(equations) == 4
 
         # Expected equations
-        ref_eq = [sympy.Eq(sympy.Dummy('membrane$E_R'), sympy.numbers.Float(-75.0)),
-                  sympy.Eq(sympy.Dummy('sodium_channel$E_Na'),
-                           sympy.add.Add(sympy.Dummy('membrane$E_R'), sympy.numbers.Float(115.0))),
-                  sympy.Eq(sympy.Dummy('sodium_channel$g_Na'), sympy.numbers.Float(120.0)),
-                  sympy.Eq(sympy.Dummy('sodium_channel$i_Na'),
-                           sympy.Dummy('sodium_channel_m_gate$m') ** 3.0 * sympy.Dummy('sodium_channel$g_Na') *
-                           sympy.Dummy('sodium_channel_h_gate$h') * (sympy.Dummy('membrane$V') -
-                           sympy.Dummy('sodium_channel$E_Na')))
-                  ]
+        ER = sympy.Eq(sympy.Dummy('membrane$E_R'), sympy.numbers.Float(-75.0))
+        ENa = sympy.Eq(sympy.Dummy('sodium_channel$E_Na'),
+                       sympy.add.Add(sympy.Dummy('membrane$E_R'), sympy.numbers.Float(115.0)))
+        gNa = sympy.Eq(sympy.Dummy('sodium_channel$g_Na'), sympy.numbers.Float(120.0))
+        iNa = sympy.Eq(sympy.Dummy('sodium_channel$i_Na'),
+                       sympy.Dummy('sodium_channel_m_gate$m') ** 3.0 * sympy.Dummy('sodium_channel$g_Na') *
+                       sympy.Dummy('sodium_channel_h_gate$h') * (sympy.Dummy('membrane$V') -
+                       sympy.Dummy('sodium_channel$E_Na')))
+
+        # Get order as strings, for easy comparison
+        ER, ENa, gNa, iNa = str(ER), str(ENa), str(gNa), str(iNa)
+        expected_order = [ER, ENa, gNa, iNa]
 
         # Check equations against expected equations
-        for i in range(len(equations)):
-            assert str(equations[i]) == str(ref_eq[i])
+        equations = [str(eq) for eq in equations]
+        assert equations == expected_order
 
-        # TODO: This test is flawed: The topographical order is
-        # non-unique, and so non-deterministic. We have to check if certain
-        # elements are before others instead.
-        # See: https://networkx.github.io/documentation/networkx-2.3/
-        #       reference/algorithms/generated/networkx.algorithms.dag.topological_sort.html
-        '''
-        # Expected ordering for topographically sorted equations
-        unordered_ref_eq = [ref_eq[2], ref_eq[0], ref_eq[1], ref_eq[3]]
+        # Check topoligically (but not lexicographically) ordered equations
+        unordered_equations = model.get_equations_for([membrane_fast_sodium_current], False)
+        unordered_equations = [str(eq) for eq in unordered_equations]
 
-        # Check not lexicographical sorted equations against expected equations
-        for i in range(len(unordered_equations)):
-            assert str(unordered_equations[i]) == str(unordered_ref_eq[i])
-        '''
+        # Each equation should be both in the ordered and unordered equations
+        assert set(unordered_equations) == set(equations)
+
+        # ER should come before ENa
+        assert unordered_equations.index(ER) < unordered_equations.index(ENa)
+
+        # ENa and gNa should come before iNa
+        assert unordered_equations.index(ENa) < unordered_equations.index(iNa)
+        assert unordered_equations.index(gNa) < unordered_equations.index(iNa)
+
