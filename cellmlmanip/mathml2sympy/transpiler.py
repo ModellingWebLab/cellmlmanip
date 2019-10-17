@@ -3,31 +3,33 @@
 Content Markup specification: https://www.w3.org/TR/MathML2/chapter4.html
 """
 import logging
-from typing import Dict, List
 from xml.dom import Node, minidom
 
 import sympy
 
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
 
 
 class Transpiler(object):
-    """Transpiler class handles conversion of MathmL to Sympy exprerssions"""
+    """
+    Handles conversion of MathmL to Sympy exprerssions.
 
-    def __init__(self,
-                 dummify: bool = False,
-                 symbol_prefix: str = None,
-                 symbol_lookup=dict()) -> None:
+    :param dummify: Set to ``True`` to create dummy symbols for variables instead of sympy Symbols
+    :param symbol_prefix: An optional prefix to add to all symbols
+    :param symbol_lookup: A dict mapping variable names (including the optional ``symbol_prefix``) to
+        predefined Symbol or Dummy objects
+    """
+
+    def __init__(self, dummify=False, symbol_prefix=None, symbol_lookup=dict()):
         # we create symbols as necessary, as they occur in equations
         self.error_on_unknown_symbol = False
 
         # create dummy symbols for variables rather than typical sympy symbols
-        self.dummify: bool = dummify
+        self.dummify = dummify
 
         # use to store information about dummified numbers (number & units)
-        self.metadata: Dict = dict()
+        self.metadata = dict()
 
         # prefix all symbols with given string
         self.symbol_prefix = symbol_prefix
@@ -65,29 +67,32 @@ class Transpiler(object):
         for tag_name in SIMPLE_MATHML_TO_SYMPY_NAMES:
             self.handlers[tag_name] = self._simple_operator_handler
 
-    def parse_string(self, xml_string) -> List[sympy.Expr]:
-        """Reads MathML content from a string and returns equivalent SymPy expressions
+    def parse_string(self, xml_string):
+        """
+        Reads MathML content from a string and returns equivalent SymPy expressions.
+        :return: A list of SymPy expressions.
         """
         dom = minidom.parseString(xml_string)
         return self.parse_dom(dom.childNodes[0])
 
-    def parse_dom(self, math_dom_element) -> List[sympy.Expr]:
+    def parse_dom(self, math_dom_element):
         """Accepts a <math> node of DOM structure and returns equivalent SymPy expressions.
+
         Note: math_dom_element must point the <math> XmlNode, not the root XmlDocument
 
         :param math_dom_element: <math> XmlNode object of a MathML DOM structure
-        :return: List of SymPy expression(s)
+        :return: A list of SymPy expressions.
         """
         return self.transpile(math_dom_element)
 
     def transpile(self, xml_node):
         """Descends the given MathML element node and calls the corresponding handler for child
-        elements. Returns the SymPy expression of node
+        elements and returns the SymPy expression of node.
         :param xml_node: a DOM element of parsed MathML
         :return: a list of SymPy expressions
         """
         # Collect the parsed expression(s) (i.e. SymPy output) into list
-        sympy_expressions: List[sympy.Expr] = []
+        sympy_expressions = []
 
         # For each child element of this DOM node
         for child_node in xml_node.childNodes:

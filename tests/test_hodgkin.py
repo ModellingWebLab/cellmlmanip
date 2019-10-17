@@ -6,6 +6,7 @@ import sympy
 
 from cellmlmanip import load_model
 
+
 OXMETA = "https://chaste.comlab.ox.ac.uk/cellml/ns/oxford-metadata#"
 
 
@@ -58,14 +59,14 @@ class TestHodgkin:
         assert len(free_variable) == 1
         free_variable = free_variable[0]
         assert free_variable.cmeta_id == 'time'
-        assert graph.node[free_variable.dummy]['variable_type'] == 'free'
-        assert free_variable.cmeta_id == graph.node[free_variable.dummy]['cmeta_id']
+        assert graph.nodes[free_variable.dummy]['variable_type'] == 'free'
+        assert free_variable.cmeta_id == graph.nodes[free_variable.dummy]['cmeta_id']
 
         state_variables = model.find_variable({'type': 'state'})
         assert len(state_variables) == 4
         state_variable = state_variables[0]
-        assert graph.node[state_variable.dummy]['variable_type'] == 'state'
-        assert state_variable.cmeta_id == graph.node[state_variable.dummy]['cmeta_id']
+        assert graph.nodes[state_variable.dummy]['variable_type'] == 'state'
+        assert state_variable.cmeta_id == graph.nodes[state_variable.dummy]['cmeta_id']
 
         sorted_nodes = nx.lexicographical_topological_sort(graph, key=str)
 
@@ -115,8 +116,8 @@ class TestHodgkin:
         # check attributes on membrane capacitance
         membrane_Cm = sorted_nodes[2]
         assert membrane_Cm.name == 'membrane$Cm'
-        assert graph.node[membrane_Cm]['cmeta_id'] == 'membrane_capacitance'
-        assert graph.node[membrane_Cm]['variable_type'] == 'parameter'
+        assert graph.nodes[membrane_Cm]['cmeta_id'] == 'membrane_capacitance'
+        assert graph.nodes[membrane_Cm]['variable_type'] == 'parameter'
 
     def test_derivative_symbols(self, model):
         """
@@ -139,7 +140,7 @@ class TestHodgkin:
         state_symbols_ordered_by_input = model.get_state_symbols(order_by_order_added=True)
         assert len(state_symbols) == len(state_symbols_ordered_by_input) == 4
         assert set(state_symbols) == set(state_symbols_ordered_by_input)
-        assert str(state_symbols) == str(state_symbols_ordered_by_input) == \
+        assert str(state_symbols_ordered_by_input) == \
             '[_membrane$V, _sodium_channel_m_gate$m, _sodium_channel_h_gate$h, _potassium_channel_n_gate$n]'
 
     def test_free_variable_symbol(self, model):
@@ -278,36 +279,45 @@ class TestHodgkin:
         assert model.has_ontology_annotation(membrane_voltage_var)
 
     def test_get_equations_for(self, graph, model):
-        # Get equations for membrane_fast_sodium_current both ordered and unordered
-        membrane_fast_sodium_current = model.get_symbol_by_ontology_term(OXMETA, "membrane_fast_sodium_current")
+
+        # Test get_equations_for with topgraphical lexicographical ordering
+
+        # Get ordered equations
+        membrane_fast_sodium_current = model.get_symbol_by_ontology_term(OXMETA, 'membrane_fast_sodium_current')
         equations = model.get_equations_for([membrane_fast_sodium_current])
-        unordered_equations = model.get_equations_for([membrane_fast_sodium_current], False)
+
         # There should be 4 in this model
-        assert len(equations) == len(unordered_equations) == 4
-        # Each equation should be both in the ordered and unordered equations
-        for eq in equations:
-            assert eq in unordered_equations
-        for eq in unordered_equations:
-            assert eq in equations
+        assert len(equations) == 4
 
         # Expected equations
-        ref_eq = [sympy.Eq(sympy.Dummy('membrane$E_R'), sympy.numbers.Float(-75.0)),
-                  sympy.Eq(sympy.Dummy('sodium_channel$E_Na'),
-                           sympy.add.Add(sympy.Dummy('membrane$E_R'), sympy.numbers.Float(115.0))),
-                  sympy.Eq(sympy.Dummy('sodium_channel$g_Na'), sympy.numbers.Float(120.0)),
-                  sympy.Eq(sympy.Dummy('sodium_channel$i_Na'),
-                           sympy.Dummy('sodium_channel_m_gate$m') ** 3.0 * sympy.Dummy('sodium_channel$g_Na') *
-                           sympy.Dummy('sodium_channel_h_gate$h') * (sympy.Dummy('membrane$V') -
-                           sympy.Dummy('sodium_channel$E_Na')))
-                  ]
+        ER = sympy.Eq(sympy.Dummy('membrane$E_R'), sympy.numbers.Float(-75.0))
+        ENa = sympy.Eq(sympy.Dummy('sodium_channel$E_Na'),
+                       sympy.add.Add(sympy.Dummy('membrane$E_R'), sympy.numbers.Float(115.0)))
+        gNa = sympy.Eq(sympy.Dummy('sodium_channel$g_Na'), sympy.numbers.Float(120.0))
+        iNa = sympy.Eq(sympy.Dummy('sodium_channel$i_Na'),
+                       sympy.Dummy('sodium_channel_m_gate$m') ** 3.0 * sympy.Dummy('sodium_channel$g_Na') *
+                       sympy.Dummy('sodium_channel_h_gate$h') * (sympy.Dummy('membrane$V') -
+                       sympy.Dummy('sodium_channel$E_Na')))
 
-        # Expected ordering for not lexicographical sorted equations
-        unordered_ref_eq = [ref_eq[2], ref_eq[0], ref_eq[1], ref_eq[3]]
+        # Get order as strings, for easy comparison
+        ER, ENa, gNa, iNa = str(ER), str(ENa), str(gNa), str(iNa)
+        expected_order = [ER, ENa, gNa, iNa]
 
         # Check equations against expected equations
-        for i in range(len(equations)):
-            assert str(equations[i]) == str(ref_eq[i])
+        equations = [str(eq) for eq in equations]
+        assert equations == expected_order
 
-        # Check not lexicographical sorted equations against expected equations
-        for i in range(len(unordered_equations)):
-            assert str(unordered_equations[i]) == str(unordered_ref_eq[i])
+        # Check topoligically (but not lexicographically) ordered equations
+        unordered_equations = model.get_equations_for([membrane_fast_sodium_current], False)
+        unordered_equations = [str(eq) for eq in unordered_equations]
+
+        # Each equation should be both in the ordered and unordered equations
+        assert set(unordered_equations) == set(equations)
+
+        # ER should come before ENa
+        assert unordered_equations.index(ER) < unordered_equations.index(ENa)
+
+        # ENa and gNa should come before iNa
+        assert unordered_equations.index(ENa) < unordered_equations.index(iNa)
+        assert unordered_equations.index(gNa) < unordered_equations.index(iNa)
+
