@@ -1,6 +1,7 @@
 import pytest
 import sympy as sp
 import os
+from collections import OrderedDict
 
 from cellmlmanip import load_model
 from cellmlmanip.model import MetaDummy
@@ -25,24 +26,23 @@ class TestUnits(object):
         return load_model(hodgkin_cellml)
 
     # These represent CellML <units><unit>...</unit></units> elements
-    test_definitions = {
-        'ms': [{'units': 'second', 'prefix': 'milli'}],
-        'per_ms': [{'units': 'ms', 'exponent': '-1'}],
-        'usec': [{'units': 'second', 'prefix': 'micro'}],
-        'mV': [{'units': 'volt', 'prefix': 'milli'}],
-        'per_mV': [{'units': 'volt', 'prefix': 'milli', 'exponent': '-1'}],
-        'uV': [{'units': 'volt', 'prefix': 'micro'}],
-        'mV_per_ms': [{'units': 'mV', 'exponent': '1'}, {'units': 'ms', 'exponent': '-1'}],
-        'mV_per_s': [{'units': 'mV', 'exponent': '1'}, {'units': 'second', 'exponent': '-1'}],
-        'mV_per_usec': [{'units': 'mV', 'exponent': '1'},
-                        {'prefix': 'micro', 'units': 'second', 'exponent': '-1'}],
-        'mM': [{'prefix': 'milli', 'units': 'mole'}, {'units': 'litre', 'exponent': '-1'}],
-        'mM_per_ms': [{'units': 'mM'}, {'units': 'ms', 'exponent': '-1'}],
-        'milli_mole': [{'prefix': 'milli', 'units': 'mole'}],
-        'millisecond': [{'prefix': 'milli', 'units': 'second'}],
-        'ms_power_prefix': [{'prefix': '-3', 'units': 'second'}],
-        'ms_with_multiplier': [{'multiplier': 0.001, 'units': 'second'}],
-    }
+    test_definitions = OrderedDict()
+    test_definitions['ms'] = [{'units': 'second', 'prefix': 'milli'}]
+    test_definitions['per_ms'] = [{'units': 'ms', 'exponent': '-1'}]
+    test_definitions['usec'] = [{'units': 'second', 'prefix': 'micro'}]
+    test_definitions['mV'] = [{'units': 'volt', 'prefix': 'milli'}]
+    test_definitions['per_mV'] = [{'units': 'volt', 'prefix': 'milli', 'exponent': '-1'}]
+    test_definitions['uV'] = [{'units': 'volt', 'prefix': 'micro'}]
+    test_definitions['mV_per_ms'] = [{'units': 'mV', 'exponent': '1'}, {'units': 'ms', 'exponent': '-1'}]
+    test_definitions['mV_per_s'] = [{'units': 'mV', 'exponent': '1'}, {'units': 'second', 'exponent': '-1'}]
+    test_definitions['mV_per_usec'] = [
+        {'units': 'mV', 'exponent': '1'}, {'prefix': 'micro', 'units': 'second', 'exponent': '-1'}]
+    test_definitions['mM'] = [{'prefix': 'milli', 'units': 'mole'}, {'units': 'litre', 'exponent': '-1'}]
+    test_definitions['mM_per_ms'] = [{'units': 'mM'}, {'units': 'ms', 'exponent': '-1'}]
+    test_definitions['milli_mole'] = [{'prefix': 'milli', 'units': 'mole'}]
+    test_definitions['millisecond'] = [{'prefix': 'milli', 'units': 'second'}]
+    test_definitions['ms_power_prefix'] = [{'prefix': '-3', 'units': 'second'}]
+    test_definitions['ms_with_multiplier'] = [{'multiplier': 0.001, 'units': 'second'}]
 
     @pytest.fixture(scope="class")
     def quantity_store(self):
@@ -434,3 +434,4 @@ class TestUnits(object):
         membrane_voltage = model.get_symbol_by_ontology_term(OXMETA, "membrane_voltage")
         assert model.units.dimensionally_equivalent(membrane_stimulus_current_offset, membrane_stimulus_current_period)
         assert not model.units.dimensionally_equivalent(membrane_stimulus_current_offset, membrane_voltage)
+
