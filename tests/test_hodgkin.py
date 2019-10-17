@@ -58,14 +58,14 @@ class TestHodgkin:
         assert len(free_variable) == 1
         free_variable = free_variable[0]
         assert free_variable.cmeta_id == 'time'
-        assert graph.node[free_variable.dummy]['variable_type'] == 'free'
-        assert free_variable.cmeta_id == graph.node[free_variable.dummy]['cmeta_id']
+        assert graph.nodes[free_variable.dummy]['variable_type'] == 'free'
+        assert free_variable.cmeta_id == graph.nodes[free_variable.dummy]['cmeta_id']
 
         state_variables = model.find_variable({'type': 'state'})
         assert len(state_variables) == 4
         state_variable = state_variables[0]
-        assert graph.node[state_variable.dummy]['variable_type'] == 'state'
-        assert state_variable.cmeta_id == graph.node[state_variable.dummy]['cmeta_id']
+        assert graph.nodes[state_variable.dummy]['variable_type'] == 'state'
+        assert state_variable.cmeta_id == graph.nodes[state_variable.dummy]['cmeta_id']
 
         sorted_nodes = nx.lexicographical_topological_sort(graph, key=str)
 
@@ -115,8 +115,8 @@ class TestHodgkin:
         # check attributes on membrane capacitance
         membrane_Cm = sorted_nodes[2]
         assert membrane_Cm.name == 'membrane$Cm'
-        assert graph.node[membrane_Cm]['cmeta_id'] == 'membrane_capacitance'
-        assert graph.node[membrane_Cm]['variable_type'] == 'parameter'
+        assert graph.nodes[membrane_Cm]['cmeta_id'] == 'membrane_capacitance'
+        assert graph.nodes[membrane_Cm]['variable_type'] == 'parameter'
 
     def test_derivative_symbols(self, model):
         """
