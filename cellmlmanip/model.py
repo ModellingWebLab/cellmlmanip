@@ -345,7 +345,7 @@ class Model(object):
             # for each of the symbols on the rhs of the equation
             for rhs_symbol in self.get_symbols_for([equation.rhs]):
                 # if the symbol maps to a node in the graph
-                if rhs_symbol in graph.node:
+                if rhs_symbol in graph.nodes:
                     # add the dependency edge
                     graph.add_edge(rhs_symbol, lhs_symbol)
                 else:
