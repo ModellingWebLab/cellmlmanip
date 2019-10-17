@@ -139,7 +139,7 @@ class TestHodgkin:
         state_symbols_ordered_by_input = model.get_state_symbols(order_by_order_added=True)
         assert len(state_symbols) == len(state_symbols_ordered_by_input) == 4
         assert set(state_symbols) == set(state_symbols_ordered_by_input)
-        assert str(state_symbols) == str(state_symbols_ordered_by_input) == \
+        assert str(state_symbols_ordered_by_input) == \
             '[_membrane$V, _sodium_channel_m_gate$m, _sodium_channel_h_gate$h, _potassium_channel_n_gate$n]'
 
     def test_free_variable_symbol(self, model):
@@ -301,13 +301,19 @@ class TestHodgkin:
                            sympy.Dummy('sodium_channel$E_Na')))
                   ]
 
-        # Expected ordering for not lexicographical sorted equations
-        unordered_ref_eq = [ref_eq[2], ref_eq[0], ref_eq[1], ref_eq[3]]
-
         # Check equations against expected equations
         for i in range(len(equations)):
             assert str(equations[i]) == str(ref_eq[i])
 
+        #TODO: This test is flawed: The topographical order is
+        # non-unique, and so non-deterministic. We have to check if certain
+        # elements are before others instead.
+        # See: https://networkx.github.io/documentation/networkx-2.3/
+        #       reference/algorithms/generated/networkx.algorithms.dag.topological_sort.html
+
+        # Expected ordering for topographically sorted equations
+        #unordered_ref_eq = [ref_eq[2], ref_eq[0], ref_eq[1], ref_eq[3]]
+
         # Check not lexicographical sorted equations against expected equations
-        for i in range(len(unordered_equations)):
-            assert str(unordered_equations[i]) == str(unordered_ref_eq[i])
+        #for i in range(len(unordered_equations)):
+        #    assert str(unordered_equations[i]) == str(unordered_ref_eq[i])
