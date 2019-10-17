@@ -13,7 +13,6 @@ from cellmlmanip.units import UnitStore
 
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
 
 
 # Delimiter for variables name in Sympy expressions: <component><delimiter><name>

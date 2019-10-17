@@ -17,7 +17,7 @@ from sympy.printing.lambdarepr import LambdaPrinter
 
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
+
 
 # The full list of supported CellML units
 # Taken from https://www.cellml.org/specifications/cellml_1.1/#sec_units

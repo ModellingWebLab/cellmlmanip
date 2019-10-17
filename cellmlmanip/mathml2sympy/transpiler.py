@@ -10,7 +10,6 @@ import sympy
 
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
 
 
 class Transpiler(object):
