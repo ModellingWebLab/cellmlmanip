@@ -3,7 +3,6 @@
 Content Markup specification: https://www.w3.org/TR/MathML2/chapter4.html
 """
 import logging
-from typing import Dict, List
 from xml.dom import Node, minidom
 
 import sympy
@@ -67,7 +66,7 @@ class Transpiler(object):
         for tag_name in SIMPLE_MATHML_TO_SYMPY_NAMES:
             self.handlers[tag_name] = self._simple_operator_handler
 
-    def parse_string(self, xml_string) -> List[sympy.Expr]:
+    def parse_string(self, xml_string):
         """
         Reads MathML content from a string and returns equivalent SymPy expressions.
         :return: A list of SymPy expressions.
