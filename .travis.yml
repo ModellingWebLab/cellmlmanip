@@ -4,6 +4,7 @@ env:
   - PIN_REQUIREMENTS=1
   - PIN_REQUIREMENTS=0
 python:
+  - "3.5"
   - "3.6"
 matrix:
   # Failures here don't mark the build as failed

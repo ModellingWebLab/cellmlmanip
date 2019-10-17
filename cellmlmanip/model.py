@@ -2,7 +2,6 @@
 import logging
 from collections import OrderedDict
 from io import StringIO
-from typing import Dict, List, Union
 
 import networkx as nx
 import rdflib
@@ -13,7 +12,6 @@ from cellmlmanip.units import UnitStore
 
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
 
 
 # Delimiter for variables name in Sympy expressions: <component><delimiter><name>
@@ -21,9 +19,12 @@ SYMPY_SYMBOL_DELIMITER = '$'
 
 
 class MetaDummy(object):
-    """Holds information about a Dummy placeholder in set of Sympy equations. Dummy symbols are
-    used to represent variables from the CellMl model or as placeholders for numbers.
     """
+    Holds information about a Dummy placeholder in set of Sympy equations.
+
+    Dummy symbols are used to represent variables from the CellMl model or as placeholders for numbers.
+    """
+    # TODO Add param list in docstring above
 
     def __init__(self, name, units, dummy, initial_value=None,
                  public_interface=None, private_interface=None, number=None,
@@ -64,7 +65,7 @@ class MetaDummy(object):
         """Indicates whether this dummy instance is used as a placeholder for a number"""
         return self.number is not None
 
-    def __str__(self) -> str:
+    def __str__(self):
         return '%s(%s)' % (
             type(self).__name__,
             ', '.join('%s=%s' % item for item in vars(self).items() if item[1] is not None)
@@ -74,23 +75,33 @@ class MetaDummy(object):
 class Model(object):
     """An unrolled representation of a CellML model, using list of equations and metadata
     (e.g. units) about symbols used in those equations
+
+    :param name: the name of the model e.g. from <model name="">
     """
-    def __init__(self, name: str) -> None:
-        """Create a new instance of Model object
-        :param name: the name of the model e.g. from <model name="">
+    def __init__(self, name):
+
+        self.name = name
+        self.units = UnitStore(model=self)
+        self.rdf = rdflib.Graph()
+        self.graph = None   # An nx.DiGraph
+
+        # Maps sympy.Dummy objects to MetaDummy objects
+        self.dummy_metadata = OrderedDict()
+
+        # Maps string names to sympy.Dummy objects
+        self.name_to_symbol = dict()
+
+        # A list of sympy.Eq objects.
+        self.equations = []
+
+    def add_unit(self, units_name, unit_attributes=None, base_units=False):
         """
-        self.name: str = name
-        self.units: 'UnitStore' = UnitStore(model=self)
-        self.rdf: rdflib.Graph = rdflib.Graph()
-        self.graph: nx.DiGraph = None
+        Adds information about <units> in <model>.
 
-        self.dummy_metadata: Dict[sympy.Dummy, MetaDummy] = OrderedDict()
-        self.name_to_symbol: Dict[str, sympy.Dummy] = dict()
-
-        self.equations: List[sympy.Eq] = list()
-
-    def add_unit(self, units_name: str, unit_attributes: List[Dict] = None, base_units=False):
-        """Adds information about <units> in <model>
+        :param units_name: A string name
+        :param unit_attributes: An optional list of dictionaries containing unit attributes. See
+            :meth:`UnitStore.add_custom_unit()`.
+        :base_units: Set to ``True`` to define a new base unit.
         """
         assert not (unit_attributes and base_units), 'Cannot define base unit with unit attributes'
         if base_units:
@@ -98,15 +109,25 @@ class Model(object):
         else:
             self.units.add_custom_unit(units_name, unit_attributes)
 
-    def add_equation(self, equation: sympy.Eq):
-        """Add an equation to this model. Equation must be a Sympy equality"""
+    def add_equation(self, equation):
+        """
+        Adds an equation to this model.
+
+        :param equation: A ``sympy.Eq`` object.
+        """
         assert isinstance(equation, sympy.Eq), 'Equation expression must be equality'
         self.equations.append(equation)
 
-    def add_number(self, *,
-                   number: sympy.Number, units: str, dummy: sympy.Dummy = None) -> sympy.Dummy:
-        """Add metadata about a dummy symbol that represents a number in equations. Returns the
-        sympy.Dummy object used to represent this number"""
+    def add_number(self, *, number, units, dummy=None):
+        """
+        Add metadata about a dummy symbol that represents a number in equations.
+
+        :param number: A ``sympy.Number``.
+        :param units: A string unit representation.
+        :param dummy: An optional ``sympy.Dummy``.
+
+        :return: The ``sympy.Dummy`` object used to represent this number.
+        """
         assert isinstance(number, sympy.Number)
 
         # Create a dummy object if necessary
@@ -125,11 +146,21 @@ class Model(object):
 
         return self.dummy_metadata[dummy].dummy
 
-    def add_variable(self, *,
-                     name: str, units: str, initial_value=None,
-                     public_interface=None, private_interface=None, **kwargs) -> sympy.Dummy:
-        """Add information about a variable that represents a symbol in equations. Returns the
-        sympy.Dummy created by the model to represent the variable in equations"""
+    # TODO: Do we need the * here?
+    def add_variable(self, *, name, units, initial_value=None,
+                     public_interface=None, private_interface=None, **kwargs):
+        """
+        Add information about a variable that represents a symbol in equations.
+
+        :param name: A string name.
+        :param units: A string units reprensetation.
+        :param initial_value: An optional initial value.
+        :param public_interface: An optional public interface specifier.
+        :param private_interface: An optional private interface specifier.
+        :param kwargs: Any further keyword arguments will be passed to the :class:`MetaDummy` constructor.
+
+        :return: The ``sympy.Dummy`` created by the model to represent the variable in equations.
+        """
         assert name not in self.name_to_symbol, 'Variable %s already exists' % name
 
         dummy = sympy.Dummy(name)
@@ -151,8 +182,13 @@ class Model(object):
 
         return self.dummy_metadata[dummy].dummy
 
-    def get_meta_dummy(self, name_or_instance: Union[str, sympy.Dummy]) -> MetaDummy:
-        """Look up dummy data for given symbol. Accepts a string name or instance of sympy.Dummy"""
+    def get_meta_dummy(self, name_or_instance):
+        """
+        Look up dummy data for given symbol.
+
+        :param name_or_instance: A string name or a ``sympy.Dummy``.
+        :return: A :class:`MetaDummy`.
+        """
         if isinstance(name_or_instance, str):
             return self.dummy_metadata[self.name_to_symbol[name_or_instance]]
 
@@ -160,9 +196,11 @@ class Model(object):
         return self.dummy_metadata[name_or_instance]
 
     def check_dummy_metadata(self):
-        """Check that every symbol in list of equations has a metadata entry. Returns two lists:
-        ({set of dummy instances}, {dummy instances without metadata entry}"""
+        """
+        Check that every symbol in list of equations has a metadata entry.
 
+        :return: A set of dummy instances and a set of dummy instances without metadata.
+        """
         # collect list of all dummy instances
         dummy_instances = set()
         not_found = set()
@@ -280,21 +318,25 @@ class Model(object):
         """
         self.rdf.parse(StringIO(rdf))
 
-    def check_left_right_units_equal(self, equality: sympy.Eq):
-        """Given a Sympy Equality expression, checks that the LHS and RHS have the same units"""
-        rhs: sympy.Expr = equality.rhs
-        lhs: sympy.Expr = equality.lhs
-
-        lhs_units = self.units.summarise_units(lhs)
-        rhs_units = self.units.summarise_units(rhs)
+    def check_left_right_units_equal(self, equality):
+        """
+        Checks whether the LHS and RHS in a ``sympy.Eq`` have the same units.
+        :param equality: A ``sympy.Eq``.
+        """
+        lhs_units = self.units.summarise_units(equality.lhs)
+        rhs_units = self.units.summarise_units(equality.rhs)
 
         assert self.units.is_unit_equal(rhs_units, lhs_units), 'Units %s %s != %s %s' % (
             lhs_units, self.units.ureg.get_base_units(lhs_units),
             rhs_units, self.units.ureg.get_base_units(rhs_units)
         )
 
-    def get_equation_graph(self, refresh=False) -> nx.DiGraph:
-        """Returns an ordered list of equations for the model"""
+    def get_equation_graph(self, refresh=False):
+        """
+        Returns an ordered list of equations for the model
+
+        :return: An ``nx.Digraph`` of equations.
+        """
         # TODO: Set the parameters of the model (parameters rather than use initial values)
 
         # if we already have generated the equation graph
@@ -345,7 +387,7 @@ class Model(object):
             # for each of the symbols on the rhs of the equation
             for rhs_symbol in self.get_symbols_for([equation.rhs]):
                 # if the symbol maps to a node in the graph
-                if rhs_symbol in graph.node:
+                if rhs_symbol in graph.nodes:
                     # add the dependency edge
                     graph.add_edge(rhs_symbol, lhs_symbol)
                 else:
@@ -456,14 +498,13 @@ class Model(object):
 
     def get_state_symbols(self, order_by_order_added=False):
         """Returns a list of state variables found in the given model graph.
-        order_by_order_added indicates whether state_symbols are sorted in the order they appear in the model
-        (otherwise ordering is determined by the order in equations)
+
+        :param order_by_order_added: indicates whether state_symbols are sorted in the order they appear in the model.
         """
         state_symbols = [v.args[0] for v in self.get_derivative_symbols()]
-        if not order_by_order_added:
-            return state_symbols
-        else:
+        if order_by_order_added:
             return sorted(state_symbols, key=lambda state_var: self.get_meta_dummy(state_var).order_added)
+        return state_symbols
 
     def get_free_variable_symbol(self):
         """Returns the free variable of the given model graph.
