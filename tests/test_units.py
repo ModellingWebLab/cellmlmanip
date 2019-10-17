@@ -1,16 +1,22 @@
-import pytest
-import sympy as sp
 import os
 from collections import OrderedDict
 
+import pytest
+import sympy as sp
+
 from cellmlmanip import load_model
 from cellmlmanip.model import MetaDummy
-from cellmlmanip.units import (ExpressionWithUnitPrinter, UnitCalculator,
-                               UnitStore, InputArgumentsInvalidUnitsError,
-                               InputArgumentsMustBeDimensionlessError,
-                               InputArgumentMustBeNumberError,
-                               BooleanUnitsError,
-                               UnexpectedMathUnitsError)
+from cellmlmanip.units import (
+    BooleanUnitsError,
+    ExpressionWithUnitPrinter,
+    InputArgumentMustBeNumberError,
+    InputArgumentsInvalidUnitsError,
+    InputArgumentsMustBeDimensionlessError,
+    UnexpectedMathUnitsError,
+    UnitCalculator,
+    UnitStore,
+)
+
 
 OXMETA = "https://chaste.comlab.ox.ac.uk/cellml/ns/oxford-metadata#"
 
@@ -434,4 +440,3 @@ class TestUnits(object):
         membrane_voltage = model.get_symbol_by_ontology_term(OXMETA, "membrane_voltage")
         assert model.units.dimensionally_equivalent(membrane_stimulus_current_offset, membrane_stimulus_current_period)
         assert not model.units.dimensionally_equivalent(membrane_stimulus_current_offset, membrane_voltage)
-

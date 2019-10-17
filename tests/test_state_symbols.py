@@ -4,6 +4,7 @@ import pytest
 
 from cellmlmanip import load_model
 
+
 OXMETA = "https://chaste.comlab.ox.ac.uk/cellml/ns/oxford-metadata#"
 
 

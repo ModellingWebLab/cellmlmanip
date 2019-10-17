@@ -6,6 +6,7 @@ import sympy
 import cellmlmanip
 import cellmlmanip.rdf
 
+
 OXMETA = "https://chaste.comlab.ox.ac.uk/cellml/ns/oxford-metadata#"
 
 
