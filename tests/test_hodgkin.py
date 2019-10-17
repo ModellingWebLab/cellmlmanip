@@ -305,15 +305,16 @@ class TestHodgkin:
         for i in range(len(equations)):
             assert str(equations[i]) == str(ref_eq[i])
 
-        #TODO: This test is flawed: The topographical order is
+        # TODO: This test is flawed: The topographical order is
         # non-unique, and so non-deterministic. We have to check if certain
         # elements are before others instead.
         # See: https://networkx.github.io/documentation/networkx-2.3/
         #       reference/algorithms/generated/networkx.algorithms.dag.topological_sort.html
-
+        '''
         # Expected ordering for topographically sorted equations
-        #unordered_ref_eq = [ref_eq[2], ref_eq[0], ref_eq[1], ref_eq[3]]
+        unordered_ref_eq = [ref_eq[2], ref_eq[0], ref_eq[1], ref_eq[3]]
 
         # Check not lexicographical sorted equations against expected equations
-        #for i in range(len(unordered_equations)):
-        #    assert str(unordered_equations[i]) == str(unordered_ref_eq[i])
+        for i in range(len(unordered_equations)):
+            assert str(unordered_equations[i]) == str(unordered_ref_eq[i])
+        '''

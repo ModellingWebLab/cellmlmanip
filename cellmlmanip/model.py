@@ -2,7 +2,6 @@
 import logging
 from collections import OrderedDict
 from io import StringIO
-from typing import Dict, List, Union
 
 import networkx as nx
 import rdflib
@@ -25,7 +24,7 @@ class MetaDummy(object):
 
     Dummy symbols are used to represent variables from the CellMl model or as placeholders for numbers.
     """
-    #TODO Add param list in docstring above
+    # TODO Add param list in docstring above
 
     def __init__(self, name, units, dummy, initial_value=None,
                  public_interface=None, private_interface=None, number=None,
@@ -118,7 +117,7 @@ class Model(object):
         assert isinstance(equation, sympy.Eq), 'Equation expression must be equality'
         self.equations.append(equation)
 
-    #TODO: Do we need the * here?
+    # TODO: Do we need the * here?
     def add_number(self, *, number, units, dummy=None):
         """
         Add metadata about a dummy symbol that represents a number in equations.
@@ -147,7 +146,7 @@ class Model(object):
 
         return self.dummy_metadata[dummy].dummy
 
-    #TODO: Do we need the * here?
+    # TODO: Do we need the * here?
     def add_variable(self, *, name, units, initial_value=None,
                      public_interface=None, private_interface=None, **kwargs):
         """

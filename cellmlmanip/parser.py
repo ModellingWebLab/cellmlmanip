@@ -5,8 +5,6 @@ handled by RDFLib.
 import itertools
 from collections import OrderedDict, deque
 from enum import Enum
-
-import sympy
 from lxml import etree
 
 from cellmlmanip import mathml2sympy

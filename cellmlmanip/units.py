@@ -7,7 +7,6 @@ import numbers
 import os
 from functools import reduce
 from operator import mul
-from typing import Dict, List
 
 import pint
 import sympy
