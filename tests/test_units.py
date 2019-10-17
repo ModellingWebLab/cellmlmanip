@@ -1,15 +1,22 @@
+import os
+from collections import OrderedDict
+
 import pytest
 import sympy as sp
-import os
 
 from cellmlmanip import load_model
 from cellmlmanip.model import MetaDummy
-from cellmlmanip.units import (ExpressionWithUnitPrinter, UnitCalculator,
-                               UnitStore, InputArgumentsInvalidUnitsError,
-                               InputArgumentsMustBeDimensionlessError,
-                               InputArgumentMustBeNumberError,
-                               BooleanUnitsError,
-                               UnexpectedMathUnitsError)
+from cellmlmanip.units import (
+    BooleanUnitsError,
+    ExpressionWithUnitPrinter,
+    InputArgumentMustBeNumberError,
+    InputArgumentsInvalidUnitsError,
+    InputArgumentsMustBeDimensionlessError,
+    UnexpectedMathUnitsError,
+    UnitCalculator,
+    UnitStore,
+)
+
 
 OXMETA = "https://chaste.comlab.ox.ac.uk/cellml/ns/oxford-metadata#"
 
@@ -25,24 +32,26 @@ class TestUnits(object):
         return load_model(hodgkin_cellml)
 
     # These represent CellML <units><unit>...</unit></units> elements
-    test_definitions = {
+    test_definitions = OrderedDict({
         'ms': [{'units': 'second', 'prefix': 'milli'}],
-        'per_ms': [{'units': 'ms', 'exponent': '-1'}],
         'usec': [{'units': 'second', 'prefix': 'micro'}],
         'mV': [{'units': 'volt', 'prefix': 'milli'}],
-        'per_mV': [{'units': 'volt', 'prefix': 'milli', 'exponent': '-1'}],
         'uV': [{'units': 'volt', 'prefix': 'micro'}],
-        'mV_per_ms': [{'units': 'mV', 'exponent': '1'}, {'units': 'ms', 'exponent': '-1'}],
-        'mV_per_s': [{'units': 'mV', 'exponent': '1'}, {'units': 'second', 'exponent': '-1'}],
-        'mV_per_usec': [{'units': 'mV', 'exponent': '1'},
-                        {'prefix': 'micro', 'units': 'second', 'exponent': '-1'}],
         'mM': [{'prefix': 'milli', 'units': 'mole'}, {'units': 'litre', 'exponent': '-1'}],
-        'mM_per_ms': [{'units': 'mM'}, {'units': 'ms', 'exponent': '-1'}],
         'milli_mole': [{'prefix': 'milli', 'units': 'mole'}],
         'millisecond': [{'prefix': 'milli', 'units': 'second'}],
+    })
+    test_definitions.update({
+        'per_ms': [{'units': 'ms', 'exponent': '-1'}],
+        'per_mV': [{'units': 'volt', 'prefix': 'milli', 'exponent': '-1'}],
+        'mV_per_ms': [{'units': 'mV', 'exponent': '1'}, {'units': 'ms', 'exponent': '-1'}],
+        'mV_per_s': [{'units': 'mV', 'exponent': '1'}, {'units': 'second', 'exponent': '-1'}],
+        'mV_per_usec': [
+            {'units': 'mV', 'exponent': '1'}, {'prefix': 'micro', 'units': 'second', 'exponent': '-1'}],
+        'mM_per_ms': [{'units': 'mM'}, {'units': 'ms', 'exponent': '-1'}],
         'ms_power_prefix': [{'prefix': '-3', 'units': 'second'}],
         'ms_with_multiplier': [{'multiplier': 0.001, 'units': 'second'}],
-    }
+    })
 
     @pytest.fixture(scope="class")
     def quantity_store(self):

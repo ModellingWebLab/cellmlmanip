@@ -7,7 +7,6 @@ import numbers
 import os
 from functools import reduce
 from operator import mul
-from typing import Dict, List
 
 import pint
 import sympy
@@ -17,7 +16,7 @@ from sympy.printing.lambdarepr import LambdaPrinter
 
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
+
 
 # The full list of supported CellML units
 # Taken from https://www.cellml.org/specifications/cellml_1.1/#sec_units
@@ -166,9 +165,8 @@ class UnitStore(object):
         """Initialise a UnitStore instance; wraps the unit registry and handles addition of new
         unit definitions"""
         cellml_unit_definition = os.path.join(
-            os.path.dirname(__file__), 'cellml_units.txt'
-        )
-        self.ureg: pint.UnitRegistry = pint.UnitRegistry(cellml_unit_definition)
+            os.path.dirname(__file__), 'cellml_units.txt')
+        self.ureg = pint.UnitRegistry(cellml_unit_definition)
 
         # units that are defined and added to the unit registry, on top of default cellml units
         self.custom_defined = set()
@@ -202,8 +200,10 @@ class UnitStore(object):
             self._define_pint_unit(units_name, unit_definition)
 
     def add_preferred_custom_unit_name(self, units_name, unit_attributes):
-        """Set a prefered name for all equivalent custom units. If it does not exist yet, also define a new Pint unit
-        definition to the unit registry.
+        """
+        Set a prefered name for all equivalent custom units.
+
+        If the unit does not exist yet, also define a new Pint unit definition to the unit registry.
         PLEASE NOTE: not retrospective, assumes you are not adding new expressions to the model.
         It also does not do any unit conversions, only works on equivalent units with different names.
         :param units_name: the prefered name for this unit and all units in the model that are equivalent
@@ -242,20 +242,23 @@ class UnitStore(object):
         self.ureg.define(definition_string_or_instance)
         self.custom_defined.add(units_name)
 
-    def get_quantity(self, unit_name: str):
+    def get_quantity(self, unit_name):
         """Returns a pint.Unit with the given name from the UnitRegistry.
         :param unit_name: string name of the unit
         :return: pint.Unit
         throws pint.UndefinedUnitError if te unit is not present in registry
         """
         try:
-            resolved_unit = self.ureg.parse_expression(unit_name).units
-            return resolved_unit
+            return self.ureg.parse_expression(unit_name).units
         except pint.UndefinedUnitError:
             raise KeyError('Cannot find unit <%s> in unit registry' % unit_name)
 
-    def _make_pint_unit_definition(self, units_name, unit_attributes: List[Dict]):
-        """Uses the CellML definition to construct a Pint unit definition string
+    def _make_pint_unit_definition(self, units_name, unit_attributes):
+        """
+        Uses a CellML definition to construct a Pint unit definition string.
+
+        :param units_name: The unit name
+        :param unit_attributes: A list of dictionaries. See :meth:`add_custom_unit`.
         """
         full_unit_expr = []
 
@@ -319,7 +322,7 @@ class UnitStore(object):
         assert isinstance(unit, self.ureg.Unit)
         return quantity.to(unit)
 
-    def summarise_units(self, expr: sympy.Expr):
+    def summarise_units(self, expr):
         """Given a Sympy expression, will get the lambdified string to evaluate units.
         Note the call to UnitCalculator:traverse will throw an error if units are bad or cannot be calculated.
         :param expr: the Sympy expression on which to evaluate units
@@ -362,14 +365,18 @@ class UnitStore(object):
 
 
 class UnitCalculator(object):
-    """Evaluates a Sympy expression to determine its units. Note: only supports subset of Sympy
-    math"""
+    """
+    Evaluates a Sympy expression to determine its units.
+
+    Note: only supports subset of Sympy math.
+    """
     def __init__(self, unit_registry, dummy_metadata):
         """ Initialises teh UnitCalculator class
         :param unit_registry: instance of Pint UnitRegistry
         :param dummy_metadata: a dictionary providing {dummy: MetaDummy} lookup
         """
-        self.ureg: pint.UnitRegistry = unit_registry
+        # A pint.UnitRegistry
+        self.ureg = unit_registry
         self.dummy_metadata = dummy_metadata
 
     def _check_unit_of_quantities_equal(self, list_of_quantities):
@@ -395,8 +402,9 @@ class UnitCalculator(object):
     def _is_dimensionless(self, quantity):
         return quantity.units.dimensionality == self.ureg.dimensionless.dimensionality
 
-    def traverse(self, expr: sympy.Expr):
+    def traverse(self, expr):
         """Descends the Sympy expression and performs Pint unit arithmetic on sub-expressions
+
         :param expr: a Sympy expression
         :returns: the quantity (i.e. magnitude(expression) * unit) of the expression
         :throws: KeyError - if variable not found in metadata
@@ -622,7 +630,7 @@ class UnitCalculator(object):
 
 
 class ExpressionWithUnitPrinter(LambdaPrinter):
-    """Sympy expression printer to print expressions with unit information """
+    """Sympy expression printer to print expressions with unit information."""
     def __init__(self, symbol_info):
         """
         Initialises the ExpressionWithUnitPrinter
