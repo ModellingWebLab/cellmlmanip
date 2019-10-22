@@ -103,12 +103,12 @@ class TestUnits(object):
 
     def test_conversion_factor(self, quantity_store):
         ureg = quantity_store.ureg
-        assert quantity_store.get_conversion_factor(1 * ureg.ms, ureg.second) == 0.001
-        assert quantity_store.get_conversion_factor(1 * ureg.volt, ureg.mV) == 1000.0
+        assert quantity_store.get_conversion_factor(quantity=1 * ureg.ms, to_unit=ureg.second) == 0.001
+        assert quantity_store.get_conversion_factor(quantity=1 * ureg.volt, to_unit=ureg.mV) == 1000.0
 
         assert quantity_store.get_conversion_factor(
-            1 * quantity_store.get_quantity('milli_mole'),
-            quantity_store.get_quantity('mole')
+            quantity=1 * quantity_store.get_quantity('milli_mole'),
+            to_unit=quantity_store.get_quantity('mole')
         ) == 0.001
 
     def test_add_custom_unit(self):

@@ -341,24 +341,51 @@ class UnitStore(object):
         logger.debug('summarise_units(%s) ⟶ %s', expr, found.units)
         return found.units
 
-    def get_conversion_factor(self, quantity, to_unit):
-        """Returns the magnitude multiplier required to convert from_unit to to_unit
+    def get_conversion_factor(self,
+                              to_unit,
+                              from_unit=None,
+                              quantity=None,
+                              expression=None):
+        """Returns the magnitude multiplier required to convert a unit to the specified unit.
+
+        Note this will work on either a unit, a quantity or an expression, but requires only
+        one of these arguments.
+
+        :param to_unit: Unit object into which the units should be converted
+        :param from_unit: the Unit to be converted
         :param quantity: the Unit to be converted, multiplied by '1' to form a Quantity object
-        :param to_unit: Unit object into which the first units should be converted
-        :return the magnitude of the resulting conversion factor
+        :param expression: an expression from which the Unit is evaluated before conversion
+
+        :return: the magnitude of the resulting conversion factor
+
+        :throws: AssertionError if no target unit is specified or no source unit is specified
         """
-        return self.convert_to(quantity, to_unit).magnitude
+        assert to_unit is not None, 'No unit given as target of conversion; to_unit argument is required'
+        assert quantity is not None or from_unit is not None or expression is not None, \
+            'No unit given as source of conversion; please use one of from_unit, quantity or expression'
+        assert [from_unit, quantity, expression].count(None) == 2, \
+            'Multiple target specified; please use only one of from_unit, quantity or expression'
+
+        if from_unit is not None:
+            assert isinstance(from_unit, self.ureg.Unit), 'from_unit must be of type pint:Unit'
+            return self.convert_to(1 * from_unit, to_unit).magnitude
+        elif quantity is not None:
+            assert isinstance(quantity, self.ureg.Quantity), 'quantity must be of type pint:Quantity'
+            return self.convert_to(quantity, to_unit).magnitude
+        else:
+            assert isinstance(expression, sympy.Expr), 'expression must be of type Sympy expression'
+            return self.convert_to(1 * self.summarise_units(expression), to_unit).magnitude
 
     def dimensionally_equivalent(self, symbol1, symbol2):
         """Returns whether two expressions, symbol1 and symbol2,
-         are dimensionally_equivalent (same units ignorging a calling factor).
+         are dimensionally_equivalent (same units ignoring a calling factor).
         :param symbol1: the first expression to compare
-        :param unit2: the second expression to compare
+        :param symbol2: the second expression to compare
         :return True if units are equal (regardless of quantity), False otherwise
         """
         try:
-            self.get_conversion_factor(1 * self.summarise_units(symbol1),
-                                       self.summarise_units(symbol2))
+            self.get_conversion_factor(from_unit=self.summarise_units(symbol1),
+                                       to_unit=self.summarise_units(symbol2))
             return True
         except pint.errors.DimensionalityError:
             return False
