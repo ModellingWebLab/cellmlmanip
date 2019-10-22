@@ -20,7 +20,7 @@ install:
     pip install .[test];
   fi;
 script:
-  - pytest --cov --cov-config=cellmlmanip/.coveragerc
+  - pytest --cov --cov-config=.coveragerc
   - flake8
   - isort --verbose --check-only --diff --recursive cellmlmanip
 after_success:
