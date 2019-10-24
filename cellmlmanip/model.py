@@ -461,7 +461,7 @@ class Model(object):
         Results are sorted in topographical order.
         :param symbols: the symbols to get the equations for
         :param lexicographical_sort: indicates whether the result is sorted in lexicographical order first
-        :param recurse: indicates whether to recurse the equation graph to find all equations involved, or to return only the top level equations
+        :param recurse: indicates whether to recurse the equation graph, or to return only the top level equations
         """
         graph = self.get_equation_graph()
         if lexicographical_sort:
