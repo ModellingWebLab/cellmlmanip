@@ -21,8 +21,6 @@ class TestAslanidiModel:
         model.get_equation_graph()
         membrane_capacitance = model.get_symbol_by_ontology_term(OXMETA, "membrane_capacitance")
         # was raising KeyError but should not
-#        with pytest.raises(KeyError):
-#            model.get_initial_value(membrane_capacitance)
         assert(model.get_initial_value(membrane_capacitance) == 0.00005)
 
     def test_initial_value_voltage(self, model):
