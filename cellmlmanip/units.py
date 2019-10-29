@@ -7,7 +7,6 @@ import numbers
 import os
 from functools import reduce
 from operator import mul
-from typing import Dict, List
 
 import pint
 import sympy
@@ -17,7 +16,7 @@ from sympy.printing.lambdarepr import LambdaPrinter
 
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
+
 
 # The full list of supported CellML units
 # Taken from https://www.cellml.org/specifications/cellml_1.1/#sec_units
@@ -166,9 +165,8 @@ class UnitStore(object):
         """Initialise a UnitStore instance; wraps the unit registry and handles addition of new
         unit definitions"""
         cellml_unit_definition = os.path.join(
-            os.path.dirname(__file__), 'cellml_units.txt'
-        )
-        self.ureg: pint.UnitRegistry = pint.UnitRegistry(cellml_unit_definition)
+            os.path.dirname(__file__), 'cellml_units.txt')
+        self.ureg = pint.UnitRegistry(cellml_unit_definition)
 
         # units that are defined and added to the unit registry, on top of default cellml units
         self.custom_defined = set()
@@ -202,8 +200,10 @@ class UnitStore(object):
             self._define_pint_unit(units_name, unit_definition)
 
     def add_preferred_custom_unit_name(self, units_name, unit_attributes):
-        """Set a prefered name for all equivalent custom units. If it does not exist yet, also define a new Pint unit
-        definition to the unit registry.
+        """
+        Set a prefered name for all equivalent custom units.
+
+        If the unit does not exist yet, also define a new Pint unit definition to the unit registry.
         PLEASE NOTE: not retrospective, assumes you are not adding new expressions to the model.
         It also does not do any unit conversions, only works on equivalent units with different names.
         :param units_name: the prefered name for this unit and all units in the model that are equivalent
@@ -242,20 +242,23 @@ class UnitStore(object):
         self.ureg.define(definition_string_or_instance)
         self.custom_defined.add(units_name)
 
-    def get_quantity(self, unit_name: str):
+    def get_quantity(self, unit_name):
         """Returns a pint.Unit with the given name from the UnitRegistry.
         :param unit_name: string name of the unit
         :return: pint.Unit
         throws pint.UndefinedUnitError if te unit is not present in registry
         """
         try:
-            resolved_unit = self.ureg.parse_expression(unit_name).units
-            return resolved_unit
+            return self.ureg.parse_expression(unit_name).units
         except pint.UndefinedUnitError:
             raise KeyError('Cannot find unit <%s> in unit registry' % unit_name)
 
-    def _make_pint_unit_definition(self, units_name, unit_attributes: List[Dict]):
-        """Uses the CellML definition to construct a Pint unit definition string
+    def _make_pint_unit_definition(self, units_name, unit_attributes):
+        """
+        Uses a CellML definition to construct a Pint unit definition string.
+
+        :param units_name: The unit name
+        :param unit_attributes: A list of dictionaries. See :meth:`add_custom_unit`.
         """
         full_unit_expr = []
 
@@ -319,7 +322,7 @@ class UnitStore(object):
         assert isinstance(unit, self.ureg.Unit)
         return quantity.to(unit)
 
-    def summarise_units(self, expr: sympy.Expr):
+    def summarise_units(self, expr):
         """Given a Sympy expression, will get the lambdified string to evaluate units.
         Note the call to UnitCalculator:traverse will throw an error if units are bad or cannot be calculated.
         :param expr: the Sympy expression on which to evaluate units
@@ -338,38 +341,69 @@ class UnitStore(object):
         logger.debug('summarise_units(%s) ⟶ %s', expr, found.units)
         return found.units
 
-    def get_conversion_factor(self, quantity, to_unit):
-        """Returns the magnitude multiplier required to convert from_unit to to_unit
+    def get_conversion_factor(self,
+                              to_unit,
+                              from_unit=None,
+                              quantity=None,
+                              expression=None):
+        """Returns the magnitude multiplier required to convert a unit to the specified unit.
+
+        Note this will work on either a unit, a quantity or an expression, but requires only
+        one of these arguments.
+
+        :param to_unit: Unit object into which the units should be converted
+        :param from_unit: the Unit to be converted
         :param quantity: the Unit to be converted, multiplied by '1' to form a Quantity object
-        :param to_unit: Unit object into which the first units should be converted
-        :return the magnitude of the resulting conversion factor
+        :param expression: an expression from which the Unit is evaluated before conversion
+
+        :return: the magnitude of the resulting conversion factor
+
+        :throws: AssertionError if no target unit is specified or no source unit is specified
         """
-        return self.convert_to(quantity, to_unit).magnitude
+        assert to_unit is not None, 'No unit given as target of conversion; to_unit argument is required'
+        assert quantity is not None or from_unit is not None or expression is not None, \
+            'No unit given as source of conversion; please use one of from_unit, quantity or expression'
+        assert [from_unit, quantity, expression].count(None) == 2, \
+            'Multiple target specified; please use only one of from_unit, quantity or expression'
+
+        if from_unit is not None:
+            assert isinstance(from_unit, self.ureg.Unit), 'from_unit must be of type pint:Unit'
+            return self.convert_to(1 * from_unit, to_unit).magnitude
+        elif quantity is not None:
+            assert isinstance(quantity, self.ureg.Quantity), 'quantity must be of type pint:Quantity'
+            return self.convert_to(quantity, to_unit).magnitude
+        else:
+            assert isinstance(expression, sympy.Expr), 'expression must be of type Sympy expression'
+            return self.convert_to(1 * self.summarise_units(expression), to_unit).magnitude
 
     def dimensionally_equivalent(self, symbol1, symbol2):
         """Returns whether two expressions, symbol1 and symbol2,
-         are dimensionally_equivalent (same units ignorging a calling factor).
+         are dimensionally_equivalent (same units ignoring a calling factor).
         :param symbol1: the first expression to compare
-        :param unit2: the second expression to compare
+        :param symbol2: the second expression to compare
         :return True if units are equal (regardless of quantity), False otherwise
         """
         try:
-            self.get_conversion_factor(1 * self.summarise_units(symbol1),
-                                       self.summarise_units(symbol2))
+            self.get_conversion_factor(from_unit=self.summarise_units(symbol1),
+                                       to_unit=self.summarise_units(symbol2))
             return True
         except pint.errors.DimensionalityError:
             return False
 
 
 class UnitCalculator(object):
-    """Evaluates a Sympy expression to determine its units. Note: only supports subset of Sympy
-    math"""
+    """
+    Evaluates a Sympy expression to determine its units.
+
+    Note: only supports subset of Sympy math.
+    """
     def __init__(self, unit_registry, dummy_metadata):
         """ Initialises teh UnitCalculator class
         :param unit_registry: instance of Pint UnitRegistry
         :param dummy_metadata: a dictionary providing {dummy: MetaDummy} lookup
         """
-        self.ureg: pint.UnitRegistry = unit_registry
+        # A pint.UnitRegistry
+        self.ureg = unit_registry
         self.dummy_metadata = dummy_metadata
 
     def _check_unit_of_quantities_equal(self, list_of_quantities):
@@ -395,8 +429,9 @@ class UnitCalculator(object):
     def _is_dimensionless(self, quantity):
         return quantity.units.dimensionality == self.ureg.dimensionless.dimensionality
 
-    def traverse(self, expr: sympy.Expr):
+    def traverse(self, expr):
         """Descends the Sympy expression and performs Pint unit arithmetic on sub-expressions
+
         :param expr: a Sympy expression
         :returns: the quantity (i.e. magnitude(expression) * unit) of the expression
         :throws: KeyError - if variable not found in metadata
@@ -622,7 +657,7 @@ class UnitCalculator(object):
 
 
 class ExpressionWithUnitPrinter(LambdaPrinter):
-    """Sympy expression printer to print expressions with unit information """
+    """Sympy expression printer to print expressions with unit information."""
     def __init__(self, symbol_info):
         """
         Initialises the ExpressionWithUnitPrinter

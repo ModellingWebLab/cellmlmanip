@@ -5,9 +5,7 @@ handled by RDFLib.
 import itertools
 from collections import OrderedDict, deque
 from enum import Enum
-from typing import Dict
 
-import sympy
 from lxml import etree
 
 from cellmlmanip import mathml2sympy
@@ -60,20 +58,25 @@ class Parser(object):
         """Returns an ElementTree-friendly name with namespace in brackets"""
         return '{%s}%s' % (ns_enum.value, name)
 
-    def __init__(self, filepath: str) -> None:
+    def __init__(self, filepath):
         """Initialise an instance of Parser
 
         :param filepath: the full filepath to the CellML model file
         """
-        self.filepath: str = filepath
-        self.model: Model = None
-        self.components: Dict[str, _Component] = OrderedDict()
+        self.filepath = filepath
 
-    def parse(self) -> Model:
-        """The main method that reads the XML file and extract the relevant parts of CellML model
-        definition. Parser class should have been instantiated with the filepath.
+        # A :class:`Model` object or None
+        self.model = None
 
-        :return: a Model class holding CellML model definition, reading for manipulation
+        # A dictionary mapping component names to _Component objects
+        self.components = OrderedDict()
+
+    def parse(self):
+        """
+        The main method that reads the XML file and extracts the relevant parts of the CellML model
+        definition.
+
+        :return: a :class:`Model` holding CellML model definition, reading for manipulation.
         """
         tree = etree.parse(self.filepath)
 
@@ -95,15 +98,20 @@ class Parser(object):
     def _get_variable_name(component_name, variable_name):
         return component_name + SYMPY_SYMBOL_DELIMITER + variable_name
 
-    def _add_rdf(self, element: etree.Element):
-        """Finds all <RDF> definitions under <element> and adds them to the model
+    def _add_rdf(self, element):
+        """
+        Finds all ``<RDF>`` definitions under ``<element>`` and adds them to the model.
+
         :param element: the CellML parent element to search for children RDF tags
         """
         for rdf in element.iter(Parser.with_ns(XmlNs.RDF, 'RDF')):
             self.model.add_rdf(etree.tostring(rdf, encoding=str))
 
-    def _add_units(self, model: etree.Element):
-        """  <model> <units> <unit /> </units> </model> """
+    def _add_units(self, model):
+        """
+        <model> <units> <unit /> </units> </model>
+        :param model: an etree.Element
+        """
         units_elements = model.findall(Parser.with_ns(XmlNs.CELLML, 'units'))
 
         # get list of built-in cellml units
@@ -153,8 +161,11 @@ class Parser(object):
                 raise ValueError('Cannot create units %s. '
                                  'Cycles or unknown units.' % definitions_to_add)
 
-    def _add_components(self, model: etree.Element):
-        """ <model> <component> </model> """
+    def _add_components(self, model):
+        """
+        <model> <component> </model>
+        :param model: an etree.Element
+        """
         component_elements = model.findall(Parser.with_ns(XmlNs.CELLML, 'component'))
 
         # for each component defined in the model
@@ -168,15 +179,18 @@ class Parser(object):
             # process the <math> tags in this component
             self._add_maths(element, variable_to_symbol)
 
-    def _add_variables(self, component_element: etree.Element):
-        """ <model> <component> <variable> </component> </model> """
+    def _add_variables(self, component_element):
+        """
+        <model> <component> <variable> </component> </model>
+        :param component_element: an etree.Element
+        """
         variable_elements = component_element.findall(Parser.with_ns(XmlNs.CELLML, 'variable'))
 
         # we keep a {variable name: sympy symbol} lookup that we pass to mathml2sympy
         variable_lookup_symbol = dict()
 
         for variable_element in variable_elements:
-            attributes: Dict = dict(variable_element.attrib)
+            attributes = dict(variable_element.attrib)
 
             # Rename key for cmeta_id (remove namespace from attribute)
             cmeta_id_attribute = Parser.with_ns(XmlNs.CMETA, 'id')
@@ -192,9 +206,13 @@ class Parser(object):
 
         return variable_lookup_symbol
 
-    def _add_maths(self,
-                   component_element: etree.Element, variable_to_symbol: Dict[str, sympy.Dummy]):
-        """ <model> <component> <math> </component> </model> """
+    def _add_maths(self, component_element, variable_to_symbol):
+        """
+        <model> <component> <math> </component> </model>
+
+        :param component_element: an etree.Element
+        :param variable_to_symbol: a ``Dict[str, sympy.Dummy]``
+        """
         # get all <math> elements in the component
         math_elements = component_element.findall(Parser.with_ns(XmlNs.MATHML, 'math'))
 
@@ -269,7 +287,10 @@ class Parser(object):
                 if component_a != component_b:
                     self.components[component_a].add_sibling(component_b)
 
-    def _add_connection(self, model: etree.Element):
+    def _add_connection(self, model):
+        """
+        :param model: an etree.Element
+        """
         connection_elements = model.findall(Parser.with_ns(XmlNs.CELLML, 'connection'))
 
         # a list to collect the (source, target) connection tuples
