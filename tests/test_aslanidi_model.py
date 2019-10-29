@@ -1,7 +1,6 @@
 import os
 
 import pytest
-import sympy
 
 from cellmlmanip import load_model
 
@@ -19,7 +18,7 @@ class TestAslanidiModel:
         return load_model(cellml)
 
     def test_initial_value(self, model):
-        graph = model.get_equation_graph()
+        model.get_equation_graph()
         membrane_capacitance = model.get_symbol_by_ontology_term(OXMETA, "membrane_capacitance")
         with pytest.raises(KeyError):
-            initial_value = model.get_initial_value(membrane_capacitance)
+            model.get_initial_value(membrane_capacitance)
