@@ -643,7 +643,13 @@ class Model(object):
         :param symbol: Sympy Dummy object of required symbol
         :return: float of initial value
         """
-        return float(self.graph.nodes[symbol]['initial_value'])
+        # fixed for issue where graph.nodes[symbol] does not have an 'initial_value' entry
+        node = self.graph.nodes[symbol]
+        if 'initial_value' in node:
+            return float(node['initial_value'])
+        # no initial_value entry try the dummy_metadata
+        dummy = self.dummy_metadata[symbol]
+        return float(dummy.initial_value)
 
     @staticmethod
     def _set_variable_type(variable, variable_type):
