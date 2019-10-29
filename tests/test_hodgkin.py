@@ -285,9 +285,13 @@ class TestHodgkin:
         # Get ordered equations
         membrane_fast_sodium_current = model.get_symbol_by_ontology_term(OXMETA, 'membrane_fast_sodium_current')
         equations = model.get_equations_for([membrane_fast_sodium_current])
+        top_level_equations = model.get_equations_for([membrane_fast_sodium_current], recurse=False)
 
         # There should be 4 in this model
         assert len(equations) == 4
+
+        # There should be 3 top level (non recursed) in this model
+        assert len(top_level_equations) == 3
 
         # Expected equations
         ER = sympy.Eq(sympy.Dummy('membrane$E_R'), sympy.numbers.Float(-75.0))

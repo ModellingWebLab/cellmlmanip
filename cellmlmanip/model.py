@@ -455,12 +455,13 @@ class Model(object):
         self.graph = graph
         return graph
 
-    def get_equations_for(self, symbols, lexicographical_sort=True):
+    def get_equations_for(self, symbols, lexicographical_sort=True, recurse=True):
         """Get all equations for given collection of symbols
 
         Results are sorted in topographical order.
         :param symbols: the symbols to get the equations for
         :param lexicographical_sort: indicates whether the result is sorted in lexicographical order first
+        :param recurse: indicates whether to recurse the equation graph, or to return only the top level equations
         """
         graph = self.get_equation_graph()
         if lexicographical_sort:
@@ -472,7 +473,10 @@ class Model(object):
         required_symbols = set()
         for output in symbols:
             required_symbols.add(output)
-            required_symbols.update(nx.ancestors(graph, output))
+            if recurse:
+                required_symbols.update(nx.ancestors(graph, output))
+            else:
+                required_symbols.update(graph.pred[output])
 
         eqs = []
         for symbol in sorted_symbols:
