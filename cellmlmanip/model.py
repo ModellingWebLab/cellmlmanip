@@ -495,10 +495,15 @@ class Model(object):
 
         return eqs
 
-    def get_derivative_symbols(self):
+    def get_derivative_symbols(self, order_by_order_added=False):
         """Returns a list of derivative symbols found in the given model graph.
+
+        :param order_by_order_added: indicates whether state_symbols are sorted in the order they appear in the model.
         """
-        return [v for v in self.graph if isinstance(v, sympy.Derivative)]
+        derivative_symbols = [v for v in self.graph if isinstance(v, sympy.Derivative)]
+        if order_by_order_added:
+            return sorted(derivative_symbols, key=lambda state_var: self.get_meta_dummy(state_var).order_added)
+        return derivative_symbols
 
     def get_state_symbols(self, order_by_order_added=False):
         """Returns a list of state variables found in the given model graph.
