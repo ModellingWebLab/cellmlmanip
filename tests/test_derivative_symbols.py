@@ -19,7 +19,9 @@ class TestAslanidiModel:
         return load_model(cellml)
 
     def test_derivative_symbols(self, model):
-        derivs = model.get_state_symbols()
+        derivs_no_flag = model.get_state_symbols(order_by_order_added=False)
+        derivs = model.get_state_symbols(order_by_order_added=False)
+        assert derivs_no_flag == derivs
         derivs_order = model.get_state_symbols(order_by_order_added=True)
         assert len(derivs) == len(derivs_order) == 29
 
