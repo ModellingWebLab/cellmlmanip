@@ -39,4 +39,4 @@ class TestAslanidiModel:
             assert sorted_derivs[i] == sorted_derivs_order[i]
 
         assert derivs[16] == derivs_order[17]
-        assert str(derivs[17]) == derivs_order[16]
+        assert derivs[17] == derivs_order[16]
