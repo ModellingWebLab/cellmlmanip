@@ -38,7 +38,5 @@ class TestAslanidiModel:
         for i in range(len(sorted_derivs)):
             assert sorted_derivs[i] == sorted_derivs_order[i]
 
-        assert str(derivs[16]) == '_intracellular_ion_concentrations$K_i'
-        assert str(derivs[17]) == '_intracellular_ion_concentrations$Ca_i'
-        assert str(derivs_order[16]) == '_intracellular_ion_concentrations$Ca_i'
-        assert str(derivs_order[17]) == '_intracellular_ion_concentrations$K_i'
+        assert derivs[16] == derivs_order[17]
+        assert str(derivs[17]) == derivs_order[16]
