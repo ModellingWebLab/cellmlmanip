@@ -38,5 +38,10 @@ class TestAslanidiModel:
         for i in range(len(sorted_derivs)):
             assert sorted_derivs[i] == sorted_derivs_order[i]
 
+        print(str(derivs))
+        print("---\n")
+        print(str(derivs))
+        print("derivs_order")
+        assert False
         assert derivs[16] == derivs_order[17]
         assert derivs[17] == derivs_order[16]
