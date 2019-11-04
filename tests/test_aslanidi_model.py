@@ -40,7 +40,7 @@ class TestAslanidiModel:
 
         print(str(derivs))
         print("---\n")
-        print(str(derivs))
+        print(str(derivs_order))
         print("derivs_order")
         assert False
         assert derivs[16] == derivs_order[17]
