@@ -502,7 +502,7 @@ class Model(object):
         """
         derivative_symbols = [v for v in self.graph if isinstance(v, sympy.Derivative)]
         if order_by_order_added:
-            return sorted(derivative_symbols, key=lambda state_var: self.get_meta_dummy(state_var).order_added)
+            return sorted(derivative_symbols, key=lambda state_var: self.get_meta_dummy(state_var.args[0]).order_added)
         return derivative_symbols
 
     def get_state_symbols(self, order_by_order_added=False):
