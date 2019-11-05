@@ -502,7 +502,7 @@ class Model(object):
         derivative_symbols = [v for v in self.graph if isinstance(v, sympy.Derivative)]
         return sorted(derivative_symbols, key=lambda state_var: self.get_meta_dummy(state_var.args[0]).order_added)
 
-    def get_state_symbols(self, order_by_order_added=False):
+    def get_state_symbols(self):
         """Returns a list of state variables found in the given model graph.
            The list is ordered by appearance in the cellml document.
         """
