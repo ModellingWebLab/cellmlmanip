@@ -497,14 +497,14 @@ class Model(object):
 
     def get_derivative_symbols(self):
         """Returns a list of derivative symbols found in the given model graph.
-           The list is ordered by appearance in the cellml document.
+        The list is ordered by appearance in the cellml document.
         """
         derivative_symbols = [v for v in self.graph if isinstance(v, sympy.Derivative)]
         return sorted(derivative_symbols, key=lambda state_var: self.get_meta_dummy(state_var.args[0]).order_added)
 
     def get_state_symbols(self):
         """Returns a list of state variables found in the given model graph.
-           The list is ordered by appearance in the cellml document.
+        The list is ordered by appearance in the cellml document.
         """
         state_symbols = [v.args[0] for v in self.get_derivative_symbols()]
         return sorted(state_symbols, key=lambda state_var: self.get_meta_dummy(state_var).order_added)
