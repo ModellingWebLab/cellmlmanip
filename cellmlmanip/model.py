@@ -499,7 +499,8 @@ class Model(object):
         """Returns a list of derivative symbols found in the given model graph.
 
         :param order_by_order_added: indicates whether state_symbols are sorted in the order they appear in the model.
-        Please Note: the order of returned derivative symbols is not guaranteed and specificly not reproducible on Python <= 3.5 without the flag
+        Please Note: the order of returned derivative symbols is not guaranteed
+                     specificly the order is not reproducible on Python <= 3.5 without the flag
         """
         derivative_symbols = [v for v in self.graph if isinstance(v, sympy.Derivative)]
         if order_by_order_added:
