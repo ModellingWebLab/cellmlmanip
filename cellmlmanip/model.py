@@ -511,6 +511,8 @@ class Model(object):
         """Returns a list of state variables found in the given model graph.
 
         :param order_by_order_added: indicates whether state_symbols are sorted in the order they appear in the model.
+        Please Note: the order of returned derivative symbols is not guaranteed
+                     specificly the order is not reproducible on Python <= 3.5 without the flag
         """
         state_symbols = [v.args[0] for v in self.get_derivative_symbols()]
         if order_by_order_added:
