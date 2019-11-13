@@ -20,14 +20,14 @@ class TestModelUnits:
         model = parser_instance.parse()
         return model
 
-    def test_symbols(self, parser_instance, model):
+    def test_symbols(self, model):
         model.get_equation_graph(True)  # set up the graph - it is not automatic
         symbol = model.get_symbol_by_cmeta_id("a")
         assert symbol.is_Symbol
         symbol = model.get_symbol_by_cmeta_id("b")
         assert symbol.is_Symbol
 
-    def test_equations(self, parser_instance, model):
+    def test_equations(self, model):
         model.get_equation_graph(True)  # set up the graph - it is not automatic
         symbol_a = model.get_symbol_by_cmeta_id("a")
         equation = model.get_equations_for([symbol_a])
@@ -35,7 +35,7 @@ class TestModelUnits:
         assert equation[0].lhs == symbol_a
         assert equation[0].rhs == 1.0
 
-    def test_equations_2(self, parser_instance, model):
+    def test_equations_2(self, model):
         model.get_equation_graph(True)  # set up the graph - it is not automatic
         symbol_a = model.get_symbol_by_cmeta_id("a")
         symbol_b = model.get_symbol_by_cmeta_id("b")
@@ -46,7 +46,7 @@ class TestModelUnits:
         assert equation[1].lhs == symbol_b
         assert equation[1].rhs == 2.0 / symbol_a
 
-    def test_units(self, parser_instance, model):
+    def test_units(self, model):
         model.get_equation_graph(True)  # set up the graph - it is not automatic
         symbol_a = model.get_symbol_by_cmeta_id("a")
         equation = model.get_equations_for([symbol_a])
