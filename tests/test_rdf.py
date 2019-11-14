@@ -123,5 +123,9 @@ def test_get_rdf_annotation(test_simple_odes):
     modifiable_params = model.get_symbols_by_rdf((PYCMLMETA, 'modifiable-parameter'), 'yes')
     assert str(modifiable_params) == '[_single_ode_rhs_const_var$a]'
 
+    modifiable_params = model.get_symbols_by_rdf((PYCMLMETA, 'modifiable-parameter'))
+    assert str(modifiable_params) == '[_single_ode_rhs_const_var$a]'
+
     modifiable_params = model.get_symbols_by_rdf((PYCMLMETA, 'modifiable-parameter'), 'no')
     assert len(modifiable_params) == 0
+

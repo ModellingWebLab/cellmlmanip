@@ -1,6 +1,7 @@
 ﻿"""Classes to represent a flattened CellML model and metadata about its variables"""
 import logging
 from collections import OrderedDict
+from collections.abc import Iterable
 from io import StringIO
 
 import networkx as nx
@@ -600,12 +601,11 @@ class Model(object):
         """
         assert len(predicate) == 2
         predicate = create_rdf_node(*predicate)
-        if object_ is not None:
-            if isinstance(object_, str):
-                object_ = rdflib.Literal(object_)
-            else:
-                assert len(object_) == 2
-                object_ = create_rdf_node(*object_)
+
+        if isinstance(object_, str):
+            object_ = rdflib.Literal(object_)
+        elif isinstance(object_, Iterable):
+            object_ = create_rdf_node(*object_)
 
         # Find symbols
         symbols = []
