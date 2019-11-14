@@ -555,7 +555,7 @@ class Model(object):
             raise ValueError('Multiple variables annotated with {%s}%s' %
                              (namespace_uri, local_name))
 
-    def _get_rdf_annotation(self, predicate):
+    def get_rdf_annotation(self, predicate):
         """Searches the RDF graph for variables annotated with the given predicate
         and (e.g. "pycml:named-attribute) and returns the associated annotation.
 
@@ -572,20 +572,22 @@ class Model(object):
                 predicate_name = str(result[1])[str(result[1]).rfind('#') + 1:]
                 if isinstance(result[0], rdflib.URIRef):
                     subject_name = str(result[0].lstrip('#'))
-                    if not subject_name in annotation_dict:
+                    if subject_name not in annotation_dict:
                         annotation_dict[subject_name] = dict()
-                if  isinstance(result[2], rdflib.Literal):
+                if isinstance(result[2], rdflib.Literal):
                     if subject_name is None:
                         annotation_dict[predicate_name] = str(result[2]).strip()
                     else:
                         annotation_dict[subject_name][predicate_name] = str(result[2]).strip()
                 else:
+                    if predicate_name not in annotation_dict[subject_name]:
+                        annotation_dict[subject_name][predicate_name] = []
                     if subject_name is None:
-                        result_annotation.append({predicate_name:_get_annotation(list(self.rdf.triples((result[2], None, None))))})
+                        annotation_dict[predicate_name].\
+                            append({predicate_name: _get_annotation(list(self.rdf.triples((result[2], None, None))))})
                     else:
-                        if predicate_name not in annotation_dict[subject_name]:
-                            annotation_dict[subject_name][predicate_name] = []
-                        annotation_dict[subject_name][predicate_name].append(_get_annotation(list(self.rdf.triples((result[2], None, None)))))
+                        annotation_dict[subject_name][predicate_name].\
+                            append(_get_annotation(list(self.rdf.triples((result[2], None, None)))))
             return annotation_dict
 
         assert len(predicate) == 2
