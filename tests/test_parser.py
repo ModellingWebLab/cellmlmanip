@@ -56,7 +56,7 @@ class TestParser(object):
             match[0].dummy.name == 'single_ode_rhs_const_var$sv1'
 
     def test_rdf(self, model):
-        assert len(model.rdf) == 21
+        assert len(model.rdf) == 24
 
     def test_connections_loaded(self, model):
         # these are all unconnected variables

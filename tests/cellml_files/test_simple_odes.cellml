@@ -39,6 +39,12 @@ For annotations, we check:
                 <value rdf:datatype="http://www.w3.org/2000/10/XMLSchema#double">0.0002</value>
              </rdf:Description>
           </named-attribute>
+          <named-attribute xmlns="https://chaste.comlab.ox.ac.uk/cellml/ns/pycml#">
+             <rdf:Description>
+                <name rdf:datatype="http://www.w3.org/2000/10/XMLSchema#string">SomeOtherAttribute</name>
+                <value rdf:datatype="http://www.w3.org/2000/10/XMLSchema#double">0</value>
+             </rdf:Description>
+          </named-attribute>
       </rdf:Description>
    </rdf:RDF>
 
