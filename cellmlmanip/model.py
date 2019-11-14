@@ -543,7 +543,7 @@ class Model(object):
         found, and a ``ValueError`` if more than one variable with the given
         annotation is found.
         """
-        symbols = self._get_symbols_by_rdf(
+        symbols = self.get_symbols_by_rdf(
             ('http://biomodels.net/biology-qualifiers/', 'is'),
             (namespace_uri, local_name))
         if len(symbols) == 1:
@@ -555,21 +555,62 @@ class Model(object):
             raise ValueError('Multiple variables annotated with {%s}%s' %
                              (namespace_uri, local_name))
 
-    def _get_symbols_by_rdf(self, predicate, object_=None):
+    def _get_rdf_annotation(self, predicate):
+        """Searches the RDF graph for variables annotated with the given predicate
+        and (e.g. "pycml:named-attribute) and returns the associated annotation.
+
+        ``predicate`` must be a ``(namespace, local_name)`` tuple.
+        The method will return a dict following the same structure as the rdf annotation.
+        e.g. when looking for named-attribute (of which there could be multiple):
+        "{'model_name': {'named-attribute': [{'name': 'SuggestedForwardEulerTimestep', 'value': '0.002'}]}}"
+        """
+        def _get_annotation(tuples):
+            """function that populates the annotation dict. It unpacks objects that are themselves rdf triples"""
+            annotation_dict = dict()
+            subject_name = None
+            for result in tuples:
+                predicate_name = str(result[1])[str(result[1]).rfind('#') + 1:]
+                if isinstance(result[0], rdflib.URIRef):
+                    subject_name = str(result[0].lstrip('#'))
+                    if not subject_name in annotation_dict:
+                        annotation_dict[subject_name] = dict()
+                if  isinstance(result[2], rdflib.Literal):
+                    if subject_name is None:
+                        annotation_dict[predicate_name] = str(result[2]).strip()
+                    else:
+                        annotation_dict[subject_name][predicate_name] = str(result[2]).strip()
+                else:
+                    if subject_name is None:
+                        result_annotation.append({predicate_name:_get_annotation(list(self.rdf.triples((result[2], None, None))))})
+                    else:
+                        if predicate_name not in annotation_dict[subject_name]:
+                            annotation_dict[subject_name][predicate_name] = []
+                        annotation_dict[subject_name][predicate_name].append(_get_annotation(list(self.rdf.triples((result[2], None, None)))))
+            return annotation_dict
+
+        assert len(predicate) == 2
+        predicate = create_rdf_node(*predicate)
+
+        # Find symbols
+        rdf_annotation = _get_annotation(list(self.rdf.triples((None, predicate, None))))
+
+        return rdf_annotation
+
+    def get_symbols_by_rdf(self, predicate, object_=None):
         """Searches the RDF graph for variables annotated with the given predicate
         and object (e.g. "is oxmeta:time") and returns the associated symbols.
 
         Both ``predicate`` and ``object_`` (if given) must be
         ``(namespace, local_name)`` tuples.
         """
-        # Convert property and value to RDF nodes
-        # TODO: Eventually a different form for predicate and object may be
-        #       accepted.
         assert len(predicate) == 2
         predicate = create_rdf_node(*predicate)
         if object_ is not None:
-            assert len(object_) == 2
-            object_ = create_rdf_node(*object_)
+            if isinstance(object_, str):
+                object_ = rdflib.Literal(object_)
+            else:
+                assert len(object_) == 2
+                object_ = create_rdf_node(*object_)
 
         # Find symbols
         symbols = []
