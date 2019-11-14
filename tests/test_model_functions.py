@@ -7,6 +7,8 @@ import cellmlmanip
 import cellmlmanip.rdf
 from cellmlmanip.units import UnitStore
 
+OXMETA = "https://chaste.comlab.ox.ac.uk/cellml/ns/oxford-metadata#"
+
 
 class TestModelFunctions():
     # These represent CellML <units><unit>...</unit></units> elements
@@ -47,15 +49,29 @@ class TestModelFunctions():
             qs.add_custom_unit(unit_name, unit_attributes)
         return qs
 
+    # also tested in test_hodgkin
     def test_get_state_symbols(self, model):
         state_symbols = model.get_state_symbols()
         assert len(state_symbols) == 8
 
+    # also tested in test_hodgkin
     def test_get_derivative_symbols(self, model):
         derivs = model.get_derivative_symbols()
         assert len(derivs) == 8
 
-    def test_free_variable_symbol(self, model):
+    # also tested in test_hodgkin
+    def test_get_free_variable_symbol(self, model):
         free_variable_symbol = model.get_free_variable_symbol()
         assert free_variable_symbol.name == 'environment$time'
+
+    # also tested in test_aslanidi
+    def test_get_initial_value(self, model):
+        membrane_voltage = model.get_symbol_by_ontology_term(OXMETA, "membrane_voltage")
+        assert(model.get_initial_value(membrane_voltage) == -84.624)
+
+    # also tested in test_hodgkin
+    def test_get_equation_graph(self, model):
+        graph1 = model.get_equation_graph(True)
+        graph2 = model.get_equation_graph(True)
+        assert len(graph1.nodes) == len(graph2.nodes)
 
