@@ -1,7 +1,6 @@
 ﻿"""Classes to represent a flattened CellML model and metadata about its variables"""
 import logging
 from collections import OrderedDict
-from collections.abc import Iterable
 from io import StringIO
 
 import networkx as nx
@@ -585,8 +584,7 @@ class Model(object):
                         append(_get_annotation(list(self.rdf.triples((result[2], None, None)))))
             return annotation_dict
 
-        assert len(predicate) == 2
-        predicate = create_rdf_node(*predicate)
+        predicate = create_rdf_node(predicate)
 
         # Find symbols
         rdf_annotation = _get_annotation(list(self.rdf.triples((None, predicate, None))))
@@ -600,13 +598,12 @@ class Model(object):
         Both ``predicate`` and ``object_`` (if given) must be
         ``(namespace, local_name)`` tuples.
         """
-        assert len(predicate) == 2
-        predicate = create_rdf_node(*predicate)
-
-        if isinstance(object_, str):
-            object_ = rdflib.Literal(object_)
-        elif isinstance(object_, Iterable):
-            object_ = create_rdf_node(*object_)
+        predicate = create_rdf_node(predicate)
+        object_ = create_rdf_node(object_)
+        #if isinstance(object_, str):
+            #object_ = rdflib.Literal(object_)
+        #elif isinstance(object_, Iterable):
+            #object_ = create_rdf_node(*object_)
 
         # Find symbols
         symbols = []
@@ -640,7 +637,7 @@ class Model(object):
         cmeta_id = self.graph.nodes[symbol].get('cmeta_id', None)
         if cmeta_id:
             predicate = ('http://biomodels.net/biology-qualifiers/', 'is')
-            predicate = create_rdf_node(*predicate)
+            predicate = create_rdf_node(predicate)
             for delimeter in ('#', '/'):  # Look for terms using either possible namespace delimiter
                 subject = rdflib.term.URIRef(delimeter + cmeta_id)
                 for object in self.rdf.objects(subject, predicate):
