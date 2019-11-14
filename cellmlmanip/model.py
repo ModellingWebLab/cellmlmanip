@@ -575,19 +575,12 @@ class Model(object):
                     if subject_name not in annotation_dict:
                         annotation_dict[subject_name] = dict()
                 if isinstance(result[2], rdflib.Literal):
-                    if subject_name is None:
-                        annotation_dict[predicate_name] = str(result[2]).strip()
-                    else:
-                        annotation_dict[subject_name][predicate_name] = str(result[2]).strip()
+                    annotation_dict[predicate_name] = str(result[2]).strip()
                 else:
                     if predicate_name not in annotation_dict[subject_name]:
                         annotation_dict[subject_name][predicate_name] = []
-                    if subject_name is None:
-                        annotation_dict[predicate_name].\
-                            append({predicate_name: _get_annotation(list(self.rdf.triples((result[2], None, None))))})
-                    else:
-                        annotation_dict[subject_name][predicate_name].\
-                            append(_get_annotation(list(self.rdf.triples((result[2], None, None)))))
+                    annotation_dict[subject_name][predicate_name].\
+                        append(_get_annotation(list(self.rdf.triples((result[2], None, None)))))
             return annotation_dict
 
         assert len(predicate) == 2
