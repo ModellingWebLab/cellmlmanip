@@ -2,6 +2,7 @@
 # import logging
 import rdflib
 
+
 # logger = logging.getLogger(__name__)
 # logger.setLevel(logging.INFO)
 
@@ -70,13 +71,12 @@ def create_rdf_node(namespace_uri, local_name=None):
     if not isinstance(namespace_uri, str) and len(namespace_uri) == 2:
         local_name = namespace_uri[1]
         namespace_uri = namespace_uri[0]
-    
+
     # Ensure namespace prefix can be appended to
     if namespace_uri[-1] not in ['#', '/'] and local_name is not None:
         namespace_uri = namespace_uri + '#'
 
-    if local_name == None:
+    if local_name is None:
         return rdflib.Literal(namespace_uri)
     else:
         return rdflib.Namespace(namespace_uri)[local_name]
-        

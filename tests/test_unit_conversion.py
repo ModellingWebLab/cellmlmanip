@@ -89,4 +89,3 @@ def test_conversion_factor_same_units(simple_model):
     assert simple_model.units.get_conversion_factor(to_unit=to_unit, from_unit=from_unit) == 1
     # expression to unit
     assert simple_model.units.get_conversion_factor(to_unit=to_unit, expression=expression) == 1
-

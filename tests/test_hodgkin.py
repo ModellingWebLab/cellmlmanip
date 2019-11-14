@@ -322,4 +322,3 @@ class TestHodgkin:
         # ENa and gNa should come before iNa
         assert unordered_equations.index(ENa) < unordered_equations.index(iNa)
         assert unordered_equations.index(gNa) < unordered_equations.index(iNa)
-

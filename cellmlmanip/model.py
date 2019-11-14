@@ -600,10 +600,6 @@ class Model(object):
         """
         predicate = create_rdf_node(predicate)
         object_ = create_rdf_node(object_)
-        #if isinstance(object_, str):
-            #object_ = rdflib.Literal(object_)
-        #elif isinstance(object_, Iterable):
-            #object_ = create_rdf_node(*object_)
 
         # Find symbols
         symbols = []
