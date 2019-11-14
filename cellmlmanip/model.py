@@ -557,7 +557,7 @@ class Model(object):
                              (namespace_uri, local_name))
 
     def get_rdf_annotation(self, predicate):
-        """Searches the RDF graph for variables annotated with the given predicate
+        """Searches the RDF graph for rdf annotation with the given predicate
         and (e.g. "pycml:named-attribute) and returns the associated annotation.
 
         ``predicate`` must be a ``(namespace, local_name)`` tuple.
