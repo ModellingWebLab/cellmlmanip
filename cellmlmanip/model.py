@@ -564,6 +564,7 @@ class Model(object):
         The method will return a dict following the same structure as the rdf annotation.
         e.g. when looking for named-attribute (of which there could be multiple):
         "{'model_name': {'named-attribute': [{'name': 'SuggestedForwardEulerTimestep', 'value': '0.002'}]}}"
+        Please note: for getting annotated model variables directly, use get_symbols_by_rdf
         """
         def _get_annotation(tuples):
             """function that populates the annotation dict. It unpacks objects that are themselves rdf triples"""
