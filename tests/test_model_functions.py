@@ -38,6 +38,11 @@ class TestModelFunctions():
         return cellmlmanip.load_model(
             os.path.join(os.path.dirname(__file__), 'cellml_files', "beeler_reuter_model_1977.cellml"))
 
+    @pytest.fixture
+    def basic_model(scope='class'):
+        return cellmlmanip.load_model(
+            os.path.join(os.path.dirname(__file__), 'cellml_files', "basic_ode.cellml"))
+
     @pytest.fixture(scope="class")
     def graph(self, model):
         return model.get_equation_graph()
@@ -70,8 +75,27 @@ class TestModelFunctions():
         assert(model.get_initial_value(membrane_voltage) == -84.624)
 
     # also tested in test_hodgkin
-    def test_get_equation_graph(self, model):
-        graph1 = model.get_equation_graph(True)
-        graph2 = model.get_equation_graph(True)
-        assert len(graph1.nodes) == len(graph2.nodes)
+    def test_get_equation_graph(self, basic_model):
+        graph1 = basic_model.get_equation_graph(True)
+        assert(len(graph1.nodes) == 2)
+        names = ['ode$sv1', 'ode$time']
+        for v in graph1:
+            if not v.is_Derivative:
+                assert (v.name in names)
+            else:
+                for a in v._args:
+                    if a.is_Dummy:
+                        assert(a.name in names)
+                    else:
+                        for b in a._args:
+                            if b.is_Dummy:
+                                assert (b.name in names)
 
+    # also tested by model_units
+    def test_get_equations_for(self, basic_model):
+        basic_model.get_equation_graph(True)
+        symbol_a = basic_model.get_symbol_by_cmeta_id("sv11")
+        equation = basic_model.get_equations_for([symbol_a])
+        assert len(equation) == 1
+        assert equation[0].lhs == symbol_a
+        assert equation[0].rhs == 2.0
