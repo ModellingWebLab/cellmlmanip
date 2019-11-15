@@ -83,4 +83,4 @@ def create_rdf_node(node_content):
     elif isinstance(node_content, str) and node_content.startswith('#'):
         return rdflib.URIRef(node_content)
     else:
-        raise NotImplementedError("Cannot create node")
+        rdflib.Literal(node_content)

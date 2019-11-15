@@ -130,6 +130,8 @@ def test_get_rdf_annotation(test_simple_odes):
         named_attrib.append({'name': name, 'value': value})
 
     assert named_attributes == named_attrib
-    with pytest.raises(NotImplementedError):
-        model.get_rdf_annotations(subject='test_simple_odes')
+
+    params = model.get_symbols_by_rdf((PYCMLMETA, 'modifiable-parameter'), 'yes')
+    assert str(params) == '[_single_ode_rhs_const_var$a]'
+
 
