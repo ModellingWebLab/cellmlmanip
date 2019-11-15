@@ -19,7 +19,7 @@
 # import os
 # import sys
 # sys.path.insert(0, os.path.abspath('.'))
-import cellmlmanip
+# import cellmlmanip
 import sphinx
 
 # -- General configuration ------------------------------------------------
@@ -34,8 +34,8 @@ import sphinx
 extensions = [
     'sphinx.ext.autodoc',
     'sphinx.ext.doctest',
-    #'sphinx.ext.mathjax',
-    #'sphinx.ext.napoleon',
+    # 'sphinx.ext.mathjax',
+    # 'sphinx.ext.napoleon',
     'sphinx.ext.viewcode',
 ]
 
@@ -127,7 +127,7 @@ html_theme_options = {
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
-#html_static_path = ['_static']
+# html_static_path = ['_static']
 
 
 # -- Options for HTMLHelp output ------------------------------------------
