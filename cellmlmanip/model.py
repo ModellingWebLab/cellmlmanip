@@ -520,10 +520,10 @@ class Model(object):
         raise ValueError('No free variable set in model.')  # pragma: no cover
 
     def get_symbol_by_cmeta_id(self, cmeta_id):
-        """Searches the given graph and returns the symbol for the variable with the given cmeta_id.
-        PLEASE NOTE this does NOT get the oxmeta tag to get that use
-        get_symbol_by_ontology_term("https://chaste.comlab.ox.ac.uk/cellml/ns/oxford-metadata#",
-                                    "cytosolic_calcium_concentration")
+        """
+        Searches the given graph and returns the symbol for the variable with the given cmeta_id.
+
+        To get symbols from e.g. an oxmeta ontology term, use :meth:`get_symbol_by_ontology_term()`.
         """
         for v in self.graph:
             if self.graph.nodes[v].get('cmeta_id', '') == cmeta_id:
