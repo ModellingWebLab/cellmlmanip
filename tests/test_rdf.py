@@ -34,13 +34,13 @@ def test_bad_annotations():
 def test_create_rdf_node():
     # Tests rdf.create_rdf_node
 
-    node = cellmlmanip.rdf.create_rdf_node('http://example.com/', 'hi')
+    node = cellmlmanip.rdf.create_rdf_node(('http://example.com/', 'hi'))
     assert str(node) == 'http://example.com/hi'
 
-    node = cellmlmanip.rdf.create_rdf_node('http://example.com#', 'hi')
+    node = cellmlmanip.rdf.create_rdf_node(('http://example.com#', 'hi'))
     assert str(node) == 'http://example.com#hi'
 
-    node = cellmlmanip.rdf.create_rdf_node('http://example.com', 'hi')
+    node = cellmlmanip.rdf.create_rdf_node(('http://example.com', 'hi'))
     assert str(node) == 'http://example.com#hi'
 
 
@@ -110,23 +110,13 @@ def test_get_rdf_annotation(test_simple_odes):
     # Test rdf annotation
     model = test_simple_odes
 
-    mAttributes = model.get_rdf_annotation((PYCMLMETA, 'named-attribute'))
+    named_attributes = []
+    named_attrs = model.get_rdf_annotations(subject=model.rdf_identity, predicate=(PYCMLMETA, 'named-attribute'))
+    for s, p, attr in named_attrs:
+        name = model.get_rdf_value(subject=attr, predicate=(PYCMLMETA, 'name'))
+        value = model.get_rdf_value(subject=attr, predicate=(PYCMLMETA, 'value'))
+        named_attributes.append({'name': name, 'value': value})
 
-    assert len(mAttributes) == 1
-    assert 'test_simple_odes' in mAttributes
-    assert len(mAttributes['test_simple_odes']) == 1
-    assert 'named-attribute' in mAttributes['test_simple_odes']
-    attributes = mAttributes['test_simple_odes']['named-attribute']
-    assert len(attributes) == 2
-    attributes = sorted(attributes, key=lambda a: a['name'])
-    assert attributes[0]['name'] == 'SomeOtherAttribute' and attributes[0]['value'] == '0'
-    assert attributes[1]['name'] == 'SuggestedForwardEulerTimestep' and attributes[1]['value'] == '0.0002'
-
-    modifiable_params = model.get_symbols_by_rdf((PYCMLMETA, 'modifiable-parameter'), 'yes')
-    assert str(modifiable_params) == '[_single_ode_rhs_const_var$a]'
-
-    modifiable_params = model.get_symbols_by_rdf((PYCMLMETA, 'modifiable-parameter'))
-    assert str(modifiable_params) == '[_single_ode_rhs_const_var$a]'
-
-    modifiable_params = model.get_symbols_by_rdf((PYCMLMETA, 'modifiable-parameter'), 'no')
-    assert len(modifiable_params) == 0
+    assert len(named_attributes) == 1
+    assert named_attributes[0]['name'] == 'SuggestedForwardEulerTimestep'
+    assert named_attributes[0]['value'] == '0.0002'

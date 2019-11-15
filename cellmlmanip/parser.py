@@ -82,7 +82,7 @@ class Parser(object):
 
         # <model> root node - initialise the model object
         model_xml = tree.getroot()
-        self.model = Model(model_xml.get(Parser.with_ns(XmlNs.CMETA, 'id')))
+        self.model = Model(model_xml.get('name'), model_xml.get(Parser.with_ns(XmlNs.CMETA, 'id')))
 
         # handle the child elements of <model>
         self._add_units(model_xml)
