@@ -78,7 +78,9 @@ def create_rdf_node(node_content):
         uri = node_content[0]
         # Ensure namespace prefix can be appended to
         if not uri.endswith('#') and not uri.endswith('/'):
-            uri = uri + '#'
+            uri += '#'
         return rdflib.Namespace(uri)[local_name]
     elif isinstance(node_content, str) and node_content.startswith('#'):
         return rdflib.URIRef(node_content)
+    else:
+        raise NotImplementedError("Cannot create node")
