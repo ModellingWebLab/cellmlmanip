@@ -120,3 +120,14 @@ def test_get_rdf_annotation(test_simple_odes):
     assert len(named_attributes) == 1
     assert named_attributes[0]['name'] == 'SuggestedForwardEulerTimestep'
     assert named_attributes[0]['value'] == '0.0002'
+
+    # subject as string
+    named_attrib = []
+    named_attrs = model.get_rdf_annotations(subject='#test_simple_odes', predicate=(PYCMLMETA, 'named-attribute'))
+    for s, p, attr in named_attrs:
+        name = model.get_rdf_value(subject=attr, predicate=(PYCMLMETA, 'name'))
+        value = model.get_rdf_value(subject=attr, predicate=(PYCMLMETA, 'value'))
+        named_attrib.append({'name': name, 'value': value})
+
+    assert named_attributes == named_attrib
+

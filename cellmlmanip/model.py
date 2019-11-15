@@ -77,6 +77,7 @@ class Model(object):
     (e.g. units) about symbols used in those equations
 
     :param name: the name of the model e.g. from <model name="">
+    :param cmeta_id: the cmeta_id of the model e.g. from <model cmeta_id="">
     """
     def __init__(self, name, cmeta_id):
 
