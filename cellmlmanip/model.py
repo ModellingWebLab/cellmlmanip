@@ -83,7 +83,7 @@ class Model(object):
 
         self.name = name
         self.cmeta_id = cmeta_id
-        self.rdf_identity = rdflib.URIRef('#' + cmeta_id) if cmeta_id is not None else None
+        self.rdf_identity = rdflib.URIRef('#' + cmeta_id) if cmeta_id else None
         self.units = UnitStore(model=self)
         self.rdf = rdflib.Graph()
         self.graph = None   # An nx.DiGraph
@@ -558,17 +558,32 @@ class Model(object):
             raise ValueError('Multiple variables annotated with {%s}%s' %
                              (namespace_uri, local_name))
 
-    def get_rdf_annotations(self, subject=None, predicate=None, object=None):
-        """Searches the RDF graph and returns the triples for the given (subject, predicate, object)"""
+    def get_rdf_annotations(self, subject=None, predicate=None, object_=None):
+        """Searches the RDF graph and returns 'triples matching the given parameters'
+
+        :param subject: the subject of the triples returned
+        :param predicate: the predicate of the triples returned
+        :param object_: the object of the triples returned
+
+        ``subject`` ``predicate`` and ``objec_`` are optional, if None then any triple matches
+        if all are none, all triples are returned
+        ``subject`` ``predicate`` and ``objec_`` can be anything valid as input to create_rdf_node
+        typically an (NS, local) pair, a string or None"""
         subject = create_rdf_node(subject)
         predicate = create_rdf_node(predicate)
-        object = create_rdf_node(object)
-        return self.rdf.triples((subject, predicate, object))
+        object_ = create_rdf_node(object_)
+        return self.rdf.triples((subject, predicate, object_))
 
     def get_rdf_value(self, subject, predicate):
-        """Get the value of an RDF object connected to ``subject`` by ``predicate``."""
+        """Get the value of an RDF object connected to ``subject`` by ``predicate``.
+
+        :param subject: the object of the triple returned
+        :param predicate: the object of the triple returned
+
+        Note: expects exactly one triple to match and the result to be a litera. It's string value is  returned."""
         triples = list(self.get_rdf_annotations(subject, predicate))
         assert len(triples) == 1
+        assert isinstance(triples[0][2], rdflib.Literal)
         value = str(triples[0][2]).strip()  # Could make this cleverer by considering data type if desired
         return value
 

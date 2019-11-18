@@ -2,6 +2,7 @@ import os
 
 import pytest
 import sympy
+import rdflib
 
 import cellmlmanip
 import cellmlmanip.rdf
@@ -36,12 +37,32 @@ def test_create_rdf_node():
 
     node = cellmlmanip.rdf.create_rdf_node(('http://example.com/', 'hi'))
     assert str(node) == 'http://example.com/hi'
+    assert node == rdflib.URIRef('http://example.com/hi')
 
     node = cellmlmanip.rdf.create_rdf_node(('http://example.com#', 'hi'))
     assert str(node) == 'http://example.com#hi'
+    assert node == rdflib.URIRef('http://example.com#hi')
 
     node = cellmlmanip.rdf.create_rdf_node(('http://example.com', 'hi'))
     assert str(node) == 'http://example.com#hi'
+    assert node == rdflib.URIRef('http://example.com#hi')
+
+    node = cellmlmanip.rdf.create_rdf_node('#example')
+    assert str(node) == '#example'
+    assert node == rdflib.URIRef('#example')
+
+    node = cellmlmanip.rdf.create_rdf_node('example')
+    assert str(node) == 'example'
+    assert node == rdflib.Literal('example')
+
+    node = cellmlmanip.rdf.create_rdf_node(None)
+    assert node is None
+
+    node = rdflib.URIRef('http://example.com#hi')
+    assert cellmlmanip.rdf.create_rdf_node(node) == node
+
+    node = rdflib.Literal('example')
+    assert cellmlmanip.rdf.create_rdf_node(node) == node
 
 
 def test_get_symbol_by_ontology_term(test_simple_odes, test_bad_annotations):
