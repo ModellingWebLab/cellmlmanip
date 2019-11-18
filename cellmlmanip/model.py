@@ -588,8 +588,8 @@ class Model(object):
         return value
 
     def get_symbols_by_rdf(self, predicate, object_=None):
-        """Searches the RDF graph for variables annotated with the given predicate
-        and object (e.g. "is oxmeta:time") and returns the associated symbols.
+        """Searches the RDF graph for variables annotated with the given predicate and object (e.g. "is oxmeta:time")
+        and returns the associated symbols sorted in document order.
 
         Both ``predicate`` and ``object_`` (if given) must be
         ``(namespace, local_name)`` tuples or string literals.
@@ -610,7 +610,7 @@ class Model(object):
                     'Non-local annotations are not supported.')
             symbols.append(self.get_symbol_by_cmeta_id(uri[1:]))
 
-        return symbols
+        return sorted(symbols, key=lambda sym: self.get_meta_dummy(sym).order_added)
 
     def get_ontology_terms_by_symbol(self, symbol, namespace_uri=None):
         """Searches the RDF graph for the annotation ``{namespace_uri}annotation_name``
