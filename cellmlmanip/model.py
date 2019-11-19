@@ -83,6 +83,9 @@ class Model(object):
     Equations are stored as ``Sympy.Eq`` objects, but with the caveat that all variables and numbers must be specified
     using the ``Sympy.Dummy`` objects returned by :meth:`add_variable()` and :meth:`add_number()`.
 
+    Cellmlmanip does not support algebraic models: the left-hand side every equation in the model must be a variable or
+    a derivative.
+
     :param name: the name of the model e.g. from ``<model name="">``.
     :param cmeta_id: An optional cmeta id, e.g. from ``<model cmeta:id="">``.
     """
@@ -130,10 +133,18 @@ class Model(object):
         """
         Adds an equation to this model.
 
+        The left-hand side (LHS) of the equation must be either a variable symbol or a derivative.
+
+        All numbers and variable symbols used in the equation must have been obtained from this model, e.g. via
+        :meth:`add_number()`, :meth:`add_variable()`, or :meth:`get_symbol_by_cmeta_id()`.
+
         :param equation: A ``sympy.Eq`` object.
         """
         assert isinstance(equation, sympy.Eq), 'The argument `equation` must be a sympy.Eq.'
         self.equations.append(equation)
+
+        # Invalidate the cached graph
+        self.graph = None
 
     def add_number(self, *, number, units, dummy=None):
         """
@@ -330,9 +341,7 @@ class Model(object):
         return False
 
     def add_rdf(self, rdf: str):
-        """Takes RDF string and stores it in an RDFlib.Graph for the model. Can be called
-        repeatedly.
-        """
+        """ Takes an RDF string and stores it in the model's RDF graph. """
         self.rdf.parse(StringIO(rdf))
 
     def check_left_right_units_equal(self, equality):
@@ -350,8 +359,9 @@ class Model(object):
 
     def get_equation_graph(self, refresh=False):
         """
-        Returns an ordered list of equations for the model
+        Returns a ``networkx.DiGraph`` containing the model equations.
 
+        :param refresh: If set to ``True`` the graph will be regenerated, even if a cached version is available.
         :return: An ``nx.Digraph`` of equations.
         """
         # TODO: Set the parameters of the model (parameters rather than use initial values)
@@ -470,7 +480,7 @@ class Model(object):
         return graph
 
     def get_equations_for(self, symbols, lexicographical_sort=True, recurse=True):
-        """Get all equations for given collection of symbols
+        """Get all equations for a given collection of symbols.
 
         Results are sorted in topographical order.
         :param symbols: the symbols to get the equations for
@@ -535,7 +545,7 @@ class Model(object):
 
     def get_symbol_by_cmeta_id(self, cmeta_id):
         """
-        Searches the given graph and returns the symbol for the variable with the given cmeta_id.
+        Searches the given graph and returns the symbol for the variable with the given cmeta id.
 
         To get symbols from e.g. an oxmeta ontology term, use :meth:`get_symbol_by_ontology_term()`.
         """
@@ -719,3 +729,33 @@ class Model(object):
             if matched:
                 matches.append(variable)
         return matches
+
+    def replace_equation(self, equation):
+        """
+        Searches the model for an equation with the same left-hand side (LHS) as ``equation``, and replaces it with the
+        new equation.
+
+        As with :meth:`add_equation()` the LHS must be either a variable symbol or a derivative, and all numbers and
+        variable symbols used in the equation must have been obtained from this model, e.g. via :meth:`add_number()`,
+        :meth:`add_variable()`, or :meth:`get_symbol_by_cmeta_id()`.
+
+        :param lhs: An LHS expression (either a symbol or a derivative).
+        :param rhs: The new RHS expression for this variable.
+        """
+        i_found = None
+        for i, eq in enumerate(self.equations):
+            # TODO: This formulation doesn't let you change states for non-states (and vice versa)
+            # TODO: If updating that, also update the docstring above.
+            if eq.lhs == equation.lhs:
+                i_found = i
+                break
+
+        if i_found is None:
+            raise ValueError('No equation found for LHS ' + str(equation.lhs))
+
+        # Replace equation
+        self.equations[i] = equation
+
+        # Invalidate cache
+        self.graph = None
+
