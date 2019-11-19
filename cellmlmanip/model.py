@@ -77,14 +77,14 @@ class Model(object):
     A componentless representation of a CellML model, containing a list of equations, units, and RDF metadata about
     symbols used in those equations.
 
-    The main parts of a Model are 1. a list of sympy equation objects; 2. a collection of named units; and 3. and RDF
-    graph that stores further meta data about the Model.
+    The main parts of a Model are 1. a list of sympy equation objects; 2. a collection of named units; and 3. an RDF
+    graph that stores further meta data about the model.
 
     Equations are stored as ``Sympy.Eq`` objects, but with the caveat that all variables and numbers must be specified
     using the ``Sympy.Dummy`` objects returned by :meth:`add_variable()` and :meth:`add_number()`.
 
     :param name: the name of the model e.g. from ``<model name="">``.
-    :param cmeta_id: An optional ``cmeta_id``, e.g. from ``<model cmeta_id="">``.
+    :param cmeta_id: An optional cmeta id, e.g. from ``<model cmeta:id="">``.
     """
     def __init__(self, name, cmeta_id=None):
 
@@ -114,8 +114,8 @@ class Model(object):
         """
         Adds a unit of measurement to this model, with a given ``name`` and list of ``attributes``.
 
-        :param units_name: A string name
-        :param unit_attributes: An optional list of dictionaries containing unit attributes. See
+        :param name: A string name.
+        :param attributes: An optional list of dictionaries containing unit attributes. See
             :meth:`UnitStore.add_custom_unit()`.
         :base_units: Set to ``True`` to define a new base unit.
         """
