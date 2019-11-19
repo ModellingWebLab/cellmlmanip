@@ -370,23 +370,23 @@ class Model(object):
         for equation in self.equations:
             equation_count += 1
 
-            # Determine LHS. We should only every have one symbol (or derivative)
-            lhs_symbol = self.get_symbols_for([equation.lhs])
-            assert len(lhs_symbol) == 1
-            lhs_symbol = lhs_symbol.pop()
+            # Determine LHS.
+            lhs = equation.lhs
+            if not (lhs.is_Derivative or (lhs.is_Dummy and not self.get_meta_dummy(lhs).number)):
+                raise RuntimeError('DAEs are not supported. All equations must be of form `x = ...` or `dx/dt = ...')
 
             # Add the lhs symbol of the equation to the graph
-            graph.add_node(lhs_symbol, equation=equation)
+            graph.add_node(lhs, equation=equation)
 
             # If LHS is a derivative
-            if lhs_symbol.is_Derivative:
+            if lhs.is_Derivative:
                 # Get the state symbol and update the variable information
-                state_symbol = lhs_symbol.free_symbols.pop()
+                state_symbol = lhs.free_symbols.pop()
                 state_variable = self.get_meta_dummy(state_symbol)
                 Model._set_variable_type(state_variable, 'state')
 
                 # Get the free symbol and update the variable information
-                free_symbol = lhs_symbol.variables[0]
+                free_symbol = lhs.variables[0]
                 free_variable = self.get_meta_dummy(free_symbol)
                 Model._set_variable_type(free_variable, 'free')
 
@@ -398,39 +398,36 @@ class Model(object):
 
         # for each equation in the model
         for equation in self.equations:
-            # get the lhs symbol
-            lhs_symbol = self.get_symbols_for([equation.lhs]).pop()
+            # Get the LHS (already checked above)
+            lhs = equation.lhs
 
-            # for each of the symbols on the rhs of the equation
-            for rhs_symbol in self.get_symbols_for([equation.rhs]):
+            # for each of the symbols or derivatives on the rhs of the equation
+            for rhs in self._find_symbols_and_derivatives(equation.rhs):
                 # if the symbol maps to a node in the graph
-                if rhs_symbol in graph.nodes:
+                if rhs in graph.nodes:
                     # add the dependency edge
-                    graph.add_edge(rhs_symbol, lhs_symbol)
+                    graph.add_edge(rhs, lhs)
                 else:
                     # The symbol does not have a node in the graph, get the variable info
-                    variable = self.find_variable({'dummy': rhs_symbol})
+                    variable = self.find_variable({'dummy': rhs})
                     assert len(variable) == 1
                     variable = variable[0]
 
                     # If the variable is a state or free variable of a derivative
                     if variable.type in ['state', 'free']:
-                        graph.add_node(rhs_symbol, equation=None, variable_type=variable.type)
-                        graph.add_edge(rhs_symbol, lhs_symbol)
+                        graph.add_node(rhs, equation=None, variable_type=variable.type)
+                        graph.add_edge(rhs, lhs)
                     else:
                         # if the variable on the right-hand side is a number
-                        rhs_variable = self.get_meta_dummy(rhs_symbol)
+                        rhs_variable = self.get_meta_dummy(rhs)
                         if rhs_variable.number is None:
                             # this variable is a parameter - add to graph and connect to lhs
                             Model._set_variable_type(variable, 'parameter')
                             unit = rhs_variable.units
                             number = sympy.Float(variable.initial_value)
-                            dummy = self.add_number(number=number,
-                                                    units=str(unit))
-                            graph.add_node(rhs_symbol,
-                                           equation=sympy.Eq(rhs_symbol, dummy),
-                                           variable_type='parameter')
-                            graph.add_edge(rhs_symbol, lhs_symbol)
+                            dummy = self.add_number(number=number, units=str(unit))
+                            graph.add_node(rhs, equation=sympy.Eq(rhs, dummy), variable_type='parameter')
+                            graph.add_edge(rhs, lhs)
 
         # add metadata about each node directly to the graph
         # TODO: necessary? remove?
@@ -692,19 +689,18 @@ class Model(object):
             logger.warning('Variable %s already has type=="%s". Skip setting "%s"',
                            variable.dummy, variable.type, variable_type)
 
-    def get_symbols_for(self, expressions):
-        """Returns the symbols in a collection of expressions.
-        Please Note: derivative instance is regarded as a single symbol rather than treated as expressions"""
+    def _find_symbols_and_derivatives(self, expression):
+        """ Returns a set containing all symbols and derivatives referenced in an expression. """
         symbols = set()
 
-        for expr in expressions:
-            # if this expression is a derivative or a dummy symbol which is not a number placeholder
-            if expr.is_Derivative or (expr.is_Dummy and not self.get_meta_dummy(expr).number):
-                symbols.add(expr)
-            # otherwise, descend into sub-expressions and collect symbols
-            else:
-                for arg in expr.args:
-                    symbols |= self.get_symbols_for([arg])
+        # if this expression is a derivative or a dummy symbol which is not a number placeholder
+        if expression.is_Derivative or (expression.is_Dummy and not self.get_meta_dummy(expression).number):
+            symbols.add(expression)
+        # otherwise, descend into sub-expressions and collect symbols
+        else:
+            for arg in expression.args:
+                symbols |= self._find_symbols_and_derivatives(arg)
+
         return symbols
 
     def find_variable(self, search_dict):
