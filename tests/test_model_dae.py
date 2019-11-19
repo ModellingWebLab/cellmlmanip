@@ -1,8 +1,7 @@
 import os
-
 import pytest
 
-from cellmlmanip import parser, units
+from cellmlmanip import parser
 
 
 class TestModelDAE:
