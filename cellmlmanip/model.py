@@ -132,8 +132,7 @@ class Model(object):
 
         :param equation: A ``sympy.Eq`` object.
         """
-        if not isinstance(equation, sympy.Eq):
-            raise ValueError('The argument `equation` must be a sympy.Eq.')
+        assert isinstance(equation, sympy.Eq), 'The argument `equation` must be a sympy.Eq.'
         self.equations.append(equation)
 
     def add_number(self, *, number, units, dummy=None):
@@ -146,8 +145,7 @@ class Model(object):
 
         :return: The ``sympy.Dummy`` object used to represent this number.
         """
-        if not isinstance(number, sympy.Number):
-            raise ValueError('The argument `number` must be a sympy.Number.')
+        assert isinstance(number, sympy.Number), 'The argument `number` must be a sympy.Number.'
 
         # Create a dummy object if necessary
         if not dummy:
@@ -166,8 +164,7 @@ class Model(object):
         return self.dummy_metadata[dummy].dummy
 
     # TODO: Do we need the * here?
-    def add_variable(self, *, name, units, initial_value=None,
-                     public_interface=None, private_interface=None, **kwargs):
+    def add_variable(self, *, name, units, initial_value=None, public_interface=None, private_interface=None, **kwargs):
         """
         Add a variable to the model and return a Sympy ``Dummy`` object to represent it.
 
