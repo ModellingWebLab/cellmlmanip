@@ -77,10 +77,13 @@ class Model(object):
     (e.g. units) about symbols used in those equations
 
     :param name: the name of the model e.g. from <model name="">
+    :param cmeta_id: the cmeta_id of the model e.g. from <model cmeta_id="">
     """
-    def __init__(self, name):
+    def __init__(self, name, cmeta_id):
 
         self.name = name
+        self.cmeta_id = cmeta_id
+        self.rdf_identity = rdflib.URIRef('#' + cmeta_id) if cmeta_id else None
         self.units = UnitStore(model=self)
         self.rdf = rdflib.Graph()
         self.graph = None   # An nx.DiGraph
@@ -543,7 +546,7 @@ class Model(object):
         found, and a ``ValueError`` if more than one variable with the given
         annotation is found.
         """
-        symbols = self._get_symbols_by_rdf(
+        symbols = self.get_symbols_by_rdf(
             ('http://biomodels.net/biology-qualifiers/', 'is'),
             (namespace_uri, local_name))
         if len(symbols) == 1:
@@ -555,21 +558,44 @@ class Model(object):
             raise ValueError('Multiple variables annotated with {%s}%s' %
                              (namespace_uri, local_name))
 
-    def _get_symbols_by_rdf(self, predicate, object_=None):
-        """Searches the RDF graph for variables annotated with the given predicate
-        and object (e.g. "is oxmeta:time") and returns the associated symbols.
+    def get_rdf_annotations(self, subject=None, predicate=None, object_=None):
+        """Searches the RDF graph and returns 'triples matching the given parameters'
+
+        :param subject: the subject of the triples returned
+        :param predicate: the predicate of the triples returned
+        :param object_: the object of the triples returned
+
+        ``subject`` ``predicate`` and ``object_`` are optional, if None then any triple matches
+        if all are none, all triples are returned
+        ``subject`` ``predicate`` and ``object_`` can be anything valid as input to create_rdf_node
+        typically an (NS, local) pair, a string or None"""
+        subject = create_rdf_node(subject)
+        predicate = create_rdf_node(predicate)
+        object_ = create_rdf_node(object_)
+        return self.rdf.triples((subject, predicate, object_))
+
+    def get_rdf_value(self, subject, predicate):
+        """Get the value of an RDF object connected to ``subject`` by ``predicate``.
+
+        :param subject: the object of the triple returned
+        :param predicate: the object of the triple returned
+
+        Note: expects exactly one triple to match and the result to be a literal. It's string value is  returned."""
+        triples = list(self.get_rdf_annotations(subject, predicate))
+        assert len(triples) == 1
+        assert isinstance(triples[0][2], rdflib.Literal)
+        value = str(triples[0][2]).strip()  # Could make this cleverer by considering data type if desired
+        return value
+
+    def get_symbols_by_rdf(self, predicate, object_=None):
+        """Searches the RDF graph for variables annotated with the given predicate and object (e.g. "is oxmeta:time")
+        and returns the associated symbols sorted in document order.
 
         Both ``predicate`` and ``object_`` (if given) must be
-        ``(namespace, local_name)`` tuples.
+        ``(namespace, local_name)`` tuples or string literals.
         """
-        # Convert property and value to RDF nodes
-        # TODO: Eventually a different form for predicate and object may be
-        #       accepted.
-        assert len(predicate) == 2
-        predicate = create_rdf_node(*predicate)
-        if object_ is not None:
-            assert len(object_) == 2
-            object_ = create_rdf_node(*object_)
+        predicate = create_rdf_node(predicate)
+        object_ = create_rdf_node(object_)
 
         # Find symbols
         symbols = []
@@ -584,7 +610,7 @@ class Model(object):
                     'Non-local annotations are not supported.')
             symbols.append(self.get_symbol_by_cmeta_id(uri[1:]))
 
-        return symbols
+        return sorted(symbols, key=lambda sym: self.get_meta_dummy(sym).order_added)
 
     def get_ontology_terms_by_symbol(self, symbol, namespace_uri=None):
         """Searches the RDF graph for the annotation ``{namespace_uri}annotation_name``
@@ -603,7 +629,7 @@ class Model(object):
         cmeta_id = self.graph.nodes[symbol].get('cmeta_id', None)
         if cmeta_id:
             predicate = ('http://biomodels.net/biology-qualifiers/', 'is')
-            predicate = create_rdf_node(*predicate)
+            predicate = create_rdf_node(predicate)
             for delimeter in ('#', '/'):  # Look for terms using either possible namespace delimiter
                 subject = rdflib.term.URIRef(delimeter + cmeta_id)
                 for object in self.rdf.objects(subject, predicate):
