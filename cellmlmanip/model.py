@@ -565,9 +565,9 @@ class Model(object):
         :param predicate: the predicate of the triples returned
         :param object_: the object of the triples returned
 
-        ``subject`` ``predicate`` and ``objec_`` are optional, if None then any triple matches
+        ``subject`` ``predicate`` and ``object_`` are optional, if None then any triple matches
         if all are none, all triples are returned
-        ``subject`` ``predicate`` and ``objec_`` can be anything valid as input to create_rdf_node
+        ``subject`` ``predicate`` and ``object_`` can be anything valid as input to create_rdf_node
         typically an (NS, local) pair, a string or None"""
         subject = create_rdf_node(subject)
         predicate = create_rdf_node(predicate)
@@ -580,7 +580,7 @@ class Model(object):
         :param subject: the object of the triple returned
         :param predicate: the object of the triple returned
 
-        Note: expects exactly one triple to match and the result to be a litera. It's string value is  returned."""
+        Note: expects exactly one triple to match and the result to be a literal. It's string value is  returned."""
         triples = list(self.get_rdf_annotations(subject, predicate))
         assert len(triples) == 1
         assert isinstance(triples[0][2], rdflib.Literal)

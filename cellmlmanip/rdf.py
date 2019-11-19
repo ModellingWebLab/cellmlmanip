@@ -5,20 +5,16 @@ import rdflib
 def create_rdf_node(node_content):
     """Creates and returns an RDF node.
 
-    :param node_content: the conetnet for the node.
+    :param node_content: the content for the node.
 
     The ``node_content``, if given, must either be a :class:`rdflib.term.Node` instance,
     a tuple ``(namespace, local_name)``, or a string, in which case it is interpreted
     as either a URI ref if it starts with # otherwise a literal RDF node.
 
-    The ``node_content`` may also be `None` to return `None`, allowing easy handling of wildcard options to queries."""
-    if node_content is None:
-        return None
-    elif isinstance(node_content, rdflib.term.Node) or isinstance(node_content, rdflib.term.Node) or \
-            isinstance(node_content, rdflib.URIRef):
+    The ``node_content`` may also be ``None`` to return `None`, allowing easy handling of wildcard options to queries."""
+    if node_content is None or isinstance(node_content, rdflib.term.Node):
         return node_content
-
-    if isinstance(node_content, tuple):
+    elif isinstance(node_content, tuple):
         uri, local_name = node_content
         # Ensure namespace prefix can be appended to
         if not uri.endswith('#') and not uri.endswith('/'):
