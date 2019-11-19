@@ -73,20 +73,33 @@ class MetaDummy(object):
 
 
 class Model(object):
-    """An unrolled representation of a CellML model, using list of equations and metadata
-    (e.g. units) about symbols used in those equations
-
-    :param name: the name of the model e.g. from <model name="">
-    :param cmeta_id: the cmeta_id of the model e.g. from <model cmeta_id="">
     """
-    def __init__(self, name, cmeta_id):
+    A componentless representation of a CellML model, containing a list of equations, units, and RDF metadata about
+    symbols used in those equations.
+
+    The main parts of a Model are 1. a list of sympy equation objects; 2. a collection of named units; and 3. and RDF
+    graph that stores further meta data about the Model.
+
+    Equations are stored as ``Sympy.Eq`` objects, but with the caveat that all variables and numbers must be specified
+    using the ``Sympy.Dummy`` objects returned by :meth:`add_variable()` and :meth:`add_number()`.
+
+    :param name: the name of the model e.g. from ``<model name="">``.
+    :param cmeta_id: An optional ``cmeta_id``, e.g. from ``<model cmeta_id="">``.
+    """
+    def __init__(self, name, cmeta_id=None):
 
         self.name = name
         self.cmeta_id = cmeta_id
         self.rdf_identity = rdflib.URIRef('#' + cmeta_id) if cmeta_id else None
+
+        # A list of sympy.Eq equation objects
+        self.equations = []
+
+        # A pint UnitStore, mapping unit names to unit objects
         self.units = UnitStore(model=self)
+
+        # An RDF graph containing further meta data
         self.rdf = rdflib.Graph()
-        self.graph = None   # An nx.DiGraph
 
         # Maps sympy.Dummy objects to MetaDummy objects
         self.dummy_metadata = OrderedDict()
@@ -94,23 +107,24 @@ class Model(object):
         # Maps string names to sympy.Dummy objects
         self.name_to_symbol = dict()
 
-        # A list of sympy.Eq objects.
-        self.equations = []
+        # A cached nx.DiGraph of this model's equations, created by get_equation_graph()
+        self.graph = None
 
-    def add_unit(self, units_name, unit_attributes=None, base_units=False):
+    def add_unit(self, name, attributes=None, base_units=False):
         """
-        Adds information about <units> in <model>.
+        Adds a unit of measurement to this model, with a given ``name`` and list of ``attributes``.
 
         :param units_name: A string name
         :param unit_attributes: An optional list of dictionaries containing unit attributes. See
             :meth:`UnitStore.add_custom_unit()`.
         :base_units: Set to ``True`` to define a new base unit.
         """
-        assert not (unit_attributes and base_units), 'Cannot define base unit with unit attributes'
         if base_units:
-            self.units.add_base_unit(units_name)
+            if attributes:
+                raise ValueError('Base units can not be defined with unit attributes.')
+            self.units.add_base_unit(name)
         else:
-            self.units.add_custom_unit(units_name, unit_attributes)
+            self.units.add_custom_unit(name, attributes)
 
     def add_equation(self, equation):
         """
@@ -118,7 +132,8 @@ class Model(object):
 
         :param equation: A ``sympy.Eq`` object.
         """
-        assert isinstance(equation, sympy.Eq), 'Equation expression must be equality'
+        if not isinstance(equation, sympy.Eq):
+            raise ValueError('The argument `equation` must be a sympy.Eq.')
         self.equations.append(equation)
 
     def add_number(self, *, number, units, dummy=None):
@@ -131,7 +146,8 @@ class Model(object):
 
         :return: The ``sympy.Dummy`` object used to represent this number.
         """
-        assert isinstance(number, sympy.Number)
+        if not isinstance(number, sympy.Number):
+            raise ValueError('The argument `number` must be a sympy.Number.')
 
         # Create a dummy object if necessary
         if not dummy:
@@ -153,18 +169,19 @@ class Model(object):
     def add_variable(self, *, name, units, initial_value=None,
                      public_interface=None, private_interface=None, **kwargs):
         """
-        Add information about a variable that represents a symbol in equations.
+        Add a variable to the model and return a Sympy ``Dummy`` object to represent it.
 
         :param name: A string name.
-        :param units: A string units reprensetation.
+        :param units: A string units representation.
         :param initial_value: An optional initial value.
-        :param public_interface: An optional public interface specifier.
-        :param private_interface: An optional private interface specifier.
+        :param public_interface: An optional public interface specifier (only required when parsing CellML).
+        :param private_interface: An optional private interface specifier (only required when parsing CellML).
         :param kwargs: Any further keyword arguments will be passed to the :class:`MetaDummy` constructor.
 
         :return: The ``sympy.Dummy`` created by the model to represent the variable in equations.
         """
-        assert name not in self.name_to_symbol, 'Variable %s already exists' % name
+        if name in self.name_to_symbol:
+            raise ValueError('Variable %s already exists.' % name)
 
         dummy = sympy.Dummy(name)
 
