@@ -124,7 +124,7 @@ class Parser(object):
             units_name = units_element.get('name')
             # if it's a defined base unit, we can be add immediately to the model
             if units_element.get('base_units'):
-                self.model.add_unit(units_name, unit_attributes=None, base_units=True)
+                self.model.add_unit(units_name, attributes=None, base_units=True)
                 units_found.add(units_name)
             # all other units are collected (because they may depend on further user-defined units)
             else:
@@ -148,7 +148,7 @@ class Parser(object):
 
             # unit is defined in terms of known units - ok to add to model
             if add_now:
-                self.model.add_unit(unit_name, unit_attributes=unit_elements)
+                self.model.add_unit(unit_name, attributes=unit_elements)
                 units_found.add(unit_name)
                 iteration = 0
                 continue
