@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/ModellingWebLab/cellmlmanip.svg?branch=develop)](https://travis-ci.org/ModellingWebLab/cellmlmanip) [![Documentation Status](https://readthedocs.org/projects/cellmlmanip/badge/?version=latest)](https://cellmlmanip.readthedocs.io/en/latest/?badge=latest)
+[![Build Status](https://travis-ci.org/ModellingWebLab/cellmlmanip.svg?branch=develop)](https://travis-ci.org/ModellingWebLab/cellmlmanip) [![Documentation Status](https://readthedocs.org/projects/cellmlmanip/badge/?version=latest)](https://cellmlmanip.readthedocs.io/en/latest/?badge=latest) [![Coverage Status](https://codecov.io/gh/ModellingWebLab/cellmlmanip/branch/develop/graph/badge.svg)](https://codecov.io/gh/ModellingWebLab/cellmlmanip/)
 
 # cellmlmanip
 CellML loading and model equation manipulation
