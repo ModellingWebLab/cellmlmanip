@@ -725,37 +725,36 @@ class Model(object):
                 matches.append(variable)
         return matches
 
-    def replace_equation(self, equation):
+    def set_equation(self, lhs, rhs):
         """
-        Searches the model for an equation naming the same variable in its LHS as the given ``equation``, and replaces
-        it with the new equation.
+        Adds an equation for the variable named in ``lhs``, or replaces an existing one.
 
         As with :meth:`add_equation()` the LHS must be either a variable symbol or a derivative, and all numbers and
-        variable symbols used in the equation must have been obtained from this model, e.g. via :meth:`add_number()`,
-        :meth:`add_variable()`, or :meth:`get_symbol_by_cmeta_id()`.
+        variable symbols used in ``lhs`` and ``rhs`` must have been obtained from this model, e.g. via
+        :meth:`add_number()`, :meth:`add_variable()`, or :meth:`get_symbol_by_cmeta_id()`.
 
         :param lhs: An LHS expression (either a symbol or a derivative).
         :param rhs: The new RHS expression for this variable.
         """
-        # Get symbol for lhs (stripping of any derivative)
-        lhs1 = equation.lhs
-        if lhs1.is_Derivative:
-            lhs1 = lhs1.free_symbols.pop()
-        assert lhs1.is_Dummy and not self.get_meta_dummy(lhs1).number
+        # Get variable symbol named in the lhs
+        lhs_symbol = lhs
+        if lhs_symbol.is_Derivative:
+            lhs_symbol = lhs_symbol.free_symbols.pop()
+        assert lhs_symbol.is_Dummy and not self.get_meta_dummy(lhs_symbol).number
 
-        lhs2 = None
-        i_found = None
+        # Check if the variable named in the lhs already has an equation
+        i_existing = None
         for i, eq in enumerate(self.equations):
-            lhs2 = eq.lhs.free_symbols.pop() if eq.lhs.is_Derivative else eq.lhs
-            if lhs1 == lhs2:
-                i_found = i
+            symbol = eq.lhs.free_symbols.pop() if eq.lhs.is_Derivative else eq.lhs
+            if symbol == lhs_symbol:
+                i_existing = i
                 break
 
-        if i_found is None:
-            raise ValueError('No equation found for LHS ' + str(lhs1))
-
-        # Replace equation
-        self.equations[i_found] = equation
+        # Add or replace equation
+        if i_existing is None:
+            self.equations.append(sympy.Eq(lhs, rhs))
+        else:
+            self.equations[i_existing] = sympy.Eq(lhs, rhs)
 
         # Invalidate cache
         self.graph = None

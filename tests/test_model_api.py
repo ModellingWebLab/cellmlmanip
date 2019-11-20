@@ -51,7 +51,7 @@ class TestModelAPI(object):
         with pytest.raises(RuntimeError, match='DAEs are not supported'):
             model.get_equation_graph()
 
-    def test_replace_equation(self, model):
+    def test_set_equation(self, model):
         """ Tests replacing an equation in a model. """
 
         # Get model, assert that V is a state variable
@@ -63,7 +63,7 @@ class TestModelAPI(object):
         # Now clamp it to -80mV
         v_unit = v_meta.units
         rhs = model.add_number(number=sp.Number(-80), units=str(v_unit))
-        model.replace_equation(sp.Eq(v, rhs))
+        model.set_equation(v, rhs)
 
         # Check that V is no longer a state
         model.get_equation_graph()
@@ -85,7 +85,7 @@ class TestModelAPI(object):
             {'units': str(t_unit), 'exponent': -1},
         ])
         rhs = model.add_number(number=sp.Number(0), units=dvdt_unit)
-        model.replace_equation(sp.Eq(lhs, rhs))
+        model.set_equation(lhs, rhs)
 
         # Check that V is a state again
         model.get_equation_graph()
@@ -93,9 +93,8 @@ class TestModelAPI(object):
         v_meta = model.get_meta_dummy(v)
         assert v_meta.type == 'state'
 
-        # Replace equation for a variable that doesn't exist
+        # Set equation for a new variable that doesn't exist
         lhs = model.add_variable(name='an_incredibly_unlikely_variable_name', units=str(v_unit))
         rhs = model.add_number(number=sp.Float(12), units=str(v_unit))
-        with pytest.raises(ValueError, match='No equation found for LHS'):
-            model.replace_equation(sp.Eq(lhs, rhs))
+        model.set_equation(lhs, rhs)
 
