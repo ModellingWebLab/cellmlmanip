@@ -20,10 +20,6 @@ class TestHodgkin:
         )
         return load_model(hodgkin_cellml)
 
-    @pytest.fixture(scope="class")
-    def graph(self, model):
-        return model.get_equation_graph()
-
     def test_counts(self, model):
         # https://models.cellml.org/exposure/5d116522c3b43ccaeb87a1ed10139016/hodgkin_huxley_1952_variant01.cellml/cellml_math
         assert len(model.equations) == 17
@@ -52,7 +48,8 @@ class TestHodgkin:
         variable_assignment_ok = model.check_dummy_assignment()
         assert variable_assignment_ok
 
-    def test_equation_graph(self, graph, model):
+    def test_equation_graph(self, model):
+        graph = model.graph
         assert len(graph.nodes) == 32
 
         free_variable = model.find_variable({'type': 'free'})
@@ -148,7 +145,7 @@ class TestHodgkin:
         free_variable_symbol = model.get_free_variable_symbol()
         assert free_variable_symbol.name == 'environment$time'
 
-    def test_evaluation(self, graph, model):
+    def test_evaluation(self, model):
         """
         From Michael:
 
@@ -177,6 +174,7 @@ class TestHodgkin:
         (as in, converting to and back from string shouldn't lose
         accuracy, it does _not_ mean all printed digits are accurate)
         """
+        graph = model.graph_with_sympy_numbers
 
         # initial values for the free and state variables
         initials = {
@@ -246,7 +244,7 @@ class TestHodgkin:
             actual = evaluated_deriv
             assert float(actual) == pytest.approx(expected)
 
-    def test_get_symbol_by_ontology_term(self, graph, model):
+    def test_get_symbol_by_ontology_term(self, model):
         membrane_voltage_var = model.get_symbol_by_ontology_term(OXMETA, "membrane_voltage")
         assert (isinstance(membrane_voltage_var, sympy.symbol.Dummy))
         assert str(membrane_voltage_var) == "_membrane$V"
@@ -276,7 +274,7 @@ class TestHodgkin:
         # Repeat test without specifying namespace
         assert model.has_ontology_annotation(membrane_voltage_var)
 
-    def test_get_equations_for(self, graph, model):
+    def test_get_equations_for(self, model):
 
         # Test get_equations_for with topgraphical lexicographical ordering
 

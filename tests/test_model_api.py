@@ -47,15 +47,14 @@ class TestModelAPI(object):
         path = os.path.join(os.path.dirname(__file__), 'cellml_files', '4.algebraic_ode_model.cellml')
         model = parser.Parser(path).parse()
 
-        # But equation graph will raise error
+        # But equation graph will raise error (if accessed)
         with pytest.raises(RuntimeError, match='DAEs are not supported'):
-            model.get_equation_graph()
+            model.graph
 
     def test_set_equation(self, model):
         """ Tests replacing an equation in a model. """
 
         # Get model, assert that V is a state variable
-        model.get_equation_graph()
         v = model.get_symbol_by_ontology_term(OXMETA, 'membrane_voltage')
         v_meta = model.get_meta_dummy(v)
         assert v_meta.type == 'state'
@@ -66,7 +65,6 @@ class TestModelAPI(object):
         model.set_equation(v, rhs)
 
         # Check that V is no longer a state
-        model.get_equation_graph()
         v = model.get_symbol_by_ontology_term(OXMETA, 'membrane_voltage')
         v_meta = model.get_meta_dummy(v)
         assert v_meta.type != 'state'
@@ -88,7 +86,6 @@ class TestModelAPI(object):
         model.set_equation(lhs, rhs)
 
         # Check that V is a state again
-        model.get_equation_graph()
         v = model.get_symbol_by_ontology_term(OXMETA, 'membrane_voltage')
         v_meta = model.get_meta_dummy(v)
         assert v_meta.type == 'state'

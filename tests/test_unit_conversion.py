@@ -31,7 +31,6 @@ def test_add_preferred_custom_unit_name(model):
 
 
 def test_conversion_factor_original(simple_model):
-    simple_model.get_equation_graph(True)  # set up the graph - it is not automatic
     symbol_b1 = simple_model.get_symbol_by_cmeta_id("b_1")
     equation = simple_model.get_equations_for([symbol_b1])
     factor = simple_model.units.get_conversion_factor(quantity=1 * simple_model.units.summarise_units(equation[0].lhs),
@@ -40,7 +39,6 @@ def test_conversion_factor_original(simple_model):
 
 
 def test_conversion_factor_bad_types(simple_model):
-    simple_model.get_equation_graph(True)  # set up the graph - it is not automatic
     symbol_b1 = simple_model.get_symbol_by_cmeta_id("b_1")
     equation = simple_model.get_equations_for([symbol_b1])
     expression = equation[0].lhs
@@ -76,7 +74,6 @@ def test_conversion_factor_bad_types(simple_model):
 
 
 def test_conversion_factor_same_units(simple_model):
-    simple_model.get_equation_graph(True)  # set up the graph - it is not automatic
     symbol_b = simple_model.get_symbol_by_cmeta_id("b")
     equation = simple_model.get_equations_for([symbol_b])
     expression = equation[1].rhs
