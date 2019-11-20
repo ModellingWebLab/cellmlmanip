@@ -320,3 +320,16 @@ class TestHodgkin:
         # ENa and gNa should come before iNa
         assert unordered_equations.index(ENa) < unordered_equations.index(iNa)
         assert unordered_equations.index(gNa) < unordered_equations.index(iNa)
+
+    def test_get_equations_for_with_dummies(self, model):
+
+        # Tests using get_equations_for without replacing dummies with sympy numbers
+        # Get ordered equations
+        ina = model.get_symbol_by_ontology_term(OXMETA, 'membrane_fast_sodium_current')
+        equations = model.get_equations_for([ina], recurse=False, strip_units=False)
+
+        for eq in equations:
+            if eq.lhs.name == 'sodium_channel$g_Na':
+                assert isinstance(eq.rhs, sympy.Dummy)
+                break
+
