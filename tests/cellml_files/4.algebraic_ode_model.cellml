@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
+<!-- This model is from the CellML tests in https://github.com/MichaelClerx/cellml-validation
+     It's used here to test that models must have an 'assignment form', and never e.g. "1 + x = 2 - y" -->
 <!-- ODE variables can be described via any algebraic equation -->
 <model name="algebraic_ode_model"
        xmlns="http://www.cellml.org/cellml/1.0#"
