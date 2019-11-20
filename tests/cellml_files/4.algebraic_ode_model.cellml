@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- This model is from the CellML tests in https://github.com/MichaelClerx/cellml-validation
+     It's used here to test that models must have an 'assignment form', and never e.g. "1 + x = 2 - y" -->
+<!-- ODE variables can be described via any algebraic equation -->
+<model name="algebraic_ode_model"
+       xmlns="http://www.cellml.org/cellml/1.0#"
+       xmlns:cellml="http://www.cellml.org/cellml/1.0#">
+  <component name="A">
+    <variable name="time" units="dimensionless" initial_value="0" />
+    <variable name="V" units="dimensionless" initial_value="-0.08" />
+    <math xmlns="http://www.w3.org/1998/Math/MathML">
+      <apply>
+        <eq/>
+        <cn cellml:units="dimensionless">2</cn>
+        <apply>
+          <divide />
+          <cn cellml:units="dimensionless">1</cn>
+          <apply>
+            <diff/>
+            <bvar>
+              <ci>time</ci>
+            </bvar>
+            <ci>V</ci>
+          </apply>
+        </apply>
+      </apply>
+    </math>
+  </component>
+</model>
