@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- CellML 1.0, 5.4.2.2: A unit cannot reference itself indirectly -->
 <!-- This model is from the CellML tests in https://github.com/MichaelClerx/cellml-validation
-     Used here as a test case for cyclical unit references --->
+     Used here as a test case for cyclical unit references -->
 <model name="unit_cycle_3"
        xmlns="http://www.cellml.org/cellml/1.0#">
   <units name="wooster">
