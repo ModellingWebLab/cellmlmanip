@@ -393,12 +393,15 @@ class Model(object):
                 # Get the state symbol and update the variable information
                 state_symbol = lhs.free_symbols.pop()
                 state_variable = self.get_meta_dummy(state_symbol)
-                Model._set_variable_type(state_variable, 'state')
+                state_variable.type = 'state'
 
                 # Get the free symbol and update the variable information
                 free_symbol = lhs.variables[0]
                 free_variable = self.get_meta_dummy(free_symbol)
-                Model._set_variable_type(free_variable, 'free')
+                free_variable.type = 'free'
+            else:
+                variable = self.get_meta_dummy(lhs)
+                variable.type = None
 
         # sanity check none of the lhs have the same hash!
         assert len(graph.nodes) == equation_count
@@ -432,7 +435,7 @@ class Model(object):
                         rhs_variable = self.get_meta_dummy(rhs)
                         if rhs_variable.number is None:
                             # this variable is a parameter - add to graph and connect to lhs
-                            Model._set_variable_type(variable, 'parameter')
+                            variable.type = 'parameter'
                             unit = rhs_variable.units
                             number = sympy.Float(variable.initial_value)
                             dummy = self.add_number(number=number, units=str(unit))
@@ -543,6 +546,7 @@ class Model(object):
         # This should be unreachable
         raise ValueError('No free variable set in model.')  # pragma: no cover
 
+    # TODO: Do we still need this method?
     def get_symbol_by_cmeta_id(self, cmeta_id):
         """
         Searches the given graph and returns the symbol for the variable with the given cmeta id.
@@ -612,8 +616,7 @@ class Model(object):
         """Searches the RDF graph for variables annotated with the given predicate and object (e.g. "is oxmeta:time")
         and returns the associated symbols sorted in document order.
 
-        Both ``predicate`` and ``object_`` (if given) must be
-        ``(namespace, local_name)`` tuples or string literals.
+        Both ``predicate`` and ``object_`` (if given) must be ``(namespace, local_name)`` tuples or string literals.
         """
         predicate = create_rdf_node(predicate)
         object_ = create_rdf_node(object_)
@@ -691,14 +694,6 @@ class Model(object):
         """
         return float(self.dummy_metadata[symbol].initial_value)
 
-    @staticmethod
-    def _set_variable_type(variable, variable_type):
-        if not variable.type:
-            variable.type = variable_type
-        elif variable.type != variable_type:
-            logger.warning('Variable %s already has type=="%s". Skip setting "%s"',
-                           variable.dummy, variable.type, variable_type)
-
     def _find_symbols_and_derivatives(self, expression):
         """ Returns a set containing all symbols and derivatives referenced in an expression. """
         symbols = set()
@@ -745,7 +740,7 @@ class Model(object):
         # Get symbol for lhs (stripping of any derivative)
         lhs1 = equation.lhs
         if lhs1.is_Derivative:
-            lhs1 = lhs.free_symbols.pop()
+            lhs1 = lhs1.free_symbols.pop()
         assert lhs1.is_Dummy and not self.get_meta_dummy(lhs1).number
 
         lhs2 = None
