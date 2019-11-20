@@ -732,8 +732,8 @@ class Model(object):
 
     def replace_equation(self, equation):
         """
-        Searches the model for an equation with the same left-hand side (LHS) as ``equation``, and replaces it with the
-        new equation.
+        Searches the model for an equation naming the same variable in its LHS as the given ``equation``, and replaces
+        it with the new equation.
 
         As with :meth:`add_equation()` the LHS must be either a variable symbol or a derivative, and all numbers and
         variable symbols used in the equation must have been obtained from this model, e.g. via :meth:`add_number()`,
@@ -742,19 +742,25 @@ class Model(object):
         :param lhs: An LHS expression (either a symbol or a derivative).
         :param rhs: The new RHS expression for this variable.
         """
+        # Get symbol for lhs (stripping of any derivative)
+        lhs1 = equation.lhs
+        if lhs1.is_Derivative:
+            lhs1 = lhs.free_symbols.pop()
+        assert lhs1.is_Dummy and not self.get_meta_dummy(lhs1).number
+
+        lhs2 = None
         i_found = None
         for i, eq in enumerate(self.equations):
-            # TODO: This formulation doesn't let you change states for non-states (and vice versa)
-            # TODO: If updating that, also update the docstring above.
-            if eq.lhs == equation.lhs:
+            lhs2 = eq.lhs.free_symbols.pop() if eq.lhs.is_Derivative else eq.lhs
+            if lhs1 == lhs2:
                 i_found = i
                 break
 
         if i_found is None:
-            raise ValueError('No equation found for LHS ' + str(equation.lhs))
+            raise ValueError('No equation found for LHS ' + str(lhs1))
 
         # Replace equation
-        self.equations[i] = equation
+        self.equations[i_found] = equation
 
         # Invalidate cache
         self.graph = None
