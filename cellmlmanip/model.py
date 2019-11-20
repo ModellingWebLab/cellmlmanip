@@ -727,7 +727,7 @@ class Model(object):
 
     def set_equation(self, lhs, rhs):
         """
-        Adds an equation for the variable named in ``lhs``, or replaces an existing one.
+        Adds an equation defining the variable named in ``lhs``, or replaces an existing one.
 
         As with :meth:`add_equation()` the LHS must be either a variable symbol or a derivative, and all numbers and
         variable symbols used in ``lhs`` and ``rhs`` must have been obtained from this model, e.g. via

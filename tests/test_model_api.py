@@ -93,7 +93,7 @@ class TestModelAPI(object):
         v_meta = model.get_meta_dummy(v)
         assert v_meta.type == 'state'
 
-        # Set equation for a new variable that doesn't exist
+        # Set equation for a newly created variable
         lhs = model.add_variable(name='an_incredibly_unlikely_variable_name', units=str(v_unit))
         rhs = model.add_number(number=sp.Float(12), units=str(v_unit))
         model.set_equation(lhs, rhs)
