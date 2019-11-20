@@ -19,7 +19,28 @@ class TestModelAPI(object):
             os.path.dirname(__file__), 'cellml_files', 'hodgkin_huxley_squid_axon_model_1952_modified.cellml')
         return parser.Parser(path).parse()
 
-    def test_dae(self):
+    def test_add_unit(self, model):
+        """ Tests the add_unit method. """
+
+        # TODO: Add unit tests for normal usage
+
+        # Base units can't have attributes
+        with pytest.raises(ValueError, match='can not be defined with unit attributes'):
+            model.add_unit('unlikely_unit_name', [{'units': 'millivolt'}], base_units=True)
+
+    def test_add_variable(self, model):
+        """ Tests the add_variable method. """
+
+        # TODO: Add unit tests for normal usage
+
+        # Variable can't be added twice
+        unit = 'millivolt'
+        model.add_variable(name='varvar1', units=unit)
+        model.add_variable(name='varvar2', units=unit)
+        with pytest.raises(ValueError, match='already exists'):
+            model.add_variable(name='varvar1', units=unit)
+
+    def test_graph_for_dae(self):
         """ Checks if writing a DAE in a model raises an exceptions. """
 
         # Parsing should be OK
@@ -71,4 +92,10 @@ class TestModelAPI(object):
         v = model.get_symbol_by_ontology_term(OXMETA, 'membrane_voltage')
         v_meta = model.get_meta_dummy(v)
         assert v_meta.type == 'state'
+
+        # Replace equation for a variable that doesn't exist
+        lhs = model.add_variable(name='an_incredibly_unlikely_variable_name', units=str(v_unit))
+        rhs = model.add_number(number=sp.Float(12), units=str(v_unit))
+        with pytest.raises(ValueError, match='No equation found for LHS'):
+            model.replace_equation(sp.Eq(lhs, rhs))
 
