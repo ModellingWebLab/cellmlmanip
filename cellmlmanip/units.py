@@ -368,13 +368,18 @@ class UnitStore(object):
 
         if from_unit is not None:
             assert isinstance(from_unit, self.ureg.Unit), 'from_unit must be of type pint:Unit'
-            return self.convert_to(1 * from_unit, to_unit).magnitude
+            conversion_factor = self.convert_to(1 * from_unit, to_unit).magnitude
         elif quantity is not None:
             assert isinstance(quantity, self.ureg.Quantity), 'quantity must be of type pint:Quantity'
-            return self.convert_to(quantity, to_unit).magnitude
+            conversion_factor = self.convert_to(quantity, to_unit).magnitude
         else:
             assert isinstance(expression, sympy.Expr), 'expression must be of type Sympy expression'
-            return self.convert_to(1 * self.summarise_units(expression), to_unit).magnitude
+            conversion_factor = self.convert_to(1 * self.summarise_units(expression), to_unit).magnitude
+
+        if math.isclose(conversion_factor, 1.0):
+            return 1.0
+        else:
+            return conversion_factor
 
     def dimensionally_equivalent(self, symbol1, symbol2):
         """Returns whether two expressions, symbol1 and symbol2,
