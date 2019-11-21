@@ -704,7 +704,7 @@ class Model(object):
         rhs = self.graph.nodes[symbol]['equation'].rhs
 
         # Evaluate and return
-        return float(rhs.evalf())
+        return float(self.get_meta_dummy(rhs).number.evalf())
 
     def get_initial_value(self, symbol):
         """
