@@ -689,17 +689,23 @@ class Model(object):
 
     def get_initial_value(self, symbol):
         """Returns the initial value of the given symbol
+        
         :param symbol: Sympy Dummy object of required symbol
         :return: float of initial value
         """
         return float(self.dummy_metadata[symbol].initial_value)
 
     def find_symbols_and_derivatives(self, expression):
-        """ Returns a set containing all symbols and derivatives referenced in an expression. """
-        symbols = set()
+        """ Returns a set containing all symbols and derivatives referenced in an expression or list of expressions.
 
+        :param expression: expression or list of expressions to get symbols for
+        """
+        symbols = set()
+        if isinstance(expression, list):
+            for expr in expression:
+                symbols.update(find_symbols_and_derivatives(expr))
         # if this expression is a derivative or a dummy symbol which is not a number placeholder
-        if expression.is_Derivative or (expression.is_Dummy and not self.get_meta_dummy(expression).number):
+        elif expression.is_Derivative or (expression.is_Dummy and not self.get_meta_dummy(expression).number):
             symbols.add(expression)
         # otherwise, descend into sub-expressions and collect symbols
         else:
