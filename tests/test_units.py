@@ -5,6 +5,7 @@ import pytest
 import sympy as sp
 
 from cellmlmanip import load_model
+from cellmlmanip.model import NumberDummy, VariableDummy
 from cellmlmanip.units import (
     BooleanUnitsError,
     ExpressionWithUnitPrinter,
@@ -14,10 +15,6 @@ from cellmlmanip.units import (
     UnexpectedMathUnitsError,
     UnitCalculator,
     UnitStore,
-)
-from cellmlmanip.model import (
-    NumberDummy,
-    VariableDummy,
 )
 
 

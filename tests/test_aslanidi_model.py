@@ -1,4 +1,5 @@
 import os
+
 import pytest
 
 from cellmlmanip import load_model

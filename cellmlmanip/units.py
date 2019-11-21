@@ -5,16 +5,17 @@ import logging
 import math
 import numbers
 import os
-import pint
-import sympy
-
 from functools import reduce
 from operator import mul
+
+import pint
+import sympy
 from pint.converters import ScaleConverter
 from pint.definitions import UnitDefinition
 from sympy.printing.lambdarepr import LambdaPrinter
 
 from . import model
+
 
 logger = logging.getLogger(__name__)
 

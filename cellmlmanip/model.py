@@ -1,9 +1,10 @@
 ﻿"""Classes to represent a flattened CellML model and metadata about its variables."""
 import logging
+from io import StringIO
+
 import networkx as nx
 import rdflib
 import sympy
-from io import StringIO
 
 from cellmlmanip.rdf import create_rdf_node
 from cellmlmanip.units import UnitStore
