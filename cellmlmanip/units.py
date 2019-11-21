@@ -509,13 +509,6 @@ class UnitCalculator(object):
 
         elif expr.is_Number:
             units = self.ureg.dimensionless
-            # Michael: I've commented out this code. It searches for any other
-            #          number object that has the same value as this number, and
-            #          then just uses that number's units. That can't be right?!
-            # for dummy, metadata in self.dummy_metadata.items():
-            #    if metadata.number and metadata.number == expr and metadata.units:
-            #        units = metadata.units
-            #        break
             if expr.is_Integer:
                 out = int(expr) * units
             elif expr.is_Rational:
