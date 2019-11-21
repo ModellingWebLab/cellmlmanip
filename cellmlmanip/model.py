@@ -89,7 +89,7 @@ class Model(object):
 
     def add_number(self, value, units):
         """
-        Creates and returns a Sympy ``Dummy`` to represent a number with a unit in this model.
+        Creates and returns a :class:`NumberDummy` to represent a number with units in sympy expressions.
 
         :param number: A ``sympy.Number``.
         :param units: A string unit representation.
@@ -102,7 +102,7 @@ class Model(object):
     def add_variable(self, name, units, initial_value=None,
                      public_interface=None, private_interface=None, cmeta_id=None):
         """
-        Adds a variable to the model and returns a Sympy ``Dummy`` object to represent it.
+        Adds a variable to the model and returns a :class:`VariableDummy` to represent it in sympy expressions.
 
         :param name: A string name.
         :param units: A string units representation.
@@ -111,7 +111,7 @@ class Model(object):
         :param private_interface: An optional private interface specifier (only required when parsing CellML).
         :param cmeta_id: An optional string specifying a cmeta:id
 
-        :return: The ``sympy.Dummy`` created by the model to represent the variable in equations.
+        :return: A :class:`VariableDummy` object.
         """
         if name in self._name_to_symbol:
             raise ValueError('Variable %s already exists.' % name)
