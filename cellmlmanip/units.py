@@ -368,13 +368,33 @@ class UnitStore(object):
 
         if from_unit is not None:
             assert isinstance(from_unit, self.ureg.Unit), 'from_unit must be of type pint:Unit'
-            return self.convert_to(1 * from_unit, to_unit).magnitude
+            conversion_factor = self.convert_to(1 * from_unit, to_unit).magnitude
         elif quantity is not None:
             assert isinstance(quantity, self.ureg.Quantity), 'quantity must be of type pint:Quantity'
-            return self.convert_to(quantity, to_unit).magnitude
+            conversion_factor = self.convert_to(quantity, to_unit).magnitude
         else:
             assert isinstance(expression, sympy.Expr), 'expression must be of type Sympy expression'
-            return self.convert_to(1 * self.summarise_units(expression), to_unit).magnitude
+            conversion_factor = self.convert_to(1 * self.summarise_units(expression), to_unit).magnitude
+
+        if math.isclose(conversion_factor, 1.0):
+            return 1.0
+        else:
+            return conversion_factor
+
+    def equivalent_units(self, unit_or_expr1, unit_or_expr2):
+        """Returns whether 2 expressions or units are in the same units.
+
+        :param expr_or_unit1: A unit or an expression to look at the units for
+        :param expr_or_unit2: A unit or an expression to look at the units for
+
+        :return: are both parameters in equivalent units (conversion factor == 1.0)
+        """
+        try:
+            unit1 = unit_or_expr1 if isinstance(unit_or_expr1, self.ureg.Unit) else self.summarise_units(unit_or_expr1)
+            unit2 = unit_or_expr2 if isinstance(unit_or_expr2, self.ureg.Unit) else self.summarise_units(unit_or_expr2)
+            return self.get_conversion_factor(unit1, from_unit=unit2) == 1.0
+        except pint.errors.DimensionalityError:
+            return False
 
     def dimensionally_equivalent(self, symbol1, symbol2):
         """Returns whether two expressions, symbol1 and symbol2,
