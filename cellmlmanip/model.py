@@ -695,21 +695,22 @@ class Model(object):
         """
         return float(self.dummy_metadata[symbol].initial_value)
 
-    def find_symbols_and_derivatives(self, expression):
+    def find_symbols_and_derivatives(self, expression_or_expressions):
         """ Returns a set containing all symbols and derivatives referenced in an expression or list of expressions.
 
-        :param expression: expression or list of expressions to get symbols for
+        :param expression_or_expressions: expression or list of expressions to get symbols for
         """
         symbols = set()
-        if isinstance(expression, list):
-            for expr in expression:
+        if isinstance(expression_or_expressions, list):
+            for expr in expression_or_expressions:
                 symbols.update(self.find_symbols_and_derivatives(expr))
         # if this expression is a derivative or a dummy symbol which is not a number placeholder
-        elif expression.is_Derivative or (expression.is_Dummy and not self.get_meta_dummy(expression).number):
-            symbols.add(expression)
+        elif expression_or_expressions.is_Derivative \
+                or (expression_or_expressions.is_Dummy and not self.get_meta_dummy(expression_or_expressions).number):
+            symbols.add(expression_or_expressions)
         # otherwise, descend into sub-expressions and collect symbols
         else:
-            for arg in expression.args:
+            for arg in expression_or_expressions.args:
                 symbols |= self.find_symbols_and_derivatives(arg)
 
         return symbols

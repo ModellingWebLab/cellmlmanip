@@ -102,7 +102,11 @@ class TestModelAPI(object):
         model.get_equation_graph()
         t = model.get_free_variable_symbol()
         v = model.get_symbol_by_ontology_term(OXMETA, "membrane_voltage")
-        assert model.find_symbols_and_derivatives(t) == model.find_symbols_and_derivatives([t])
-        s = model.find_symbols_and_derivatives(t)
-        s.update(model.find_symbols_and_derivatives(v))
-        assert s == model.find_symbols_and_derivatives([t, v])
+        sym_t = model.find_symbols_and_derivatives(t)
+        sym_v = model.find_symbols_and_derivatives(v)
+        assert sym_t == model.find_symbols_and_derivatives([t])
+        symbols = sym_t
+        symbols.update(sym_v)
+        assert symbols == model.find_symbols_and_derivatives([t, v])
+        lst = sorted(list(symbols), key=lambda s: str(s))
+        assert str(lst) == '[_environment$time, _membrane$V]'
