@@ -220,11 +220,17 @@ class Parser(object):
         if not math_elements:
             return
 
+        # Method to create symbols
+        prefix = component_element.get('name') + SYMPY_SYMBOL_DELIMITER
+
+        def symbol_generator(identifer):
+            out = variable_to_symbol.get(prefix + identifer, None)
+            assert out is not None, '%s not found in symbol dict' % (prefix + identifer)
+            return out
+
         # reuse transpiler so dummy symbols are kept across <math> elements
         transpiler = mathml2sympy.Transpiler(
-            dummify=True,
-            symbol_prefix=component_element.get('name') + SYMPY_SYMBOL_DELIMITER,
-            symbol_lookup=variable_to_symbol,
+            symbol_generator=symbol_generator,
             number_generator=lambda x, y: self.model.add_number(x, y),
         )
 
