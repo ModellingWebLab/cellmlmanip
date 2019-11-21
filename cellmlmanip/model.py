@@ -448,19 +448,18 @@ class Model(object):
                 if rhs in graph.nodes:
                     # If the symbol maps to a node in the graph just add the dependency edge
                     graph.add_edge(rhs, lhs)
-                elif isinstance(rhs, VariableDummy):
-                    if rhs.type in ['state', 'free']:
-                        # If the variable is a state or free variable of a derivative
-                        graph.add_node(rhs, equation=None, variable_type=rhs.type)
-                        graph.add_edge(rhs, lhs)
-                    else:
-                        # this variable is a parameter - add to graph and connect to lhs
-                        rhs.type = 'parameter'
-                        unit = rhs.units
-                        number = sympy.Float(rhs.initial_value)
-                        dummy = self.add_number(number, str(unit))
-                        graph.add_node(rhs, equation=sympy.Eq(rhs, dummy), variable_type='parameter')
-                        graph.add_edge(rhs, lhs)
+                elif rhs.type in ['state', 'free']:
+                    # If the variable is a state or free variable of a derivative
+                    graph.add_node(rhs, equation=None, variable_type=rhs.type)
+                    graph.add_edge(rhs, lhs)
+                else:
+                    # this variable is a parameter - add to graph and connect to lhs
+                    rhs.type = 'parameter'
+                    unit = rhs.units
+                    number = sympy.Float(rhs.initial_value)
+                    dummy = self.add_number(number, str(unit))
+                    graph.add_node(rhs, equation=sympy.Eq(rhs, dummy), variable_type='parameter')
+                    graph.add_edge(rhs, lhs)
 
         # Add more meta-data to the graph
         for variable in graph.nodes:
@@ -468,9 +467,8 @@ class Model(object):
                 for key in ['cmeta_id', 'name', 'units']:
                     if getattr(variable, key):
                         graph.nodes[variable][key] = getattr(variable, key)
-                if graph.nodes[variable].get('variable_type', '') == 'state':
-                    if variable.initial_value is not None:
-                        graph.nodes[variable]['initial_value'] = sympy.Float(variable.initial_value)
+                if variable.type == 'state' and variable.initial_value is not None:
+                    graph.nodes[variable]['initial_value'] = sympy.Float(variable.initial_value)
                 if variable.type is not None:
                     graph.nodes[variable]['variable_type'] = variable.type
 
