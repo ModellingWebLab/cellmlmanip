@@ -89,7 +89,7 @@ def test_conversion_factor_same_units(simple_model):
     assert simple_model.units.get_conversion_factor(to_unit=to_unit, expression=expression) == 1
 
 
-def test_equivalent_units(self, quantity_store):
+def test_equivalent_units(quantity_store):
     time_var = model.get_symbol_by_ontology_term(OXMETA, 'time')
     ureg = quantity_store.ureg
 
