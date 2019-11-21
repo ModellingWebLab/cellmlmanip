@@ -415,7 +415,7 @@ class Model(object):
             lhs = equation.lhs
 
             # for each of the symbols or derivatives on the rhs of the equation
-            for rhs in self.find_symbols_and_derivatives(equation.rhs):
+            for rhs in self.find_symbols_and_derivatives([equation.rhs]):
                 # if the symbol maps to a node in the graph
                 if rhs in graph.nodes:
                     # add the dependency edge
@@ -695,17 +695,17 @@ class Model(object):
         return float(self.dummy_metadata[symbol].initial_value)
 
     def find_symbols_and_derivatives(self, expression):
-        """ Returns a set containing all symbols and derivatives referenced in an expression. """
+        """ Returns a set containing all symbols and derivatives referenced in a list of expressions.
+
+        :param expression: a list of expressions to get symbols for.
+        :return: a set of symbols and derivative objects.
+        """
         symbols = set()
-
-        # if this expression is a derivative or a dummy symbol which is not a number placeholder
-        if expression.is_Derivative or (expression.is_Dummy and not self.get_meta_dummy(expression).number):
-            symbols.add(expression)
-        # otherwise, descend into sub-expressions and collect symbols
-        else:
-            for arg in expression.args:
-                symbols |= self.find_symbols_and_derivatives(arg)
-
+        for expr in expression:
+            if expr.is_Derivative or (expr.is_Dummy and not self.get_meta_dummy(expr).number):
+                symbols.add(expr)
+            else:
+                symbols |= self.find_symbols_and_derivatives(expr.args)
         return symbols
 
     def find_variable(self, search_dict):
