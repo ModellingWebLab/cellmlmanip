@@ -1,6 +1,6 @@
 ﻿"""Classes to represent a flattened CellML model and metadata about its variables"""
 import logging
-from collections import OrderedDict
+from collections import OrderedDict, Iterable
 from io import StringIO
 
 import networkx as nx
@@ -696,12 +696,12 @@ class Model(object):
         return float(self.dummy_metadata[symbol].initial_value)
 
     def find_symbols_and_derivatives(self, expression_or_expressions):
-        """ Returns a set containing all symbols and derivatives referenced in an expression or list of expressions.
+        """ Returns a set containing all symbols and derivatives referenced in an expression or expressions.
 
-        :param expression_or_expressions: expression or list of expressions to get symbols for
+        :param expression_or_expressions: expression or expressions to get symbols for
         """
         symbols = set()
-        if isinstance(expression_or_expressions, list):
+        if isinstance(expression_or_expressions, Iterable):
             for expr in expression_or_expressions:
                 symbols.update(self.find_symbols_and_derivatives(expr))
         # if this expression is a derivative or a dummy symbol which is not a number placeholder
