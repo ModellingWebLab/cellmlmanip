@@ -241,18 +241,27 @@ class TestParser(object):
                           [sympy.atanh(sympy.Symbol('x'))])
 
     def test_cn_units(self):
+        """ Test if the transpiler uses the number_generator to make number objects. """
+
         mathml = self.make_mathml('<apply>'
                                   '<eq/>'
                                   '<cn cellml:units="s">2.0</cn>'
                                   '<cn cellml:units="ms">2000.0</cn>'
                                   '</apply>')
-        transpiler = mathml2sympy.Transpiler(dummify=True)
-        sympy_exprs = transpiler.parse_string(mathml)
-        metadata = transpiler.metadata
-        for number in sympy_exprs[0].free_symbols:
-            assert metadata[number]['sympy.Number'] == sympy.Number(float(number.name))
-            if float(number.name) == 2.0:
-                assert metadata[number]['cellml:units'] == 's'
+        numbers = []
+
+        def number_generator(number, units):
+            numbers.append((number, units))
+            return sympy.Rational(number)
+
+        transpiler = mathml2sympy.Transpiler(dummify=True, number_generator=number_generator)
+        expr = transpiler.parse_string(mathml)
+        for number in expr[0].free_symbols:
+            assert isinstance(number, sympy.Rational)
+
+        assert len(numbers) == 2
+        assert numbers[0][0] == 2
+        assert numbers[1][0] == 2000
 
     def test_prefix(self):
         mathml = self.make_mathml('<apply><ci>x</ci></apply>')

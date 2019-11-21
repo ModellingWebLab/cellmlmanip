@@ -5,15 +5,16 @@ import logging
 import math
 import numbers
 import os
-from functools import reduce
-from operator import mul
-
 import pint
 import sympy
+
+from functools import reduce
+from operator import mul
 from pint.converters import ScaleConverter
 from pint.definitions import UnitDefinition
 from sympy.printing.lambdarepr import LambdaPrinter
 
+from . import model
 
 logger = logging.getLogger(__name__)
 
@@ -171,8 +172,11 @@ class UnitStore(object):
         # units that are defined and added to the unit registry, on top of default cellml units
         self.custom_defined = set()
 
-        # Keep reference to the underlying model, to look up the 'dummy_info' dictionary
+        # Keep reference to the underlying model
         self.model = model
+
+        # Unit calculator
+        self.calculator = UnitCalculator(self.ureg)
 
     def add_custom_unit(self, units_name, unit_attributes):
         """Define a new Pint unit definition and adds it to the unit registry.
@@ -215,9 +219,11 @@ class UnitStore(object):
             self.add_custom_unit(units_name, unit_attributes)
         except AssertionError:
             pass  # Unit already exists, but that is not a problem
-        for dummy in list(self.model.dummy_metadata.items()):
-            if self.is_unit_equal(dummy[1].units, getattr(self.ureg, units_name)):
-                dummy[1].units = getattr(self.ureg, units_name)
+
+        unit = getattr(self.ureg, units_name)
+        for variable in self.model.variables():
+            if self.is_unit_equal(variable.units, unit):
+                variable.units = units
 
     def add_base_unit(self, units_name):
         """Define a new base unit in the Pint registry.
@@ -335,8 +341,7 @@ class UnitStore(object):
                  InputArgumentsInvalidUnitsError - if input arguments should have same units
                  InputArgumentMustBeNumberError - if one of input arguments should be a number
        """
-        unit_calculator = UnitCalculator(self.ureg, self.model.dummy_metadata)
-        found = unit_calculator.traverse(expr)
+        found = self.calculator.traverse(expr)
 
         logger.debug('summarise_units(%s) ⟶ %s', expr, found.units)
         return found.units
@@ -402,14 +407,12 @@ class UnitCalculator(object):
 
     Note: only supports subset of Sympy math.
     """
-    def __init__(self, unit_registry, dummy_metadata):
-        """ Initialises teh UnitCalculator class
+    def __init__(self, unit_registry):
+        """ Initialises the UnitCalculator class
         :param unit_registry: instance of Pint UnitRegistry
-        :param dummy_metadata: a dictionary providing {dummy: MetaDummy} lookup
         """
         # A pint.UnitRegistry
         self.ureg = unit_registry
-        self.dummy_metadata = dummy_metadata
 
     def _check_unit_of_quantities_equal(self, list_of_quantities):
         """Checks whether all units in a list are equivalent.
@@ -481,23 +484,17 @@ class UnitCalculator(object):
         # some of which will be redundant - but if we happen to come across it will throw
         # an exception to tell us a model is very unexpected
         if expr.is_Symbol:
-            if expr not in self.dummy_metadata:
-                raise KeyError('Metadata entry not found for dummy symbol "%s"' % expr)
-
-            metadata = self.dummy_metadata[expr]
 
             # is this symbol is a placeholder for a number
-            if metadata.is_number:
-                out = float(metadata.number) * metadata.units
-            else:
+            if isinstance(expr, model.NumberDummy):
+                return float(expr) * expr.units
+            elif expr.initial_value and expr.initial_value != 0.0:
                 #  if this symbol has an initial value (that is not zero)
-                if metadata.initial_value and metadata.initial_value != 0.0:
-                    # substitute with the initial value for unit arithmetic
-                    out = self.ureg.Quantity(float(metadata.initial_value), metadata.units)
-                else:
-                    # otherwise, keep the symbol
-                    out = self.ureg.Quantity(expr, metadata.units)
-            return out
+                # substitute with the initial value for unit arithmetic
+                return self.ureg.Quantity(float(expr.initial_value), expr.units)
+            else:
+                # otherwise, keep the symbol
+                return self.ureg.Quantity(expr, expr.units)
         elif expr == sympy.oo:
             return math.inf * self.ureg.dimensionless
 
@@ -506,10 +503,13 @@ class UnitCalculator(object):
 
         elif expr.is_Number:
             units = self.ureg.dimensionless
-            for dummy, metadata in self.dummy_metadata.items():
-                if metadata.number and metadata.number == expr and metadata.units:
-                    units = metadata.units
-                    break
+            # Michael: I've commented out this code. It searches for any other
+            #          number object that has the same value as this number, and
+            #          then just uses that number's units. That can't be right?!
+            # for dummy, metadata in self.dummy_metadata.items():
+            #    if metadata.number and metadata.number == expr and metadata.units:
+            #        units = metadata.units
+            #        break
             if expr.is_Integer:
                 out = int(expr) * units
             elif expr.is_Rational:
@@ -663,35 +663,15 @@ class UnitCalculator(object):
 
 class ExpressionWithUnitPrinter(LambdaPrinter):
     """Sympy expression printer to print expressions with unit information."""
-    def __init__(self, symbol_info):
-        """
-        Initialises the ExpressionWithUnitPrinter
-        :param symbol_info:
-        """
-        super().__init__()
-        self.symbols = symbol_info
 
-    def _get_dummy_unit(self, expr):
-        return self.symbols[expr].units
+    def _print_NumberDummy(self, expr):
+        return '%f[%s]' % (float(expr), str(expr.unit))
 
-    def _get_dummy_number(self, expr):
-        if self.symbols[expr].is_number:
-            return self.symbols[expr].number
-        return None
-
-    def _print_Dummy(self, expr):
-        number = self._get_dummy_number(expr)
-        if number is not None:
-            return '%f[%s]' % (number, str(self._get_dummy_unit(expr)))
-
-        return '%s[%s]' % (expr.name, str(self._get_dummy_unit(expr)))
+    def _print_VariableDummy(self, expr):
+        return '%s[%s]' % (expr.name, str(expr.unit))
 
     def _print_Derivative(self, expr):
-        state_dummy = expr.free_symbols.pop()
-        state_unit = self._get_dummy_unit(state_dummy)
-        free_dummy = expr.variables[0]
-        free_unit = self._get_dummy_unit(free_dummy)
-        return 'Derivative(%s[%s], %s[%s])' % (state_dummy.name,
-                                               str(state_unit),
-                                               free_dummy.name,
-                                               str(free_unit))
+        state = expr.free_symbols.pop()
+        freev = expr.variables[0]
+        return 'Derivative(%s[%s], %s[%s])' % (state, state.unit, freev, freev.unit)
+

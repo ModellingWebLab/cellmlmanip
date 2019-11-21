@@ -1,8 +1,8 @@
 import os
-
 import pytest
 
 from cellmlmanip import load_model
+from . import shared
 
 
 OXMETA = "https://chaste.comlab.ox.ac.uk/cellml/ns/oxford-metadata#"

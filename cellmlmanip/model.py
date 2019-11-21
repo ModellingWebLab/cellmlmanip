@@ -131,70 +131,6 @@ class Model(object):
 
         return var
 
-    # TODO: Move into unit tests
-    def check_dummy_metadata(self):
-        """
-        Check that every symbol in list of equations has a metadata entry.
-
-        :return: A set of dummy instances and a set of dummy instances without metadata.
-        """
-        # collect list of all dummy instances
-        dummy_instances = set()
-        not_found = set()
-
-        for index, equation in enumerate(self.equations):
-            atoms = equation.atoms(sympy.Dummy)
-            for atom in atoms:
-                dummy_instances.add(atom)
-                if atom not in self.dummy_metadata:
-                    logger.critical('%s not found for eq. %s (%s)' % (atom, index, equation))
-                    not_found.add(atom)
-
-        return dummy_instances, not_found
-
-    # TODO: Move into unit tests
-    def check_cmeta_id(self):
-        """Checks that every variable with a cmeta_id is a source variable"""
-        is_okay = True
-        for variable in self.dummy_metadata.values():
-            if not variable.is_number:
-                if variable.cmeta_id:
-                    if variable.dummy != variable.assigned_to:
-                        is_okay = False
-                        logger.critical('%s has cmeta id but is assigned to %s',
-                                        variable.dummy, variable.assigned_to)
-        return is_okay
-
-    # TODO: Move into unit tests
-    def check_dummy_assignment(self):
-        """Every non-number dummy symbol in the model should be assigned to itself or a source
-        variable. The source variable must be assigned to itself"""
-        is_okay = True
-        for variable in self.dummy_metadata.values():
-            if not variable.is_number:
-                # either the variable is assigned to itself
-                if variable.dummy == variable.assigned_to:
-                    continue
-
-                # or the variable is assigned to a source variable
-                source_dummy = self.dummy_metadata[variable.assigned_to]
-
-                # the source dummy must be assigned to itself
-                if source_dummy.dummy == source_dummy.assigned_to:
-                    continue
-
-                is_okay = False
-                logger.critical('%s is assigned to %s, which is assigned to %s',
-                                variable.dummy,
-                                variable.assigned_to,
-                                source_dummy.assigned_to)
-        return is_okay
-
-    # TODO: Remove
-    def check_variables_in_equations(self):
-        """Every variable we have should have been used in an equation."""
-        pass
-
     def connect_variables(self, source_name: str, target_name: str):
         """Given the source and target component and variable, create a connection by assigning
         the symbol from the source to the target. If units are not the same, it will add an equation
@@ -338,6 +274,35 @@ class Model(object):
         # This should be unreachable
         raise ValueError('No free variable set in model.')  # pragma: no cover
 
+    def get_rdf_annotations(self, subject=None, predicate=None, object_=None):
+        """Searches the RDF graph and returns 'triples matching the given parameters'
+
+        :param subject: the subject of the triples returned
+        :param predicate: the predicate of the triples returned
+        :param object_: the object of the triples returned
+
+        ``subject`` ``predicate`` and ``object_`` are optional, if None then any triple matches
+        if all are none, all triples are returned
+        ``subject`` ``predicate`` and ``object_`` can be anything valid as input to create_rdf_node
+        typically an (NS, local) pair, a string or None"""
+        subject = create_rdf_node(subject)
+        predicate = create_rdf_node(predicate)
+        object_ = create_rdf_node(object_)
+        return self.rdf.triples((subject, predicate, object_))
+
+    def get_rdf_value(self, subject, predicate):
+        """Get the value of an RDF object connected to ``subject`` by ``predicate``.
+
+        :param subject: the object of the triple returned
+        :param predicate: the object of the triple returned
+
+        Note: expects exactly one triple to match and the result to be a literal. It's string value is  returned."""
+        triples = list(self.get_rdf_annotations(subject, predicate))
+        assert len(triples) == 1
+        assert isinstance(triples[0][2], rdflib.Literal)
+        value = str(triples[0][2]).strip()  # Could make this cleverer by considering data type if desired
+        return value
+
     def get_symbol_by_cmeta_id(self, cmeta_id):
         """
         Searches the given graph and returns the symbol for the variable with the given cmeta id.
@@ -377,35 +342,6 @@ class Model(object):
         else:
             raise ValueError('Multiple variables annotated with {%s}%s' %
                              (namespace_uri, local_name))
-
-    def get_rdf_annotations(self, subject=None, predicate=None, object_=None):
-        """Searches the RDF graph and returns 'triples matching the given parameters'
-
-        :param subject: the subject of the triples returned
-        :param predicate: the predicate of the triples returned
-        :param object_: the object of the triples returned
-
-        ``subject`` ``predicate`` and ``object_`` are optional, if None then any triple matches
-        if all are none, all triples are returned
-        ``subject`` ``predicate`` and ``object_`` can be anything valid as input to create_rdf_node
-        typically an (NS, local) pair, a string or None"""
-        subject = create_rdf_node(subject)
-        predicate = create_rdf_node(predicate)
-        object_ = create_rdf_node(object_)
-        return self.rdf.triples((subject, predicate, object_))
-
-    def get_rdf_value(self, subject, predicate):
-        """Get the value of an RDF object connected to ``subject`` by ``predicate``.
-
-        :param subject: the object of the triple returned
-        :param predicate: the object of the triple returned
-
-        Note: expects exactly one triple to match and the result to be a literal. It's string value is  returned."""
-        triples = list(self.get_rdf_annotations(subject, predicate))
-        assert len(triples) == 1
-        assert isinstance(triples[0][2], rdflib.Literal)
-        value = str(triples[0][2]).strip()  # Could make this cleverer by considering data type if desired
-        return value
 
     def get_symbols_by_rdf(self, predicate, object_=None):
         """Searches the RDF graph for variables annotated with the given predicate and object (e.g. "is oxmeta:time")
@@ -564,11 +500,7 @@ class Model(object):
             dummies = equation.rhs.atoms(sympy.Dummy)
 
             # Get any dummy symbols which are placeholders for numbers
-            subs_dict = {}
-            for dummy in dummies:
-                dummy_data = self.get_meta_dummy(dummy)
-                if dummy_data.number is not None:
-                    subs_dict[dummy] = dummy_data.number
+            subs_dict = {d: float(d) for d in dummies if isinstance(d, NumberDummy)}
 
             # And replace the equation with one with the rhs subbed with sympy.Number objects
             if subs_dict:
@@ -613,7 +545,7 @@ class Model(object):
         :param symbol: Sympy Dummy object of required symbol
         :return: float of initial value
         """
-        return float(self.dummy_metadata[symbol].initial_value)
+        return symbol.initial_value
 
     def find_symbols_and_derivatives(self, expression):
         """ Returns a set containing all symbols and derivatives referenced in a list of expressions.
@@ -628,23 +560,6 @@ class Model(object):
             else:
                 symbols |= self.find_symbols_and_derivatives(expr.args)
         return symbols
-
-    def find_variable(self, search_dict):
-        """Searches for variables by attributes in their MetaDummy record. Pass a dictionary of
-        {name: value}, where name is one the attributes in MetaDummy """
-        matches = []
-
-        # for each component in this model
-        for variable in self.dummy_metadata.values():
-            matched = True
-            for search_key, search_value in search_dict.items():
-                if not (hasattr(variable, search_key) and
-                        getattr(variable, search_key) == search_value):
-                    matched = False
-                    break
-            if matched:
-                matches.append(variable)
-        return matches
 
     def set_equation(self, lhs, rhs):
         """
@@ -680,6 +595,10 @@ class Model(object):
         # Invalidate cached equation graphs
         self._invalidate_cache()
 
+    def variables(self):
+        """ Returns an iterator over this model's variable symbols. """
+        return self._name_to_symbols.values()
+
 
 class NumberDummy(sympy.Dummy):
     """
@@ -696,6 +615,9 @@ class NumberDummy(sympy.Dummy):
     def __init__(self, value, units):
         self.value = float(value)
         self.units = units
+
+    def __float__(self):
+        return self.value
 
 
 class VariableDummy(sympy.Dummy):
@@ -742,5 +664,5 @@ class VariableDummy(sympy.Dummy):
         self.type = None
 
     def __str__(self):
-        return 'VariableDummy(%s)' % self.name
+        return self.name
 

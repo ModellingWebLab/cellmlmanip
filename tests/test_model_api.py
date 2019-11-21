@@ -92,42 +92,36 @@ class TestModelAPI(object):
 
         # Get model, assert that V is a state variable
         v = model.get_symbol_by_ontology_term(OXMETA, 'membrane_voltage')
-        v_meta = model.get_meta_dummy(v)
-        assert v_meta.type == 'state'
+        assert v.type == 'state'
 
         # Now clamp it to -80mV
-        v_unit = v_meta.units
-        rhs = model.add_number(number=sp.Number(-80), units=str(v_unit))
+        rhs = model.add_number(sp.Number(-80), str(v.units))
         model.set_equation(v, rhs)
 
         # Check that V is no longer a state
         v = model.get_symbol_by_ontology_term(OXMETA, 'membrane_voltage')
-        v_meta = model.get_meta_dummy(v)
-        assert v_meta.type != 'state'
+        assert v.type != 'state'
 
         # TODO: Get dvdt_unit in a more sensible way
         # See: https://github.com/ModellingWebLab/cellmlmanip/issues/133
 
         # Now make V a state again
         t = model.get_symbol_by_ontology_term(OXMETA, 'time')
-        t_meta = model.get_meta_dummy(t)
-        t_unit = t_meta.units
         lhs = sp.Derivative(v, t)
-        dvdt_unit = 'unlikely_unit_name'
-        model.add_unit(dvdt_unit, [
-            {'units': str(v_unit)},
-            {'units': str(t_unit), 'exponent': -1},
+        dvdt_units = 'unlikely_unit_name'
+        model.add_unit(dvdt_units, [
+            {'units': str(v.units)},
+            {'units': str(t.units), 'exponent': -1},
         ])
-        rhs = model.add_number(number=sp.Number(0), units=dvdt_unit)
+        rhs = model.add_number(sp.Number(0), dvdt_units)
         model.set_equation(lhs, rhs)
 
         # Check that V is a state again
         v = model.get_symbol_by_ontology_term(OXMETA, 'membrane_voltage')
-        v_meta = model.get_meta_dummy(v)
-        assert v_meta.type == 'state'
+        assert v.type == 'state'
 
         # Set equation for a newly created variable
-        lhs = model.add_variable(name='an_incredibly_unlikely_variable_name', units=str(v_unit))
-        rhs = model.add_number(number=sp.Float(12), units=str(v_unit))
+        lhs = model.add_variable(name='an_incredibly_unlikely_variable_name', units=str(v.units))
+        rhs = model.add_number(sp.Float(12), str(v.units))
         model.set_equation(lhs, rhs)
 

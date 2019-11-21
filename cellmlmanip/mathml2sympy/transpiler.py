@@ -19,11 +19,11 @@ class Transpiler(object):
     :param symbol_prefix: An optional prefix to add to all symbols
     :param symbol_lookup: A dict mapping variable names (including the optional ``symbol_prefix``) to
         predefined Symbol or Dummy objects
-    :param number_creator: An optional method to create expressions for numbers with units.
+    :param number_generator: An optional method to create expressions for numbers with units.
         Must have signature ``f(value, unit) -> sympy.Basic``.
     """
 
-    def __init__(self, dummify=False, symbol_prefix=None, symbol_lookup=dict(), number_creator=None):
+    def __init__(self, dummify=False, symbol_prefix=None, symbol_lookup=dict(), number_generator=None):
         # we create symbols as necessary, as they occur in equations
         self.error_on_unknown_symbol = False
 
@@ -42,7 +42,7 @@ class Transpiler(object):
             self.error_on_unknown_symbol = True
 
         # Store number creating method, if supplied
-        self.number_creator = number_creator
+        self.number_generator = number_generator
 
         # use to store information about dummified numbers (number & units)
         self.number_metadata = dict()
@@ -179,8 +179,8 @@ class Transpiler(object):
             number = sympy.Number(number)
 
         if self.dummify:
-            if self.number_creator is not None:
-                return self.number_creator(number, node.attributes['cellml:units'].value)
+            if self.number_generator is not None:
+                return self.number_generator(number, node.attributes['cellml:units'].value)
             else:
                 dummified = sympy.Dummy(str(number))
                 self.number_metadata[dummified] = {**(dict(node.attributes.items())), 'sympy.Number': number}
