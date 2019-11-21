@@ -689,7 +689,7 @@ class Model(object):
 
     def get_initial_value(self, symbol):
         """Returns the initial value of the given symbol
-        
+
         :param symbol: Sympy Dummy object of required symbol
         :return: float of initial value
         """

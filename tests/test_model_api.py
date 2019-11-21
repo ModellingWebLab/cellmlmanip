@@ -98,3 +98,11 @@ class TestModelAPI(object):
         rhs = model.add_number(number=sp.Float(12), units=str(v_unit))
         model.set_equation(lhs, rhs)
 
+    def test_find_symbols_and_derivatives(self, model):
+        model.get_equation_graph()
+        t = model.get_free_variable_symbol()
+        v = model.get_symbol_by_ontology_term(OXMETA, "membrane_voltage")
+        assert model.find_symbols_and_derivatives(t) == model.find_symbols_and_derivatives([t])
+        s = model.find_symbols_and_derivatives(t)
+        s.update(model.find_symbols_and_derivatives(v))
+        assert s == model.find_symbols_and_derivatives([t, v])
