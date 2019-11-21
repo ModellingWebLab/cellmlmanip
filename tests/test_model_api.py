@@ -1,5 +1,4 @@
 import os
-
 import pytest
 import sympy as sp
 
@@ -48,15 +47,14 @@ class TestModelAPI(object):
         path = os.path.join(os.path.dirname(__file__), 'cellml_files', '4.algebraic_ode_model.cellml')
         model = parser.Parser(path).parse()
 
-        # But equation graph will raise error
+        # But equation graph will raise error (if accessed)
         with pytest.raises(RuntimeError, match='DAEs are not supported'):
-            model.get_equation_graph()
+            model.graph
 
     def test_set_equation(self, model):
         """ Tests replacing an equation in a model. """
 
         # Get model, assert that V is a state variable
-        model.get_equation_graph()
         v = model.get_symbol_by_ontology_term(OXMETA, 'membrane_voltage')
         v_meta = model.get_meta_dummy(v)
         assert v_meta.type == 'state'
@@ -67,7 +65,6 @@ class TestModelAPI(object):
         model.set_equation(v, rhs)
 
         # Check that V is no longer a state
-        model.get_equation_graph()
         v = model.get_symbol_by_ontology_term(OXMETA, 'membrane_voltage')
         v_meta = model.get_meta_dummy(v)
         assert v_meta.type != 'state'
@@ -89,7 +86,6 @@ class TestModelAPI(object):
         model.set_equation(lhs, rhs)
 
         # Check that V is a state again
-        model.get_equation_graph()
         v = model.get_symbol_by_ontology_term(OXMETA, 'membrane_voltage')
         v_meta = model.get_meta_dummy(v)
         assert v_meta.type == 'state'
@@ -98,3 +94,34 @@ class TestModelAPI(object):
         lhs = model.add_variable(name='an_incredibly_unlikely_variable_name', units=str(v_unit))
         rhs = model.add_number(number=sp.Float(12), units=str(v_unit))
         model.set_equation(lhs, rhs)
+
+    def test_find_symbols_and_derivatives(self, model):
+        """ Tests Model.find_symbols_and_derivatives. """
+
+        # Test on single variable expressions
+        t = model.get_free_variable_symbol()
+        syms = model.find_symbols_and_derivatives([t])
+        assert len(syms) == 1
+        assert t in syms
+
+        v = model.get_symbol_by_ontology_term(OXMETA, "membrane_voltage")
+        dvdt = sp.Derivative(v, t)
+        syms = model.find_symbols_and_derivatives([dvdt])
+        assert len(syms) == 1
+        assert sp.Derivative(v, t) in syms
+
+        # Test on longer expressions
+        x = sp.Float(1) + t * sp.sqrt(dvdt) - t
+        syms = model.find_symbols_and_derivatives([x])
+        assert len(syms) == 2
+        assert t in syms
+        assert sp.Derivative(v, t) in syms
+
+        # Test on multiple expressions
+        y = sp.Float(2) + v
+        syms = model.find_symbols_and_derivatives([x, y])
+        assert len(syms) == 3
+        assert v in syms
+        assert t in syms
+        assert sp.Derivative(v, t) in syms
+
