@@ -498,7 +498,7 @@ class UnitCalculator(object):
                 else:
                     # otherwise, keep the symbol
                     return self.ureg.Quantity(expr, expr.units)
-            else:   # pramga: no cover
+            else:   # pragma: no cover
                 # An unexpected type of symbol: print anyway for debugging
                 return str(expr)
         elif expr == sympy.oo:
