@@ -56,9 +56,6 @@ class Model(object):
         # An RDF graph containing further meta data
         self.rdf = rdflib.Graph()
 
-        # The free variable (if any)
-        self._free_variable = None
-
     def add_unit(self, name, attributes=None, base_units=False):
         """
         Adds a unit of measurement to this model, with a given ``name`` and list of ``attributes``.
