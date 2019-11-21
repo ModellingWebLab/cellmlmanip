@@ -89,16 +89,16 @@ def test_conversion_factor_same_units(simple_model):
     assert simple_model.units.get_conversion_factor(to_unit=to_unit, expression=expression) == 1
 
 
-def test_equivalent_units(quantity_store):
+def test_equivalent_units(model):
     time_var = model.get_symbol_by_ontology_term(OXMETA, 'time')
-    ureg = quantity_store.ureg
 
-    assert quantity_store.equivalent_units(time_var, ureg.millisecond)
-    assert quantity_store.equivalent_units(ureg.millisecond, time_var)
+    assert model.units.equivalent_units(time_var, model.units.ureg.ms)
+    assert model.units.equivalent_units(time_var, model.units.ureg.ms)
+    assert model.units.equivalent_units(model.units.ureg.ms, time_var)
 
-    assert not quantity_store.equivalent_units(ureg.ms, ureg.second)
-    assert not quantity_store.equivalent_units(ureg.second, ureg.millisecond)
-    assert not quantity_store.equivalent_units(time_var, ureg.second)
-    assert not quantity_store.equivalent_units(ureg.second, time_var)
-    assert not quantity_store.equivalent_units(time_var, ureg.mV)
-    assert not quantity_store.equivalent_units(ureg.mV, time_var)
+    assert not model.units.equivalent_units(model.units.ureg.ms, model.units.ureg.second)
+    assert not model.units.equivalent_units(model.units.ureg.second, model.units.ureg.ms)
+    assert not model.units.equivalent_units(time_var, model.units.ureg.second)
+    assert not model.units.equivalent_units(model.units.ureg.second, time_var)
+    assert not model.units.equivalent_units(time_var, model.units.ureg.mV)
+    assert not model.units.equivalent_units(model.units.ureg.mV, time_var)

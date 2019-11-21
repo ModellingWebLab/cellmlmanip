@@ -390,8 +390,9 @@ class UnitStore(object):
         :return: are both parameters in equivalent units (conversion factor == 1.0)
         """
         try:
-            unit1 = unit_or_expr1 if isinstance(unit_or_expr1, self.ureg.Unit) else self.summarise_units(unit_or_expr1)
-            unit2 = unit_or_expr2 if isinstance(unit_or_expr2, self.ureg.Unit) else self.summarise_units(unit_or_expr2)
+            print(isinstance(unit_or_expr1, sympy.Expr))
+            unit1 = self.summarise_units(unit_or_expr1) if isinstance(unit_or_expr1, sympy.Expr) else unit_or_expr1
+            unit2 = self.summarise_units(unit_or_expr2) if isinstance(unit_or_expr2, sympy.Expr) else unit_or_expr2
             return self.get_conversion_factor(unit1, from_unit=unit2) == 1.0
         except pint.errors.DimensionalityError:
             return False
