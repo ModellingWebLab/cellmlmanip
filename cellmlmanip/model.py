@@ -531,11 +531,7 @@ class Model(object):
 
     def get_value(self, symbol):
         """ Returns the evaluated value of the given symbol's RHS. """
-        # Find RHS
-        rhs = self.graph.nodes[symbol]['equation'].rhs
-
-        # Evaluate and return
-        return float(self.get_meta_dummy(rhs).number.evalf())
+        return float(self.graph.nodes[symbol]['equation'].rhs.evalf())
 
     def get_initial_value(self, symbol):
         """
