@@ -596,7 +596,7 @@ class Model(object):
             lhs = equation.lhs
 
             # for each of the symbols or derivatives on the rhs of the equation
-            for rhs in self._find_symbols_and_derivatives(equation.rhs):
+            for rhs in self.find_symbols_and_derivatives([equation.rhs]):
                 # if the symbol maps to a node in the graph
                 if rhs in graph.nodes:
                     # add the dependency edge

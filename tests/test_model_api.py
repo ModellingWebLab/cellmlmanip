@@ -98,8 +98,6 @@ class TestModelAPI(object):
     def test_find_symbols_and_derivatives(self, model):
         """ Tests Model.find_symbols_and_derivatives. """
 
-        model.get_equation_graph()
-
         # Test on single variable expressions
         t = model.get_free_variable_symbol()
         syms = model.find_symbols_and_derivatives([t])
