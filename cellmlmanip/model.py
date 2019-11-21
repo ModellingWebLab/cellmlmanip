@@ -703,7 +703,7 @@ class Model(object):
         symbols = set()
         if isinstance(expression, list):
             for expr in expression:
-                symbols.update(find_symbols_and_derivatives(expr))
+                symbols.update(self.find_symbols_and_derivatives(expr))
         # if this expression is a derivative or a dummy symbol which is not a number placeholder
         elif expression.is_Derivative or (expression.is_Dummy and not self.get_meta_dummy(expression).number):
             symbols.add(expression)
