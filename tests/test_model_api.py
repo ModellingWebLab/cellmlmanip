@@ -98,3 +98,35 @@ class TestModelAPI(object):
         rhs = model.add_number(number=sp.Float(12), units=str(v_unit))
         model.set_equation(lhs, rhs)
 
+    def test_find_symbols_and_derivatives(self, model):
+        """ Tests Model.find_symbols_and_derivatives. """
+
+        model.get_equation_graph()
+
+        # Test on single variable expressions
+        t = model.get_free_variable_symbol()
+        syms = model.find_symbols_and_derivatives([t])
+        assert len(syms) == 1
+        assert t in syms
+
+        v = model.get_symbol_by_ontology_term(OXMETA, "membrane_voltage")
+        dvdt = sp.Derivative(v, t)
+        syms = model.find_symbols_and_derivatives([dvdt])
+        assert len(syms) == 1
+        assert sp.Derivative(v, t) in syms
+
+        # Test on longer expressions
+        x = sp.Float(1) + t * sp.sqrt(dvdt) - t
+        syms = model.find_symbols_and_derivatives([x])
+        assert len(syms) == 2
+        assert t in syms
+        assert sp.Derivative(v, t) in syms
+
+        # Test on multiple expressions
+        y = sp.Float(2) + v
+        syms = model.find_symbols_and_derivatives([x, y])
+        assert len(syms) == 3
+        assert v in syms
+        assert t in syms
+        assert sp.Derivative(v, t) in syms
+
