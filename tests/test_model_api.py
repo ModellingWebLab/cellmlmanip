@@ -1,4 +1,5 @@
 import os
+
 import pytest
 import sympy as sp
 
@@ -97,4 +98,3 @@ class TestModelAPI(object):
         lhs = model.add_variable(name='an_incredibly_unlikely_variable_name', units=str(v_unit))
         rhs = model.add_number(number=sp.Float(12), units=str(v_unit))
         model.set_equation(lhs, rhs)
-

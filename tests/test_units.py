@@ -113,16 +113,6 @@ class TestUnits(object):
             to_unit=quantity_store.get_quantity('mole')
         ) == 0.001
 
-    def test_equivalent_units(self, quantity_store):
-        ureg = quantity_store.ureg
-        assert quantity_store.equivalent_units(ureg.ms, ureg.ms)
-        assert quantity_store.equivalent_units(ureg.ms, ureg.millisecond)
-        assert quantity_store.equivalent_units(ureg.millisecond, ureg.ms)
-
-        assert not quantity_store.equivalent_units(ureg.ms, ureg.second)
-        assert not quantity_store.equivalent_units(ureg.second, ureg.millisecond)
-        assert not quantity_store.equivalent_units(ureg.ms, ureg.mV)
-
     def test_add_custom_unit(self):
         unitstore = UnitStore(model=None)
         assert (unitstore._is_unit_defined('newunit') is False)

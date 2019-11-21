@@ -1,5 +1,7 @@
 import os
+
 import pytest
+
 import cellmlmanip
 
 
@@ -87,18 +89,3 @@ def test_conversion_factor_same_units(simple_model):
     assert simple_model.units.get_conversion_factor(to_unit=to_unit, from_unit=from_unit) == 1
     # expression to unit
     assert simple_model.units.get_conversion_factor(to_unit=to_unit, expression=expression) == 1
-
-
-def test_equivalent_units(model):
-    time_var = model.get_symbol_by_ontology_term(OXMETA, 'time')
-
-    assert model.units.equivalent_units(time_var, model.units.ureg.ms)
-    assert model.units.equivalent_units(time_var, model.units.ureg.ms)
-    assert model.units.equivalent_units(model.units.ureg.ms, time_var)
-
-    assert not model.units.equivalent_units(model.units.ureg.ms, model.units.ureg.second)
-    assert not model.units.equivalent_units(model.units.ureg.second, model.units.ureg.ms)
-    assert not model.units.equivalent_units(time_var, model.units.ureg.second)
-    assert not model.units.equivalent_units(model.units.ureg.second, time_var)
-    assert not model.units.equivalent_units(time_var, model.units.ureg.mV)
-    assert not model.units.equivalent_units(model.units.ureg.mV, time_var)

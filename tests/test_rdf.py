@@ -1,8 +1,8 @@
 import os
 
 import pytest
-import sympy
 import rdflib
+import sympy
 
 import cellmlmanip
 import cellmlmanip.rdf

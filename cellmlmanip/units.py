@@ -381,22 +381,6 @@ class UnitStore(object):
         else:
             return conversion_factor
 
-    def equivalent_units(self, unit_or_expr1, unit_or_expr2):
-        """Returns whether 2 expressions or units are in the same units.
-
-        :param expr_or_unit1: A unit or an expression to look at the units for
-        :param expr_or_unit2: A unit or an expression to look at the units for
-
-        :return: are both parameters in equivalent units (conversion factor == 1.0)
-        """
-        try:
-            print(isinstance(unit_or_expr1, sympy.Expr))
-            unit1 = self.summarise_units(unit_or_expr1) if isinstance(unit_or_expr1, sympy.Expr) else unit_or_expr1
-            unit2 = self.summarise_units(unit_or_expr2) if isinstance(unit_or_expr2, sympy.Expr) else unit_or_expr2
-            return self.get_conversion_factor(unit1, from_unit=unit2) == 1.0
-        except pint.errors.DimensionalityError:
-            return False
-
     def dimensionally_equivalent(self, symbol1, symbol2):
         """Returns whether two expressions, symbol1 and symbol2,
          are dimensionally_equivalent (same units ignoring a calling factor).

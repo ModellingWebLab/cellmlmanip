@@ -758,4 +758,3 @@ class Model(object):
 
         # Invalidate cache
         self.graph = None
-
