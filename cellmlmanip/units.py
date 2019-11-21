@@ -223,7 +223,7 @@ class UnitStore(object):
         unit = getattr(self.ureg, units_name)
         for variable in self.model.variables():
             if self.is_unit_equal(variable.units, unit):
-                variable.units = units
+                variable.units = unit
 
     def add_base_unit(self, units_name):
         """Define a new base unit in the Pint registry.
@@ -329,7 +329,8 @@ class UnitStore(object):
         return quantity.to(unit)
 
     def summarise_units(self, expr):
-        """Given a Sympy expression, will get the lambdified string to evaluate units.
+        """
+        Given a Sympy expression, will get the lambdified string to evaluate units.
         Note the call to UnitCalculator:traverse will throw an error if units are bad or cannot be calculated.
         :param expr: the Sympy expression on which to evaluate units
         :return Unit object representing the units of the epression
@@ -488,13 +489,16 @@ class UnitCalculator(object):
             # is this symbol is a placeholder for a number
             if isinstance(expr, model.NumberDummy):
                 return float(expr) * expr.units
-            elif expr.initial_value and expr.initial_value != 0.0:
-                #  if this symbol has an initial value (that is not zero)
-                # substitute with the initial value for unit arithmetic
-                return self.ureg.Quantity(float(expr.initial_value), expr.units)
+            elif isinstance(expr, model.VariableDummy):
+                if expr.initial_value and expr.initial_value != 0.0:
+                    #  if this symbol has an initial value (that is not zero)
+                    # substitute with the initial value for unit arithmetic
+                    return self.ureg.Quantity(float(expr.initial_value), expr.units)
+                else:
+                    # otherwise, keep the symbol
+                    return self.ureg.Quantity(expr, expr.units)
             else:
-                # otherwise, keep the symbol
-                return self.ureg.Quantity(expr, expr.units)
+                return str(expr)
         elif expr == sympy.oo:
             return math.inf * self.ureg.dimensionless
 
@@ -665,13 +669,13 @@ class ExpressionWithUnitPrinter(LambdaPrinter):
     """Sympy expression printer to print expressions with unit information."""
 
     def _print_NumberDummy(self, expr):
-        return '%f[%s]' % (float(expr), str(expr.unit))
+        return '%f[%s]' % (float(expr), str(expr.units))
 
     def _print_VariableDummy(self, expr):
-        return '%s[%s]' % (expr.name, str(expr.unit))
+        return '%s[%s]' % (expr.name, str(expr.units))
 
     def _print_Derivative(self, expr):
         state = expr.free_symbols.pop()
         freev = expr.variables[0]
-        return 'Derivative(%s[%s], %s[%s])' % (state, state.unit, freev, freev.unit)
+        return 'Derivative(%s[%s], %s[%s])' % (state, state.units, freev, freev.units)
 

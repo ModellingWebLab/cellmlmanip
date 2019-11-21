@@ -1,11 +1,9 @@
 ﻿"""Classes to represent a flattened CellML model and metadata about its variables."""
 import logging
-from collections import OrderedDict
-from io import StringIO
-
 import networkx as nx
 import rdflib
 import sympy
+from io import StringIO
 
 from cellmlmanip.rdf import create_rdf_node
 from cellmlmanip.units import UnitStore
@@ -103,7 +101,8 @@ class Model(object):
         assert isinstance(value, sympy.Number), 'The argument `value` must be a sympy.Number.'
         return NumberDummy(value, self.units.get_quantity(units))
 
-    def add_variable(self, name, units, initial_value=None, public_interface=None, private_interface=None, cmeta_id=None):
+    def add_variable(self, name, units, initial_value=None,
+                     public_interface=None, private_interface=None, cmeta_id=None):
         """
         Adds a variable to the model and returns a Sympy ``Dummy`` object to represent it.
 
@@ -168,12 +167,12 @@ class Model(object):
                 factor_dummy = self.add_number(sympy.Float(factor), str(target.units / source.units))
 
                 # Add an equations making the connection with the required conversion
-                self.equations.append(sympy.Eq(target.dummy, source.assigned_to * factor_dummy))
+                self.equations.append(sympy.Eq(target, source.assigned_to * factor_dummy))
 
                 logger.info('Connection req. unit conversion: %s', self.equations[-1])
 
                 # The assigned symbol for this variable is itself
-                target.assigned_to = target.dummy
+                target.assigned_to = target
 
             logger.debug('Updated target: %s', target)
 
@@ -597,7 +596,7 @@ class Model(object):
 
     def variables(self):
         """ Returns an iterator over this model's variable symbols. """
-        return self._name_to_symbols.values()
+        return self._name_to_symbol.values()
 
 
 class NumberDummy(sympy.Dummy):
@@ -609,8 +608,8 @@ class NumberDummy(sympy.Dummy):
     Number dummies should never be created directly, but always via :meth:`Model.add_number()`.
     """
     # Sympy annoyingly overwrites __new__
-    def __new__(cls, *args, **kwargs):
-        return super().__new__(cls)
+    def __new__(cls, value, *args, **kwargs):
+        return super().__new__(cls, str(value))
 
     def __init__(self, value, units):
         self.value = float(value)
@@ -618,6 +617,9 @@ class NumberDummy(sympy.Dummy):
 
     def __float__(self):
         return self.value
+
+    def __str__(self):
+        return str(self.value)
 
 
 class VariableDummy(sympy.Dummy):
@@ -627,8 +629,8 @@ class VariableDummy(sympy.Dummy):
     Variable dummies should never be created directly, but always via :meth:`Model.add_variable()`.
     """
     # Sympy annoyingly overwrites __new__
-    def __new__(cls, *args, **kwargs):
-        return super().__new__(cls)
+    def __new__(cls, name, *args, **kwargs):
+        return super().__new__(cls, name)
 
     # TODO: Add parameters to docstring
     def __init__(self,

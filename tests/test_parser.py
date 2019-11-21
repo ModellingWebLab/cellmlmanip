@@ -47,15 +47,6 @@ class TestParser(object):
         # Include 19 equations from model + 2 equations added by parser for unit conversion
         assert len(model.equations) == 21  # NOTE: determined by eye!
 
-    def test_variable_find(self, model):
-        match = model.find_variable({'cmeta_id': 'time'})
-        assert len(match) == 1
-        assert match[0].cmeta_id == 'time' and match[0].name == 'environment$time'
-
-        match = model.find_variable({'cmeta_id': 'sv12'})
-        assert len(match) == 1 and \
-            match[0].dummy.name == 'single_ode_rhs_const_var$sv1'
-
     def test_rdf(self, model):
         assert len(model.rdf) == 21
 
@@ -84,11 +75,11 @@ class TestParser(object):
                        'deriv_on_rhs2b$sv1_rate']
         for name in unconnected:
             variable = model.get_symbol_by_name(name)
-            assert variable.dummy == variable.assigned_to
+            assert variable == variable.assigned_to
 
     def test_connections(self, model):
         # Check environment component's time variable has propagated
-        environment__time = model.get_symbol_by_name('environment$time').dummy
+        environment__time = model.get_symbol_by_name('environment$time')
 
         # We're checking sympy.Dummy objects (same name != same hash)
         assert isinstance(environment__time, sympy.Dummy)
@@ -145,10 +136,6 @@ class TestParser(object):
         from cellmlmanip.units import ExpressionWithUnitPrinter
         printer = ExpressionWithUnitPrinter()
 
-        # show metadata for dummy instances in equations
-        # for index, key in enumerate(model.dummy_metadata.keys()):
-        #     print('%3d. %s' % (index, str(model.dummy_metadata[key])))
-
         # show equations
         for index, equation in enumerate(model.equations):
             print('%3d. Eq(%s, %s)' % (index + 1,
@@ -161,7 +148,7 @@ class TestParser(object):
                    '==' if model.units.is_unit_equal(rhs_units, lhs_units) else '!=',
                    rhs_units))
 
-        assert shared check_cmeta_ids(model)
+        assert shared.check_cmeta_ids(model)
         assert shared.check_dummy_assignment(model)
 
     def test_connect_to_hidden_component(self):

@@ -18,6 +18,7 @@ def check_cmeta_ids(model):
                                 variable.dummy, variable.assigned_to)
     return is_okay
 
+
 def check_dummy_assignment(model):
     """Every variable in the model should be assigned to itself or another variabe.
     The source variable must be assigned to itself."""
