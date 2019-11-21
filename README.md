@@ -52,3 +52,8 @@ This will stop the commit from happening if flake8 checks do not pass.
 There is a git pre-commit hook for this too, the process is a little more manual than for flake8:
 
 https://github.com/timothycrosley/isort#git-hook
+
+
+## Building the documentation
+
+Install with `pip install -e .[docs]`,  navigate to the `docs` directory and build with `make html`.

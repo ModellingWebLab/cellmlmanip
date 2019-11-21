@@ -21,7 +21,6 @@ class TestModelBadUnits:
         return model
 
     def test_units(self, parser_instance, model):
-        model.get_equation_graph(True)  # set up the graph - it is not automatic
         symbol_a = model.get_symbol_by_cmeta_id("a")
         symbol_b = model.get_symbol_by_cmeta_id("b")
         equation = model.get_equations_for([symbol_b])
