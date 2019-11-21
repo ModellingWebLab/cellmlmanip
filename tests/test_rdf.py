@@ -109,8 +109,7 @@ def test_get_ontology_terms_by_symbol(test_bad_annotations):
     model = test_bad_annotations
 
     # Get v3 from the model, as it does not have cmeta_id, to test this part of the code
-    equation_graph = model.get_equation_graph()
-    for variable in equation_graph:
+    for variable in model.graph:
         if str(variable) == '_c$v3':
             annotations = model.get_ontology_terms_by_symbol(variable, OXMETA)
             assert len(annotations) == 0
@@ -121,8 +120,7 @@ def test_has_ontology_term_by_symbol(test_bad_annotations):
     model = test_bad_annotations
 
     # Get v3 from the model, as it does not have cmeta_id, to test this part of the code
-    equation_graph = model.get_equation_graph()
-    for variable in equation_graph:
+    for variable in model.graph:
         if str(variable) == '_c$v3':
             assert not model.has_ontology_annotation(variable, OXMETA)
 
