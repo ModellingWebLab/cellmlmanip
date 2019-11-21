@@ -1,6 +1,6 @@
 ﻿"""Classes to represent a flattened CellML model and metadata about its variables"""
 import logging
-from collections import OrderedDict, Iterable
+from collections import Iterable, OrderedDict
 from io import StringIO
 
 import networkx as nx
@@ -765,4 +765,3 @@ class Model(object):
 
         # Invalidate cache
         self.graph = None
-
