@@ -224,7 +224,8 @@ class Parser(object):
         transpiler = mathml2sympy.Transpiler(
             dummify=True,
             symbol_prefix=component_element.get('name') + SYMPY_SYMBOL_DELIMITER,
-            symbol_lookup=variable_to_symbol
+            symbol_lookup=variable_to_symbol,
+            number_creator=lambda x, y: self.model.add_number(x, y),
         )
 
         # for each math element
@@ -236,10 +237,10 @@ class Parser(object):
                 self.model.add_equation(expr)
 
         # we have special handling for numbers - they are represented by dummy in the equation
-        for symbol, attributes in transpiler.metadata.items():
-            self.model.add_number(number=attributes['sympy.Number'],
-                                  units=attributes['cellml:units'],
-                                  dummy=symbol)
+        #for symbol, attributes in transpiler.metadata.items():
+        #    self.model.add_number(number=attributes['sympy.Number'],
+        #                          units=attributes['cellml:units'],
+        #                          dummy=symbol)
 
     def _add_relationships(self, model: etree.Element):
         group_elements = model.findall(Parser.with_ns(XmlNs.CELLML, 'group'))
@@ -364,8 +365,10 @@ class Parser(object):
             return parent_name == self.components[child_name].parent
 
         # get the variable information from the model about each end of the connection
-        variable_1 = self.model.get_meta_dummy(self._get_variable_name(comp_1, var_1))
-        variable_2 = self.model.get_meta_dummy(self._get_variable_name(comp_2, var_2))
+        #variable_1 = self.model.get_meta_dummy(self._get_variable_name(comp_1, var_1))
+        #variable_2 = self.model.get_meta_dummy(self._get_variable_name(comp_2, var_2))
+        variable_1 = self.model.get_symbol_by_name(self._get_variable_name(comp_1, var_1))
+        variable_2 = self.model.get_symbol_by_name(self._get_variable_name(comp_2, var_2))
 
         # if the components are siblings (either same parent or top-level)
         if _are_siblings(comp_1, comp_2):
