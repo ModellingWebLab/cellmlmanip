@@ -8,8 +8,8 @@ from enum import Enum
 
 from lxml import etree
 
-from cellmlmanip import mathml2sympy
 from cellmlmanip.model import SYMPY_SYMBOL_DELIMITER, Model
+from cellmlmanip.transpiler import Transpiler
 
 
 class XmlNs(Enum):
@@ -199,7 +199,7 @@ class Parser(object):
         """
         variable_elements = component_element.findall(Parser.with_ns(XmlNs.CELLML, 'variable'))
 
-        # we keep a {variable name: sympy symbol} lookup that we pass to mathml2sympy
+        # we keep a {variable name: sympy symbol} lookup that we pass to the transpiler
         variable_lookup_symbol = dict()
 
         for variable_element in variable_elements:
@@ -242,7 +242,7 @@ class Parser(object):
             return out
 
         # reuse transpiler so dummy symbols are kept across <math> elements
-        transpiler = mathml2sympy.Transpiler(
+        transpiler = Transpiler(
             symbol_generator=symbol_generator,
             number_generator=lambda x, y: self.model.add_number(x, y),
         )
