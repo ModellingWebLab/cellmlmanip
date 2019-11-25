@@ -45,7 +45,7 @@ class TestModelUnits:
 
     def test_units(self, model):
         symbol_a = model.get_symbol_by_cmeta_id("a")
-        equation = model.get_equations_for([symbol_a])
+        equation = model.get_equations_for([symbol_a], strip_units=False)
         assert model.units.summarise_units(equation[0].lhs) == 'ms'
         assert model.units.summarise_units(equation[0].rhs) == 'ms'
 

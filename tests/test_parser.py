@@ -5,6 +5,8 @@ import sympy
 
 from cellmlmanip import load_model, parser
 
+from . import shared
+
 
 class TestParser(object):
     @pytest.fixture(scope="class")
@@ -46,15 +48,6 @@ class TestParser(object):
         # Include 19 equations from model + 2 equations added by parser for unit conversion
         assert len(model.equations) == 21  # NOTE: determined by eye!
 
-    def test_variable_find(self, model):
-        match = model.find_variable({'cmeta_id': 'time'})
-        assert len(match) == 1
-        assert match[0].cmeta_id == 'time' and match[0].name == 'environment$time'
-
-        match = model.find_variable({'cmeta_id': 'sv12'})
-        assert len(match) == 1 and \
-            match[0].dummy.name == 'single_ode_rhs_const_var$sv1'
-
     def test_rdf(self, model):
         assert len(model.rdf) == 21
 
@@ -82,28 +75,28 @@ class TestParser(object):
                        'state_units_conversion2$sv1',
                        'deriv_on_rhs2b$sv1_rate']
         for name in unconnected:
-            variable = model.get_meta_dummy(name)
-            assert variable.dummy == variable.assigned_to
+            variable = model.get_symbol_by_name(name)
+            assert variable == variable.assigned_to
 
     def test_connections(self, model):
         # Check environment component's time variable has propagated
-        environment__time = model.get_meta_dummy('environment$time').dummy
+        environment__time = model.get_symbol_by_name('environment$time')
 
         # We're checking sympy.Dummy objects (same name != same hash)
         assert isinstance(environment__time, sympy.Dummy)
         assert environment__time != sympy.Dummy(environment__time.name)
 
         state_units_conversion2__time = \
-            model.get_meta_dummy('state_units_conversion2$time').assigned_to
+            model.get_symbol_by_name('state_units_conversion2$time').assigned_to
         assert environment__time == state_units_conversion2__time
 
         # propagated environment time to inside nested component circle_y
-        circle_y__time = model.get_meta_dummy('circle_y$time').assigned_to
+        circle_y__time = model.get_symbol_by_name('circle_y$time').assigned_to
         assert environment__time == circle_y__time
 
         # we have a new equation that links together times in different units
         time_units_conversion2__time = \
-            model.get_meta_dummy('time_units_conversion2$time').assigned_to
+            model.get_symbol_by_name('time_units_conversion2$time').assigned_to
         # equation = sympy.Eq(time_units_conversion2__time, environment__time)
         equation = [e for e in model.equations if e.lhs == time_units_conversion2__time]
         assert len(equation) == 1
@@ -124,8 +117,8 @@ class TestParser(object):
         # 2. time_units_conversion2
         #    Eq(_time_units_conversion2$time, _environment$time) microsecond != millisecond
 
-        require_conversion = [model.get_meta_dummy('time_units_conversion1$time').assigned_to,
-                              model.get_meta_dummy('time_units_conversion2$time').assigned_to]
+        require_conversion = [model.get_symbol_by_name('time_units_conversion1$time').assigned_to,
+                              model.get_symbol_by_name('time_units_conversion2$time').assigned_to]
 
         # find the equations that define these variables that require conversion
         invalid_rhs_lhs_count = 0
@@ -142,11 +135,7 @@ class TestParser(object):
     def test_print_eq(self, model):
         print()
         from cellmlmanip.units import ExpressionWithUnitPrinter
-        printer = ExpressionWithUnitPrinter(symbol_info=model.dummy_metadata)
-
-        # show metadata for dummy instances in equations
-        for index, key in enumerate(model.dummy_metadata.keys()):
-            print('%3d. %s' % (index, str(model.dummy_metadata[key])))
+        printer = ExpressionWithUnitPrinter()
 
         # show equations
         for index, equation in enumerate(model.equations):
@@ -160,14 +149,8 @@ class TestParser(object):
                    '==' if model.units.is_unit_equal(rhs_units, lhs_units) else '!=',
                    rhs_units))
 
-        dummy_instances, not_found = model.check_dummy_metadata()
-        assert len(not_found) == 0
-
-        cmeta_ok = model.check_cmeta_id()
-        assert cmeta_ok
-
-        variable_assignment_ok = model.check_dummy_assignment()
-        assert variable_assignment_ok
+        assert shared.check_cmeta_ids(model)
+        assert shared.check_dummy_assignment(model)
 
     def test_connect_to_hidden_component(self):
         example_cellml = os.path.join(
