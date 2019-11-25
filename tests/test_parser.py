@@ -227,7 +227,7 @@ class TestParser(object):
 
         path = os.path.join(os.path.dirname(__file__), 'cellml_files', '3.4.2.1.component_with_units.cellml')
         p = parser.Parser(path)
-        with pytest.raises(RuntimeError, match='Defining units inside components is not supported'):
+        with pytest.raises(ValueError, match='Defining units inside components is not supported'):
             p.parse()
 
     def test_reactions_unsupported(self):
@@ -235,6 +235,6 @@ class TestParser(object):
 
         path = os.path.join(os.path.dirname(__file__), 'cellml_files', '3.4.2.1.component_with_reactions.cellml')
         p = parser.Parser(path)
-        with pytest.raises(RuntimeError, match='Reactions are not supported'):
+        with pytest.raises(ValueError, match='Reactions are not supported'):
             p.parse()
 

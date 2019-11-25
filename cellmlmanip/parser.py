@@ -183,13 +183,13 @@ class Parser(object):
             # Raise error if component units are defined
             component_units = element.findall(Parser.with_ns(XmlNs.CELLML, 'units'))
             if component_units:
-                raise RuntimeError(
+                raise ValueError(
                     'Defining units inside components is not supported (found in component ' + name + ').')
 
             # Raise error if reactions are defined
-            component_units = element.findall(Parser.with_ns(XmlNs.CELLML, 'reaction'))
-            if component_units:
-                raise RuntimeError(
+            reactions = element.findall(Parser.with_ns(XmlNs.CELLML, 'reaction'))
+            if reactions:
+                raise ValueError(
                     'Reactions are not supported (found in component ' + name + ').')
 
     def _add_variables(self, component_element):
