@@ -13,8 +13,6 @@ pip install -r requirements/dev.txt
 pip install -e .
 ```
 
-Note that due to the use of type hints this project *requires* at least Python 3.6.
-
 ## Testing
 
 To run tests, just run
