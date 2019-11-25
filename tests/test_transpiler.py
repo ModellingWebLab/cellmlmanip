@@ -4,10 +4,13 @@ from xml.dom import pulldom
 import pytest
 import sympy
 
-from cellmlmanip import mathml2sympy
+from cellmlmanip.transpiler import Transpiler
 
 
-class TestParser(object):
+class TestTranspiler(object):
+    """
+    Tests conversion from mathml to sympy using the Transpiler class.
+    """
 
     @staticmethod
     def make_mathml(content_xml):
@@ -17,7 +20,7 @@ class TestParser(object):
         return xml
 
     def assert_equal(self, content_xml, sympy_expression):
-        transpiler = mathml2sympy.Transpiler()
+        transpiler = Transpiler()
         mathml_string = self.make_mathml(content_xml)
         transpiled_sympy = transpiler.parse_string(mathml_string)
         assert transpiled_sympy == sympy_expression
@@ -197,7 +200,7 @@ class TestParser(object):
         mathml_xml = '<math xmlns="http://www.w3.org/1998/Math/MathML" ' \
                      'xmlns:cellml="http://www.cellml.org/cellml/1.0#"> <apply><cn ' \
                      'cellml:units="dimensionless">3</cn></apply></math> '
-        transpiled_sympy = mathml2sympy.Transpiler().parse_string(mathml_xml)
+        transpiled_sympy = Transpiler().parse_string(mathml_xml)
         assert transpiled_sympy == [sympy.Number(3.0)]
 
     def test_diff_eq(self):
@@ -255,7 +258,7 @@ class TestParser(object):
             numbers.append((number, units))
             return sympy.Rational(number)
 
-        transpiler = mathml2sympy.Transpiler(number_generator=number_generator)
+        transpiler = Transpiler(number_generator=number_generator)
         expr = transpiler.parse_string(mathml)
         for number in expr[0].free_symbols:
             assert isinstance(number, sympy.Rational)
@@ -278,7 +281,7 @@ class TestParser(object):
                 document.expandNode(node)
                 components.append(node)
         for component in components:
-            eqs = mathml2sympy.Transpiler().parse_dom(component)
+            eqs = Transpiler().parse_dom(component)
             for eq in eqs:
                 pass
                 # print(eq)

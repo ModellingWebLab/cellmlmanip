@@ -8,8 +8,8 @@ from enum import Enum
 
 from lxml import etree
 
-from cellmlmanip import mathml2sympy
 from cellmlmanip.model import SYMPY_SYMBOL_DELIMITER, Model
+from cellmlmanip.transpiler import Transpiler
 
 
 class XmlNs(Enum):
@@ -171,13 +171,26 @@ class Parser(object):
         # for each component defined in the model
         for element in component_elements:
             # component are only kept in parser to resolve relationships and connections
-            self.components[element.get('name')] = _Component(element.get('name'))
+            name = element.get('name')
+            self.components[name] = _Component(name)
 
             # process the <variable> tags in this component
             variable_to_symbol = self._add_variables(element)
 
             # process the <math> tags in this component
             self._add_maths(element, variable_to_symbol)
+
+            # Raise error if component units are defined
+            component_units = element.findall(Parser.with_ns(XmlNs.CELLML, 'units'))
+            if component_units:
+                raise ValueError(
+                    'Defining units inside components is not supported (found in component ' + name + ').')
+
+            # Raise error if reactions are defined
+            reactions = element.findall(Parser.with_ns(XmlNs.CELLML, 'reaction'))
+            if reactions:
+                raise ValueError(
+                    'Reactions are not supported (found in component ' + name + ').')
 
     def _add_variables(self, component_element):
         """
@@ -186,7 +199,7 @@ class Parser(object):
         """
         variable_elements = component_element.findall(Parser.with_ns(XmlNs.CELLML, 'variable'))
 
-        # we keep a {variable name: sympy symbol} lookup that we pass to mathml2sympy
+        # we keep a {variable name: sympy symbol} lookup that we pass to the transpiler
         variable_lookup_symbol = dict()
 
         for variable_element in variable_elements:
@@ -229,7 +242,7 @@ class Parser(object):
             return out
 
         # reuse transpiler so dummy symbols are kept across <math> elements
-        transpiler = mathml2sympy.Transpiler(
+        transpiler = Transpiler(
             symbol_generator=symbol_generator,
             number_generator=lambda x, y: self.model.add_number(x, y),
         )

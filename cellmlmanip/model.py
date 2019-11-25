@@ -91,12 +91,11 @@ class Model(object):
         """
         Creates and returns a :class:`NumberDummy` to represent a number with units in sympy expressions.
 
-        :param number: A ``sympy.Number``.
+        :param number: A number (anything convertible to float).
         :param units: A string unit representation.
 
-        :return: The ``sympy.Dummy`` object used to represent this number.
+        :return: A :class:`NumberDummy` object.
         """
-        assert isinstance(value, sympy.Number), 'The argument `value` must be a sympy.Number.'
         return NumberDummy(value, self.units.get_quantity(units))
 
     def add_variable(self, name, units, initial_value=None,
@@ -162,7 +161,7 @@ class Model(object):
                 factor = self.units.convert_to(1 * source.units, target.units).magnitude
 
                 # Dummy to represent this factor in equations, having units for conversion
-                factor_dummy = self.add_number(sympy.Float(factor), str(target.units / source.units))
+                factor_dummy = self.add_number(factor, str(target.units / source.units))
 
                 # Add an equations making the connection with the required conversion
                 self.equations.append(sympy.Eq(target, source.assigned_to * factor_dummy))
@@ -453,8 +452,7 @@ class Model(object):
                     # this variable is a parameter - add to graph and connect to lhs
                     rhs.type = 'parameter'
                     unit = rhs.units
-                    number = sympy.Float(rhs.initial_value)
-                    dummy = self.add_number(number, str(unit))
+                    dummy = self.add_number(rhs.initial_value, str(unit))
                     graph.add_node(rhs, equation=sympy.Eq(rhs, dummy), variable_type='parameter')
                     graph.add_edge(rhs, lhs)
 
