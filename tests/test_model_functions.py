@@ -35,18 +35,19 @@ class TestModelFunctions():
     @pytest.fixture
     def model(scope='class'):
         return cellmlmanip.load_model(
-            os.path.join(os.path.dirname(__file__), 'cellml_files', "basic_ode.cellml"))
+            os.path.join(os.path.dirname(__file__), 'cellml_files', 'basic_ode.cellml'))
 
     @pytest.fixture
     def other_model(scope='class'):
         return cellmlmanip.load_model(
             os.path.join(os.path.dirname(__file__), 'cellml_files',
-                         "aslanidi_model_2009.cellml"))
+                         'aslanidi_model_2009.cellml'))
 
     # also tested in test_hodgkin
     def test_get_state_symbols(self, model):
         state_symbols = model.get_state_symbols()
         assert len(state_symbols) == 1
+        assert state_symbols[0].name == 'env_ode$sv1'
 
     # also tested in test_hodgkin
     def test_get_free_variable_symbol(self, model):
