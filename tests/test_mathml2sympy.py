@@ -17,8 +17,9 @@ class TestParser(object):
         return xml
 
     def assert_equal(self, content_xml, sympy_expression):
+        transpiler = mathml2sympy.Transpiler()
         mathml_string = self.make_mathml(content_xml)
-        transpiled_sympy = mathml2sympy.Transpiler().parse_string(mathml_string)
+        transpiled_sympy = transpiler.parse_string(mathml_string)
         assert transpiled_sympy == sympy_expression
 
     def test_symbol(self):
@@ -147,19 +148,19 @@ class TestParser(object):
 
     def test_diff(self):
         time = sympy.Symbol('time')
-        V = sympy.Function('V')
+        V = sympy.Symbol('V')
         self.assert_equal('<apply><diff/><bvar><ci>time</ci></bvar><ci>V</ci></apply>',
-                          [sympy.Derivative(V(time), time)])
+                          [sympy.Derivative(V, time)])
 
     def test_diff_with_order(self):
         time = sympy.Symbol('time')
-        V = sympy.Function('V')
+        V = sympy.Symbol('V')
         self.assert_equal('<apply>'
                           '<diff/>'
                           '<bvar><ci>time</ci><degree><cn>2</cn></degree></bvar>'
                           '<ci>V</ci>'
                           '</apply>',
-                          [sympy.Derivative(V(time), time, 2)])
+                          [sympy.Derivative(V, time, 2)])
 
     def test_piecewise(self):
         x = sympy.Symbol('x')
@@ -201,13 +202,13 @@ class TestParser(object):
 
     def test_diff_eq(self):
         t, i_Stim, i_Na, i_K, i_L, Cm = sympy.symbols('time i_Stim i_Na i_K i_L Cm')
-        V = sympy.Function('V')
+        V = sympy.Symbol('V')
         # From hodgkin_huxley_squid_axon_model_1952_modified.cellml
         self.assert_equal('<apply><eq/><apply><diff/><bvar><ci>time</ci></bvar><ci>V</ci></apply'
                           '><apply><divide/><apply><minus/><apply><plus/><ci>i_Stim</ci><ci>i_Na'
                           '</ci><ci>i_K</ci><ci>i_L</ci></apply></apply><ci>Cm</ci></apply'
                           '></apply>',
-                          [sympy.Eq(sympy.Derivative(V(t), t), -(i_Stim + i_Na + i_K + i_L) / Cm)])
+                          [sympy.Eq(sympy.Derivative(V, t), -(i_Stim + i_Na + i_K + i_L) / Cm)])
 
     def test_scientific_notation(self):
         self.assert_equal('<cn type="e-notation">1.234<sep/>5</cn>', [sympy.Number(1.234e5)])
@@ -241,24 +242,27 @@ class TestParser(object):
                           [sympy.atanh(sympy.Symbol('x'))])
 
     def test_cn_units(self):
+        """ Test if the transpiler uses the number_generator to make number objects. """
+
         mathml = self.make_mathml('<apply>'
                                   '<eq/>'
                                   '<cn cellml:units="s">2.0</cn>'
                                   '<cn cellml:units="ms">2000.0</cn>'
                                   '</apply>')
-        transpiler = mathml2sympy.Transpiler(dummify=True)
-        sympy_exprs = transpiler.parse_string(mathml)
-        metadata = transpiler.metadata
-        for number in sympy_exprs[0].free_symbols:
-            assert metadata[number]['sympy.Number'] == sympy.Number(float(number.name))
-            if float(number.name) == 2.0:
-                assert metadata[number]['cellml:units'] == 's'
+        numbers = []
 
-    def test_prefix(self):
-        mathml = self.make_mathml('<apply><ci>x</ci></apply>')
-        transpiler = mathml2sympy.Transpiler(symbol_prefix="test__")
-        sympy_expr = transpiler.parse_string(mathml)
-        assert sympy_expr[0] == sympy.Symbol('test__x')
+        def number_generator(number, units):
+            numbers.append((number, units))
+            return sympy.Rational(number)
+
+        transpiler = mathml2sympy.Transpiler(number_generator=number_generator)
+        expr = transpiler.parse_string(mathml)
+        for number in expr[0].free_symbols:
+            assert isinstance(number, sympy.Rational)
+
+        assert len(numbers) == 2
+        assert numbers[0][0] == 2
+        assert numbers[1][0] == 2000
 
     def test_hodgkin_1952(self):
         cellml_path = os.path.join(

@@ -15,32 +15,17 @@ class Transpiler(object):
     """
     Handles conversion of MathmL to Sympy exprerssions.
 
-    :param dummify: Set to ``True`` to create dummy symbols for variables instead of sympy Symbols
-    :param symbol_prefix: An optional prefix to add to all symbols
-    :param symbol_lookup: A dict mapping variable names (including the optional ``symbol_prefix``) to
-        predefined Symbol or Dummy objects
+    :param symbol_generator: An optional method to create expressions for symbols.
+        Must have signature ``f(name) -> sympy.Basic``.
+    :param number_generator: An optional method to create expressions for numbers with units.
+        Must have signature ``f(value, unit) -> sympy.Basic``.
     """
 
-    def __init__(self, dummify=False, symbol_prefix=None, symbol_lookup=dict()):
-        # we create symbols as necessary, as they occur in equations
-        self.error_on_unknown_symbol = False
+    def __init__(self, symbol_generator=None, number_generator=None):
 
-        # create dummy symbols for variables rather than typical sympy symbols
-        self.dummify = dummify
-
-        # use to store information about dummified numbers (number & units)
-        self.metadata = dict()
-
-        # prefix all symbols with given string
-        self.symbol_prefix = symbol_prefix
-
-        # for a given variable, get it's symbol from this dictionary
-        self.dummy_symbol_cache = symbol_lookup
-
-        # if a symbol lookup dictionary was supplied
-        if symbol_lookup:
-            # unknown variables in equations are an error
-            self.error_on_unknown_symbol = True
+        # Store symbol and number creating methods, if given
+        self.symbol_generator = symbol_generator
+        self.number_generator = number_generator
 
         # Mapping MathML tag element names (keys) to appropriate handler for SymPy output (values)
         # These tags require explicit handling because they have children or context etc.
@@ -133,17 +118,11 @@ class Transpiler(object):
         SymPy: http://docs.sympy.org/latest/modules/core.html#id17
         """
         identifier = node.childNodes[0].data.strip()
-        if self.symbol_prefix:
-            identifier = self.symbol_prefix + identifier
-        if self.dummify:
-            if self.error_on_unknown_symbol:
-                assert identifier in self.dummy_symbol_cache, \
-                    '%s not found in symbol dict' % identifier
-                return self.dummy_symbol_cache[identifier]
-            else:
-                # Return a dummified version of this symbol, picking up from cache
-                return self.dummy_symbol_cache.setdefault(identifier, sympy.Dummy(identifier))
-        return sympy.Symbol(identifier)
+
+        if self.symbol_generator:
+            return self.symbol_generator(identifier)
+        else:
+            return sympy.Symbol(identifier)
 
     def _cn_handler(self, node):
         """MathML: https://www.w3.org/TR/MathML2/chapter4.html#contm.cn
@@ -173,12 +152,10 @@ class Transpiler(object):
             number = float(node.childNodes[0].data.strip())
             number = sympy.Number(number)
 
-        if self.dummify:
-            dummified = sympy.Dummy(str(number))
-            self.metadata[dummified] = {**(dict(node.attributes.items())), 'sympy.Number': number}
-            return dummified
-
-        return number
+        if self.number_generator:
+            return self.number_generator(number, node.attributes['cellml:units'].value)
+        else:
+            return sympy.Float(number)
 
     # BASIC CONTENT ELEMENTS #######################################################################
 
@@ -297,32 +274,17 @@ class Transpiler(object):
     def _diff_handler(self, node):
         """https://www.w3.org/TR/MathML2/chapter4.html#contm.diff
         operator taking qualifiers
-        TODO: clean up dummification if possible
         """
         def _wrapped_diff(x_symbol, y_symbol, evaluate=False):
-            # dx / dy
-            if self.dummify:
-                y_function = y_symbol
-            else:
-                y_function = sympy.Function(y_symbol.name)
-
             # if bound variable element <bvar> contains <degree>, argument x_symbol is a list,
             # otherwise, it is a symbol
             if isinstance(x_symbol, list) and len(x_symbol) == 2:
                 bound_variable = x_symbol[0]
                 order = int(x_symbol[1])
-
-                if self.dummify:
-                    deriv = sympy.Derivative(y_function, bound_variable, order, evaluate=evaluate)
-                else:
-                    deriv = sympy.Derivative(y_function(bound_variable), bound_variable, order,
-                                             evaluate=evaluate)
+                deriv = sympy.Derivative(y_symbol, bound_variable, order, evaluate=evaluate)
             # Otherwise, first degree derivative
             else:
-                if self.dummify:
-                    deriv = sympy.Derivative(y_function, x_symbol, evaluate=evaluate)
-                else:
-                    deriv = sympy.Derivative(y_function(x_symbol), x_symbol, evaluate=evaluate)
+                deriv = sympy.Derivative(y_symbol, x_symbol, evaluate=evaluate)
 
             return deriv
 

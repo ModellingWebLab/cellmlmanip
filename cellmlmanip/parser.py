@@ -220,11 +220,18 @@ class Parser(object):
         if not math_elements:
             return
 
+        # Method to create symbols
+        prefix = component_element.get('name') + SYMPY_SYMBOL_DELIMITER
+
+        def symbol_generator(identifer):
+            out = variable_to_symbol.get(prefix + identifer, None)
+            assert out is not None, '%s not found in symbol dict' % (prefix + identifer)
+            return out
+
         # reuse transpiler so dummy symbols are kept across <math> elements
         transpiler = mathml2sympy.Transpiler(
-            dummify=True,
-            symbol_prefix=component_element.get('name') + SYMPY_SYMBOL_DELIMITER,
-            symbol_lookup=variable_to_symbol
+            symbol_generator=symbol_generator,
+            number_generator=lambda x, y: self.model.add_number(x, y),
         )
 
         # for each math element
@@ -234,12 +241,6 @@ class Parser(object):
             # add each equation from <math> to the model
             for expr in sympy_exprs:
                 self.model.add_equation(expr)
-
-        # we have special handling for numbers - they are represented by dummy in the equation
-        for symbol, attributes in transpiler.metadata.items():
-            self.model.add_number(number=attributes['sympy.Number'],
-                                  units=attributes['cellml:units'],
-                                  dummy=symbol)
 
     def _add_relationships(self, model: etree.Element):
         group_elements = model.findall(Parser.with_ns(XmlNs.CELLML, 'group'))
@@ -364,8 +365,8 @@ class Parser(object):
             return parent_name == self.components[child_name].parent
 
         # get the variable information from the model about each end of the connection
-        variable_1 = self.model.get_meta_dummy(self._get_variable_name(comp_1, var_1))
-        variable_2 = self.model.get_meta_dummy(self._get_variable_name(comp_2, var_2))
+        variable_1 = self.model.get_symbol_by_name(self._get_variable_name(comp_1, var_1))
+        variable_2 = self.model.get_symbol_by_name(self._get_variable_name(comp_2, var_2))
 
         # if the components are siblings (either same parent or top-level)
         if _are_siblings(comp_1, comp_2):

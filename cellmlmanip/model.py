@@ -1,6 +1,5 @@
 ﻿"""Classes to represent a flattened CellML model and metadata about its variables."""
 import logging
-from collections import OrderedDict
 from io import StringIO
 
 import networkx as nx
@@ -16,60 +15,6 @@ logger = logging.getLogger(__name__)
 
 # Delimiter for variables name in Sympy expressions: <component><delimiter><name>
 SYMPY_SYMBOL_DELIMITER = '$'
-
-
-class MetaDummy(object):
-    """
-    Holds information about a Dummy placeholder in set of Sympy equations.
-
-    Dummy symbols are used to represent variables from the CellMl model or as placeholders for numbers.
-    """
-    # TODO Add param list in docstring above
-
-    def __init__(self, name, units, dummy, initial_value=None,
-                 public_interface=None, private_interface=None, number=None,
-                 order_added=None,
-                 **kwargs):
-        # Attributes from the <variable> tag in CellML
-        self.name = name
-        self.units = units
-        self.initial_value = initial_value
-        self.public_interface = public_interface
-        self.private_interface = private_interface
-        self.order_added = order_added
-        self.cmeta_id = kwargs.get('cmeta_id', None)
-
-        # The instance of sympy.Dummy representing this variable in equations
-        assert isinstance(dummy, sympy.Dummy)
-        self.dummy = dummy
-
-        # The sympy.Dummy assigned in place of this variable (via a connection)
-        # If they don't have a public or private 'in' interface
-        if private_interface != 'in' and public_interface != 'in':
-            # This variable is assigned to itself
-            self.assigned_to = self.dummy
-        else:
-            # This variable will be connected to another variable
-            self.assigned_to = None
-
-        self.type = None
-
-        if number is not None:
-            assert isinstance(number, sympy.Number)
-            self.type = 'number'
-
-        self.number = number
-
-    @property
-    def is_number(self):
-        """Indicates whether this dummy instance is used as a placeholder for a number"""
-        return self.number is not None
-
-    def __str__(self):
-        return '%s(%s)' % (
-            type(self).__name__,
-            ', '.join('%s=%s' % item for item in vars(self).items() if item[1] is not None)
-        )
 
 
 class Model(object):
@@ -101,18 +46,15 @@ class Model(object):
         # A pint UnitStore, mapping unit names to unit objects
         self.units = UnitStore(model=self)
 
-        # An RDF graph containing further meta data
-        self.rdf = rdflib.Graph()
-
-        # Maps sympy.Dummy objects to MetaDummy objects
-        self.dummy_metadata = OrderedDict()
-
-        # Maps string names to sympy.Dummy objects
-        self.name_to_symbol = dict()
+        # Maps string variable names to sympy.Dummy objects
+        self._name_to_symbol = dict()
 
         # Cached nx.DiGraph of this model's equations, with number dummies or with sympy.Number objects
         self._graph = None
         self._graph_with_sympy_numbers = None
+
+        # An RDF graph containing further meta data
+        self.rdf = rdflib.Graph()
 
     def add_unit(self, name, attributes=None, base_units=False):
         """
@@ -145,142 +87,46 @@ class Model(object):
         self.equations.append(equation)
         self._invalidate_cache()
 
-    def add_number(self, *, number, units, dummy=None):
+    def add_number(self, value, units):
         """
-        Add metadata about a dummy symbol that represents a number in equations.
+        Creates and returns a :class:`NumberDummy` to represent a number with units in sympy expressions.
 
         :param number: A ``sympy.Number``.
         :param units: A string unit representation.
-        :param dummy: An optional ``sympy.Dummy``.
 
         :return: The ``sympy.Dummy`` object used to represent this number.
         """
-        assert isinstance(number, sympy.Number), 'The argument `number` must be a sympy.Number.'
+        assert isinstance(value, sympy.Number), 'The argument `value` must be a sympy.Number.'
+        return NumberDummy(value, self.units.get_quantity(units))
 
-        # Create a dummy object if necessary
-        if not dummy:
-            dummy = sympy.Dummy(str(number))
-        else:
-            assert dummy not in self.dummy_metadata
-
-        name = '%sNum%s%s' % (SYMPY_SYMBOL_DELIMITER, dummy.dummy_index, SYMPY_SYMBOL_DELIMITER)
-
-        # store metadata information about the number
-        self.dummy_metadata[dummy] = MetaDummy(name=name,
-                                               units=self.units.get_quantity(units),
-                                               dummy=dummy,
-                                               number=number)
-
-        return self.dummy_metadata[dummy].dummy
-
-    # TODO: Do we need the * here?
-    def add_variable(self, *, name, units, initial_value=None, public_interface=None, private_interface=None, **kwargs):
+    def add_variable(self, name, units, initial_value=None,
+                     public_interface=None, private_interface=None, cmeta_id=None):
         """
-        Add a variable to the model and return a Sympy ``Dummy`` object to represent it.
+        Adds a variable to the model and returns a :class:`VariableDummy` to represent it in sympy expressions.
 
         :param name: A string name.
         :param units: A string units representation.
         :param initial_value: An optional initial value.
         :param public_interface: An optional public interface specifier (only required when parsing CellML).
         :param private_interface: An optional private interface specifier (only required when parsing CellML).
-        :param kwargs: Any further keyword arguments will be passed to the :class:`MetaDummy` constructor.
+        :param cmeta_id: An optional string specifying a cmeta:id
 
-        :return: The ``sympy.Dummy`` created by the model to represent the variable in equations.
+        :return: A :class:`VariableDummy` object.
         """
-        if name in self.name_to_symbol:
+        if name in self._name_to_symbol:
             raise ValueError('Variable %s already exists.' % name)
 
-        dummy = sympy.Dummy(name)
+        self._name_to_symbol[name] = var = VariableDummy(
+            name=name,
+            units=self.units.get_quantity(units),
+            initial_value=initial_value,
+            public_interface=public_interface,
+            private_interface=private_interface,
+            order_added=len(self._name_to_symbol),
+            cmeta_id=cmeta_id,
+        )
 
-        if initial_value is not None:
-            initial_value = float(initial_value)
-
-        variable = MetaDummy(name=name,
-                             units=self.units.get_quantity(units),
-                             dummy=dummy,
-                             initial_value=initial_value,
-                             public_interface=public_interface,
-                             private_interface=private_interface,
-                             order_added=len(self.dummy_metadata),
-                             **kwargs)
-
-        self.dummy_metadata[dummy] = variable
-        self.name_to_symbol[name] = dummy
-
-        return self.dummy_metadata[dummy].dummy
-
-    def get_meta_dummy(self, name_or_instance):
-        """
-        Look up dummy data for given symbol.
-
-        :param name_or_instance: A string name or a ``sympy.Dummy``.
-        :return: A :class:`MetaDummy`.
-        """
-        if isinstance(name_or_instance, str):
-            return self.dummy_metadata[self.name_to_symbol[name_or_instance]]
-
-        assert isinstance(name_or_instance, sympy.Dummy)
-        return self.dummy_metadata[name_or_instance]
-
-    def check_dummy_metadata(self):
-        """
-        Check that every symbol in list of equations has a metadata entry.
-
-        :return: A set of dummy instances and a set of dummy instances without metadata.
-        """
-        # collect list of all dummy instances
-        dummy_instances = set()
-        not_found = set()
-
-        for index, equation in enumerate(self.equations):
-            atoms = equation.atoms(sympy.Dummy)
-            for atom in atoms:
-                dummy_instances.add(atom)
-                if atom not in self.dummy_metadata:
-                    logger.critical('%s not found for eq. %s (%s)' % (atom, index, equation))
-                    not_found.add(atom)
-
-        return dummy_instances, not_found
-
-    def check_cmeta_id(self):
-        """Checks that every variable with a cmeta_id is a source variable"""
-        is_okay = True
-        for variable in self.dummy_metadata.values():
-            if not variable.is_number:
-                if variable.cmeta_id:
-                    if variable.dummy != variable.assigned_to:
-                        is_okay = False
-                        logger.critical('%s has cmeta id but is assigned to %s',
-                                        variable.dummy, variable.assigned_to)
-        return is_okay
-
-    def check_dummy_assignment(self):
-        """Every non-number dummy symbol in the model should be assigned to itself or a source
-        variable. The source variable must be assigned to itself"""
-        is_okay = True
-        for variable in self.dummy_metadata.values():
-            if not variable.is_number:
-                # either the variable is assigned to itself
-                if variable.dummy == variable.assigned_to:
-                    continue
-
-                # or the variable is assigned to a source variable
-                source_dummy = self.dummy_metadata[variable.assigned_to]
-
-                # the source dummy must be assigned to itself
-                if source_dummy.dummy == source_dummy.assigned_to:
-                    continue
-
-                is_okay = False
-                logger.critical('%s is assigned to %s, which is assigned to %s',
-                                variable.dummy,
-                                variable.assigned_to,
-                                source_dummy.assigned_to)
-        return is_okay
-
-    def check_variables_in_equations(self):
-        """Every variable we have should have been used in an equation."""
-        pass
+        return var
 
     def connect_variables(self, source_name: str, target_name: str):
         """Given the source and target component and variable, create a connection by assigning
@@ -293,8 +139,8 @@ class Model(object):
         """
         logger.debug('connect_variables(%s ⟶ %s)', source_name, target_name)
 
-        source = self.get_meta_dummy(source_name)
-        target = self.get_meta_dummy(target_name)
+        source = self._name_to_symbol[source_name]
+        target = self._name_to_symbol[target_name]
 
         # If the source variable has already been assigned a final symbol
         if source.assigned_to:
@@ -309,25 +155,22 @@ class Model(object):
                 target.assigned_to = source.assigned_to
                 # everywhere the target variable is used, replace with source variable
                 for index, equation in enumerate(self.equations):
-                    self.equations[index] = equation.xreplace(
-                        {target.dummy: source.assigned_to}
-                    )
+                    self.equations[index] = equation.xreplace({target: source.assigned_to})
             # Otherwise, this connection requires a conversion
             else:
                 # Get the scaling factor required to convert source units to target units
                 factor = self.units.convert_to(1 * source.units, target.units).magnitude
 
                 # Dummy to represent this factor in equations, having units for conversion
-                factor_dummy = self.add_number(number=sympy.Float(factor),
-                                               units=str(target.units / source.units))
+                factor_dummy = self.add_number(sympy.Float(factor), str(target.units / source.units))
 
                 # Add an equations making the connection with the required conversion
-                self.equations.append(sympy.Eq(target.dummy, source.assigned_to * factor_dummy))
+                self.equations.append(sympy.Eq(target, source.assigned_to * factor_dummy))
 
                 logger.info('Connection req. unit conversion: %s', self.equations[-1])
 
                 # The assigned symbol for this variable is itself
-                target.assigned_to = target.dummy
+                target.assigned_to = target
 
             logger.debug('Updated target: %s', target)
 
@@ -409,60 +252,24 @@ class Model(object):
         The list is ordered by appearance in the cellml document.
         """
         derivative_symbols = [v for v in self.graph if isinstance(v, sympy.Derivative)]
-        return sorted(derivative_symbols, key=lambda state_var: self.get_meta_dummy(state_var.args[0]).order_added)
+        return sorted(derivative_symbols, key=lambda state_var: state_var.args[0].order_added)
 
     def get_state_symbols(self):
         """Returns a list of state variables found in the given model graph.
         The list is ordered by appearance in the cellml document.
         """
         state_symbols = [v.args[0] for v in self.get_derivative_symbols()]
-        return sorted(state_symbols, key=lambda state_var: self.get_meta_dummy(state_var).order_added)
+        return sorted(state_symbols, key=lambda state_var: state_var.order_added)
 
     def get_free_variable_symbol(self):
         """Returns the free variable of the given model graph.
         """
-        for v in self.graph:
-            if self.graph.nodes[v].get('variable_type', '') == 'free':
+        for v, node in self.graph.nodes.items():
+            if node.get('variable_type', '') == 'free':
                 return v
 
         # This should be unreachable
         raise ValueError('No free variable set in model.')  # pragma: no cover
-
-    def get_symbol_by_cmeta_id(self, cmeta_id):
-        """
-        Searches the given graph and returns the symbol for the variable with the given cmeta id.
-
-        To get symbols from e.g. an oxmeta ontology term, use :meth:`get_symbol_by_ontology_term()`.
-        """
-        for v in self.graph:
-            if self.graph.nodes[v].get('cmeta_id', '') == cmeta_id:
-                return v
-
-        raise KeyError('No variable with cmeta id "%s" found.' % str(cmeta_id))
-
-    def get_symbol_by_ontology_term(self, namespace_uri, local_name):
-        """Searches the RDF graph for a variable annotated with the given
-        ``{namespace_uri}local_name`` and returns its symbol.
-
-        Specifically, this method searches for a unique variable annotated with
-        predicate ``http://biomodels.net/biology-qualifiers/is`` and the object
-        specified by ``{namespace_uri}local_name``.
-
-        Will raise a ``KeyError`` if no variable with the given annotation is
-        found, and a ``ValueError`` if more than one variable with the given
-        annotation is found.
-        """
-        symbols = self.get_symbols_by_rdf(
-            ('http://biomodels.net/biology-qualifiers/', 'is'),
-            (namespace_uri, local_name))
-        if len(symbols) == 1:
-            return symbols[0]
-        elif not symbols:
-            raise KeyError('No variable annotated with {%s}%s found.' %
-                           (namespace_uri, local_name))
-        else:
-            raise ValueError('Multiple variables annotated with {%s}%s' %
-                             (namespace_uri, local_name))
 
     def get_rdf_annotations(self, subject=None, predicate=None, object_=None):
         """Searches the RDF graph and returns 'triples matching the given parameters'
@@ -493,6 +300,46 @@ class Model(object):
         value = str(triples[0][2]).strip()  # Could make this cleverer by considering data type if desired
         return value
 
+    def get_symbol_by_cmeta_id(self, cmeta_id):
+        """
+        Searches the given graph and returns the symbol for the variable with the given cmeta id.
+
+        To get symbols from e.g. an oxmeta ontology term, use :meth:`get_symbol_by_ontology_term()`.
+        """
+        for v in self.graph:
+            if self.graph.nodes[v].get('cmeta_id', '') == cmeta_id:
+                return v
+
+        raise KeyError('No variable with cmeta id "%s" found.' % str(cmeta_id))
+
+    def get_symbol_by_name(self, name):
+        """ Returns the symbol for the variable with the given ``name``. """
+        return self._name_to_symbol[name]
+
+    def get_symbol_by_ontology_term(self, namespace_uri, local_name):
+        """Searches the RDF graph for a variable annotated with the given
+        ``{namespace_uri}local_name`` and returns its symbol.
+
+        Specifically, this method searches for a unique variable annotated with
+        predicate ``http://biomodels.net/biology-qualifiers/is`` and the object
+        specified by ``{namespace_uri}local_name``.
+
+        Will raise a ``KeyError`` if no variable with the given annotation is
+        found, and a ``ValueError`` if more than one variable with the given
+        annotation is found.
+        """
+        symbols = self.get_symbols_by_rdf(
+            ('http://biomodels.net/biology-qualifiers/', 'is'),
+            (namespace_uri, local_name))
+        if len(symbols) == 1:
+            return symbols[0]
+        elif not symbols:
+            raise KeyError('No variable annotated with {%s}%s found.' %
+                           (namespace_uri, local_name))
+        else:
+            raise ValueError('Multiple variables annotated with {%s}%s' %
+                             (namespace_uri, local_name))
+
     def get_symbols_by_rdf(self, predicate, object_=None):
         """Searches the RDF graph for variables annotated with the given predicate and object (e.g. "is oxmeta:time")
         and returns the associated symbols sorted in document order.
@@ -515,7 +362,7 @@ class Model(object):
                     'Non-local annotations are not supported.')
             symbols.append(self.get_symbol_by_cmeta_id(uri[1:]))
 
-        return sorted(symbols, key=lambda sym: self.get_meta_dummy(sym).order_added)
+        return sorted(symbols, key=lambda sym: sym.order_added)
 
     def get_ontology_terms_by_symbol(self, symbol, namespace_uri=None):
         """Searches the RDF graph for the annotation ``{namespace_uri}annotation_name``
@@ -564,7 +411,7 @@ class Model(object):
 
             # Determine LHS.
             lhs = equation.lhs
-            if not (lhs.is_Derivative or (lhs.is_Dummy and not self.get_meta_dummy(lhs).number)):
+            if not (lhs.is_Derivative or isinstance(lhs, VariableDummy)):
                 raise RuntimeError('DAEs are not supported. All equations must be of form `x = ...` or `dx/dt = ...')
 
             # Add the lhs symbol of the equation to the graph
@@ -574,16 +421,13 @@ class Model(object):
             if lhs.is_Derivative:
                 # Get the state symbol and update the variable information
                 state_symbol = lhs.free_symbols.pop()
-                state_variable = self.get_meta_dummy(state_symbol)
-                state_variable.type = 'state'
+                state_symbol.type = 'state'
 
                 # Get the free symbol and update the variable information
                 free_symbol = lhs.variables[0]
-                free_variable = self.get_meta_dummy(free_symbol)
-                free_variable.type = 'free'
+                free_symbol.type = 'free'
             else:
-                variable = self.get_meta_dummy(lhs)
-                variable.type = None
+                lhs.type = None
 
         # Sanity check: none of the lhs have the same hash
         assert len(graph.nodes) == equation_count
@@ -597,46 +441,33 @@ class Model(object):
 
             # for each of the symbols or derivatives on the rhs of the equation
             for rhs in self.find_symbols_and_derivatives([equation.rhs]):
-                # if the symbol maps to a node in the graph
+
                 if rhs in graph.nodes:
-                    # add the dependency edge
+                    # If the symbol maps to a node in the graph just add the dependency edge
+                    graph.add_edge(rhs, lhs)
+                elif rhs.type in ['state', 'free']:
+                    # If the variable is a state or free variable of a derivative
+                    graph.add_node(rhs, equation=None, variable_type=rhs.type)
                     graph.add_edge(rhs, lhs)
                 else:
-                    # Get the variable info
-                    variable = self.find_variable({'dummy': rhs})
-                    assert len(variable) == 1
-                    variable = variable[0]
-
-                    # If the variable is a state or free variable of a derivative
-                    if variable.type in ['state', 'free']:
-                        graph.add_node(rhs, equation=None, variable_type=variable.type)
-                        graph.add_edge(rhs, lhs)
-                    else:
-                        # If the variable on the right-hand side is a number
-                        rhs_variable = self.get_meta_dummy(rhs)
-                        if rhs_variable.number is None:
-                            # this variable is a parameter - add to graph and connect to lhs
-                            variable.type = 'parameter'
-                            unit = rhs_variable.units
-                            number = sympy.Float(variable.initial_value)
-                            dummy = self.add_number(number=number, units=str(unit))
-                            graph.add_node(rhs, equation=sympy.Eq(rhs, dummy), variable_type='parameter')
-                            graph.add_edge(rhs, lhs)
+                    # this variable is a parameter - add to graph and connect to lhs
+                    rhs.type = 'parameter'
+                    unit = rhs.units
+                    number = sympy.Float(rhs.initial_value)
+                    dummy = self.add_number(number, str(unit))
+                    graph.add_node(rhs, equation=sympy.Eq(rhs, dummy), variable_type='parameter')
+                    graph.add_edge(rhs, lhs)
 
         # Add more meta-data to the graph
-        for node in graph.nodes:
-            if not node.is_Derivative:
-                variable = self.find_variable({'dummy': node})
-                assert len(variable) == 1
-                variable = variable.pop()
+        for variable in graph.nodes:
+            if not variable.is_Derivative:
                 for key in ['cmeta_id', 'name', 'units']:
                     if getattr(variable, key):
-                        graph.nodes[node][key] = getattr(variable, key)
-                if graph.nodes[node].get('variable_type', '') == 'state':
-                    if variable.initial_value is not None:
-                        graph.nodes[node]['initial_value'] = sympy.Float(variable.initial_value)
+                        graph.nodes[variable][key] = getattr(variable, key)
+                if variable.type == 'state' and variable.initial_value is not None:
+                    graph.nodes[variable]['initial_value'] = sympy.Float(variable.initial_value)
                 if variable.type is not None:
-                    graph.nodes[node]['variable_type'] = variable.type
+                    graph.nodes[variable]['variable_type'] = variable.type
 
         # Cache graph and return
         self._graph = graph
@@ -664,11 +495,7 @@ class Model(object):
             dummies = equation.rhs.atoms(sympy.Dummy)
 
             # Get any dummy symbols which are placeholders for numbers
-            subs_dict = {}
-            for dummy in dummies:
-                dummy_data = self.get_meta_dummy(dummy)
-                if dummy_data.number is not None:
-                    subs_dict[dummy] = dummy_data.number
+            subs_dict = {d: float(d) for d in dummies if isinstance(d, NumberDummy)}
 
             # And replace the equation with one with the rhs subbed with sympy.Number objects
             if subs_dict:
@@ -700,11 +527,7 @@ class Model(object):
 
     def get_value(self, symbol):
         """ Returns the evaluated value of the given symbol's RHS. """
-        # Find RHS
-        rhs = self.graph.nodes[symbol]['equation'].rhs
-
-        # Evaluate and return
-        return float(self.get_meta_dummy(rhs).number.evalf())
+        return float(self.graph.nodes[symbol]['equation'].rhs.evalf())
 
     def get_initial_value(self, symbol):
         """
@@ -713,7 +536,7 @@ class Model(object):
         :param symbol: Sympy Dummy object of required symbol
         :return: float of initial value
         """
-        return float(self.dummy_metadata[symbol].initial_value)
+        return symbol.initial_value
 
     def find_symbols_and_derivatives(self, expression):
         """ Returns a set containing all symbols and derivatives referenced in a list of expressions.
@@ -723,28 +546,11 @@ class Model(object):
         """
         symbols = set()
         for expr in expression:
-            if expr.is_Derivative or (expr.is_Dummy and not self.get_meta_dummy(expr).number):
+            if expr.is_Derivative or isinstance(expr, VariableDummy):
                 symbols.add(expr)
             else:
                 symbols |= self.find_symbols_and_derivatives(expr.args)
         return symbols
-
-    def find_variable(self, search_dict):
-        """Searches for variables by attributes in their MetaDummy record. Pass a dictionary of
-        {name: value}, where name is one the attributes in MetaDummy """
-        matches = []
-
-        # for each component in this model
-        for variable in self.dummy_metadata.values():
-            matched = True
-            for search_key, search_value in search_dict.items():
-                if not (hasattr(variable, search_key) and
-                        getattr(variable, search_key) == search_value):
-                    matched = False
-                    break
-            if matched:
-                matches.append(variable)
-        return matches
 
     def set_equation(self, lhs, rhs):
         """
@@ -761,7 +567,7 @@ class Model(object):
         lhs_symbol = lhs
         if lhs_symbol.is_Derivative:
             lhs_symbol = lhs_symbol.free_symbols.pop()
-        assert lhs_symbol.is_Dummy and not self.get_meta_dummy(lhs_symbol).number
+        assert isinstance(lhs_symbol, VariableDummy)
 
         # Check if the variable named in the lhs already has an equation
         i_existing = None
@@ -779,4 +585,82 @@ class Model(object):
 
         # Invalidate cached equation graphs
         self._invalidate_cache()
+
+    def variables(self):
+        """ Returns an iterator over this model's variable symbols. """
+        return self._name_to_symbol.values()
+
+
+class NumberDummy(sympy.Dummy):
+    """
+    Used to represent a number with a unit, inside a Sympy expression.
+
+    Unlike sympy expressions, this number type will never be removed in simplify operations etc.
+
+    Number dummies should never be created directly, but always via :meth:`Model.add_number()`.
+    """
+    # Sympy annoyingly overwrites __new__
+    def __new__(cls, value, *args, **kwargs):
+        return super().__new__(cls, str(value))
+
+    def __init__(self, value, units):
+        self.value = float(value)
+        self.units = units
+
+    def __float__(self):
+        return self.value
+
+    def __str__(self):
+        return str(self.value)
+
+
+class VariableDummy(sympy.Dummy):
+    """
+    Used to represent a variable (with meta data) in a Sympy expression.
+
+    Variable dummies should never be created directly, but always via :meth:`Model.add_variable()`.
+
+    For the constructor arguments, see :meth:`Model.add_variable()`.
+    """
+    # Sympy annoyingly overwrites __new__
+    def __new__(cls, name, *args, **kwargs):
+        return super().__new__(cls, name)
+
+    def __init__(self,
+                 name,
+                 units,
+                 initial_value=None,
+                 public_interface=None,
+                 private_interface=None,
+                 order_added=None,
+                 cmeta_id=None):
+
+        self.name = name
+        self.units = units
+        self.initial_value = None if initial_value is None else float(initial_value)
+
+        # Interface properties, only used during parsing
+        self.public_interface = public_interface
+        self.private_interface = private_interface
+
+        # Variables are either 'source' variables, or receive their value from
+        # a variable that they're connected to (using CellML connections).
+        # The ``assigned_to`` property is used to indicate where this object
+        # receives its value.
+        self.assigned_to = None
+        if not (private_interface == 'in' or public_interface == 'in'):
+            self.assigned_to = self
+
+        # Optional order added, used for sorting sometimes.
+        self.order_added = order_added
+
+        # Optional cmeta id
+        self.cmeta_id = cmeta_id
+
+        # This variable's type
+        # TODO: Define allowed types via enum
+        self.type = None
+
+    def __str__(self):
+        return self.name
 
