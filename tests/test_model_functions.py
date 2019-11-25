@@ -5,7 +5,6 @@ import pytest
 
 import cellmlmanip
 import cellmlmanip.rdf
-from cellmlmanip.units import UnitStore
 
 OXMETA = "https://chaste.comlab.ox.ac.uk/cellml/ns/oxford-metadata#"
 
@@ -38,12 +37,23 @@ class TestModelFunctions():
         return cellmlmanip.load_model(
             os.path.join(os.path.dirname(__file__), 'cellml_files', "basic_ode.cellml"))
 
+    @pytest.fixture
+    def other_model(scope='class'):
+        return cellmlmanip.load_model(
+            os.path.join(os.path.dirname(__file__), 'cellml_files',
+                         "aslanidi_model_2009.cellml"))
+
     # also tested in test_hodgkin
     def test_get_state_symbols(self, model):
         state_symbols = model.get_state_symbols()
         assert len(state_symbols) == 1
 
-   # also tested in test_hodgkin
-#    def test_get_free_variable_symbol(self, model):
-#        free_variable_symbol = model.get_free_variable_symbol()
-#        assert free_variable_symbol.name == 'environment$time'
+    # also tested in test_hodgkin
+    def test_get_free_variable_symbol(self, model):
+        free_variable_symbol = model.get_free_variable_symbol()
+        assert free_variable_symbol.name == 'environment$time'
+
+    def test_get_free_variable_symbol_1(self, other_model):
+        free_variable_symbol = other_model.get_free_variable_symbol()
+        assert free_variable_symbol.name == 'environment$time'
+
