@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- CellML 1.0, 3.4.2.1: Components can contain units -->
+<!-- This model is from the CellML tests in https://github.com/MichaelClerx/cellml-validation
+     It's used here to test component units are detected (but not supported - an error is raised -->
+<model name="component_with_units"
+       xmlns="http://www.cellml.org/cellml/1.0#">
+  <component name="A">
+    <units name="a">
+      <unit units="volt" />
+    </units>
+    <units name="b">
+      <unit units="volt" />
+    </units>
+  </component>
+</model>

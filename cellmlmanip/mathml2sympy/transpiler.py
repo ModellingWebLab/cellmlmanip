@@ -140,7 +140,7 @@ class Transpiler(object):
                 if len(node.childNodes) == 3 and node.childNodes[1].tagName == 'sep':
                     mantissa = node.childNodes[0].data.strip()
                     exponent = int(node.childNodes[2].data.strip())
-                    number = sympy.Float('%se%d' % (mantissa, exponent))
+                    number = float('%se%d' % (mantissa, exponent))
                 else:
                     raise SyntaxError('Expecting '
                                       '<cn type="e-notation">significand<sep/>exponent</cn>.'
@@ -150,7 +150,6 @@ class Transpiler(object):
                                           + node.attributes['type'].value)
         else:
             number = float(node.childNodes[0].data.strip())
-            number = sympy.Number(number)
 
         if self.number_generator:
             return self.number_generator(number, node.attributes['cellml:units'].value)
