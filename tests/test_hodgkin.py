@@ -6,6 +6,8 @@ import sympy
 
 from cellmlmanip import load_model
 
+from . import shared
+
 
 OXMETA = "https://chaste.comlab.ox.ac.uk/cellml/ns/oxford-metadata#"
 
@@ -20,18 +22,14 @@ class TestHodgkin:
         )
         return load_model(hodgkin_cellml)
 
-    @pytest.fixture(scope="class")
-    def graph(self, model):
-        return model.get_equation_graph()
-
     def test_counts(self, model):
         # https://models.cellml.org/exposure/5d116522c3b43ccaeb87a1ed10139016/hodgkin_huxley_1952_variant01.cellml/cellml_math
         assert len(model.equations) == 17
 
     def test_connections(self, model):
-        target = model.get_meta_dummy('sodium_channel$h')
-        source = model.get_meta_dummy('sodium_channel_h_gate$h')
-        assert target.assigned_to == source.dummy
+        target = model.get_symbol_by_name('sodium_channel$h')
+        source = model.get_symbol_by_name('sodium_channel_h_gate$h')
+        assert target.assigned_to == source
 
     def test_equation_units(self, model):
         equation = model.equations[2]
@@ -43,30 +41,23 @@ class TestHodgkin:
             model.check_left_right_units_equal(e)
 
     def test_model_checks(self, model):
-        dummy_instances, not_found = model.check_dummy_metadata()
-        assert len(not_found) == 0
+        assert shared.check_cmeta_ids(model)
+        assert shared.check_dummy_assignment(model)
 
-        cmeta_ok = model.check_cmeta_id()
-        assert cmeta_ok
-
-        variable_assignment_ok = model.check_dummy_assignment()
-        assert variable_assignment_ok
-
-    def test_equation_graph(self, graph, model):
+    def test_equation_graph(self, model):
+        graph = model.graph
         assert len(graph.nodes) == 32
 
-        free_variable = model.find_variable({'type': 'free'})
-        assert len(free_variable) == 1
-        free_variable = free_variable[0]
+        free_variable = model.get_free_variable_symbol()
         assert free_variable.cmeta_id == 'time'
-        assert graph.nodes[free_variable.dummy]['variable_type'] == 'free'
-        assert free_variable.cmeta_id == graph.nodes[free_variable.dummy]['cmeta_id']
+        assert graph.nodes[free_variable]['variable_type'] == 'free'
+        assert free_variable.cmeta_id == graph.nodes[free_variable]['cmeta_id']
 
-        state_variables = model.find_variable({'type': 'state'})
+        state_variables = model.get_state_symbols()
         assert len(state_variables) == 4
         state_variable = state_variables[0]
-        assert graph.nodes[state_variable.dummy]['variable_type'] == 'state'
-        assert state_variable.cmeta_id == graph.nodes[state_variable.dummy]['cmeta_id']
+        assert graph.nodes[state_variable]['variable_type'] == 'state'
+        assert state_variable.cmeta_id == graph.nodes[state_variable]['cmeta_id']
 
         sorted_nodes = nx.lexicographical_topological_sort(graph, key=str)
 
@@ -77,20 +68,19 @@ class TestHodgkin:
         assert str(sorted_nodes[-1]) == 'Derivative(_membrane$V, _environment$time)'
 
         # check all cmeta ids have been added
-        for node in sorted_nodes:
+        for variable in sorted_nodes:
             # derivative nodes depend on state and free variable nodes
-            if not node.is_Derivative:
-                variable = model.get_meta_dummy(node)
+            if not variable.is_Derivative:
                 for key in ['cmeta_id', 'name']:
                     if getattr(variable, key, None):
-                        assert getattr(variable, key) == graph.nodes[node][key]
+                        assert getattr(variable, key) == graph.nodes[variable][key]
 
                 # only state variables should have initial_values
-                if graph.nodes[node].get('variable_type', '') == 'state':
+                if graph.nodes[variable].get('variable_type', '') == 'state':
                     assert (float(variable.initial_value) ==
-                            float(graph.nodes[node]['initial_value']))
+                            float(graph.nodes[variable]['initial_value']))
                 else:
-                    assert 'initial_value' not in graph.nodes[node]
+                    assert 'initial_value' not in graph.nodes[variable]
 
         # for i, node in enumerate(sorted_nodes):
         #     print('%d. %r: %r' % (i, node, graph.nodes[node]['equation']))
@@ -100,13 +90,11 @@ class TestHodgkin:
         #                        '/Users/tamuri/Desktop/path.dot')
 
         # free variable should not depend on anything
-        time_dummy = free_variable.dummy
-        assert graph.in_degree(time_dummy) == 0
+        assert graph.in_degree(free_variable) == 0
 
         # state variables should not depend on anything
         for variable in state_variables:
-            dummy = variable.dummy
-            assert graph.in_degree(dummy) == 0
+            assert graph.in_degree(variable) == 0
 
         # check a node for dependencies
         dm_dt_node = sorted_nodes[29]
@@ -148,7 +136,7 @@ class TestHodgkin:
         free_variable_symbol = model.get_free_variable_symbol()
         assert free_variable_symbol.name == 'environment$time'
 
-    def test_evaluation(self, graph, model):
+    def test_evaluation(self, model):
         """
         From Michael:
 
@@ -177,6 +165,7 @@ class TestHodgkin:
         (as in, converting to and back from string shouldn't lose
         accuracy, it does _not_ mean all printed digits are accurate)
         """
+        graph = model.graph_with_sympy_numbers
 
         # initial values for the free and state variables
         initials = {
@@ -246,10 +235,10 @@ class TestHodgkin:
             actual = evaluated_deriv
             assert float(actual) == pytest.approx(expected)
 
-    def test_get_symbol_by_ontology_term(self, graph, model):
+    def test_get_symbol_by_ontology_term(self, model):
         membrane_voltage_var = model.get_symbol_by_ontology_term(OXMETA, "membrane_voltage")
         assert (isinstance(membrane_voltage_var, sympy.symbol.Dummy))
-        assert str(membrane_voltage_var) == "_membrane$V"
+        assert str(membrane_voltage_var) == "membrane$V"
 
     def test_get_ontology_terms_by_symbol(self, model):
         membrane_voltage_var = model.get_symbol_by_ontology_term(OXMETA, "membrane_voltage")
@@ -276,7 +265,7 @@ class TestHodgkin:
         # Repeat test without specifying namespace
         assert model.has_ontology_annotation(membrane_voltage_var)
 
-    def test_get_equations_for(self, graph, model):
+    def test_get_equations_for(self, model):
 
         # Test get_equations_for with topgraphical lexicographical ordering
 
@@ -322,3 +311,16 @@ class TestHodgkin:
         # ENa and gNa should come before iNa
         assert unordered_equations.index(ENa) < unordered_equations.index(iNa)
         assert unordered_equations.index(gNa) < unordered_equations.index(iNa)
+
+    def test_get_equations_for_with_dummies(self, model):
+
+        # Tests using get_equations_for without replacing dummies with sympy numbers
+        # Get ordered equations
+        ina = model.get_symbol_by_ontology_term(OXMETA, 'membrane_fast_sodium_current')
+        equations = model.get_equations_for([ina], recurse=False, strip_units=False)
+
+        for eq in equations:
+            if eq.lhs.name == 'sodium_channel$g_Na':
+                assert isinstance(eq.rhs, sympy.Dummy)
+                break
+
