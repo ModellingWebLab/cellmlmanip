@@ -25,9 +25,9 @@ class Transpiler(object):
 
         # Create simple lambdas for symbol and number generators
         if symbol_generator is None:
-            symbol_generator = lambda x: sympy.Symbol(x)
+            symbol_generator = lambda x: sympy.Symbol(x)        # noqa: E731
         if number_generator is None:
-            number_generator = lambda x, y: sympy.Float(x)
+            number_generator = lambda x, y: sympy.Float(x)      # noqa: E731
 
         # Store symbol and number generators
         self.symbol_generator = symbol_generator
