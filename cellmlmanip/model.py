@@ -619,12 +619,13 @@ class VariableDummy(sympy.Dummy):
     Used to represent a variable (with meta data) in a Sympy expression.
 
     Variable dummies should never be created directly, but always via :meth:`Model.add_variable()`.
+
+    For the constructor arguments, see :meth:`Model.add_variable()`.
     """
     # Sympy annoyingly overwrites __new__
     def __new__(cls, name, *args, **kwargs):
         return super().__new__(cls, name)
 
-    # TODO: Add parameters to docstring
     def __init__(self,
                  name,
                  units,
@@ -642,7 +643,10 @@ class VariableDummy(sympy.Dummy):
         self.public_interface = public_interface
         self.private_interface = private_interface
 
-        # True if this variable has an RHS in the model
+        # Variables are either 'source' variables, or receive their value from
+        # a variable that they're connected to (using CellML connections).
+        # The ``assigned_to`` property is used to indicate where this object
+        # receives its value.
         self.assigned_to = None
         if not (private_interface == 'in' or public_interface == 'in'):
             self.assigned_to = self
