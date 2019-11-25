@@ -222,11 +222,19 @@ class TestParser(object):
                 p.parse()
             assert 'Cannot create units' in str(value_error.value)
 
-    def test_component_units(self):
+    def test_component_units_unsupported(self):
         """ Component units are not supported. """
 
         path = os.path.join(os.path.dirname(__file__), 'cellml_files', '3.4.2.1.component_with_units.cellml')
         p = parser.Parser(path)
         with pytest.raises(RuntimeError, match='Defining units inside components is not supported'):
+            p.parse()
+
+    def test_reactions_unsupported(self):
+        """ Reactions are not supported. """
+
+        path = os.path.join(os.path.dirname(__file__), 'cellml_files', '3.4.2.1.component_with_reactions.cellml')
+        p = parser.Parser(path)
+        with pytest.raises(RuntimeError, match='Reactions are not supported'):
             p.parse()
 

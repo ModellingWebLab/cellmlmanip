@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- CellML 1.0, 3.4.2.1: Components can contain reactions -->
+<!-- This model is from the CellML tests in https://github.com/MichaelClerx/cellml-validation
+     Used here to tests exceptions are raised if reactions are used. -->
+<model name="component_with_reactions"
+       xmlns="http://www.cellml.org/cellml/1.0#">
+  <component name="A">
+    <variable name="a" units="dimensionless" />
+    <variable name="b" units="dimensionless" />
+    <reaction>
+      <variable_ref variable="a">
+        <role role="reactant" />
+      </variable_ref>
+    </reaction>
+    <reaction>
+      <variable_ref variable="b">
+        <role role="reactant" />
+      </variable_ref>
+    </reaction>
+  </component>
+</model>
