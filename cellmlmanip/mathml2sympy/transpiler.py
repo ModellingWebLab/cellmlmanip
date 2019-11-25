@@ -152,7 +152,7 @@ class Transpiler(object):
             number = float(node.childNodes[0].data.strip())
             number = sympy.Number(number)
 
-        if self.number_generator is not None:
+        if self.number_generator:
             return self.number_generator(number, node.attributes['cellml:units'].value)
         else:
             return sympy.Float(number)
