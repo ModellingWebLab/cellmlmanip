@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- CellML 1.0, 3.4.2.1: Components can contain mathml:math elements -->
 <!-- This model is from the CellML tests in https://github.com/MichaelClerx/cellml-validation
-     It's used here as a test for components with more than one MathML element -->
+     It's used here as a test for components with more than one MathML element. -->
 <model name="component_with_maths"
        xmlns="http://www.cellml.org/cellml/1.0#"
        xmlns:cellml="http://www.cellml.org/cellml/1.0#">

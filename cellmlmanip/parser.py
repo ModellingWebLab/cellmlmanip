@@ -171,13 +171,26 @@ class Parser(object):
         # for each component defined in the model
         for element in component_elements:
             # component are only kept in parser to resolve relationships and connections
-            self.components[element.get('name')] = _Component(element.get('name'))
+            name = element.get('name')
+            self.components[name] = _Component(name)
 
             # process the <variable> tags in this component
             variable_to_symbol = self._add_variables(element)
 
             # process the <math> tags in this component
             self._add_maths(element, variable_to_symbol)
+
+            # Raise error if component units are defined
+            component_units = element.findall(Parser.with_ns(XmlNs.CELLML, 'units'))
+            if component_units:
+                raise ValueError(
+                    'Defining units inside components is not supported (found in component ' + name + ').')
+
+            # Raise error if reactions are defined
+            reactions = element.findall(Parser.with_ns(XmlNs.CELLML, 'reaction'))
+            if reactions:
+                raise ValueError(
+                    'Reactions are not supported (found in component ' + name + ').')
 
     def _add_variables(self, component_element):
         """
