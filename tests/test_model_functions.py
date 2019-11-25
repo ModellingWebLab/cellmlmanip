@@ -100,3 +100,4 @@ class TestModelFunctions():
     #     assert len(equation) == 1
     #     assert equation[0].lhs == symbol_a
     #     assert equation[0].rhs == 2.0
+    
