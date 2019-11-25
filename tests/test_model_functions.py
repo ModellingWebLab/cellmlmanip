@@ -33,6 +33,13 @@ class TestModelFunctions():
         'ms_with_multiplier': [{'multiplier': 0.001, 'units': 'second'}],
     })
 
+    @pytest.fixture(scope="class")
+    def quantity_store(self, model):
+        qs = UnitStore(model)
+        for unit_name, unit_attributes in self.test_definitions.items():
+            qs.add_custom_unit(unit_name, unit_attributes)
+        return qs
+
     @pytest.fixture
     def model(scope='class'):
         return cellmlmanip.load_model(
@@ -58,28 +65,22 @@ class TestModelFunctions():
     def test_get_free_variable_symbol_1(self, other_model):
         free_variable_symbol = other_model.get_free_variable_symbol()
         assert free_variable_symbol.name == 'environment$time'
-    @pytest.fixture(scope="class")
-    def quantity_store(self, model):
-        qs = UnitStore(model)
-        for unit_name, unit_attributes in self.test_definitions.items():
-            qs.add_custom_unit(unit_name, unit_attributes)
-        return qs
 
     # also tested in test_hodgkin
     def test_get_derivative_symbols(self, model):
         derivs = model.get_derivative_symbols()
-        assert len(derivs) == 8
+        assert len(derivs) == 1
 
     # also tested in test_aslanidi
-    def test_get_initial_value(self, model):
-        membrane_voltage = model.get_symbol_by_ontology_term(OXMETA, "membrane_voltage")
-        assert(model.get_initial_value(membrane_voltage) == -84.624)
+    # def test_get_initial_value(self, model):
+    #     membrane_voltage = model.get_symbol_by_ontology_term(OXMETA, "membrane_voltage")
+    #     assert(model.get_initial_value(membrane_voltage) == -84.624)
 
     # also tested in test_hodgkin
-    def test_get_equation_graph(self, basic_model):
-        graph1 = basic_model.get_equation_graph(True)
+    def test_get_equation_graph(self, model):
+        graph1 = model.graph
         assert(len(graph1.nodes) == 2)
-        names = ['ode$sv1', 'ode$time']
+        names = ['env_ode$sv1', 'environment$time']
         for v in graph1:
             if not v.is_Derivative:
                 assert (v.name in names)
@@ -93,10 +94,9 @@ class TestModelFunctions():
                                 assert (b.name in names)
 
     # also tested by model_units
-    def test_get_equations_for(self, basic_model):
-        basic_model.get_equation_graph(True)
-        symbol_a = basic_model.get_symbol_by_cmeta_id("sv11")
-        equation = basic_model.get_equations_for([symbol_a])
-        assert len(equation) == 1
-        assert equation[0].lhs == symbol_a
-        assert equation[0].rhs == 2.0
+    # def test_get_equations_for(self, model):
+    #     symbol_a = model.get_symbol_by_cmeta_id("sv11")
+    #     equation = model.get_equations_for([symbol_a])
+    #     assert len(equation) == 1
+    #     assert equation[0].lhs == symbol_a
+    #     assert equation[0].rhs == 2.0
