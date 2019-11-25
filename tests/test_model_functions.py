@@ -36,17 +36,28 @@ class TestModelFunctions():
     @pytest.fixture
     def model(scope='class'):
         return cellmlmanip.load_model(
-            os.path.join(os.path.dirname(__file__), 'cellml_files', "beeler_reuter_model_1977.cellml"))
+            os.path.join(os.path.dirname(__file__), 'cellml_files', 'basic_ode.cellml'))
 
     @pytest.fixture
-    def basic_model(scope='class'):
+    def other_model(scope='class'):
         return cellmlmanip.load_model(
-            os.path.join(os.path.dirname(__file__), 'cellml_files', "basic_ode.cellml"))
+            os.path.join(os.path.dirname(__file__), 'cellml_files',
+                         'aslanidi_model_2009.cellml'))
 
-    @pytest.fixture(scope="class")
-    def graph(self, model):
-        return model.get_equation_graph()
+    # also tested in test_hodgkin
+    def test_get_state_symbols(self, model):
+        state_symbols = model.get_state_symbols()
+        assert len(state_symbols) == 1
+        assert state_symbols[0].name == 'env_ode$sv1'
 
+    # also tested in test_hodgkin
+    def test_get_free_variable_symbol(self, model):
+        free_variable_symbol = model.get_free_variable_symbol()
+        assert free_variable_symbol.name == 'environment$time'
+
+    def test_get_free_variable_symbol_1(self, other_model):
+        free_variable_symbol = other_model.get_free_variable_symbol()
+        assert free_variable_symbol.name == 'environment$time'
     @pytest.fixture(scope="class")
     def quantity_store(self, model):
         qs = UnitStore(model)
@@ -55,19 +66,9 @@ class TestModelFunctions():
         return qs
 
     # also tested in test_hodgkin
-    def test_get_state_symbols(self, model):
-        state_symbols = model.get_state_symbols()
-        assert len(state_symbols) == 8
-
-    # also tested in test_hodgkin
     def test_get_derivative_symbols(self, model):
         derivs = model.get_derivative_symbols()
         assert len(derivs) == 8
-
-    # also tested in test_hodgkin
-    def test_get_free_variable_symbol(self, model):
-        free_variable_symbol = model.get_free_variable_symbol()
-        assert free_variable_symbol.name == 'environment$time'
 
     # also tested in test_aslanidi
     def test_get_initial_value(self, model):

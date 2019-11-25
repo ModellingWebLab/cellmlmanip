@@ -23,7 +23,13 @@ class Transpiler(object):
 
     def __init__(self, symbol_generator=None, number_generator=None):
 
-        # Store symbol and number creating methods, if given
+        # Create simple lambdas for symbol and number generators
+        if symbol_generator is None:
+            symbol_generator = lambda x: sympy.Symbol(x)        # noqa: E731
+        if number_generator is None:
+            number_generator = lambda x, y: sympy.Float(x)      # noqa: E731
+
+        # Store symbol and number generators
         self.symbol_generator = symbol_generator
         self.number_generator = number_generator
 
@@ -118,11 +124,7 @@ class Transpiler(object):
         SymPy: http://docs.sympy.org/latest/modules/core.html#id17
         """
         identifier = node.childNodes[0].data.strip()
-
-        if self.symbol_generator:
-            return self.symbol_generator(identifier)
-        else:
-            return sympy.Symbol(identifier)
+        return self.symbol_generator(identifier)
 
     def _cn_handler(self, node):
         """MathML: https://www.w3.org/TR/MathML2/chapter4.html#contm.cn
@@ -140,7 +142,7 @@ class Transpiler(object):
                 if len(node.childNodes) == 3 and node.childNodes[1].tagName == 'sep':
                     mantissa = node.childNodes[0].data.strip()
                     exponent = int(node.childNodes[2].data.strip())
-                    number = sympy.Float('%se%d' % (mantissa, exponent))
+                    number = float('%se%d' % (mantissa, exponent))
                 else:
                     raise SyntaxError('Expecting '
                                       '<cn type="e-notation">significand<sep/>exponent</cn>.'
@@ -150,12 +152,14 @@ class Transpiler(object):
                                           + node.attributes['type'].value)
         else:
             number = float(node.childNodes[0].data.strip())
-            number = sympy.Number(number)
 
-        if self.number_generator:
-            return self.number_generator(number, node.attributes['cellml:units'].value)
-        else:
-            return sympy.Float(number)
+        # Get units, if given
+        # To-do: We're allowing these to _not_ be set for testing only. Maybe remove this option?
+        units = node.attributes.get('cellml:units', None)
+        if units is not None:
+            units = units.value
+
+        return self.number_generator(number, units)
 
     # BASIC CONTENT ELEMENTS #######################################################################
 
