@@ -96,7 +96,7 @@ class TestModelAPI(object):
         assert v.type == 'state'
 
         # Now clamp it to -80mV
-        rhs = model.add_number(sp.Number(-80), str(v.units))
+        rhs = model.add_number(-80, str(v.units))
         model.set_equation(v, rhs)
 
         # Check that V is no longer a state
@@ -114,7 +114,7 @@ class TestModelAPI(object):
             {'units': str(v.units)},
             {'units': str(t.units), 'exponent': -1},
         ])
-        rhs = model.add_number(sp.Number(0), dvdt_units)
+        rhs = model.add_number(0, dvdt_units)
         model.set_equation(lhs, rhs)
 
         # Check that V is a state again
@@ -123,6 +123,6 @@ class TestModelAPI(object):
 
         # Set equation for a newly created variable
         lhs = model.add_variable(name='an_incredibly_unlikely_variable_name', units=str(v.units))
-        rhs = model.add_number(sp.Float(12), str(v.units))
+        rhs = model.add_number(12, str(v.units))
         model.set_equation(lhs, rhs)
 
