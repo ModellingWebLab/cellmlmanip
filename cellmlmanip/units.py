@@ -396,10 +396,10 @@ class UnitStore(object):
         :return True if units are equal (regardless of quantity), False otherwise
         """
         try:
-            unit1 = self.summarise_units(units_or_symbol1) if not isinstance(units_or_symbol1, self.ureg.Unit) \
-                else units_or_symbol1
-            unit2 = self.summarise_units(units_or_symbol2) if not isinstance(units_or_symbol2, self.ureg.Unit) \
-                else units_or_symbol2
+            unit1 = units_or_symbol1 if isinstance(units_or_symbol1, self.ureg.Unit) \
+                else self.summarise_units(units_or_symbol1)
+            unit2 = units_or_symbol2 if isinstance(units_or_symbol2, self.ureg.Unit) \
+                else self.summarise_units(units_or_symbol2)
             self.get_conversion_factor(from_unit=unit1, to_unit=unit2)
             return True
         except pint.errors.DimensionalityError:
