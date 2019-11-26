@@ -59,6 +59,11 @@ class TestModelFunctions():
         assert free_variable_symbol.name == 'environment$time'
 
     def test_get_symbol_by_cmeta_id(self, model):
-#        sv11 = model.get_symbol_by_cmeta_id('sv11')
-#        assert sv11.name == 'sv1'
-        pass
+        sv11 = model.get_symbol_by_cmeta_id('sv11')
+        assert sv11.name == 'env_ode$sv1'
+        assert sv11.units == 'mV'
+
+    def test_get_symbol_by_cmeta_id_2(self, other_model):
+        variable = other_model.get_symbol_by_cmeta_id('testcmeta')
+        assert variable.name == 'intracellular_ion_concentrations$Na_i'
+        assert variable.units == 'millimolar'
