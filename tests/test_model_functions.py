@@ -70,6 +70,11 @@ class TestModelFunctions():
     def test_get_derivative_symbols(self, model):
         derivs = model.get_derivative_symbols()
         assert len(derivs) == 1
+        deriv = derivs[0]
+        assert deriv.is_Derivative
+        assert len(deriv.variables) == 1
+        assert deriv.variables[0].is_Dummy
+        assert deriv.variables[0].name == 'environment$time'
 
     # also tested in test_aslanidi
     # def test_get_initial_value(self, model):
@@ -94,10 +99,9 @@ class TestModelFunctions():
                                 assert (b.name in names)
 
     # also tested by model_units
-    # def test_get_equations_for(self, model):
-    #     symbol_a = model.get_symbol_by_cmeta_id("sv11")
-    #     equation = model.get_equations_for([symbol_a])
-    #     assert len(equation) == 1
-    #     assert equation[0].lhs == symbol_a
-    #     assert equation[0].rhs == 2.0
-    
+#    def test_get_equations_for(self, model):
+#        symbol_a = model.get_symbol_by_cmeta_id("sv11")
+#        equation = model.get_equations_for([symbol_a])
+#        assert len(equation) == 1
+#        assert equation[0].lhs == symbol_a
+#        assert equation[0].rhs == 2.0
