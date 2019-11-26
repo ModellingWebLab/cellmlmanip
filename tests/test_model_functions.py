@@ -58,3 +58,7 @@ class TestModelFunctions():
         free_variable_symbol = other_model.get_free_variable_symbol()
         assert free_variable_symbol.name == 'environment$time'
 
+    def test_get_symbol_by_cmeta_id(self, model):
+#        sv11 = model.get_symbol_by_cmeta_id('sv11')
+#        assert sv11.name == 'sv1'
+        pass
