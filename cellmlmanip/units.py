@@ -388,16 +388,19 @@ class UnitStore(object):
         else:
             return conversion_factor
 
-    def dimensionally_equivalent(self, symbol1, symbol2):
-        """Returns whether two expressions, symbol1 and symbol2,
+    def dimensionally_equivalent(self, units_or_symbol1, units_or_symbol2):
+        """Returns whether two units or expressions, units_or_symbol1 and units_or_symbol2,
          are dimensionally_equivalent (same units ignoring a calling factor).
-        :param symbol1: the first expression to compare
-        :param symbol2: the second expression to compare
+        :param units_or_symbol1: the first units or expression to compare
+        :param units_or_symbol2: the second units or expression to compare
         :return True if units are equal (regardless of quantity), False otherwise
         """
         try:
-            self.get_conversion_factor(from_unit=self.summarise_units(symbol1),
-                                       to_unit=self.summarise_units(symbol2))
+            unit1 = self.summarise_units(units_or_symbol1) if not isinstance(units_or_symbol1, self.ureg.Unit) \
+                else units_or_symbol1
+            unit2 = self.summarise_units(units_or_symbol2) if not isinstance(units_or_symbol2, self.ureg.Unit) \
+                else units_or_symbol2
+            self.get_conversion_factor(from_unit=unit1, to_unit=unit2)
             return True
         except pint.errors.DimensionalityError:
             return False

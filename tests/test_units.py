@@ -429,3 +429,9 @@ class TestUnits(object):
         membrane_voltage = model.get_symbol_by_ontology_term(OXMETA, "membrane_voltage")
         assert model.units.dimensionally_equivalent(membrane_stimulus_current_offset, membrane_stimulus_current_period)
         assert not model.units.dimensionally_equivalent(membrane_stimulus_current_offset, membrane_voltage)
+
+        assert model.units.dimensionally_equivalent(membrane_stimulus_current_offset, model.units.ureg.millisecond)
+        assert model.units.dimensionally_equivalent(model.units.ureg.millisecond, membrane_stimulus_current_period)
+        assert model.units.dimensionally_equivalent(model.units.ureg.millisecond, model.units.ureg.millisecond)
+        assert not model.units.dimensionally_equivalent(model.units.ureg.millisecond, membrane_voltage)
+        assert not model.units.dimensionally_equivalent(model.units.ureg.millisecond, model.units.ureg.millivolt)
