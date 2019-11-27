@@ -75,10 +75,6 @@ class TestModelFunctions():
         assert len(deriv.variables) == 1
         assert deriv.variables[0].is_Dummy
         assert deriv.variables[0].name == 'environment$time'
-    def test_get_symbol_by_cmeta_id(self, model):
-        sv11 = model.get_symbol_by_cmeta_id('sv11')
-        assert sv11.name == 'env_ode$sv1'
-        assert sv11.units == 'mV'
 
     # also tested in test_aslanidi
     # def test_get_initial_value(self, model):
@@ -114,3 +110,8 @@ class TestModelFunctions():
         variable = other_model.get_symbol_by_cmeta_id('testcmeta')
         assert variable.name == 'intracellular_ion_concentrations$Na_i'
         assert variable.units == 'millimolar'
+
+    def test_get_symbol_by_cmeta_id(self, model):
+        sv11 = model.get_symbol_by_cmeta_id('sv11')
+        assert sv11.name == 'env_ode$sv1'
+        assert sv11.units == 'mV'
