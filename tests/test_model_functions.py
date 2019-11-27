@@ -102,20 +102,6 @@ class TestModelFunctions():
         free_variable_symbol = other_model.get_free_variable_symbol()
         assert free_variable_symbol.name == 'environment$time'
 
-    def test_get_symbol_by_cmeta_id(self, model):
-        """ Tests Model.get_symbol_by_cmeta_id() works correctly. """
-
-        sv11 = model.get_symbol_by_cmeta_id('sv11')
-        assert sv11.name == 'env_ode$sv1'
-        assert sv11.units == 'mV'
-
-    def test_get_symbol_by_cmeta_id_2(self, other_model):
-        """ Tests Model.get_symbol_by_cmeta_id() works correctly. """
-
-        variable = other_model.get_symbol_by_cmeta_id('testcmeta')
-        assert variable.name == 'intracellular_ion_concentrations$Na_i'
-        assert variable.units == 'millimolar'
-
     # also tested in test_aslanidi
     def test_get_initial_value(self, other_model):
         """ Tests Model.get_initial_value() works correctly. """
@@ -160,3 +146,50 @@ class TestModelFunctions():
 
         symbol_a = other_model.get_symbol_by_ontology_term(OXMETA, "membrane_capacitance")
         assert other_model.get_value(symbol_a) == 5e-5
+
+    #################################################################
+    # tests for get_symbol_ functions
+
+    def test_get_symbol_by_cmeta_id(self, model):
+        """ Tests Model.get_symbol_by_cmeta_id() works correctly. """
+
+        sv11 = model.get_symbol_by_cmeta_id('sv11')
+        assert sv11.name == 'env_ode$sv1'
+        assert sv11.units == 'mV'
+
+    def test_get_symbol_by_cmeta_id_2(self, other_model):
+        """ Tests Model.get_symbol_by_cmeta_id() works correctly. """
+
+        variable = other_model.get_symbol_by_cmeta_id('testcmeta')
+        assert variable.name == 'intracellular_ion_concentrations$Na_i'
+        assert variable.units == 'millimolar'
+
+    def test_get_symbol_by_name(self, model):
+        """ Tests Model.get_symbol_by_name() works correctly. """
+
+        sv11 = model.get_symbol_by_name('env_ode$sv1')
+        assert sv11.units == 'mV'
+
+    def test_get_symbol_by_ontology_term(self, other_model):
+        """ Tests Model.get_symbol_by_ontology_term() works correctly. """
+
+        symbol_a = other_model.get_symbol_by_ontology_term(OXMETA, 'membrane_capacitance')
+        assert symbol_a.name == 'membrane$Cm'
+        assert symbol_a.units == 'nanoF'
+
+    def test_get_symbols_by_rdf(self, other_model):
+        """ Tests Model.get_symbols_by_rdf() works correctly. """
+
+        symbol_a = other_model.get_symbols_by_rdf(('http://biomodels.net/biology-qualifiers/', 'is'),
+                                                  (OXMETA, 'membrane_voltage'))
+        assert len(symbol_a) == 1
+        assert symbol_a[0].name == 'membrane$V'
+        assert symbol_a[0].units == 'millivolt'
+
+    ######################################################################
+    # The functions listed for ontology/rdf are tested in test_rdf.py
+    #
+    # get_ontology_terms_by_symbol()
+    # get_rdf_annotations()
+    # get_rdf_value() - indirectly tested by test_get_rdf_annotations() in test_rdf.py
+    # has_ontology_annotation()
