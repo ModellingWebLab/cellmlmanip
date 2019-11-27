@@ -456,11 +456,14 @@ class Model(object):
                     graph.add_node(rhs, equation=sympy.Eq(rhs, dummy), variable_type='parameter')
                     graph.add_edge(rhs, lhs)
 
-            # check that the free variable if defined as a node
+            # check that the free  and state variables are defined as a node
             if lhs.is_Derivative:
+                state_symbol = lhs.free_symbols.pop()
                 free_symbol = lhs.variables[0]
                 if free_symbol not in graph.nodes:
                     graph.add_node(free_symbol, equation=None, variable_type=free_symbol.type)
+                if state_symbol not in graph.nodes:
+                    graph.add_node(state_symbol, equation=None, variable_type=state_symbol.type)
 
         # Add more meta-data to the graph
         for variable in graph.nodes:

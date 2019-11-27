@@ -2958,7 +2958,7 @@ http://www.cellml.org/
       </math>
    </component>
    <component name="intracellular_ion_concentrations">
-      <variable name="Na_i" units="millimolar" initial_value="8.4" public_interface="out"/>
+      <variable name="Na_i" units="millimolar" initial_value="8.4" public_interface="out" cmeta:id="testcmeta"/>
       <variable name="Ca_i" units="millimolar" initial_value="0.000071" public_interface="out"/>
       <variable name="K_i" units="millimolar" initial_value="100" public_interface="out"/>
       <variable name="Vol_i" units="nanolitre" initial_value="1.26e-5" public_interface="out"/>
