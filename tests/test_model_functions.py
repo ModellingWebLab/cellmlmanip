@@ -2,10 +2,9 @@ import os
 from collections import OrderedDict
 
 import pytest
-
+import sympy as sp
 import cellmlmanip
 import cellmlmanip.rdf
-from cellmlmanip.units import UnitStore
 
 OXMETA = "https://chaste.comlab.ox.ac.uk/cellml/ns/oxford-metadata#"
 
@@ -26,24 +25,6 @@ class TestModelFunctions():
         'milli_mole': [{'prefix': 'milli', 'units': 'mole'}],
         'millisecond': [{'prefix': 'milli', 'units': 'second'}],
     })
-    test_definitions.update({
-        'per_ms': [{'units': 'ms', 'exponent': '-1'}],
-        'per_mV': [{'units': 'volt', 'prefix': 'milli', 'exponent': '-1'}],
-        'mV_per_ms': [{'units': 'mV', 'exponent': '1'}, {'units': 'ms', 'exponent': '-1'}],
-        'mV_per_s': [{'units': 'mV', 'exponent': '1'}, {'units': 'second', 'exponent': '-1'}],
-        'mV_per_usec': [
-            {'units': 'mV', 'exponent': '1'}, {'prefix': 'micro', 'units': 'second', 'exponent': '-1'}],
-        'mM_per_ms': [{'units': 'mM'}, {'units': 'ms', 'exponent': '-1'}],
-        'ms_power_prefix': [{'prefix': '-3', 'units': 'second'}],
-        'ms_with_multiplier': [{'multiplier': 0.001, 'units': 'second'}],
-    })
-
-    @pytest.fixture(scope="class")
-    def quantity_store(self, model):
-        qs = UnitStore(model)
-        for unit_name, unit_attributes in self.test_definitions.items():
-            qs.add_custom_unit(unit_name, unit_attributes)
-        return qs
 
     @pytest.fixture
     def model(scope='class'):
@@ -79,7 +60,7 @@ class TestModelFunctions():
                                 assert (b.name in names)
 
     #######################################################################
-    # this section contains tests for each get_ function on Model
+    # this section contains tests for each get_XXX function on Model
 
     # also tested in test_hodgkin
     def test_get_state_symbols(self, model):
@@ -124,12 +105,19 @@ class TestModelFunctions():
     # also tested by model_units
     def test_get_equations_for(self, model):
         """ Tests Model.get_equations_for() works correctly.
-        Note: the basic model has no equations
+        Note: the basic model has 1 equation dsv11/dt = 1 which is not
+        related to a symbol and so has no equations that can be retrieved
+        by symbol
         """
 
         symbol_a = model.get_symbol_by_cmeta_id("sv11")
         equation = model.get_equations_for([symbol_a])
         assert len(equation) == 0
+
+        symbol_t = model.get_symbol_by_name("environment$time")
+
+        equation1 = model.get_equations_for([symbol_t])
+        assert len(equation1) == 0
 
     # also tested by model_units
     def test_get_equations_for_1(self, other_model):
@@ -148,7 +136,7 @@ class TestModelFunctions():
         assert other_model.get_value(symbol_a) == 5e-5
 
     #################################################################
-    # tests for get_symbol_ functions
+    # tests for get_symbol_XXX functions
 
     def test_get_symbol_by_cmeta_id(self, model):
         """ Tests Model.get_symbol_by_cmeta_id() works correctly. """
@@ -193,3 +181,111 @@ class TestModelFunctions():
     # get_rdf_annotations()
     # get_rdf_value() - indirectly tested by test_get_rdf_annotations() in test_rdf.py
     # has_ontology_annotation()
+
+    #########################################################################
+    # test add functions
+    # note some tests for fail cases are repeated in TestModelAPI class
+
+    def test_add_equation(self, model):
+        """ Tests the Model.add_equation method.
+        """
+        assert len(model.equations) == 1
+        # so we are adding
+        # newvar2 = newvar + newvar1
+        # but need to also add newvar1 = 2; newvar = 2 in order or the graph to resolve correctly
+        model.add_variable(name='newvar', units='mV')
+        symbol = model.get_symbol_by_name('newvar')
+        model.add_variable(name='newvar1', units='mV')
+        symbol1 = model.get_symbol_by_name('newvar1')
+        model.add_variable(name='newvar2', units='mV')
+        symbol2 = model.get_symbol_by_name('newvar2')
+        model.add_equation(sp.Eq(symbol, 2.0))
+        model.add_equation(sp.Eq(symbol1, 2.0))
+        model.add_equation(sp.Eq(symbol2, sp.Add(symbol, symbol1)))
+        assert len(model.equations) == 4
+        eqn = model.get_equations_for([symbol2])
+        assert len(eqn) == 3
+        assert eqn[0].lhs == symbol
+        assert eqn[0].rhs == 2.0
+        assert eqn[1].lhs == symbol1
+        assert eqn[1].rhs == 2.0
+        assert eqn[2].lhs == symbol2
+        assert eqn[2].rhs == sp.Add(symbol, symbol1)
+
+    def test_set_equation(self, model):
+        """ Tests the Model.set_equation method.
+        """
+        assert len(model.equations) == 1
+        # so we are adding
+        # newvar2 = newvar + newvar1
+        # but need to also add newvar1 = 2; newvar = 2 in order or the graph to resolve correctly
+        model.add_variable(name='newvar', units='mV')
+        symbol = model.get_symbol_by_name('newvar')
+        model.add_variable(name='newvar1', units='mV')
+        symbol1 = model.get_symbol_by_name('newvar1')
+        model.add_variable(name='newvar2', units='mV')
+        symbol2 = model.get_symbol_by_name('newvar2')
+        model.set_equation(symbol, 2.0)
+        model.set_equation(symbol1, 2.0)
+        model.set_equation(symbol2, sp.Add(symbol, symbol1))
+        assert len(model.equations) == 4
+        eqn = model.get_equations_for([symbol2])
+        assert len(eqn) == 3
+        assert eqn[0].lhs == symbol
+        assert eqn[0].rhs == 2.0
+        assert eqn[1].lhs == symbol1
+        assert eqn[1].rhs == 2.0
+        assert eqn[2].lhs == symbol2
+        assert eqn[2].rhs == sp.Add(symbol, symbol1)
+
+    def test_add_number(self, model):
+        """ Tests the Model.add_number method. """
+        number2 = model.add_number(2.0, 'mV')
+        assert number2.is_Dummy
+
+    def test_add_unit(self, model):
+        """ Tests the Model.add_unit method. """
+        assert len(model.units.custom_defined) == 5
+
+        assert 'uF' not in model.units.custom_defined
+        model.add_unit('uF', [{'units': 'farad', 'prefix': 'micro'}])
+        assert len(model.units.custom_defined) == 6
+        assert 'uF' in model.units.custom_defined
+
+        # repeated in TestModelAPI
+        # Base units can't have attributes
+        with pytest.raises(ValueError, match='can not be defined with unit attributes'):
+            model.add_unit('unlikely_unit_name', [{'units': 'millivolt'}], base_units=True)
+        assert len(model.units.custom_defined) == 6
+
+    def test_add_variable(self, model):
+        """ Tests the Model.add_variable() method. """
+
+        assert len(model.variables()) == 3
+        with pytest.raises(KeyError):
+            model.get_symbol_by_name('newvar') is None
+
+        model.add_variable(name='newvar', units='mV')
+        assert len(model.variables()) == 4
+        assert model.get_symbol_by_name('newvar')
+
+        # Repeatd in TestModelAPI
+        # Variable can't be added twice
+        unit = 'mV'
+        model.add_variable(name='varvar1', units=unit)
+        model.add_variable(name='varvar2', units=unit)
+        assert len(model.variables()) == 6
+        with pytest.raises(ValueError, match='already exists'):
+            model.add_variable(name='varvar1', units=unit)
+
+    # TO DO
+    def test_add_rdf(self, model):
+        pass
+
+    ###################################################################
+    # this section is for other functions
+
+    # TO DO
+    def test_connect_variables(selfself, model):
+        pass
+
