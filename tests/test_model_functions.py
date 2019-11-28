@@ -426,15 +426,37 @@ class TestModelFunctions():
         assert t in syms
         assert sp.Derivative(v, t) in syms
 
-    def test_connect_variables(self, hh_model):
+    def test_connect_variables(self, local_hh_model):
         """ Tests Model.connect_variables() function. """
-        target = hh_model.get_symbol_by_name('sodium_channel$h')
-        source = hh_model.get_symbol_by_name('sodium_channel_h_gate$h')
+        target = local_hh_model.get_symbol_by_name('sodium_channel$h')
+        source = local_hh_model.get_symbol_by_name('sodium_channel_h_gate$h')
         assert target.assigned_to == source
 
         # check cannot assign already connected variable
         with pytest.raises(ValueError, match='Target already assigned'):
-            hh_model.connect_variables('sodium_channel$h', 'sodium_channel_h_gate$h')
+            local_hh_model.connect_variables('sodium_channel$h', 'sodium_channel_h_gate$h')
 
-    def test_connect_variables2(self, local_hh_model):
+        # add and connect a new variable with same units
+        num_eqns = len(local_hh_model.equations)
+        local_hh_model.add_variable(name='newvar', units='dimensionless', public_interface='in')
+        new_target = local_hh_model.get_symbol_by_name('newvar')
+        local_hh_model.connect_variables('sodium_channel_h_gate$h', 'newvar')
+        assert new_target.assigned_to == source
+        assert len(local_hh_model.equations) == num_eqns
+
+    def test_connect_variable2(self, local_hh_model):
         """ Tests Model.connect_variables() function. """
+        num_eqns = len(local_hh_model.equations)
+        # add and connect a variable that requires unit conversion
+        local_hh_model.add_variable(name='newvar', units='volt', public_interface='in')
+        new_target = local_hh_model.get_symbol_by_name('newvar')
+        source = local_hh_model.get_symbol_by_name('leakage_current$E_L')
+        local_hh_model.connect_variables('leakage_current$E_L', 'newvar')
+        assert new_target.assigned_to == new_target
+        assert len(local_hh_model.equations) == num_eqns + 1
+        new_eqn = local_hh_model.equations[-1]
+        assert new_eqn.is_Equality
+        assert new_eqn.lhs == new_target
+        assert new_eqn.rhs.is_Mul
+        assert new_eqn.rhs.args[0].value == 0.001
+        assert new_eqn.rhs.args[1] == source
