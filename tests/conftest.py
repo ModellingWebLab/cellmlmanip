@@ -1,3 +1,4 @@
+""" Configuration file for tests setting up the models used as fixtures."""
 import os
 
 import pytest
@@ -16,7 +17,7 @@ def load_model_for_session(name):
         os.path.dirname(__file__), 'cellml_files', name))
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope='session')
 def simple_ode_model():
     """ Returns the test_simple_odes.cellml model for use by testing session.
     Note: do not use if the test attempts to modify the model.
@@ -25,7 +26,7 @@ def simple_ode_model():
     return model
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope='session')
 def bad_annotation_model():
     """ Returns the test_bad_annotations.cellml model for use by testing session.
     Note: do not use if the test attempts to modify the model.
@@ -34,7 +35,7 @@ def bad_annotation_model():
     return model
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope='session')
 def basic_model():
     """ Returns the basic_ode.cellml model for use by testing session.
     Note: do not use if the test attempts to modify the model.
@@ -43,7 +44,7 @@ def basic_model():
     return model
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope='session')
 def aslanidi_model():
     """ Returns the aslanidi_model_2009.cellml model for use by testing session.
     Note: do not use if the test attempts to modify the model.
@@ -52,7 +53,7 @@ def aslanidi_model():
     return model
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope='session')
 def hh_model():
     """ Returns the aslanidi_model_2009.cellml model for use by testing session.
     Note: do not use if the test attempts to modify the model.
