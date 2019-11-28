@@ -5,6 +5,7 @@ import pytest
 import sympy as sp
 import cellmlmanip
 import cellmlmanip.rdf
+from cellmlmanip.model import VariableDummy
 
 OXMETA = "https://chaste.comlab.ox.ac.uk/cellml/ns/oxford-metadata#"
 
@@ -184,7 +185,7 @@ class TestModelFunctions():
     # add_rdf
 
     #########################################################################
-    # test add functions
+    # test add/set functions
     # note some tests for fail cases are repeated in TestModelAPI class
 
     def test_add_equation(self, model):
@@ -283,6 +284,12 @@ class TestModelFunctions():
     # this section is for other functions
 
     # TO DO
-    def test_connect_variables(selfself, model):
+    def test_connect_variables(self, model):
         pass
 
+    def test_find_symbols_and_derivatives(self, model):
+        a = VariableDummy('a', 'second')
+        b = VariableDummy('b', 'second')
+        ex = sp.Add(a, b)
+        syms = model.find_symbols_and_derivatives([ex])
+        assert len(syms) == 2
