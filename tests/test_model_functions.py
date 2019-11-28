@@ -28,24 +28,18 @@ class TestModelFunctions():
     })
 
     @pytest.fixture
-    def model(scope='class'):
+    def local_model(scope='class'):
         return cellmlmanip.load_model(
             os.path.join(os.path.dirname(__file__), 'cellml_files', 'basic_ode.cellml'))
-
-    @pytest.fixture
-    def other_model(scope='class'):
-        return cellmlmanip.load_model(
-            os.path.join(os.path.dirname(__file__), 'cellml_files',
-                         'aslanidi_model_2009.cellml'))
 
     ##########################################################
     # check equation graph property
 
     # also tested in test_hodgkin
-    def test_graph_property(self, model):
+    def test_graph_property(self, basic_model):
         """ Tests that the graph property for Model has been constructed correctly. """
 
-        graph1 = model.graph
+        graph1 = basic_model.graph
         assert(len(graph1.nodes) == 3)
         names = ['env_ode$sv1', 'environment$time']
         for v in graph1:
@@ -64,38 +58,38 @@ class TestModelFunctions():
     # this section contains tests for each get_XXX function on Model
 
     # also tested in test_hodgkin
-    def test_get_state_symbols(self, model):
+    def test_get_state_symbols(self, basic_model):
         """ Tests Model.get_state_symbols() works correctly. """
 
-        state_symbols = model.get_state_symbols()
+        state_symbols = basic_model.get_state_symbols()
         assert len(state_symbols) == 1
         assert state_symbols[0].name == 'env_ode$sv1'
 
     # also tested in test_hodgkin
-    def test_get_free_variable_symbol(self, model):
+    def test_get_free_variable_symbol(self, basic_model):
         """ Tests Model.get_free_variable_symbol() works correctly. """
 
-        free_variable_symbol = model.get_free_variable_symbol()
+        free_variable_symbol = basic_model.get_free_variable_symbol()
         assert free_variable_symbol.name == 'environment$time'
 
-    def test_get_free_variable_symbol_1(self, other_model):
+    def test_get_free_variable_symbol_1(self, aslanidi_model):
         """ Tests Model.get_free_variable_symbol() works correctly. """
 
-        free_variable_symbol = other_model.get_free_variable_symbol()
+        free_variable_symbol = aslanidi_model.get_free_variable_symbol()
         assert free_variable_symbol.name == 'environment$time'
 
     # also tested in test_aslanidi
-    def test_get_initial_value(self, other_model):
+    def test_get_initial_value(self, aslanidi_model):
         """ Tests Model.get_initial_value() works correctly. """
 
-        membrane_voltage = other_model.get_symbol_by_ontology_term(OXMETA, "membrane_voltage")
-        assert(other_model.get_initial_value(membrane_voltage) == -80.0)
+        membrane_voltage = aslanidi_model.get_symbol_by_ontology_term(OXMETA, "membrane_voltage")
+        assert(aslanidi_model.get_initial_value(membrane_voltage) == -80.0)
 
     # also tested in test_hodgkin
-    def test_get_derivative_symbols(self, model):
+    def test_get_derivative_symbols(self, basic_model):
         """ Tests Model.get_derivative_symbols() works correctly. """
 
-        derivs = model.get_derivative_symbols()
+        derivs = basic_model.get_derivative_symbols()
         assert len(derivs) == 1
         deriv = derivs[0]
         assert deriv.is_Derivative
@@ -104,73 +98,73 @@ class TestModelFunctions():
         assert deriv.variables[0].name == 'environment$time'
 
     # also tested by model_units
-    def test_get_equations_for(self, model):
+    def test_get_equations_for(self, basic_model):
         """ Tests Model.get_equations_for() works correctly.
         Note: the basic model has 1 equation dsv11/dt = 1 which is not
         related to a symbol and so has no equations that can be retrieved
         by symbol
         """
 
-        symbol_a = model.get_symbol_by_cmeta_id("sv11")
-        equation = model.get_equations_for([symbol_a])
+        symbol_a = basic_model.get_symbol_by_cmeta_id("sv11")
+        equation = basic_model.get_equations_for([symbol_a])
         assert len(equation) == 0
 
-        symbol_t = model.get_symbol_by_name("environment$time")
+        symbol_t = basic_model.get_symbol_by_name("environment$time")
 
-        equation1 = model.get_equations_for([symbol_t])
+        equation1 = basic_model.get_equations_for([symbol_t])
         assert len(equation1) == 0
 
     # also tested by model_units
-    def test_get_equations_for_1(self, other_model):
+    def test_get_equations_for_1(self, aslanidi_model):
         """ Tests Model.get_equations_for() works correctly. """
 
-        symbol_a = other_model.get_symbol_by_ontology_term(OXMETA, "membrane_capacitance")
-        equation = other_model.get_equations_for([symbol_a])
+        symbol_a = aslanidi_model.get_symbol_by_ontology_term(OXMETA, "membrane_capacitance")
+        equation = aslanidi_model.get_equations_for([symbol_a])
         assert len(equation) == 1
         assert equation[0].lhs == symbol_a
         assert equation[0].rhs == 5e-5
 
-    def test_get_value(self, other_model):
+    def test_get_value(self, aslanidi_model):
         """ Tests Model.get_value() works correctly. """
 
-        symbol_a = other_model.get_symbol_by_ontology_term(OXMETA, "membrane_capacitance")
-        assert other_model.get_value(symbol_a) == 5e-5
+        symbol_a = aslanidi_model.get_symbol_by_ontology_term(OXMETA, "membrane_capacitance")
+        assert aslanidi_model.get_value(symbol_a) == 5e-5
 
     #################################################################
     # tests for get_symbol_XXX functions
 
-    def test_get_symbol_by_cmeta_id(self, model):
+    def test_get_symbol_by_cmeta_id(self, basic_model):
         """ Tests Model.get_symbol_by_cmeta_id() works correctly. """
 
-        sv11 = model.get_symbol_by_cmeta_id('sv11')
+        sv11 = basic_model.get_symbol_by_cmeta_id('sv11')
         assert sv11.name == 'env_ode$sv1'
         assert sv11.units == 'mV'
 
-    def test_get_symbol_by_cmeta_id_2(self, other_model):
+    def test_get_symbol_by_cmeta_id_2(self, aslanidi_model):
         """ Tests Model.get_symbol_by_cmeta_id() works correctly. """
 
-        variable = other_model.get_symbol_by_cmeta_id('testcmeta')
+        variable = aslanidi_model.get_symbol_by_cmeta_id('testcmeta')
         assert variable.name == 'intracellular_ion_concentrations$Na_i'
         assert variable.units == 'millimolar'
 
-    def test_get_symbol_by_name(self, model):
+    def test_get_symbol_by_name(self, basic_model):
         """ Tests Model.get_symbol_by_name() works correctly. """
 
-        sv11 = model.get_symbol_by_name('env_ode$sv1')
+        sv11 = basic_model.get_symbol_by_name('env_ode$sv1')
         assert sv11.units == 'mV'
 
-    def test_get_symbol_by_ontology_term(self, other_model):
+    def test_get_symbol_by_ontology_term(self, aslanidi_model):
         """ Tests Model.get_symbol_by_ontology_term() works correctly. """
 
-        symbol_a = other_model.get_symbol_by_ontology_term(OXMETA, 'membrane_capacitance')
+        symbol_a = aslanidi_model.get_symbol_by_ontology_term(OXMETA, 'membrane_capacitance')
         assert symbol_a.name == 'membrane$Cm'
         assert symbol_a.units == 'nanoF'
 
-    def test_get_symbols_by_rdf(self, other_model):
+    def test_get_symbols_by_rdf(self, aslanidi_model):
         """ Tests Model.get_symbols_by_rdf() works correctly. """
 
-        symbol_a = other_model.get_symbols_by_rdf(('http://biomodels.net/biology-qualifiers/', 'is'),
-                                                  (OXMETA, 'membrane_voltage'))
+        symbol_a = aslanidi_model.get_symbols_by_rdf(('http://biomodels.net/biology-qualifiers/', 'is'),
+                                                     (OXMETA, 'membrane_voltage'))
         assert len(symbol_a) == 1
         assert symbol_a[0].name == 'membrane$V'
         assert symbol_a[0].units == 'millivolt'
@@ -188,9 +182,10 @@ class TestModelFunctions():
     # test add/set functions
     # note some tests for fail cases are repeated in TestModelAPI class
 
-    def test_add_equation(self, model):
+    def test_add_equation(self, local_model):
         """ Tests the Model.add_equation method.
         """
+        model = local_model
         assert len(model.equations) == 1
         # so we are adding
         # newvar2 = newvar + newvar1
@@ -214,9 +209,10 @@ class TestModelFunctions():
         assert eqn[2].lhs == symbol2
         assert eqn[2].rhs == sp.Add(symbol, symbol1)
 
-    def test_set_equation(self, model):
+    def test_set_equation(self, local_model):
         """ Tests the Model.set_equation method.
         """
+        model = local_model
         assert len(model.equations) == 1
         # so we are adding
         # newvar2 = newvar + newvar1
@@ -240,13 +236,15 @@ class TestModelFunctions():
         assert eqn[2].lhs == symbol2
         assert eqn[2].rhs == sp.Add(symbol, symbol1)
 
-    def test_add_number(self, model):
+    def test_add_number(self, local_model):
         """ Tests the Model.add_number method. """
+        model = local_model
         number2 = model.add_number(2.0, 'mV')
         assert number2.is_Dummy
 
-    def test_add_unit(self, model):
+    def test_add_unit(self, local_model):
         """ Tests the Model.add_unit method. """
+        model = local_model
         assert len(model.units.custom_defined) == 5
 
         assert 'uF' not in model.units.custom_defined
@@ -260,9 +258,9 @@ class TestModelFunctions():
             model.add_unit('unlikely_unit_name', [{'units': 'millivolt'}], base_units=True)
         assert len(model.units.custom_defined) == 6
 
-    def test_add_variable(self, model):
+    def test_add_variable(self, local_model):
         """ Tests the Model.add_variable() method. """
-
+        model = local_model
         assert len(model.variables()) == 3
         with pytest.raises(KeyError):
             model.get_symbol_by_name('newvar') is None
@@ -284,12 +282,12 @@ class TestModelFunctions():
     # this section is for other functions
 
     # TO DO
-    def test_connect_variables(self, model):
+    def test_connect_variables(self, basic_model):
         pass
 
-    def test_find_symbols_and_derivatives(self, model):
+    def test_find_symbols_and_derivatives(self, basic_model):
         a = VariableDummy('a', 'second')
         b = VariableDummy('b', 'second')
         ex = sp.Add(a, b)
-        syms = model.find_symbols_and_derivatives([ex])
+        syms = basic_model.find_symbols_and_derivatives([ex])
         assert len(syms) == 2
