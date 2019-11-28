@@ -1,20 +1,11 @@
 """ Configuration file for tests setting up the models used as fixtures."""
-import os
-
 import pytest
-
-from cellmlmanip import load_model
-
-
-OXMETA = "https://chaste.comlab.ox.ac.uk/cellml/ns/oxford-metadata#"
+from . import shared
 
 
-def load_model_for_session(name):
-    """ Parses and returns one of the CellML test models """
-    if name[-7:] != '.cellml':
-        name += '.cellml'
-    return load_model(os.path.join(
-        os.path.dirname(__file__), 'cellml_files', name))
+@pytest.fixture(scope='session')
+def OXMETA():
+    return "https://chaste.comlab.ox.ac.uk/cellml/ns/oxford-metadata#"
 
 
 @pytest.fixture(scope='session')
@@ -22,7 +13,7 @@ def simple_ode_model():
     """ Returns the test_simple_odes.cellml model for use by testing session.
     Note: do not use if the test attempts to modify the model.
     """
-    model = load_model_for_session('test_simple_odes')
+    model = shared.load_model('test_simple_odes')
     return model
 
 
@@ -31,7 +22,7 @@ def bad_annotation_model():
     """ Returns the test_bad_annotations.cellml model for use by testing session.
     Note: do not use if the test attempts to modify the model.
     """
-    model = load_model_for_session('test_bad_annotations')
+    model = shared.load_model('test_bad_annotations')
     return model
 
 
@@ -40,7 +31,7 @@ def basic_model():
     """ Returns the basic_ode.cellml model for use by testing session.
     Note: do not use if the test attempts to modify the model.
     """
-    model = load_model_for_session('basic_ode')
+    model = shared.load_model('basic_ode')
     return model
 
 
@@ -49,7 +40,7 @@ def aslanidi_model():
     """ Returns the aslanidi_model_2009.cellml model for use by testing session.
     Note: do not use if the test attempts to modify the model.
     """
-    model = load_model_for_session('aslanidi_model_2009')
+    model = shared.load_model('aslanidi_model_2009')
     return model
 
 
@@ -58,6 +49,6 @@ def hh_model():
     """ Returns the aslanidi_model_2009.cellml model for use by testing session.
     Note: do not use if the test attempts to modify the model.
     """
-    model = load_model_for_session('hodgkin_huxley_squid_axon_model_1952_modified')
+    model = shared.load_model('hodgkin_huxley_squid_axon_model_1952_modified')
     return model
 

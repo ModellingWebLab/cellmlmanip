@@ -3,12 +3,11 @@ from collections import OrderedDict
 
 import pytest
 import sympy as sp
-import cellmlmanip
-import cellmlmanip.rdf
+
 from cellmlmanip import parser
 from cellmlmanip.model import VariableDummy
 
-OXMETA = "https://chaste.comlab.ox.ac.uk/cellml/ns/oxford-metadata#"
+from . import shared
 
 
 class TestModelFunctions():
@@ -29,15 +28,15 @@ class TestModelFunctions():
     })
 
     @pytest.fixture
-    def local_model(scope='class'):
-        return cellmlmanip.load_model(
-            os.path.join(os.path.dirname(__file__), 'cellml_files', 'basic_ode.cellml'))
+    def local_model(scope='function'):
+        """ Fixture to load a local copy of  the basic_ode model that may get modified. """
+        return shared.load_model('basic_ode')
 
     @pytest.fixture
-    def local_hh_model(scope='class'):
-        return cellmlmanip.load_model(
-            os.path.join(os.path.dirname(__file__), 'cellml_files',
-                         'hodgkin_huxley_squid_axon_model_1952_modified.cellml'))
+    def local_hh_model(scope='function'):
+        """ Fixture to load a local copy of  the hodgkin_huxley_squid_axon_model_1952_modified
+        model that may get modified. """
+        return shared.load_model('hodgkin_huxley_squid_axon_model_1952_modified')
 
     ##########################################################
     # check equation graph property
@@ -116,7 +115,7 @@ class TestModelFunctions():
         assert free_variable_symbol.name == 'environment$time'
 
     # also tested in test_aslanidi
-    def test_get_initial_value(self, aslanidi_model):
+    def test_get_initial_value(self, aslanidi_model, OXMETA):
         """ Tests Model.get_initial_value() works correctly. """
 
         membrane_voltage = aslanidi_model.get_symbol_by_ontology_term(OXMETA, "membrane_voltage")
@@ -185,7 +184,7 @@ class TestModelFunctions():
         assert len(equation1) == 0
 
     # also tested by model_units
-    def test_get_equations_for_1(self, aslanidi_model):
+    def test_get_equations_for_1(self, aslanidi_model, OXMETA):
         """ Tests Model.get_equations_for() works correctly. """
 
         symbol_a = aslanidi_model.get_symbol_by_ontology_term(OXMETA, "membrane_capacitance")
@@ -194,7 +193,7 @@ class TestModelFunctions():
         assert equation[0].lhs == symbol_a
         assert equation[0].rhs == 5e-5
 
-    def test_get_value(self, aslanidi_model):
+    def test_get_value(self, aslanidi_model, OXMETA):
         """ Tests Model.get_value() works correctly. """
 
         symbol_a = aslanidi_model.get_symbol_by_ontology_term(OXMETA, "membrane_capacitance")
@@ -223,14 +222,14 @@ class TestModelFunctions():
         sv11 = basic_model.get_symbol_by_name('env_ode$sv1')
         assert sv11.units == 'mV'
 
-    def test_get_symbol_by_ontology_term(self, aslanidi_model):
+    def test_get_symbol_by_ontology_term(self, aslanidi_model, OXMETA):
         """ Tests Model.get_symbol_by_ontology_term() works correctly. """
 
         symbol_a = aslanidi_model.get_symbol_by_ontology_term(OXMETA, 'membrane_capacitance')
         assert symbol_a.name == 'membrane$Cm'
         assert symbol_a.units == 'nanoF'
 
-    def test_get_symbols_by_rdf(self, aslanidi_model):
+    def test_get_symbols_by_rdf(self, aslanidi_model, OXMETA):
         """ Tests Model.get_symbols_by_rdf() works correctly. """
 
         symbol_a = aslanidi_model.get_symbols_by_rdf(('http://biomodels.net/biology-qualifiers/', 'is'),
@@ -250,7 +249,6 @@ class TestModelFunctions():
 
     #########################################################################
     # test add/set functions
-    # note some tests for fail cases are repeated in TestModelAPI class
 
     def test_add_equation(self, local_model):
         """ Tests the Model.add_equation method.
@@ -306,7 +304,7 @@ class TestModelFunctions():
         assert eqn[2].lhs == symbol2
         assert eqn[2].rhs == sp.Add(symbol, symbol1)
 
-    def test_set_equation2(self, local_hh_model):
+    def test_set_equation2(self, local_hh_model, OXMETA):
         """ Tests replacing an equation in a model. """
 
         model = local_hh_model
@@ -390,19 +388,16 @@ class TestModelFunctions():
     ###################################################################
     # this section is for other functions
 
-    # TO DO
-    def test_connect_variables(self, basic_model):
-        pass
-
     def test_find_symbols_and_derivatives(self, basic_model):
+        """ Tests Model.find_symbols_and_derivatives function. """
         a = VariableDummy('a', 'second')
         b = VariableDummy('b', 'second')
         ex = sp.Add(a, b)
         syms = basic_model.find_symbols_and_derivatives([ex])
         assert len(syms) == 2
 
-    def test_find_symbols_and_derivatives2(self, hh_model):
-        """ Tests Model.find_symbols_and_derivatives. """
+    def test_find_symbols_and_derivatives2(self, hh_model, OXMETA):
+        """ Tests Model.find_symbols_and_derivatives() function. """
 
         # Test on single variable expressions
         t = hh_model.get_free_variable_symbol()
@@ -430,3 +425,16 @@ class TestModelFunctions():
         assert v in syms
         assert t in syms
         assert sp.Derivative(v, t) in syms
+
+    def test_connect_variables(self, hh_model):
+        """ Tests Model.connect_variables() function. """
+        target = hh_model.get_symbol_by_name('sodium_channel$h')
+        source = hh_model.get_symbol_by_name('sodium_channel_h_gate$h')
+        assert target.assigned_to == source
+
+        # check cannot assign already connected variable
+        with pytest.raises(ValueError, match='Target already assigned'):
+            hh_model.connect_variables('sodium_channel$h', 'sodium_channel_h_gate$h')
+
+    def test_connect_variables2(self, local_hh_model):
+        """ Tests Model.connect_variables() function. """
