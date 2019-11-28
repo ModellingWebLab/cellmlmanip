@@ -12,24 +12,11 @@ OXMETA = "https://chaste.comlab.ox.ac.uk/cellml/ns/oxford-metadata#"
 PYCMLMETA = 'https://chaste.comlab.ox.ac.uk/cellml/ns/pycml#'
 
 
-def load_model(name):
-    """ Parses and returns one of the CellML test models """
-    if name[-7:] != '.cellml':
-        name += '.cellml'
-    return cellmlmanip.load_model(os.path.join(
-        os.path.dirname(__file__), 'cellml_files', name))
-
-
-@pytest.fixture(scope="module")
-def test_simple_odes():
-    model = load_model('test_simple_odes')
-    return model
-
-
-@pytest.fixture(scope="module")
-def test_bad_annotations():
-    model = load_model('test_bad_annotations')
-    return model
+@pytest.fixture
+def model(scope='module'):
+    """ Local test fixture used for adding rdf. """
+    return cellmlmanip.load_model(
+        os.path.join(os.path.dirname(__file__), 'cellml_files', 'test_simple_odes.cellml'))
 
 
 def test_create_rdf_node():
@@ -65,11 +52,11 @@ def test_create_rdf_node():
     assert cellmlmanip.rdf.create_rdf_node(node) == node
 
 
-def test_get_symbol_by_ontology_term(test_simple_odes, test_bad_annotations):
+def test_get_symbol_by_ontology_term(simple_ode_model, bad_annotation_model):
     # Tests model.get_symbol_by_ontology_term
 
     # Test getting the time variable
-    model = test_simple_odes
+    model = simple_ode_model
     var = model.get_symbol_by_ontology_term(OXMETA, 'time')
     assert isinstance(var, sympy.Symbol)
     assert var.name == 'environment$time'
@@ -81,7 +68,7 @@ def test_get_symbol_by_ontology_term(test_simple_odes, test_bad_annotations):
         model.get_symbol_by_ontology_term('http://example.com#', 'time')
 
     # Test bad annotations
-    model = test_bad_annotations
+    model = bad_annotation_model
 
     # Two variables with the same ID
     with pytest.raises(ValueError, match='Multiple variables annotated with'):
@@ -104,9 +91,9 @@ def test_get_symbol_by_ontology_term(test_simple_odes, test_bad_annotations):
             OXMETA, 'membrane_persistent_sodium_current')
 
 
-def test_get_ontology_terms_by_symbol(test_bad_annotations):
+def test_get_ontology_terms_by_symbol(bad_annotation_model):
     # Test bad annotations
-    model = test_bad_annotations
+    model = bad_annotation_model
 
     # Get v3 from the model, as it does not have cmeta_id, to test this part of the code
     for variable in model.graph:
@@ -115,9 +102,9 @@ def test_get_ontology_terms_by_symbol(test_bad_annotations):
             assert len(annotations) == 0
 
 
-def test_has_ontology_term_by_symbol(test_bad_annotations):
+def test_has_ontology_term_by_symbol(bad_annotation_model):
     # Test bad annotations
-    model = test_bad_annotations
+    model = bad_annotation_model
 
     # Get v3 from the model, as it does not have cmeta_id, to test this part of the code
     for variable in model.graph:
@@ -125,9 +112,9 @@ def test_has_ontology_term_by_symbol(test_bad_annotations):
             assert not model.has_ontology_annotation(variable, OXMETA)
 
 
-def test_get_rdf_annotation(test_simple_odes):
+def test_get_rdf_annotation(simple_ode_model):
     # Test rdf annotation
-    model = test_simple_odes
+    model = simple_ode_model
 
     named_attributes = []
     named_attrs = model.get_rdf_annotations(subject=model.rdf_identity, predicate=(PYCMLMETA, 'named-attribute'))
@@ -154,9 +141,8 @@ def test_get_rdf_annotation(test_simple_odes):
     assert str(params) == '[_single_ode_rhs_const_var$a]'
 
 
-def test_add_rdf(test_simple_odes):
+def test_add_rdf(model):
     """ Tests the Model.add_rdf() function. """
-    model = test_simple_odes
 
     named_attributes = []
     named_attrs = model.get_rdf_annotations(subject=model.rdf_identity, predicate=(PYCMLMETA, 'named-attribute'))
