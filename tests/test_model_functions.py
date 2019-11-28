@@ -181,6 +181,7 @@ class TestModelFunctions():
     # get_rdf_annotations()
     # get_rdf_value() - indirectly tested by test_get_rdf_annotations() in test_rdf.py
     # has_ontology_annotation()
+    # add_rdf
 
     #########################################################################
     # test add functions
@@ -277,10 +278,6 @@ class TestModelFunctions():
         assert len(model.variables()) == 6
         with pytest.raises(ValueError, match='already exists'):
             model.add_variable(name='varvar1', units=unit)
-
-    # TO DO
-    def test_add_rdf(self, model):
-        pass
 
     ###################################################################
     # this section is for other functions

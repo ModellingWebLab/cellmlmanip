@@ -152,3 +152,45 @@ def test_get_rdf_annotation(test_simple_odes):
 
     params = model.get_symbols_by_rdf((PYCMLMETA, 'modifiable-parameter'), 'yes')
     assert str(params) == '[_single_ode_rhs_const_var$a]'
+
+
+def test_add_rdf(test_simple_odes):
+    """ Tests the Model.add_rdf() function. """
+    model = test_simple_odes
+
+    named_attributes = []
+    named_attrs = model.get_rdf_annotations(subject=model.rdf_identity, predicate=(PYCMLMETA, 'named-attribute'))
+    for s, p, attr in named_attrs:
+        name = model.get_rdf_value(subject=attr, predicate=(PYCMLMETA, 'name'))
+        value = model.get_rdf_value(subject=attr, predicate=(PYCMLMETA, 'value'))
+        named_attributes.append({'name': name, 'value': value})
+
+    assert len(named_attributes) == 1
+    assert named_attributes[0]['name'] == 'SuggestedForwardEulerTimestep'
+    assert named_attributes[0]['value'] == '0.0002'
+
+    model.add_rdf('<rdf:RDF xmlns:rdf=\"http://www.w3.org/1999/02/22-rdf-syntax-ns#\" >'
+                  '<rdf:Description rdf:about="#test_simple_odes">'
+                  '<named-attribute xmlns=\"https://chaste.comlab.ox.ac.uk/cellml/ns/pycml#\">'
+                  '<rdf:Description>'
+                  '<name rdf:datatype="http://www.w3.org/2000/10/XMLSchema#string">AddedAttribute</name>'
+                  '<value rdf:datatype="http://www.w3.org/2000/10/XMLSchema#double">2.5</value>'
+                  '</rdf:Description>'
+                  '</named-attribute>'
+                  '</rdf:Description>'
+                  '</rdf:RDF>')
+
+    named_attributes = []
+    named_attrs = model.get_rdf_annotations(subject=model.rdf_identity, predicate=(PYCMLMETA, 'named-attribute'))
+    for s, p, attr in named_attrs:
+        name = model.get_rdf_value(subject=attr, predicate=(PYCMLMETA, 'name'))
+        value = model.get_rdf_value(subject=attr, predicate=(PYCMLMETA, 'value'))
+        named_attributes.append({'name': name, 'value': value})
+
+    assert len(named_attributes) == 2
+    # insertion happens randomly so need to check that the new attribute is listed in either position 0/1
+    assert named_attributes[0]['name'] == 'AddedAttribute' or named_attributes[1]['name'] == 'AddedAttribute'
+    assert named_attributes[0]['value'] == '2.5' or named_attributes[1]['value'] == '2.5'
+
+
+
