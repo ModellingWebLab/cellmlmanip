@@ -5,6 +5,7 @@ import pytest
 import sympy as sp
 import cellmlmanip
 import cellmlmanip.rdf
+from cellmlmanip import parser
 from cellmlmanip.model import VariableDummy
 
 OXMETA = "https://chaste.comlab.ox.ac.uk/cellml/ns/oxford-metadata#"
@@ -32,6 +33,12 @@ class TestModelFunctions():
         return cellmlmanip.load_model(
             os.path.join(os.path.dirname(__file__), 'cellml_files', 'basic_ode.cellml'))
 
+    @pytest.fixture
+    def local_hh_model(scope='class'):
+        return cellmlmanip.load_model(
+            os.path.join(os.path.dirname(__file__), 'cellml_files',
+                         'hodgkin_huxley_squid_axon_model_1952_modified.cellml'))
+
     ##########################################################
     # check equation graph property
 
@@ -53,6 +60,17 @@ class TestModelFunctions():
                         for b in a._args:
                             if b.is_Dummy:
                                 assert (b.name in names)
+
+    def test_graph_for_dae(self):
+        """ Checks if writing a DAE in a model raises an exceptions. """
+
+        # Parsing should be OK
+        path = os.path.join(os.path.dirname(__file__), 'cellml_files', '4.algebraic_ode_model.cellml')
+        model = parser.Parser(path).parse()
+
+        # But equation graph will raise error (if accessed)
+        with pytest.raises(RuntimeError, match='DAEs are not supported'):
+            model.graph
 
     #######################################################################
     # this section contains tests for each get_XXX function on Model
@@ -288,6 +306,45 @@ class TestModelFunctions():
         assert eqn[2].lhs == symbol2
         assert eqn[2].rhs == sp.Add(symbol, symbol1)
 
+    def test_set_equation2(self, local_hh_model):
+        """ Tests replacing an equation in a model. """
+
+        model = local_hh_model
+        # Get model, assert that V is a state variable
+        v = model.get_symbol_by_ontology_term(OXMETA, 'membrane_voltage')
+        assert v.type == 'state'
+
+        # Now clamp it to -80mV
+        rhs = model.add_number(-80, str(v.units))
+        model.set_equation(v, rhs)
+
+        # Check that V is no longer a state
+        v = model.get_symbol_by_ontology_term(OXMETA, 'membrane_voltage')
+        assert v.type != 'state'
+
+        # TODO: Get dvdt_unit in a more sensible way
+        # See: https://github.com/ModellingWebLab/cellmlmanip/issues/133
+
+        # Now make V a state again
+        t = model.get_symbol_by_ontology_term(OXMETA, 'time')
+        lhs = sp.Derivative(v, t)
+        dvdt_units = 'unlikely_unit_name'
+        model.add_unit(dvdt_units, [
+            {'units': str(v.units)},
+            {'units': str(t.units), 'exponent': -1},
+        ])
+        rhs = model.add_number(0, dvdt_units)
+        model.set_equation(lhs, rhs)
+
+        # Check that V is a state again
+        v = model.get_symbol_by_ontology_term(OXMETA, 'membrane_voltage')
+        assert v.type == 'state'
+
+        # Set equation for a newly created variable
+        lhs = model.add_variable(name='an_incredibly_unlikely_variable_name', units=str(v.units))
+        rhs = model.add_number(12, str(v.units))
+        model.set_equation(lhs, rhs)
+
     def test_add_number(self, local_model):
         """ Tests the Model.add_number method. """
         model = local_model
@@ -343,3 +400,33 @@ class TestModelFunctions():
         ex = sp.Add(a, b)
         syms = basic_model.find_symbols_and_derivatives([ex])
         assert len(syms) == 2
+
+    def test_find_symbols_and_derivatives2(self, hh_model):
+        """ Tests Model.find_symbols_and_derivatives. """
+
+        # Test on single variable expressions
+        t = hh_model.get_free_variable_symbol()
+        syms = hh_model.find_symbols_and_derivatives([t])
+        assert len(syms) == 1
+        assert t in syms
+
+        v = hh_model.get_symbol_by_ontology_term(OXMETA, "membrane_voltage")
+        dvdt = sp.Derivative(v, t)
+        syms = hh_model.find_symbols_and_derivatives([dvdt])
+        assert len(syms) == 1
+        assert sp.Derivative(v, t) in syms
+
+        # Test on longer expressions
+        x = sp.Float(1) + t * sp.sqrt(dvdt) - t
+        syms = hh_model.find_symbols_and_derivatives([x])
+        assert len(syms) == 2
+        assert t in syms
+        assert sp.Derivative(v, t) in syms
+
+        # Test on multiple expressions
+        y = sp.Float(2) + v
+        syms = hh_model.find_symbols_and_derivatives([x, y])
+        assert len(syms) == 3
+        assert v in syms
+        assert t in syms
+        assert sp.Derivative(v, t) in syms
