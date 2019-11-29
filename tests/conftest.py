@@ -46,9 +46,27 @@ def aslanidi_model():
 
 @pytest.fixture(scope='session')
 def hh_model():
-    """ Returns the aslanidi_model_2009.cellml model for use by testing session.
+    """ Returns the hodgkin_huxley_squid_axon_model_1952_modified.cellml model for use by testing session.
     Note: do not use if the test attempts to modify the model.
     """
     model = shared.load_model('hodgkin_huxley_squid_axon_model_1952_modified')
+    return model
+
+
+@pytest.fixture(scope='session')
+def model_simple_units():
+    """ Returns the simple_model_units.cellml model for use by testing session.
+    Note: do not use if the test attempts to modify the model.
+    """
+    model = shared.load_model('simple_model_units')
+    return model
+
+
+@pytest.fixture(scope='session')
+def model_bad_units():
+    """ Returns the simple_model_invalid_units.cellml model for use by testing session.
+    Note: do not use if the test attempts to modify the model.
+    """
+    model = shared.load_model('simple_model_invalid_units')
     return model
 
