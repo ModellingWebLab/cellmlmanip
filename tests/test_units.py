@@ -1,10 +1,8 @@
-import os
 from collections import OrderedDict
 
 import pytest
 import sympy as sp
 
-from cellmlmanip import load_model
 from cellmlmanip.model import NumberDummy, VariableDummy
 from cellmlmanip.units import (
     BooleanUnitsError,
@@ -18,19 +16,7 @@ from cellmlmanip.units import (
 )
 
 
-OXMETA = "https://chaste.comlab.ox.ac.uk/cellml/ns/oxford-metadata#"
-
-
 class TestUnits(object):
-    @pytest.fixture(scope="class")
-    def model(self):
-        hodgkin_cellml = os.path.join(
-            os.path.dirname(__file__),
-            "cellml_files",
-            "hodgkin_huxley_squid_axon_model_1952_modified.cellml"
-        )
-        return load_model(hodgkin_cellml)
-
     # These represent CellML <units><unit>...</unit></units> elements
     test_definitions = OrderedDict({
         'ms': [{'units': 'second', 'prefix': 'milli'}],
@@ -423,9 +409,12 @@ class TestUnits(object):
         assert printer.doprint(_2 * y) == '2.000000[dimensionless]*y[volt]'
         assert printer.doprint(sp.Derivative(a, b)) == 'Derivative(a[meter], b[second])'
 
-    def test_dimensionally_equivalent(self, model):
-        membrane_stimulus_current_offset = model.get_symbol_by_ontology_term(OXMETA, "membrane_stimulus_current_offset")
-        membrane_stimulus_current_period = model.get_symbol_by_ontology_term(OXMETA, "membrane_stimulus_current_period")
-        membrane_voltage = model.get_symbol_by_ontology_term(OXMETA, "membrane_voltage")
-        assert model.units.dimensionally_equivalent(membrane_stimulus_current_offset, membrane_stimulus_current_period)
-        assert not model.units.dimensionally_equivalent(membrane_stimulus_current_offset, membrane_voltage)
+    def test_dimensionally_equivalent(self, hh_model, OXMETA):
+        membrane_stimulus_current_offset = hh_model.get_symbol_by_ontology_term(OXMETA,
+                                                                                "membrane_stimulus_current_offset")
+        membrane_stimulus_current_period = hh_model.get_symbol_by_ontology_term(OXMETA,
+                                                                                "membrane_stimulus_current_period")
+        membrane_voltage = hh_model.get_symbol_by_ontology_term(OXMETA, "membrane_voltage")
+        assert hh_model.units.dimensionally_equivalent(membrane_stimulus_current_offset,
+                                                       membrane_stimulus_current_period)
+        assert not hh_model.units.dimensionally_equivalent(membrane_stimulus_current_offset, membrane_voltage)

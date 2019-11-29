@@ -1,5 +1,4 @@
 import os
-from collections import OrderedDict
 
 import pytest
 import sympy as sp
@@ -15,17 +14,6 @@ class TestModelFunctions():
 
     ###############################################################
     # fixtures
-
-    # These represent CellML <units><unit>...</unit></units> elements
-    test_definitions = OrderedDict({
-        'ms': [{'units': 'second', 'prefix': 'milli'}],
-        'usec': [{'units': 'second', 'prefix': 'micro'}],
-        'mV': [{'units': 'volt', 'prefix': 'milli'}],
-        'uV': [{'units': 'volt', 'prefix': 'micro'}],
-        'mM': [{'prefix': 'milli', 'units': 'mole'}, {'units': 'litre', 'exponent': '-1'}],
-        'milli_mole': [{'prefix': 'milli', 'units': 'mole'}],
-        'millisecond': [{'prefix': 'milli', 'units': 'second'}],
-    })
 
     @pytest.fixture
     def local_model(scope='function'):

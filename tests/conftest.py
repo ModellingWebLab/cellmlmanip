@@ -1,5 +1,6 @@
 """ Configuration file for tests setting up the models used as fixtures."""
 import pytest
+
 from . import shared
 
 
@@ -69,4 +70,5 @@ def model_bad_units():
     """
     model = shared.load_model('simple_model_invalid_units')
     return model
+
 

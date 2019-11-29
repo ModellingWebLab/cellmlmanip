@@ -1,22 +1,18 @@
-import os
-
 import pytest
 import rdflib
 import sympy
 
 import cellmlmanip
 import cellmlmanip.rdf
+from . import shared
 
-
-OXMETA = "https://chaste.comlab.ox.ac.uk/cellml/ns/oxford-metadata#"
 PYCMLMETA = 'https://chaste.comlab.ox.ac.uk/cellml/ns/pycml#'
 
 
 @pytest.fixture
-def model(scope='module'):
+def local_model(scope='module'):
     """ Local test fixture used for adding rdf. """
-    return cellmlmanip.load_model(
-        os.path.join(os.path.dirname(__file__), 'cellml_files', 'test_simple_odes.cellml'))
+    return shared.load_model('test_simple_odes')
 
 
 def test_create_rdf_node():
@@ -52,7 +48,7 @@ def test_create_rdf_node():
     assert cellmlmanip.rdf.create_rdf_node(node) == node
 
 
-def test_get_symbol_by_ontology_term(simple_ode_model, bad_annotation_model):
+def test_get_symbol_by_ontology_term(simple_ode_model, bad_annotation_model, OXMETA):
     # Tests model.get_symbol_by_ontology_term
 
     # Test getting the time variable
@@ -91,7 +87,7 @@ def test_get_symbol_by_ontology_term(simple_ode_model, bad_annotation_model):
             OXMETA, 'membrane_persistent_sodium_current')
 
 
-def test_get_ontology_terms_by_symbol(bad_annotation_model):
+def test_get_ontology_terms_by_symbol(bad_annotation_model, OXMETA):
     # Test bad annotations
     model = bad_annotation_model
 
@@ -102,7 +98,7 @@ def test_get_ontology_terms_by_symbol(bad_annotation_model):
             assert len(annotations) == 0
 
 
-def test_get_ontology_terms_by_symbol2(hh_model):
+def test_get_ontology_terms_by_symbol2(hh_model, OXMETA):
     membrane_voltage_var = hh_model.get_symbol_by_ontology_term(OXMETA, "membrane_voltage")
     annotation = hh_model.get_ontology_terms_by_symbol(membrane_voltage_var, OXMETA)
     assert len(annotation) == 1
@@ -118,7 +114,7 @@ def test_get_ontology_terms_by_symbol2(hh_model):
     assert annotation[0] == "membrane_voltage"
 
 
-def test_has_ontology_term_by_symbol(bad_annotation_model):
+def test_has_ontology_term_by_symbol(bad_annotation_model, OXMETA):
     # Test bad annotations
     model = bad_annotation_model
 
@@ -128,7 +124,7 @@ def test_has_ontology_term_by_symbol(bad_annotation_model):
             assert not model.has_ontology_annotation(variable, OXMETA)
 
 
-def test_has_ontology_annotation(hh_model):
+def test_has_ontology_annotation(hh_model, OXMETA):
     membrane_voltage_var = hh_model.get_symbol_by_ontology_term(OXMETA, "membrane_voltage")
     assert hh_model.has_ontology_annotation(membrane_voltage_var, OXMETA)
 
@@ -168,9 +164,10 @@ def test_get_rdf_annotation(simple_ode_model):
     assert str(params) == '[_single_ode_rhs_const_var$a]'
 
 
-def test_add_rdf(model):
+def test_add_rdf(local_model):
     """ Tests the Model.add_rdf() function. """
 
+    model = local_model
     named_attributes = []
     named_attrs = model.get_rdf_annotations(subject=model.rdf_identity, predicate=(PYCMLMETA, 'named-attribute'))
     for s, p, attr in named_attrs:
