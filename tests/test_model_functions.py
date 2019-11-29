@@ -227,7 +227,7 @@ class TestModelFunctions():
         equations = [str(eq) for eq in equations]
         assert equations == expected_order
 
-        # Check topoligically (but not lexicographically) ordered equations
+        # Check topologically (but not lexicographically) ordered equations
         unordered_equations = hh_model.get_equations_for([membrane_fast_sodium_current], False)
         unordered_equations = [str(eq) for eq in unordered_equations]
 
