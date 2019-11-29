@@ -6,6 +6,8 @@ import cellmlmanip
 
 logger = logging.getLogger(__name__)
 
+OXMETA = "https://chaste.comlab.ox.ac.uk/cellml/ns/oxford-metadata#"
+
 
 def check_cmeta_ids(model):
     """Checks that every variable in a model with a cmeta_id is a source variable."""

@@ -10,7 +10,7 @@ from . import shared
 
 
 class TestModelFunctions():
-    """ Tests for all functions on Model class """
+    """ Tests for all methods on Model class """
 
     ###############################################################
     # fixtures
@@ -103,10 +103,10 @@ class TestModelFunctions():
         assert free_variable_symbol.name == 'environment$time'
 
     # also tested in test_aslanidi
-    def test_get_initial_value(self, aslanidi_model, OXMETA):
+    def test_get_initial_value(self, aslanidi_model):
         """ Tests Model.get_initial_value() works correctly. """
 
-        membrane_voltage = aslanidi_model.get_symbol_by_ontology_term(OXMETA, "membrane_voltage")
+        membrane_voltage = aslanidi_model.get_symbol_by_ontology_term(shared.OXMETA, "membrane_voltage")
         assert(aslanidi_model.get_initial_value(membrane_voltage) == -80.0)
 
     def test_get_derivative_symbols(self, basic_model):
@@ -172,22 +172,22 @@ class TestModelFunctions():
         assert len(equation1) == 0
 
     # also tested by model_units
-    def test_get_equations_for_1(self, aslanidi_model, OXMETA):
+    def test_get_equations_for_1(self, aslanidi_model):
         """ Tests Model.get_equations_for() works correctly. """
 
-        symbol_a = aslanidi_model.get_symbol_by_ontology_term(OXMETA, "membrane_capacitance")
+        symbol_a = aslanidi_model.get_symbol_by_ontology_term(shared.OXMETA, "membrane_capacitance")
         equation = aslanidi_model.get_equations_for([symbol_a])
         assert len(equation) == 1
         assert equation[0].lhs == symbol_a
         assert equation[0].rhs == 5e-5
 
-    def test_get_equations_for_2(self, hh_model, OXMETA):
+    def test_get_equations_for_2(self, hh_model):
         """ Tests Model.get_equations_for() works correctly. """
 
         # Test get_equations_for with topgraphical lexicographical ordering
 
         # Get ordered equations
-        membrane_fast_sodium_current = hh_model.get_symbol_by_ontology_term(OXMETA, 'membrane_fast_sodium_current')
+        membrane_fast_sodium_current = hh_model.get_symbol_by_ontology_term(shared.OXMETA, 'membrane_fast_sodium_current')
         equations = hh_model.get_equations_for([membrane_fast_sodium_current])
         top_level_equations = hh_model.get_equations_for([membrane_fast_sodium_current], recurse=False)
 
@@ -229,11 +229,11 @@ class TestModelFunctions():
         assert unordered_equations.index(ENa) < unordered_equations.index(iNa)
         assert unordered_equations.index(gNa) < unordered_equations.index(iNa)
 
-    def test_get_equations_for_with_dummies(self, hh_model, OXMETA):
+    def test_get_equations_for_with_dummies(self, hh_model):
 
         # Tests using get_equations_for without replacing dummies with sp numbers
         # Get ordered equations
-        ina = hh_model.get_symbol_by_ontology_term(OXMETA, 'membrane_fast_sodium_current')
+        ina = hh_model.get_symbol_by_ontology_term(shared.OXMETA, 'membrane_fast_sodium_current')
         equations = hh_model.get_equations_for([ina], recurse=False, strip_units=False)
 
         for eq in equations:
@@ -241,10 +241,10 @@ class TestModelFunctions():
                 assert isinstance(eq.rhs, sp.Dummy)
                 break
 
-    def test_get_value(self, aslanidi_model, OXMETA):
+    def test_get_value(self, aslanidi_model):
         """ Tests Model.get_value() works correctly. """
 
-        symbol_a = aslanidi_model.get_symbol_by_ontology_term(OXMETA, "membrane_capacitance")
+        symbol_a = aslanidi_model.get_symbol_by_ontology_term(shared.OXMETA, "membrane_capacitance")
         assert aslanidi_model.get_value(symbol_a) == 5e-5
 
     #################################################################
@@ -270,24 +270,27 @@ class TestModelFunctions():
         sv11 = basic_model.get_symbol_by_name('env_ode$sv1')
         assert sv11.units == 'mV'
 
-    def test_get_symbol_by_ontology_term(self, aslanidi_model, OXMETA):
+    def test_get_symbol_by_ontology_term(self, aslanidi_model):
         """ Tests Model.get_symbol_by_ontology_term() works correctly. """
 
-        symbol_a = aslanidi_model.get_symbol_by_ontology_term(OXMETA, 'membrane_capacitance')
+        symbol_a = aslanidi_model.get_symbol_by_ontology_term(shared.OXMETA, 'membrane_capacitance')
         assert symbol_a.name == 'membrane$Cm'
         assert symbol_a.units == 'nanoF'
 
-    def test_get_symbols_by_rdf(self, aslanidi_model, OXMETA):
+    def test_get_symbols_by_rdf(self, aslanidi_model):
         """ Tests Model.get_symbols_by_rdf() works correctly. """
 
         symbol_a = aslanidi_model.get_symbols_by_rdf(('http://biomodels.net/biology-qualifiers/', 'is'),
-                                                     (OXMETA, 'membrane_voltage'))
+                                                     (shared.OXMETA, 'membrane_voltage'))
         assert len(symbol_a) == 1
         assert symbol_a[0].name == 'membrane$V'
         assert symbol_a[0].units == 'millivolt'
 
     ######################################################################
     # The functions listed for ontology/rdf are tested in test_rdf.py
+    # Note these are functions that are not tested in this file as they are rdf related.
+    #
+    # In case of future changes this list was correct on 29 Nov 2019
     #
     # get_ontology_terms_by_symbol()
     # get_rdf_annotations()
@@ -352,12 +355,12 @@ class TestModelFunctions():
         assert eqn[2].lhs == symbol2
         assert eqn[2].rhs == sp.Add(symbol, symbol1)
 
-    def test_set_equation2(self, local_hh_model, OXMETA):
+    def test_set_equation2(self, local_hh_model):
         """ Tests replacing an equation in a model. """
 
         model = local_hh_model
         # Get model, assert that V is a state variable
-        v = model.get_symbol_by_ontology_term(OXMETA, 'membrane_voltage')
+        v = model.get_symbol_by_ontology_term(shared.OXMETA, 'membrane_voltage')
         assert v.type == 'state'
 
         # Now clamp it to -80mV
@@ -365,14 +368,14 @@ class TestModelFunctions():
         model.set_equation(v, rhs)
 
         # Check that V is no longer a state
-        v = model.get_symbol_by_ontology_term(OXMETA, 'membrane_voltage')
+        v = model.get_symbol_by_ontology_term(shared.OXMETA, 'membrane_voltage')
         assert v.type != 'state'
 
         # TODO: Get dvdt_unit in a more sensible way
         # See: https://github.com/ModellingWebLab/cellmlmanip/issues/133
 
         # Now make V a state again
-        t = model.get_symbol_by_ontology_term(OXMETA, 'time')
+        t = model.get_symbol_by_ontology_term(shared.OXMETA, 'time')
         lhs = sp.Derivative(v, t)
         dvdt_units = 'unlikely_unit_name'
         model.add_unit(dvdt_units, [
@@ -383,7 +386,7 @@ class TestModelFunctions():
         model.set_equation(lhs, rhs)
 
         # Check that V is a state again
-        v = model.get_symbol_by_ontology_term(OXMETA, 'membrane_voltage')
+        v = model.get_symbol_by_ontology_term(shared.OXMETA, 'membrane_voltage')
         assert v.type == 'state'
 
         # Set equation for a newly created variable
@@ -444,7 +447,7 @@ class TestModelFunctions():
         syms = basic_model.find_symbols_and_derivatives([ex])
         assert len(syms) == 2
 
-    def test_find_symbols_and_derivatives2(self, hh_model, OXMETA):
+    def test_find_symbols_and_derivatives2(self, hh_model):
         """ Tests Model.find_symbols_and_derivatives() function. """
 
         # Test on single variable expressions
@@ -453,7 +456,7 @@ class TestModelFunctions():
         assert len(syms) == 1
         assert t in syms
 
-        v = hh_model.get_symbol_by_ontology_term(OXMETA, "membrane_voltage")
+        v = hh_model.get_symbol_by_ontology_term(shared.OXMETA, "membrane_voltage")
         dvdt = sp.Derivative(v, t)
         syms = hh_model.find_symbols_and_derivatives([dvdt])
         assert len(syms) == 1

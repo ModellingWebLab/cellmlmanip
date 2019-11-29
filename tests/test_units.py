@@ -14,6 +14,7 @@ from cellmlmanip.units import (
     UnitCalculator,
     UnitStore,
 )
+from . import shared
 
 
 class TestUnits(object):
@@ -420,13 +421,13 @@ class TestUnits(object):
         assert printer.doprint(_2 * y) == '2.000000[dimensionless]*y[volt]'
         assert printer.doprint(sp.Derivative(a, b)) == 'Derivative(a[meter], b[second])'
 
-    def test_dimensionally_equivalent(self, hh_model, OXMETA):
+    def test_dimensionally_equivalent(self, hh_model):
         """ Tests Units.dimensionally_equivalent() function. """
-        membrane_stimulus_current_offset = hh_model.get_symbol_by_ontology_term(OXMETA,
+        membrane_stimulus_current_offset = hh_model.get_symbol_by_ontology_term(shared.OXMETA,
                                                                                 "membrane_stimulus_current_offset")
-        membrane_stimulus_current_period = hh_model.get_symbol_by_ontology_term(OXMETA,
+        membrane_stimulus_current_period = hh_model.get_symbol_by_ontology_term(shared.OXMETA,
                                                                                 "membrane_stimulus_current_period")
-        membrane_voltage = hh_model.get_symbol_by_ontology_term(OXMETA, "membrane_voltage")
+        membrane_voltage = hh_model.get_symbol_by_ontology_term(shared.OXMETA, "membrane_voltage")
         assert hh_model.units.dimensionally_equivalent(membrane_stimulus_current_offset,
                                                        membrane_stimulus_current_period)
         assert not hh_model.units.dimensionally_equivalent(membrane_stimulus_current_offset, membrane_voltage)

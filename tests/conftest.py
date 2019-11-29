@@ -5,11 +5,6 @@ from . import shared
 
 
 @pytest.fixture(scope='session')
-def OXMETA():
-    return "https://chaste.comlab.ox.ac.uk/cellml/ns/oxford-metadata#"
-
-
-@pytest.fixture(scope='session')
 def simple_ode_model():
     """ Returns the test_simple_odes.cellml model for use by testing session.
     Note: do not use if the test attempts to modify the model.

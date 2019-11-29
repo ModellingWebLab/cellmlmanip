@@ -1,9 +1,11 @@
 import pytest
 
+from . import shared
 
-def test_add_preferred_custom_unit_name(simple_ode_model, OXMETA):
+
+def test_add_preferred_custom_unit_name(simple_ode_model):
     """ Tests Units.add_preferred_custom_unit_name() function. """
-    time_var = simple_ode_model.get_symbol_by_ontology_term(OXMETA, "time")
+    time_var = simple_ode_model.get_symbol_by_ontology_term(shared.OXMETA, "time")
     assert str(simple_ode_model.units.summarise_units(time_var)) == "ms"
     simple_ode_model.units.add_preferred_custom_unit_name('millisecond', [{'prefix': 'milli', 'units': 'second'}])
     assert str(simple_ode_model.units.summarise_units(time_var)) == "millisecond"
