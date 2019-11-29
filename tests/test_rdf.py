@@ -102,6 +102,22 @@ def test_get_ontology_terms_by_symbol(bad_annotation_model):
             assert len(annotations) == 0
 
 
+def test_get_ontology_terms_by_symbol2(hh_model):
+    membrane_voltage_var = hh_model.get_symbol_by_ontology_term(OXMETA, "membrane_voltage")
+    annotation = hh_model.get_ontology_terms_by_symbol(membrane_voltage_var, OXMETA)
+    assert len(annotation) == 1
+    assert annotation[0] == "membrane_voltage"
+
+    # Repeat test with wrong namespace
+    annotation = hh_model.get_ontology_terms_by_symbol(membrane_voltage_var, 'http://www.nottingam.ac.uk/')
+    assert len(annotation) == 0
+
+    # Repeat test without specifying namespace
+    annotation = hh_model.get_ontology_terms_by_symbol(membrane_voltage_var)
+    assert len(annotation) == 1
+    assert annotation[0] == "membrane_voltage"
+
+
 def test_has_ontology_term_by_symbol(bad_annotation_model):
     # Test bad annotations
     model = bad_annotation_model
@@ -110,6 +126,17 @@ def test_has_ontology_term_by_symbol(bad_annotation_model):
     for variable in model.graph:
         if str(variable) == '_c$v3':
             assert not model.has_ontology_annotation(variable, OXMETA)
+
+
+def test_has_ontology_annotation(hh_model):
+    membrane_voltage_var = hh_model.get_symbol_by_ontology_term(OXMETA, "membrane_voltage")
+    assert hh_model.has_ontology_annotation(membrane_voltage_var, OXMETA)
+
+    # Repeat test with wrong namespace
+    assert not hh_model.has_ontology_annotation(membrane_voltage_var, 'http://www.nottingam.ac.uk/')
+
+    # Repeat test without specifying namespace
+    assert hh_model.has_ontology_annotation(membrane_voltage_var)
 
 
 def test_get_rdf_annotation(simple_ode_model):
