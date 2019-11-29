@@ -187,7 +187,8 @@ class TestModelFunctions():
         # Test get_equations_for with topgraphical lexicographical ordering
 
         # Get ordered equations
-        membrane_fast_sodium_current = hh_model.get_symbol_by_ontology_term(shared.OXMETA, 'membrane_fast_sodium_current')
+        membrane_fast_sodium_current = hh_model.get_symbol_by_ontology_term(shared.OXMETA,
+                                                                            'membrane_fast_sodium_current')
         equations = hh_model.get_equations_for([membrane_fast_sodium_current])
         top_level_equations = hh_model.get_equations_for([membrane_fast_sodium_current], recurse=False)
 
