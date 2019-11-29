@@ -20,10 +20,12 @@ class TestParser(object):
         return p
 
     def test_component_count(self, parser_instance):
+        """ Tests correct number of components parsed."""
         # grep -c '<component ' test_simple_odes.cellml
         assert len(parser_instance.components) == 21
 
     def test_group_relationships(self, parser_instance):
+        """ Tests the correct relationships are parsed."""
         assert parser_instance.components['circle_parent'].parent is None
 
         assert 'circle_x' in parser_instance.components['circle_parent'].encapsulated
@@ -41,13 +43,17 @@ class TestParser(object):
         assert 'circle_parent' == parser_instance.components['circle_y'].parent
 
     def test_equations_count(self, simple_ode_model):
+        """Tests correct number of equations read and then created where necessary by parser. """
         # Include 19 equations from model + 2 equations added by parser for unit conversion
         assert len(simple_ode_model.equations) == 21  # NOTE: determined by eye!
 
     def test_rdf(self, simple_ode_model):
+        """ Tests correct number of rdf statements parsed. """
         assert len(simple_ode_model.rdf) == 21
 
     def test_connections_loaded(self, simple_ode_model):
+        """ Tests the variables that are assigned to themselves.
+        Note these variables do not occur on the lhs of any equation."""
         # these are all unconnected variables
         unconnected = ['environment$time',
                        'single_independent_ode$sv1',
@@ -75,6 +81,9 @@ class TestParser(object):
             assert variable == variable.assigned_to
 
     def test_connections(self, simple_ode_model):
+        """ Tests the variables that are assigned to other variable.
+        Note these variables appear on lhs of an equation.
+        """
         # Check environment component's time variable has propagated
         environment__time = simple_ode_model.get_symbol_by_name('environment$time')
 
@@ -100,6 +109,8 @@ class TestParser(object):
         assert len(equation.rhs.find(environment__time)) == 1
 
     def test_add_units_to_equations(self, simple_ode_model):
+        """ Tests that parser reads all equations, adds and works out units and then
+        adds equations for necessary conversions"""
         # Eq(Derivative(_single_independent_ode$sv1, _environment$time), _1.00000000000000)
         # mV/millisecond == mV_per_ms
         test_equation = simple_ode_model.equations[0]
@@ -149,6 +160,7 @@ class TestParser(object):
         assert shared.check_dummy_assignment(simple_ode_model)
 
     def test_connect_to_hidden_component(self):
+        """ Tests parser throws exception when cannot connect components. """
         example_cellml = os.path.join(
             os.path.dirname(__file__), "cellml_files", "err_connect_to_hidden_component.cellml"
         )
@@ -160,6 +172,8 @@ class TestParser(object):
         assert 'Cannot determine the source & target' in str(value_info.value)
 
     def test_bad_connection_units(self):
+        """ Tests parser throws exception when a units of connected variables
+         are incompatible and a conversion equation cannot be created. """
         example_cellml = os.path.join(
             os.path.dirname(__file__), "cellml_files", "err_bad_connection_units.cellml"
         )
@@ -175,6 +189,7 @@ class TestParser(object):
         assert match in str(dim_error.value)
 
     def test_algebraic(self):
+        """ Tests units are correctly parsed for an algebraic model. """
         example_cellml = os.path.join(
             os.path.dirname(__file__), "cellml_files", "algebraic.cellml"
         )
@@ -188,6 +203,7 @@ class TestParser(object):
         assert ureg.get_base_units(ureg.new_base / ureg.second) == ureg.get_base_units(ureg.derived)
 
     def test_undefined_variable(self):
+        """ Tests parser exception for undefined variable. """
         example_cellml = os.path.join(
             os.path.dirname(__file__), "cellml_files", "undefined_variable.cellml"
         )
@@ -199,6 +215,7 @@ class TestParser(object):
         assert match in str(assert_info.value)
 
     def test_multiple_math_elements(self):
+        """ Tests parser correctly handles a component with more than one math element. """
         example_cellml = os.path.join(
             os.path.dirname(__file__), "cellml_files", "3.4.2.1.component_with_maths.cellml"
         )
@@ -206,6 +223,7 @@ class TestParser(object):
         assert len(list(model.equations)) == 2
 
     def test_bad_unit_definitions(self):
+        """ Tests parser exception for invalid unit declarations in a model. """
         bad_unit_models = ['5.4.2.2.unit_cycle_1.cellml',
                            '5.4.2.2.unit_cycle_3.cellml',
                            '5.4.2.2.unit_units_invalid.cellml']
@@ -219,7 +237,7 @@ class TestParser(object):
             assert 'Cannot create units' in str(value_error.value)
 
     def test_component_units_unsupported(self):
-        """ Component units are not supported. """
+        """ Tests parser exception: Component units are not supported. """
 
         path = os.path.join(os.path.dirname(__file__), 'cellml_files', '3.4.2.1.component_with_units.cellml')
         p = parser.Parser(path)
@@ -227,7 +245,7 @@ class TestParser(object):
             p.parse()
 
     def test_reactions_unsupported(self):
-        """ Reactions are not supported. """
+        """ Tests parser exception: Reactions are not supported. """
 
         path = os.path.join(os.path.dirname(__file__), 'cellml_files', '3.4.2.1.component_with_reactions.cellml')
         p = parser.Parser(path)

@@ -2,6 +2,7 @@ import pytest
 
 
 def test_add_preferred_custom_unit_name(simple_ode_model, OXMETA):
+    """ Tests Units.add_preferred_custom_unit_name() function. """
     time_var = simple_ode_model.get_symbol_by_ontology_term(OXMETA, "time")
     assert str(simple_ode_model.units.summarise_units(time_var)) == "ms"
     simple_ode_model.units.add_preferred_custom_unit_name('millisecond', [{'prefix': 'milli', 'units': 'second'}])
@@ -14,6 +15,7 @@ def test_add_preferred_custom_unit_name(simple_ode_model, OXMETA):
 
 
 def test_conversion_factor_original(model_simple_units):
+    """ Tests Units.get_conversion_factor() function. """
     symbol_b1 = model_simple_units.get_symbol_by_cmeta_id("b_1")
     equation = model_simple_units.get_equations_for([symbol_b1])
     factor = model_simple_units.units.get_conversion_factor(
@@ -23,6 +25,8 @@ def test_conversion_factor_original(model_simple_units):
 
 
 def test_conversion_factor_bad_types(model_simple_units):
+    """ Tests Units.get_conversion_factor() function for
+     cases when arguments are missing or incorrectly typed."""
     symbol_b1 = model_simple_units.get_symbol_by_cmeta_id("b_1")
     equation = model_simple_units.get_equations_for([symbol_b1])
     expression = equation[0].lhs
@@ -58,6 +62,8 @@ def test_conversion_factor_bad_types(model_simple_units):
 
 
 def test_conversion_factor_same_units(model_simple_units):
+    """ Tests Units.get_conversion_factor() function when units are same
+    and conversion factor should be '1'. """
     symbol_b = model_simple_units.get_symbol_by_cmeta_id("b")
     equation = model_simple_units.get_equations_for([symbol_b])
     expression = equation[1].rhs

@@ -16,7 +16,7 @@ def local_model(scope='module'):
 
 
 def test_create_rdf_node():
-    # Tests rdf.create_rdf_node
+    """ Tests rdf.create_rdf_node() function. """
 
     node = cellmlmanip.rdf.create_rdf_node(('http://example.com/', 'hi'))
     assert str(node) == 'http://example.com/hi'
@@ -49,8 +49,7 @@ def test_create_rdf_node():
 
 
 def test_get_symbol_by_ontology_term(simple_ode_model, bad_annotation_model, OXMETA):
-    # Tests model.get_symbol_by_ontology_term
-
+    """ Tests Model.get_symbol_by_ontology_term() function. """
     # Test getting the time variable
     model = simple_ode_model
     var = model.get_symbol_by_ontology_term(OXMETA, 'time')
@@ -88,6 +87,7 @@ def test_get_symbol_by_ontology_term(simple_ode_model, bad_annotation_model, OXM
 
 
 def test_get_ontology_terms_by_symbol(bad_annotation_model, OXMETA):
+    """ Tests Model.get_symbol_by_ontology_term() function when the annotation is not correct. """
     # Test bad annotations
     model = bad_annotation_model
 
@@ -99,6 +99,7 @@ def test_get_ontology_terms_by_symbol(bad_annotation_model, OXMETA):
 
 
 def test_get_ontology_terms_by_symbol2(hh_model, OXMETA):
+    """ Tests Model.get_symbol_by_ontology_term() function when the annotation is not correct. """
     membrane_voltage_var = hh_model.get_symbol_by_ontology_term(OXMETA, "membrane_voltage")
     annotation = hh_model.get_ontology_terms_by_symbol(membrane_voltage_var, OXMETA)
     assert len(annotation) == 1
@@ -115,6 +116,7 @@ def test_get_ontology_terms_by_symbol2(hh_model, OXMETA):
 
 
 def test_has_ontology_term_by_symbol(bad_annotation_model, OXMETA):
+    """ Tests Model.has_ontology_annotation() function when the annotation is not correct. """
     # Test bad annotations
     model = bad_annotation_model
 
@@ -125,6 +127,7 @@ def test_has_ontology_term_by_symbol(bad_annotation_model, OXMETA):
 
 
 def test_has_ontology_annotation(hh_model, OXMETA):
+    """ Tests Model.has_ontology_annotation() function. """
     membrane_voltage_var = hh_model.get_symbol_by_ontology_term(OXMETA, "membrane_voltage")
     assert hh_model.has_ontology_annotation(membrane_voltage_var, OXMETA)
 
@@ -136,7 +139,7 @@ def test_has_ontology_annotation(hh_model, OXMETA):
 
 
 def test_get_rdf_annotation(simple_ode_model):
-    # Test rdf annotation
+    """ Tests Model.get_rdf_annotations() function. """
     model = simple_ode_model
 
     named_attributes = []
