@@ -4,6 +4,7 @@ import pytest
 import sympy as sp
 
 from cellmlmanip import parser
+from cellmlmanip.model import NumberDummy
 
 
 OXMETA = "https://chaste.comlab.ox.ac.uk/cellml/ns/oxford-metadata#"
@@ -18,6 +19,12 @@ class TestModelAPI(object):
     def model(self):
         path = os.path.join(
             os.path.dirname(__file__), 'cellml_files', 'hodgkin_huxley_squid_axon_model_1952_modified.cellml')
+        return parser.Parser(path).parse()
+
+    @pytest.fixture(scope="class")
+    def espinosa_model_1998_normal(self):
+        path = os.path.join(
+            os.path.dirname(__file__), 'cellml_files', 'espinosa_model_1998_normal.cellml')
         return parser.Parser(path).parse()
 
     def test_add_unit(self, model):
@@ -126,3 +133,20 @@ class TestModelAPI(object):
         rhs = model.add_number(12, str(v.units))
         model.set_equation(lhs, rhs)
 
+    def test_get_equations_for(self, espinosa_model_1998_normal):
+        model = espinosa_model_1998_normal
+
+        eqs_no_recurse = model.get_equations_for(model.get_derivative_symbols(), recurse=False)
+        eqs_no_recurse_strip_units = \
+            model.get_equations_for(model.get_derivative_symbols(), recurse=False, strip_units=False)
+        assert len(eqs_no_recurse) == len(eqs_no_recurse_strip_units) == 80
+        assert isinstance(eqs_no_recurse[0].rhs, sp.numbers.Float)
+        assert isinstance(eqs_no_recurse_strip_units[0].rhs, NumberDummy)
+        print(type(eqs_no_recurse_strip_units[0].rhs))
+
+        eqs = model.get_equations_for(model.get_derivative_symbols())
+        eqs2 = model.get_equations_for(model.get_derivative_symbols(), keep_unused_eqs=False)
+        assert (len(eqs)) == (len(eqs2)) + 1 == 146
+        diff = [eq for eq in eqs if eq not in eqs2]
+        assert len(diff) == 1
+        assert str(diff[0].lhs) == 'calcium_release$VoltDep'

@@ -198,7 +198,8 @@ class Model(object):
             rhs_units, self.units.ureg.get_base_units(rhs_units)
         )
 
-    def get_equations_for(self, symbols, lexicographical_sort=True, recurse=True, strip_units=True):
+    def get_equations_for(self, symbols, lexicographical_sort=True, recurse=True, strip_units=True,
+                          keep_unused_eqs=True):
         """Get all equations for a given collection of symbols.
 
         Results are sorted in topographical order.
@@ -207,6 +208,8 @@ class Model(object):
         :param recurse: indicates whether to recurse the equation graph, or to return only the top level equations
         :param strip_units: if ``True``, all ``sympy.Dummy`` objects representing number with units will be replaced
             with ordinary sympy number objects.
+        :param: keep_unused_eqs indicates whether any unsued equations  should be kept. If keep_unused_eqs==False
+            only equations for which the lhs is used in the rhs of any equation, or is in the `symbols` input are kept
         """
         # Get graph
         if strip_units:
@@ -244,7 +247,12 @@ class Model(object):
 
             eqs.append(eq)
 
-        return eqs
+        if keep_unused_eqs:
+            return eqs
+        else:
+            symbols_and_derivs_used = set(symbols)
+            symbols_and_derivs_used.update(self.find_symbols_and_derivatives(eq.rhs for eq in eqs))
+            return [eq for eq in eqs if eq.lhs in symbols_and_derivs_used]
 
     def get_derivative_symbols(self):
         """Returns a list of derivative symbols found in the given model graph.
