@@ -1,10 +1,8 @@
-import os
 from collections import OrderedDict
 
 import pytest
 import sympy as sp
 
-from cellmlmanip import load_model
 from cellmlmanip.model import NumberDummy, VariableDummy
 from cellmlmanip.units import (
     BooleanUnitsError,
@@ -16,21 +14,10 @@ from cellmlmanip.units import (
     UnitCalculator,
     UnitStore,
 )
-
-
-OXMETA = "https://chaste.comlab.ox.ac.uk/cellml/ns/oxford-metadata#"
+from . import shared
 
 
 class TestUnits(object):
-    @pytest.fixture(scope="class")
-    def model(self):
-        hodgkin_cellml = os.path.join(
-            os.path.dirname(__file__),
-            "cellml_files",
-            "hodgkin_huxley_squid_axon_model_1952_modified.cellml"
-        )
-        return load_model(hodgkin_cellml)
-
     # These represent CellML <units><unit>...</unit></units> elements
     test_definitions = OrderedDict({
         'ms': [{'units': 'second', 'prefix': 'milli'}],
@@ -55,12 +42,14 @@ class TestUnits(object):
 
     @pytest.fixture(scope="class")
     def quantity_store(self):
+        """ QuantityStore to capture units used in tests. """
         qs = UnitStore(model=None)
         for unit_name, unit_attributes in self.test_definitions.items():
             qs.add_custom_unit(unit_name, unit_attributes)
         return qs
 
     def test_quantity_translation(self, quantity_store):
+        """ Tests that unit equality is correctly determined. """
         unit_registry = quantity_store.ureg
 
         assert quantity_store.get_quantity('dimensionless') == unit_registry.dimensionless
@@ -102,6 +91,7 @@ class TestUnits(object):
         )
 
     def test_conversion_factor(self, quantity_store):
+        """ Tests Units.get_conversion_factor() function. """
         ureg = quantity_store.ureg
         assert quantity_store.get_conversion_factor(quantity=1 * ureg.ms, to_unit=ureg.second) == 0.001
         assert quantity_store.get_conversion_factor(quantity=1 * ureg.volt, to_unit=ureg.mV) == 1000.0
@@ -112,6 +102,7 @@ class TestUnits(object):
         ) == 0.001
 
     def test_add_custom_unit(self):
+        """ Tests Units.add_custom_unit() function. """
         unitstore = UnitStore(model=None)
         assert (unitstore._is_unit_defined('newunit') is False)
         # add a new unit called 'newunit' which consists of
@@ -121,6 +112,7 @@ class TestUnits(object):
         assert (unitstore._is_unit_defined('newunit') is True)
 
     def test_add_custom_unit_1(self):
+        """ Tests Units.add_custom_unit() function. """
         unitstore = UnitStore(model=None)
         assert (unitstore._is_unit_defined('newunit') is False)
         # add a new unit called 'newunit' which consists of
@@ -130,6 +122,7 @@ class TestUnits(object):
         assert (unitstore._is_unit_defined('newunit') is True)
 
     def test_add_custom_unit_2(self):
+        """ Tests Units.add_custom_unit() function. """
         unitstore = UnitStore(model=None)
         assert (unitstore._is_unit_defined('newunit') is False)
         # add a new unit called 'newunit' which consists of
@@ -139,6 +132,7 @@ class TestUnits(object):
         assert (unitstore._is_unit_defined('newunit') is True)
 
     def test_add_custom_unit_3(self):
+        """ Tests Units.add_custom_unit() function. """
         unitstore = UnitStore(model=None)
         assert (unitstore._is_unit_defined('newunit') is False)
         # add a new unit called 'newunit' which consists of
@@ -148,6 +142,8 @@ class TestUnits(object):
         assert (unitstore._is_unit_defined('newunit') is True)
 
     def test_add_custom_unit_existing(self):
+        """ Tests exception for Units.add_custom_unit() function
+        when unit already exists. """
         unitstore = UnitStore(model=None)
         unit_attributes = [{'multiplier': 1, 'units': 'second'}]
         with pytest.raises(AssertionError):
@@ -156,10 +152,12 @@ class TestUnits(object):
             pass
 
     def test_is_unit_defined(self, quantity_store):
+        """ Tests Units._is_unit_defined() function. """
         assert (quantity_store._is_unit_defined('ms') is True)
         assert (quantity_store._is_unit_defined('not_a_unit') is False)
 
     def test_make_pint_unit_definition(self, quantity_store):
+        """ Tests Units._make_pint_unit_definition() function. """
         unit_attributes = [{'prefix': -3, 'units': 'metre'},
                            {'prefix': 'milli', 'exponent': -1, 'units': 'second'},
                            {'multiplier': 2, 'units': 'kilograms'}
@@ -423,9 +421,13 @@ class TestUnits(object):
         assert printer.doprint(_2 * y) == '2.000000[dimensionless]*y[volt]'
         assert printer.doprint(sp.Derivative(a, b)) == 'Derivative(a[meter], b[second])'
 
-    def test_dimensionally_equivalent(self, model):
-        membrane_stimulus_current_offset = model.get_symbol_by_ontology_term(OXMETA, "membrane_stimulus_current_offset")
-        membrane_stimulus_current_period = model.get_symbol_by_ontology_term(OXMETA, "membrane_stimulus_current_period")
-        membrane_voltage = model.get_symbol_by_ontology_term(OXMETA, "membrane_voltage")
-        assert model.units.dimensionally_equivalent(membrane_stimulus_current_offset, membrane_stimulus_current_period)
-        assert not model.units.dimensionally_equivalent(membrane_stimulus_current_offset, membrane_voltage)
+    def test_dimensionally_equivalent(self, hh_model):
+        """ Tests Units.dimensionally_equivalent() function. """
+        membrane_stimulus_current_offset = hh_model.get_symbol_by_ontology_term(shared.OXMETA,
+                                                                                "membrane_stimulus_current_offset")
+        membrane_stimulus_current_period = hh_model.get_symbol_by_ontology_term(shared.OXMETA,
+                                                                                "membrane_stimulus_current_period")
+        membrane_voltage = hh_model.get_symbol_by_ontology_term(shared.OXMETA, "membrane_voltage")
+        assert hh_model.units.dimensionally_equivalent(membrane_stimulus_current_offset,
+                                                       membrane_stimulus_current_period)
+        assert not hh_model.units.dimensionally_equivalent(membrane_stimulus_current_offset, membrane_voltage)
