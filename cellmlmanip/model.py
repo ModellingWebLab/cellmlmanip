@@ -209,7 +209,7 @@ class Model(object):
         :param strip_units: if ``True``, all ``sympy.Dummy`` objects representing number with units will be replaced
             with ordinary sympy number objects.
         :param: keep_unused_eqs indicates whether any unsued equations  should be kept. If keep_unused_eqs==False
-            only equations for which the lhs is used in the rhs of any equation, or is in the `symbols` input are kept
+            only equations for which the lhs is used in the rhs of any equation, or is in the `symbols` input are kept.
         """
         # Get graph
         if strip_units:
