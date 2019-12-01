@@ -1,8 +1,12 @@
 # Module with cellmlmanip tests
 import logging
+import os
+import cellmlmanip
 
 
 logger = logging.getLogger(__name__)
+
+OXMETA = "https://chaste.comlab.ox.ac.uk/cellml/ns/oxford-metadata#"
 
 
 def check_cmeta_ids(model):
@@ -42,3 +46,10 @@ def check_dummy_assignment(model):
                             source.assigned_to)
     return is_okay
 
+
+def load_model(name):
+    """ Parses and returns one of the CellML test models """
+    if name[-7:] != '.cellml':
+        name += '.cellml'
+    return cellmlmanip.load_model(os.path.join(
+        os.path.dirname(__file__), 'cellml_files', name))
