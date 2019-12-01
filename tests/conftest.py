@@ -50,7 +50,7 @@ def hh_model():
 
 
 @pytest.fixture(scope='session')
-def model_simple_units():
+def simple_units_model():
     """ Returns the simple_model_units.cellml model for use by testing session.
     Note: do not use if the test attempts to modify the model.
     """
@@ -59,7 +59,7 @@ def model_simple_units():
 
 
 @pytest.fixture(scope='session')
-def model_bad_units():
+def bad_units_model():
     """ Returns the simple_model_invalid_units.cellml model for use by testing session.
     Note: do not use if the test attempts to modify the model.
     """
