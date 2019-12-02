@@ -41,6 +41,7 @@ class TestModelFunctions():
         v3 = m.add_variable('v3', u)
         v4 = m.add_variable('v4', u)
         v5 = m.add_variable('v5', u)
+        a1 = m.add_variable('a1', u)
 
         # dy1/dt = 1
         m.add_equation(sp.Eq(sp.Derivative(y1, t), m.add_number(1, u)))
@@ -58,6 +59,8 @@ class TestModelFunctions():
         m.add_equation(sp.Eq(v4, m.add_number(-23, u)))
         # v5 = v3 + v4
         m.add_equation(sp.Eq(v5, sp.Add(v3, v4)))
+        # a1 = v5 + v2 + v1
+        m.add_equation(sp.Eq(a1, sp.Add(v5, v2, v1)))
 
         return m
 
@@ -241,29 +244,57 @@ class TestModelFunctions():
 
     def test_get_equations_for_with_simplification(self, local_model_with_simplification):
         """
-        Tests Model.get_equations_for() in a situation where sympy can make simplifications.
+        Tests Model.get_equations_for().
         """
         m = local_model_with_simplification
+
+        def before(eqs, first, second):
+            """ Test whether ``first`` comes before ``second`` in ``eqs``. """
+            i = iter(eqs)
+            try:
+                while next(i) != first:
+                    pass
+                while next(i) != second:
+                    pass
+                return True
+            except StopIteration:
+                return False
+
+        # v1 = (5 - 5) * v3 --> Simplifies to 0
+        # v2 = 23 + v4 --> Doesn't simplify, reference to v4 is maintained
+        # v3 = 2 / 3
+        # v4 = -23
+        # v5 = v3 + v4
+        # a1 = v5 + v2 + v1
+        # dy1/dt = 1
+        # dy2/dt = v1 --> Doesn't simplify, reference to v1 is maintained
+        # dy3/dt = v2 * (2 + dy1/dt)
 
         # Get equations for v1: [v1=0] (simplified)
         v1 = m.get_symbol_by_name('v1')
         e_v1 = sp.Eq(v1, sp.Number(0))
         eqs = m.get_equations_for([v1])
-        assert e_v1 in eqs
+        assert eqs[0] == e_v1
         assert len(eqs) == 1
 
-        # Get equations for v2: [v2=v4+23, v4=-23]
+        # Get without simplification: [v3=2/3, v1=(5-5)*v3]
+        v3 = m.get_symbol_by_name('v3')
+        eqs = m.get_equations_for([v1], strip_units=False)
+        assert eqs[0] == m.graph.nodes[v3]['equation']
+        assert eqs[1] == m.graph.nodes[v1]['equation']
+        assert len(eqs) == 2
+
+        # Get equations for v2: [v4=-23, v2=v4+23]
         v4 = m.get_symbol_by_name('v4')
         e_v4 = sp.Eq(v4, sp.Number(-23))
         v2 = m.get_symbol_by_name('v2')
         e_v2 = sp.Eq(v2, sp.Add(v4, sp.Number(23)))
         eqs = m.get_equations_for([v2])
-        assert e_v4 in eqs
-        assert e_v2 in eqs
+        assert eqs[0] == e_v4
+        assert eqs[1] == e_v2
         assert len(eqs) == 2
 
         # Get equations for v3: [v3=0.67]
-        v3 = m.get_symbol_by_name('v3')
         e_v3 = sp.Eq(v3, sp.Number(2 / 3))
         eqs = m.get_equations_for([v3])
         assert e_v3 in eqs
@@ -271,16 +302,16 @@ class TestModelFunctions():
 
         # Get equations for v4: [v4=-23]
         eqs = m.get_equations_for([v4])
-        assert e_v4 in eqs
+        assert eqs[0] == e_v4
         assert len(eqs) == 1
 
-        # Get equations for v5: [v5=v3+v4, v3=0.67, v4=-23]
+        # Get equations for v5: [v3=0.67, v4=-23, v5=v3+v4]
         v5 = m.get_symbol_by_name('v5')
         e_v5 = sp.Eq(v5, sp.Add(v3, v4))
-        eqs = m.get_equations_for([v5])
-        assert e_v3 in eqs
-        assert e_v4 in eqs
-        assert e_v5 in eqs
+        eqs = m.get_equations_for([v5], lexicographical_sort=True)
+        assert eqs[0] == e_v3
+        assert eqs[1] == e_v4
+        assert eqs[2] == e_v5
         assert len(eqs) == 3
 
         # Get equations for dy1/dt: [dy1/dt=1]
@@ -289,19 +320,26 @@ class TestModelFunctions():
         d_y1 = sp.Derivative(y1, t)
         e_y1 = sp.Eq(d_y1, sp.Number(1))
         eqs = m.get_equations_for([d_y1])
-        assert e_y1 in eqs
+        assert eqs[0] == e_y1
         assert len(eqs) == 1
 
-        # Get equations for dy2/dt: [dy2/dt=v1, v1=0]
+        # Get equations for dy2/dt: [v1=0, dy2/dt=v1]
         y2 = m.get_symbol_by_name('y2')
         d_y2 = sp.Derivative(y2, t)
         e_y2 = sp.Eq(d_y2, v1)
         eqs = m.get_equations_for([d_y2])
-        assert e_v1 in eqs
-        assert e_y2 in eqs
+        assert eqs[0] == e_v1
+        assert eqs[1] == e_y2
         assert len(eqs) == 2
 
-        # Get equations for dy3/dt: [dy2/dt=v2*(2+dy1/dt), dy1/dt=1, v2=v4+23, v4=-23]
+        # Check without substitutions: [v3=2/3, v1=(5-5)*v3, dy2/dt=v1]
+        eqs = m.get_equations_for([d_y2], strip_units=False)
+        assert eqs[0] == m.graph.nodes[v3]['equation']
+        assert eqs[1] == m.graph.nodes[v1]['equation']
+        assert eqs[2] == m.graph.nodes[d_y2]['equation']
+        assert len(eqs) == 3
+
+        # Get equations for dy3/dt: [dy1/dt=1, v4=-23, v2=v4+23, dy2/dt=v2*(2+dy1/dt)]
         y3 = m.get_symbol_by_name('y3')
         d_y3 = sp.Derivative(y3, t)
         e_y3 = sp.Eq(d_y3, sp.Mul(v2, sp.Add(sp.Number(2), d_y1)))
@@ -312,20 +350,36 @@ class TestModelFunctions():
         assert e_v4 in eqs
         assert len(eqs) == 4
 
-    def test_get_equations_for_with_dummies(self, hh_model):
-        """
-        Tests Model.get_equations_for() using ``strip_units=False``.
-        """
+        # Get equations for a1: [v1=0, v3=2/3, v4=-23, v2=v4+23, v5=v3+v4, a1=v1+v2+v5]
+        # With lexicographical sorting
+        a1 = m.get_symbol_by_name('a1')
+        e_a1 = sp.Eq(a1, sp.Add(v1, v2, v5))
+        eqs = m.get_equations_for([a1], lexicographical_sort=True)
+        assert eqs[0] == e_v1
+        assert eqs[1] == e_v3
+        assert eqs[2] == e_v4
+        assert eqs[3] == e_v2
+        assert eqs[4] == e_v5
+        assert eqs[5] == e_a1
+        assert len(eqs) == 6
 
-        # Get ordered equations
-        ina = hh_model.get_symbol_by_ontology_term(shared.OXMETA, 'membrane_fast_sodium_current')
-        equations = hh_model.get_equations_for([ina], recurse=False, strip_units=False)
+        # Without lexicographical sorting
+        eqs = m.get_equations_for([a1], lexicographical_sort=True)
+        assert before(eqs, e_v1, e_a1)
+        assert before(eqs, e_v2, e_a1)
+        assert before(eqs, e_v3, e_v5)
+        assert before(eqs, e_v4, e_v2)
+        assert before(eqs, e_v4, e_v5)
+        assert before(eqs, e_v5, e_a1)
+        assert len(eqs) == 6
 
-        # Test dummies are preserved
-        for eq in equations:
-            if eq.lhs.name == 'sodium_channel$g_Na':
-                assert isinstance(eq.rhs, sp.Dummy)
-                break
+        # With only one level of recursion
+        eqs = m.get_equations_for([a1], recurse=False)
+        assert eqs[0] == e_v1
+        assert eqs[1] == e_v2
+        assert eqs[2] == e_v5
+        assert eqs[3] == e_a1
+        assert len(eqs) == 4
 
     def test_get_value(self, aslanidi_model):
         """ Tests Model.get_value() works correctly. """

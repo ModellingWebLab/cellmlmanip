@@ -202,9 +202,10 @@ class Model(object):
         """Get all equations for a given collection of symbols.
 
         Results are sorted in topographical order.
-        :param symbols: the symbols to get the equations for
-        :param lexicographical_sort: indicates whether the result is sorted in lexicographical order first
-        :param recurse: indicates whether to recurse the equation graph, or to return only the top level equations
+
+        :param symbols: the symbols to get the equations for.
+        :param lexicographical_sort: indicates whether the result is sorted in lexicographical order first.
+        :param recurse: indicates whether to recurse the equation graph, or to return only the top level equations.
         :param strip_units: if ``True``, all ``sympy.Dummy`` objects representing number with units will be replaced
             with ordinary sympy number objects.
         """
