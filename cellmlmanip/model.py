@@ -506,6 +506,18 @@ class Model(object):
 
             # And replace the equation with one with the rhs subbed with sympy.Number objects
             if subs_dict:
+                # Get RHS with and without substitution
+                rhs1 = equation.rhs
+                rhs2 = rhs1.subs(subs_dict)
+
+                # Check if simplification removed dependencies on other variables, and if so remove the corresponding
+                # edges.
+                refs1 = self.find_symbols_and_derivatives([rhs1])
+                refs2 = self.find_symbols_and_derivatives([rhs2])
+                for ref in refs1 - refs2:
+                    graph.remove_edge(ref, equation.lhs)
+
+                # Replace equation
                 graph.nodes[node]['equation'] = sympy.Eq(equation.lhs, equation.rhs.subs(subs_dict))
 
         # Cache graph and return
