@@ -159,18 +159,6 @@ class TestModelFunctions():
         Tests Model.get_equations_for().
         """
 
-        def before(eqs, first, second):
-            """ Test whether ``first`` comes before ``second`` in ``eqs``. """
-            i = iter(eqs)
-            try:
-                while next(i) != first:
-                    pass
-                while next(i) != second:
-                    pass
-                return True
-            except StopIteration:
-                return False
-
         m = Model('simplification')
         u = 'dimensionless'
         t = m.add_variable('t', u)
