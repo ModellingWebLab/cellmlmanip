@@ -5,10 +5,6 @@
 <!--- Why is this change required? What problem does it solve? -->
 <!--- If it fixes an open issue, please link to the issue here, using the 'fixes #<issue>' syntax. -->
 
-## How Has This Been Tested?
-- [ ] New automated tests added
-- [ ] Tested in some other way (please describe)
-
 ## Types of changes
 <!--- What types of changes does your code introduce? Put an `x` in all the boxes that apply: -->
 - [ ] Bug fix (non-breaking change which fixes an issue)
@@ -19,4 +15,8 @@
 <!--- Go over all the following points, and put an `x` in all the boxes that apply. -->
 - [ ] I have updated all documentation necessary.
 - [ ] I have checked spelling in (new) comments.
+
+##Testing
+- [X] Testing is done automaticly and codecov shows test coverage
+- [ ] This cannot be tested automatically <!-- describe how it has been tested)-->
 
