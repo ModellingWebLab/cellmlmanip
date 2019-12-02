@@ -250,10 +250,10 @@ class UnitStore(object):
         self.custom_defined.add(units_name)
 
     def get_quantity(self, unit_name):
-        """Returns a pint.Unit with the given name from the UnitRegistry.
+        """Returns a pint `Unit` with the given name from the UnitRegistry.
         :param unit_name: string name of the unit
-        :return: pint.Unit
-        throws pint.UndefinedUnitError if te unit is not present in registry
+        :return: `Unit`
+        throws pint.UndefinedUnitError if the unit is not present in registry
         """
         try:
             return self.ureg.parse_expression(unit_name).units
