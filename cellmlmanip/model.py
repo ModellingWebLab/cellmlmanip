@@ -112,9 +112,11 @@ class Model(object):
 
         :return: A :class:`VariableDummy` object.
         """
+        # Check for clashes
         if name in self._name_to_symbol:
             raise ValueError('Variable %s already exists.' % name)
 
+        # Add variable
         self._name_to_symbol[name] = var = VariableDummy(
             name=name,
             units=self.units.get_quantity(units),
@@ -124,6 +126,9 @@ class Model(object):
             order_added=len(self._name_to_symbol),
             cmeta_id=cmeta_id,
         )
+
+        # Invalidate cached graphs
+        self._invalidate_cache()
 
         return var
 
@@ -173,12 +178,19 @@ class Model(object):
 
             logger.debug('Updated target: %s', target)
 
+            # Invalidate cached graphs
+            self._invalidate_cache()
+
             return True
 
         # The source variable has not been assigned a symbol, so we can't make this connection
         logger.info('The source variable has not been assigned to a symbol '
                     '(i.e. expecting a connection): %s ⟶ %s',
                     target.name, source.name)
+
+        # Invalidate cached graphs
+        self._invalidate_cache()
+
         return False
 
     def add_rdf(self, rdf: str):
@@ -559,36 +571,17 @@ class Model(object):
                 symbols |= self.find_symbols_and_derivatives(expr.args)
         return symbols
 
-    def set_equation(self, lhs, rhs):
+    def remove_equation(self, equation):
         """
-        Adds an equation defining the variable named in ``lhs``, or replaces an existing one.
+        Removes an equation from the model.
 
-        As with :meth:`add_equation()` the LHS must be either a variable symbol or a derivative, and all numbers and
-        variable symbols used in ``lhs`` and ``rhs`` must have been obtained from this model, e.g. via
-        :meth:`add_number()`, :meth:`add_variable()`, or :meth:`get_symbol_by_ontology_term()`.
-
-        :param lhs: An LHS expression (either a symbol or a derivative).
-        :param rhs: The new RHS expression for this variable.
+        :param equation: The equation to remove.
         """
-        # Get variable symbol named in the lhs
-        lhs_symbol = lhs
-        if lhs_symbol.is_Derivative:
-            lhs_symbol = lhs_symbol.free_symbols.pop()
-        assert isinstance(lhs_symbol, VariableDummy)
-
-        # Check if the variable named in the lhs already has an equation
-        i_existing = None
-        for i, eq in enumerate(self.equations):
-            symbol = eq.lhs.free_symbols.pop() if eq.lhs.is_Derivative else eq.lhs
-            if symbol == lhs_symbol:
-                i_existing = i
-                break
-
-        # Add or replace equation
-        if i_existing is None:
-            self.equations.append(sympy.Eq(lhs, rhs))
-        else:
-            self.equations[i_existing] = sympy.Eq(lhs, rhs)
+        try:
+            i = self.equations.index(equation)
+        except ValueError:
+            raise KeyError('Equation not found in model ' + str(equation))
+        del(self.equations[i])
 
         # Invalidate cached equation graphs
         self._invalidate_cache()
