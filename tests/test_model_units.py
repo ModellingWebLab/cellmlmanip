@@ -12,27 +12,6 @@ class TestModelUnits:
         symbol = simple_units_model.get_symbol_by_cmeta_id("b")
         assert symbol.is_Symbol
 
-    '''
-    def test_equations(self, simple_units_model):
-        """ Tests the Model.get_equations_for function."""
-        symbol_a = simple_units_model.get_symbol_by_cmeta_id("a")
-        equation = simple_units_model.get_equations_for([symbol_a])
-        assert len(equation) == 1
-        assert equation[0].lhs == symbol_a
-        assert equation[0].rhs == 1.0
-
-    def test_equations_2(self, simple_units_model):
-        """ Tests the Model.get_equations_for function. """
-        symbol_a = simple_units_model.get_symbol_by_cmeta_id("a")
-        symbol_b = simple_units_model.get_symbol_by_cmeta_id("b")
-        equation = simple_units_model.get_equations_for([symbol_b])
-        assert len(equation) == 2
-        assert equation[0].lhs == symbol_a
-        assert equation[0].rhs == 1.0
-        assert equation[1].lhs == symbol_b
-        assert equation[1].rhs == 2.0 / symbol_a
-    '''
-
     def test_units(self, simple_units_model):
         """ Tests units read and calculated from a model. """
         symbol_a = simple_units_model.get_symbol_by_cmeta_id("a")

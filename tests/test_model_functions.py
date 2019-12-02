@@ -154,37 +154,9 @@ class TestModelFunctions():
             'Derivative(_Ca_handling_by_the_SR$F2, _environment$time), '\
             'Derivative(_Ca_handling_by_the_SR$F3, _environment$time)]'
 
-    '''
-    # also tested by model_units
-    def test_get_equations_for(self, basic_model):
-        """ Tests Model.get_equations_for() works correctly.
-        Note: the basic model has 1 equation dsv11/dt = 1 which is not
-        related to a symbol and so has no equations that can be retrieved
-        by symbol
+    def test_get_equations_for(self, hh_model):
         """
-
-        symbol_a = basic_model.get_symbol_by_cmeta_id("sv11")
-        equation = basic_model.get_equations_for([symbol_a])
-        assert len(equation) == 0
-
-        symbol_t = basic_model.get_symbol_by_name("environment$time")
-
-        equation1 = basic_model.get_equations_for([symbol_t])
-        assert len(equation1) == 0
-
-    # also tested by model_units
-    def test_get_equations_for_1(self, aslanidi_model):
-        """ Tests Model.get_equations_for() works correctly. """
-
-        symbol_a = aslanidi_model.get_symbol_by_ontology_term(shared.OXMETA, "membrane_capacitance")
-        equation = aslanidi_model.get_equations_for([symbol_a])
-        assert len(equation) == 1
-        assert equation[0].lhs == symbol_a
-        assert equation[0].rhs == 5e-5
-    '''
-
-    def test_get_equations_for_2(self, hh_model):
-        """ Tests Model.get_equations_for() works correctly. """
+        Tests Model.get_equations_for(), using ``strip_units=True`` (the default). """
 
         # Test get_equations_for with topgraphical lexicographical ordering
 
@@ -233,12 +205,15 @@ class TestModelFunctions():
         assert unordered_equations.index(gNa) < unordered_equations.index(iNa)
 
     def test_get_equations_for_with_dummies(self, hh_model):
+        """
+        Tests Model.get_equations_for() using ``strip_units=False``.
+        """
 
-        # Tests using get_equations_for without replacing dummies with sp numbers
         # Get ordered equations
         ina = hh_model.get_symbol_by_ontology_term(shared.OXMETA, 'membrane_fast_sodium_current')
         equations = hh_model.get_equations_for([ina], recurse=False, strip_units=False)
 
+        # Test dummies are preserved
         for eq in equations:
             if eq.lhs.name == 'sodium_channel$g_Na':
                 assert isinstance(eq.rhs, sp.Dummy)
