@@ -17,6 +17,6 @@
 
 ## Checklist:
 <!--- Go over all the following points, and put an `x` in all the boxes that apply. -->
-- [ ] I have updated all dcoumentation necessary.
-- [ ] I have check spelling in (new) comments.
+- [ ] I have updated all documentation necessary.
+- [ ] I have checked spelling in (new) comments.
 
