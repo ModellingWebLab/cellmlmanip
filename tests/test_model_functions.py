@@ -255,26 +255,16 @@ class TestModelFunctions():
         assert e_v4 in eqs
         assert len(eqs) == 4
 
-        # a1 with lexicographical sorting a1: [v1=0, v3=2/3, v4=-23, v2=v4+23, v5=v3+v4, a1=v1+v2+v5]
+        # a1 with simplification: [v1=0, v3=2/3, v4=-23, v2=v4+23, v5=v3+v4, a1=v1+v2+v5]
         a1 = m.get_symbol_by_name('a1')
         e_a1 = sp.Eq(a1, sp.Add(v1, v2, v5))
-        eqs = m.get_equations_for([a1], lexicographical_sort=True)
+        eqs = m.get_equations_for([a1])
         assert eqs[0] == e_v1
         assert eqs[1] == e_v3
         assert eqs[2] == e_v4
         assert eqs[3] == e_v2
         assert eqs[4] == e_v5
         assert eqs[5] == e_a1
-        assert len(eqs) == 6
-
-        # a1 without lexicographical sorting
-        eqs = m.get_equations_for([a1], lexicographical_sort=True)
-        assert before(eqs, e_v1, e_a1)
-        assert before(eqs, e_v2, e_a1)
-        assert before(eqs, e_v3, e_v5)
-        assert before(eqs, e_v4, e_v2)
-        assert before(eqs, e_v4, e_v5)
-        assert before(eqs, e_v5, e_a1)
         assert len(eqs) == 6
 
         # a1 with only one level of recursion
