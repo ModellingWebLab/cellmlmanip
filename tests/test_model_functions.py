@@ -4,7 +4,7 @@ import pytest
 import sympy as sp
 
 from cellmlmanip import parser
-from cellmlmanip.model import VariableDummy
+from cellmlmanip.model import Model, VariableDummy
 
 from . import shared
 
@@ -154,93 +154,123 @@ class TestModelFunctions():
             'Derivative(_Ca_handling_by_the_SR$F2, _environment$time), '\
             'Derivative(_Ca_handling_by_the_SR$F3, _environment$time)]'
 
-    # also tested by model_units
-    def test_get_equations_for(self, basic_model):
-        """ Tests Model.get_equations_for() works correctly.
-        Note: the basic model has 1 equation dsv11/dt = 1 which is not
-        related to a symbol and so has no equations that can be retrieved
-        by symbol
+    def test_get_equations_for(self):
+        """
+        Tests Model.get_equations_for().
         """
 
-        symbol_a = basic_model.get_symbol_by_cmeta_id("sv11")
-        equation = basic_model.get_equations_for([symbol_a])
-        assert len(equation) == 0
+        m = Model('simplification')
+        u = 'dimensionless'
+        t = m.add_variable('t', u)
+        y1 = m.add_variable('y1', u, initial_value=10)
+        y2 = m.add_variable('y2', u, initial_value=20)
+        y3 = m.add_variable('y3', u, initial_value=30)
+        v1 = m.add_variable('v1', u)
+        v2 = m.add_variable('v2', u)
+        v3 = m.add_variable('v3', u)
+        v4 = m.add_variable('v4', u)
+        v5 = m.add_variable('v5', u)
+        a1 = m.add_variable('a1', u)
 
-        symbol_t = basic_model.get_symbol_by_name("environment$time")
+        # dy1/dt = 1
+        m.add_equation(sp.Eq(sp.Derivative(y1, t), m.add_number(1, u)))
+        # dy2/dt = v1 --> Doesn't simplify, reference to v1 is maintained
+        m.add_equation(sp.Eq(sp.Derivative(y2, t), v1))
+        # dy3/dt = v2 * (2 + dy1/dt)
+        m.add_equation(sp.Eq(sp.Derivative(y3, t), sp.Mul(v2, sp.Add(m.add_number(2, u), sp.Derivative(y1, t)))))
+        # v1 = (5 - 5) * v3 --> Simplifies to 0
+        m.add_equation(sp.Eq(v1, sp.Mul(sp.Add(m.add_number(5, u), m.add_number(-5, u)), v3)))
+        # v2 = 23 + v4 --> Doesn't simplify, reference to v4 is maintained
+        m.add_equation(sp.Eq(v2, sp.Add(m.add_number(23, u), v4)))
+        # v3 = 2 / 3
+        m.add_equation(sp.Eq(v3, sp.Mul(m.add_number(2, u), sp.Pow(m.add_number(3, u), sp.S.NegativeOne))))
+        # v4 = -23
+        m.add_equation(sp.Eq(v4, m.add_number(-23, u)))
+        # v5 = v3 + v4
+        m.add_equation(sp.Eq(v5, sp.Add(v3, v4)))
+        # a1 = v5 + v2 + v1 + t
+        m.add_equation(sp.Eq(a1, sp.Add(v5, v2, v1, t)))
 
-        equation1 = basic_model.get_equations_for([symbol_t])
-        assert len(equation1) == 0
+        # Simplified equations
+        e_v1 = sp.Eq(v1, sp.Number(0))
+        e_v2 = sp.Eq(v2, sp.Add(v4, sp.Number(23)))
+        e_v3 = sp.Eq(v3, sp.Number(2 / 3))
+        e_v4 = sp.Eq(v4, sp.Number(-23))
+        e_v5 = sp.Eq(v5, sp.Add(v3, v4))
+        e_a1 = sp.Eq(a1, sp.Add(v1, v2, v5, t))
 
-    # also tested by model_units
-    def test_get_equations_for_1(self, aslanidi_model):
-        """ Tests Model.get_equations_for() works correctly. """
+        d_y1 = sp.Derivative(y1, t)
+        d_y2 = sp.Derivative(y2, t)
+        d_y3 = sp.Derivative(y3, t)
 
-        symbol_a = aslanidi_model.get_symbol_by_ontology_term(shared.OXMETA, "membrane_capacitance")
-        equation = aslanidi_model.get_equations_for([symbol_a])
-        assert len(equation) == 1
-        assert equation[0].lhs == symbol_a
-        assert equation[0].rhs == 5e-5
+        e_y1 = sp.Eq(d_y1, sp.Number(1))
+        e_y2 = sp.Eq(d_y2, v1)
+        e_y3 = sp.Eq(d_y3, sp.Mul(v2, sp.Add(sp.Number(2), d_y1)))
 
-    def test_get_equations_for_2(self, hh_model):
-        """ Tests Model.get_equations_for() works correctly. """
+        # v1 with simplification: [v1=0] (simplified)
+        eqs = m.get_equations_for([v1])
+        assert eqs[0] == e_v1
+        assert len(eqs) == 1
 
-        # Test get_equations_for with topgraphical lexicographical ordering
+        # v1 without simplification: [v3=2/3, v1=(5-5)*v3]
+        eqs = m.get_equations_for([v1], strip_units=False)
+        assert eqs[0] == m.graph.nodes[v3]['equation']
+        assert eqs[1] == m.graph.nodes[v1]['equation']
+        assert len(eqs) == 2
 
-        # Get ordered equations
-        membrane_fast_sodium_current = hh_model.get_symbol_by_ontology_term(shared.OXMETA,
-                                                                            'membrane_fast_sodium_current')
-        equations = hh_model.get_equations_for([membrane_fast_sodium_current])
-        top_level_equations = hh_model.get_equations_for([membrane_fast_sodium_current], recurse=False)
+        # dy1/dt with simplification: [dy1/dt=1]
+        eqs = m.get_equations_for([d_y1])
+        assert eqs[0] == e_y1
+        assert len(eqs) == 1
 
-        # There should be 4 in this model
-        assert len(equations) == 4
+        # dy2/dt with simplification: [v1=0, dy2/dt=v1]
+        eqs = m.get_equations_for([d_y2])
+        assert eqs[0] == e_v1
+        assert eqs[1] == e_y2
+        assert len(eqs) == 2
 
-        # There should be 3 top level (non recursed) in this model
-        assert len(top_level_equations) == 3
+        # dy2/dt without simplification: [v3=2/3, v1=(5-5)*v3, dy2/dt=v1]
+        eqs = m.get_equations_for([d_y2], strip_units=False)
+        assert eqs[0] == m.graph.nodes[v3]['equation']
+        assert eqs[1] == m.graph.nodes[v1]['equation']
+        assert eqs[2] == m.graph.nodes[d_y2]['equation']
+        assert len(eqs) == 3
 
-        # Expected equations
-        ER = sp.Eq(sp.Dummy('membrane$E_R'), sp.numbers.Float(-75.0))
-        ENa = sp.Eq(sp.Dummy('sodium_channel$E_Na'),
-                    sp.add.Add(sp.Dummy('membrane$E_R'), sp.numbers.Float(115.0)))
-        gNa = sp.Eq(sp.Dummy('sodium_channel$g_Na'), sp.numbers.Float(120.0))
-        iNa = sp.Eq(sp.Dummy('sodium_channel$i_Na'),
-                    sp.Dummy('sodium_channel_m_gate$m') ** 3.0 * sp.Dummy('sodium_channel$g_Na') *
-                    sp.Dummy('sodium_channel_h_gate$h') * (sp.Dummy('membrane$V') -
-                    sp.Dummy('sodium_channel$E_Na')))
+        # dy3/dt with simpification: [dy1/dt=1, v4=-23, v2=v4+23, dy2/dt=v2*(2+dy1/dt)]
+        eqs = m.get_equations_for([d_y3])
+        assert e_y3 in eqs
+        assert e_y1 in eqs
+        assert e_v2 in eqs
+        assert e_v4 in eqs
+        assert len(eqs) == 4
 
-        # Get order as strings, for easy comparison
-        ER, ENa, gNa, iNa = str(ER), str(ENa), str(gNa), str(iNa)
-        expected_order = [ER, ENa, gNa, iNa]
+        # a1 with simplification: [v1=0, v3=2/3, v4=-23, v2=v4+23, v5=v3+v4, a1=v1+v2+v5]
+        eqs = m.get_equations_for([a1])
+        assert eqs[0] == e_v1
+        assert eqs[1] == e_v3
+        assert eqs[2] == e_v4
+        assert eqs[3] == e_v2
+        assert eqs[4] == e_v5
+        assert eqs[5] == e_a1
+        assert len(eqs) == 6
 
-        # Check equations against expected equations
-        equations = [str(eq) for eq in equations]
-        assert equations == expected_order
+        # a1 with only one level of recursion
+        eqs = m.get_equations_for([a1], recurse=False)
+        assert eqs[0] == e_v1
+        assert eqs[1] == e_v2
+        assert eqs[2] == e_v5
+        assert eqs[3] == e_a1
+        assert len(eqs) == 4
 
-        # Check topologically (but not lexicographically) ordered equations
-        unordered_equations = hh_model.get_equations_for([membrane_fast_sodium_current], False)
-        unordered_equations = [str(eq) for eq in unordered_equations]
-
-        # Each equation should be both in the ordered and unordered equations
-        assert set(unordered_equations) == set(equations)
-
-        # ER should come before ENa
-        assert unordered_equations.index(ER) < unordered_equations.index(ENa)
-
-        # ENa and gNa should come before iNa
-        assert unordered_equations.index(ENa) < unordered_equations.index(iNa)
-        assert unordered_equations.index(gNa) < unordered_equations.index(iNa)
-
-    def test_get_equations_for_with_dummies(self, hh_model):
-
-        # Tests using get_equations_for without replacing dummies with sp numbers
-        # Get ordered equations
-        ina = hh_model.get_symbol_by_ontology_term(shared.OXMETA, 'membrane_fast_sodium_current')
-        equations = hh_model.get_equations_for([ina], recurse=False, strip_units=False)
-
-        for eq in equations:
-            if eq.lhs.name == 'sodium_channel$g_Na':
-                assert isinstance(eq.rhs, sp.Dummy)
-                break
+        # Multiple input symbols: [d_y1=1, v1=0, d_y2=v1, v4=-23, v2=23+v4, d_y3=v2*(2+d_y1)]
+        eqs = m.get_equations_for([d_y1, d_y2, d_y3])
+        assert eqs[0] == e_y1
+        assert eqs[1] == e_v1
+        assert eqs[2] == e_y2
+        assert eqs[3] == e_v4
+        assert eqs[4] == e_v2
+        assert eqs[5] == e_y3
+        assert len(eqs) == 6
 
     def test_get_value(self, aslanidi_model):
         """ Tests Model.get_value() works correctly. """

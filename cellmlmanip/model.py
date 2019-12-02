@@ -198,13 +198,13 @@ class Model(object):
             rhs_units, self.units.ureg.get_base_units(rhs_units)
         )
 
-    def get_equations_for(self, symbols, lexicographical_sort=True, recurse=True, strip_units=True):
+    def get_equations_for(self, symbols, recurse=True, strip_units=True):
         """Get all equations for a given collection of symbols.
 
-        Results are sorted in topographical order.
-        :param symbols: the symbols to get the equations for
-        :param lexicographical_sort: indicates whether the result is sorted in lexicographical order first
-        :param recurse: indicates whether to recurse the equation graph, or to return only the top level equations
+        Results are sorted first by dependencies, then by variable name.
+
+        :param symbols: the symbols to get the equations for.
+        :param recurse: indicates whether to recurse the equation graph, or to return only the top level equations.
         :param strip_units: if ``True``, all ``sympy.Dummy`` objects representing number with units will be replaced
             with ordinary sympy number objects.
         """
@@ -215,10 +215,7 @@ class Model(object):
             graph = self.graph
 
         # Get sorted list of symbols
-        if lexicographical_sort:
-            sorted_symbols = nx.lexicographical_topological_sort(graph, key=str)
-        else:
-            sorted_symbols = nx.topological_sort(graph)
+        sorted_symbols = nx.lexicographical_topological_sort(graph, key=str)
 
         # Create set of symbols for which we require equations
         required_symbols = set()
@@ -506,7 +503,20 @@ class Model(object):
 
             # And replace the equation with one with the rhs subbed with sympy.Number objects
             if subs_dict:
-                graph.nodes[node]['equation'] = sympy.Eq(equation.lhs, equation.rhs.subs(subs_dict))
+                # Update rhs
+                rhs = equation.rhs.subs(subs_dict)
+
+                # Check if simplification removed dependencies on other variables, and if so remove the corresponding
+                # edges.
+                refs = self.find_symbols_and_derivatives([rhs])
+                edges = list(graph.in_edges(equation.lhs))
+                for edge in edges:
+                    ref = edge[0]
+                    if ref not in refs:
+                        graph.remove_edge(ref, equation.lhs)
+
+                # Replace equation
+                graph.nodes[node]['equation'] = sympy.Eq(equation.lhs, rhs)
 
         # Cache graph and return
         self._graph_with_sympy_numbers = graph
