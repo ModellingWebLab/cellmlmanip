@@ -192,57 +192,7 @@ class TestModelFunctions():
             'Derivative(_Ca_handling_by_the_SR$F2, _environment$time), '\
             'Derivative(_Ca_handling_by_the_SR$F3, _environment$time)]'
 
-    def test_get_equations_for(self, hh_model):
-        """
-        Tests Model.get_equations_for(), using ``strip_units=True`` (the default). """
-
-        # Test get_equations_for with topgraphical lexicographical ordering
-
-        # Get ordered equations
-        membrane_fast_sodium_current = hh_model.get_symbol_by_ontology_term(shared.OXMETA,
-                                                                            'membrane_fast_sodium_current')
-        equations = hh_model.get_equations_for([membrane_fast_sodium_current])
-        top_level_equations = hh_model.get_equations_for([membrane_fast_sodium_current], recurse=False)
-
-        # There should be 4 in this model
-        assert len(equations) == 4
-
-        # There should be 3 top level (non recursed) in this model
-        assert len(top_level_equations) == 3
-
-        # Expected equations
-        ER = sp.Eq(sp.Dummy('membrane$E_R'), sp.numbers.Float(-75.0))
-        ENa = sp.Eq(sp.Dummy('sodium_channel$E_Na'),
-                    sp.add.Add(sp.Dummy('membrane$E_R'), sp.numbers.Float(115.0)))
-        gNa = sp.Eq(sp.Dummy('sodium_channel$g_Na'), sp.numbers.Float(120.0))
-        iNa = sp.Eq(sp.Dummy('sodium_channel$i_Na'),
-                    sp.Dummy('sodium_channel_m_gate$m') ** 3.0 * sp.Dummy('sodium_channel$g_Na') *
-                    sp.Dummy('sodium_channel_h_gate$h') * (sp.Dummy('membrane$V') -
-                    sp.Dummy('sodium_channel$E_Na')))
-
-        # Get order as strings, for easy comparison
-        ER, ENa, gNa, iNa = str(ER), str(ENa), str(gNa), str(iNa)
-        expected_order = [ER, ENa, gNa, iNa]
-
-        # Check equations against expected equations
-        equations = [str(eq) for eq in equations]
-        assert equations == expected_order
-
-        # Check topologically (but not lexicographically) ordered equations
-        unordered_equations = hh_model.get_equations_for([membrane_fast_sodium_current], False)
-        unordered_equations = [str(eq) for eq in unordered_equations]
-
-        # Each equation should be both in the ordered and unordered equations
-        assert set(unordered_equations) == set(equations)
-
-        # ER should come before ENa
-        assert unordered_equations.index(ER) < unordered_equations.index(ENa)
-
-        # ENa and gNa should come before iNa
-        assert unordered_equations.index(ENa) < unordered_equations.index(iNa)
-        assert unordered_equations.index(gNa) < unordered_equations.index(iNa)
-
-    def test_get_equations_for_with_simplification(self, local_model_with_simplification):
+    def test_get_equations_for(self, local_model_with_simplification):
         """
         Tests Model.get_equations_for().
         """
@@ -380,6 +330,16 @@ class TestModelFunctions():
         assert eqs[2] == e_v5
         assert eqs[3] == e_a1
         assert len(eqs) == 4
+
+        # Test with multiple input symbols: [d_y1=1, v1=0, d_y2=v1, v4=-23, v2=23+v4, d_y3=v2*(2+d_y1)]
+        eqs = m.get_equations_for([d_y1, d_y2, d_y3])
+        assert eqs[0] == e_y1
+        assert eqs[1] == e_v1
+        assert eqs[2] == e_y2
+        assert eqs[3] == e_v4
+        assert eqs[4] == e_v2
+        assert eqs[5] == e_y3
+        assert len(eqs) == 6
 
     def test_get_value(self, aslanidi_model):
         """ Tests Model.get_value() works correctly. """
