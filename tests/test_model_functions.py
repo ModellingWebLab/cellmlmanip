@@ -188,8 +188,8 @@ class TestModelFunctions():
         m.add_equation(sp.Eq(v4, m.add_number(-23, u)))
         # v5 = v3 + v4
         m.add_equation(sp.Eq(v5, sp.Add(v3, v4)))
-        # a1 = v5 + v2 + v1
-        m.add_equation(sp.Eq(a1, sp.Add(v5, v2, v1)))
+        # a1 = v5 + v2 + v1 + t
+        m.add_equation(sp.Eq(a1, sp.Add(v5, v2, v1, t)))
 
         # Simplified equations
         e_v1 = sp.Eq(v1, sp.Number(0))
@@ -197,6 +197,7 @@ class TestModelFunctions():
         e_v3 = sp.Eq(v3, sp.Number(2 / 3))
         e_v4 = sp.Eq(v4, sp.Number(-23))
         e_v5 = sp.Eq(v5, sp.Add(v3, v4))
+        e_a1 = sp.Eq(a1, sp.Add(v1, v2, v5, t))
 
         d_y1 = sp.Derivative(y1, t)
         d_y2 = sp.Derivative(y2, t)
@@ -244,8 +245,6 @@ class TestModelFunctions():
         assert len(eqs) == 4
 
         # a1 with simplification: [v1=0, v3=2/3, v4=-23, v2=v4+23, v5=v3+v4, a1=v1+v2+v5]
-        a1 = m.get_symbol_by_name('a1')
-        e_a1 = sp.Eq(a1, sp.Add(v1, v2, v5))
         eqs = m.get_equations_for([a1])
         assert eqs[0] == e_v1
         assert eqs[1] == e_v3
