@@ -154,6 +154,7 @@ class TestModelFunctions():
             'Derivative(_Ca_handling_by_the_SR$F2, _environment$time), '\
             'Derivative(_Ca_handling_by_the_SR$F3, _environment$time)]'
 
+    '''
     # also tested by model_units
     def test_get_equations_for(self, basic_model):
         """ Tests Model.get_equations_for() works correctly.
@@ -180,6 +181,7 @@ class TestModelFunctions():
         assert len(equation) == 1
         assert equation[0].lhs == symbol_a
         assert equation[0].rhs == 5e-5
+    '''
 
     def test_get_equations_for_2(self, hh_model):
         """ Tests Model.get_equations_for() works correctly. """
