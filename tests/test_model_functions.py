@@ -26,44 +26,6 @@ class TestModelFunctions():
         model that may get modified. """
         return shared.load_model('hodgkin_huxley_squid_axon_model_1952_modified')
 
-    @pytest.fixture
-    def local_model_with_simplification(scope='function'):
-        """ Fixture to load a model where simplification can be applied by sympy. """
-
-        m = Model('simplification')
-        u = 'dimensionless'
-        t = m.add_variable('t', u)
-        y1 = m.add_variable('y1', u, initial_value=10)
-        y2 = m.add_variable('y2', u, initial_value=20)
-        y3 = m.add_variable('y3', u, initial_value=30)
-        v1 = m.add_variable('v1', u)
-        v2 = m.add_variable('v2', u)
-        v3 = m.add_variable('v3', u)
-        v4 = m.add_variable('v4', u)
-        v5 = m.add_variable('v5', u)
-        a1 = m.add_variable('a1', u)
-
-        # dy1/dt = 1
-        m.add_equation(sp.Eq(sp.Derivative(y1, t), m.add_number(1, u)))
-        # dy2/dt = v1 --> Doesn't simplify, reference to v1 is maintained
-        m.add_equation(sp.Eq(sp.Derivative(y2, t), v1))
-        # dy3/dt = v2 * (2 + dy1/dt)
-        m.add_equation(sp.Eq(sp.Derivative(y3, t), sp.Mul(v2, sp.Add(m.add_number(2, u), sp.Derivative(y1, t)))))
-        # v1 = (5 - 5) * v3 --> Simplifies to 0
-        m.add_equation(sp.Eq(v1, sp.Mul(sp.Add(m.add_number(5, u), m.add_number(-5, u)), v3)))
-        # v2 = 23 + v4 --> Doesn't simplify, reference to v4 is maintained
-        m.add_equation(sp.Eq(v2, sp.Add(m.add_number(23, u), v4)))
-        # v3 = 2 / 3
-        m.add_equation(sp.Eq(v3, sp.Mul(m.add_number(2, u), sp.Pow(m.add_number(3, u), sp.S.NegativeOne))))
-        # v4 = -23
-        m.add_equation(sp.Eq(v4, m.add_number(-23, u)))
-        # v5 = v3 + v4
-        m.add_equation(sp.Eq(v5, sp.Add(v3, v4)))
-        # a1 = v5 + v2 + v1
-        m.add_equation(sp.Eq(a1, sp.Add(v5, v2, v1)))
-
-        return m
-
     ##########################################################
     # check equation graph property
 
@@ -192,11 +154,10 @@ class TestModelFunctions():
             'Derivative(_Ca_handling_by_the_SR$F2, _environment$time), '\
             'Derivative(_Ca_handling_by_the_SR$F3, _environment$time)]'
 
-    def test_get_equations_for(self, local_model_with_simplification):
+    def test_get_equations_for(self):
         """
         Tests Model.get_equations_for().
         """
-        m = local_model_with_simplification
 
         def before(eqs, first, second):
             """ Test whether ``first`` comes before ``second`` in ``eqs``. """
@@ -210,89 +171,83 @@ class TestModelFunctions():
             except StopIteration:
                 return False
 
-        # v1 = (5 - 5) * v3 --> Simplifies to 0
-        # v2 = 23 + v4 --> Doesn't simplify, reference to v4 is maintained
-        # v3 = 2 / 3
-        # v4 = -23
-        # v5 = v3 + v4
-        # a1 = v5 + v2 + v1
-        # dy1/dt = 1
-        # dy2/dt = v1 --> Doesn't simplify, reference to v1 is maintained
-        # dy3/dt = v2 * (2 + dy1/dt)
+        m = Model('simplification')
+        u = 'dimensionless'
+        t = m.add_variable('t', u)
+        y1 = m.add_variable('y1', u, initial_value=10)
+        y2 = m.add_variable('y2', u, initial_value=20)
+        y3 = m.add_variable('y3', u, initial_value=30)
+        v1 = m.add_variable('v1', u)
+        v2 = m.add_variable('v2', u)
+        v3 = m.add_variable('v3', u)
+        v4 = m.add_variable('v4', u)
+        v5 = m.add_variable('v5', u)
+        a1 = m.add_variable('a1', u)
 
-        # Get equations for v1: [v1=0] (simplified)
-        v1 = m.get_symbol_by_name('v1')
+        # dy1/dt = 1
+        m.add_equation(sp.Eq(sp.Derivative(y1, t), m.add_number(1, u)))
+        # dy2/dt = v1 --> Doesn't simplify, reference to v1 is maintained
+        m.add_equation(sp.Eq(sp.Derivative(y2, t), v1))
+        # dy3/dt = v2 * (2 + dy1/dt)
+        m.add_equation(sp.Eq(sp.Derivative(y3, t), sp.Mul(v2, sp.Add(m.add_number(2, u), sp.Derivative(y1, t)))))
+        # v1 = (5 - 5) * v3 --> Simplifies to 0
+        m.add_equation(sp.Eq(v1, sp.Mul(sp.Add(m.add_number(5, u), m.add_number(-5, u)), v3)))
+        # v2 = 23 + v4 --> Doesn't simplify, reference to v4 is maintained
+        m.add_equation(sp.Eq(v2, sp.Add(m.add_number(23, u), v4)))
+        # v3 = 2 / 3
+        m.add_equation(sp.Eq(v3, sp.Mul(m.add_number(2, u), sp.Pow(m.add_number(3, u), sp.S.NegativeOne))))
+        # v4 = -23
+        m.add_equation(sp.Eq(v4, m.add_number(-23, u)))
+        # v5 = v3 + v4
+        m.add_equation(sp.Eq(v5, sp.Add(v3, v4)))
+        # a1 = v5 + v2 + v1
+        m.add_equation(sp.Eq(a1, sp.Add(v5, v2, v1)))
+
+        # Simplified equations
         e_v1 = sp.Eq(v1, sp.Number(0))
+        e_v2 = sp.Eq(v2, sp.Add(v4, sp.Number(23)))
+        e_v3 = sp.Eq(v3, sp.Number(2 / 3))
+        e_v4 = sp.Eq(v4, sp.Number(-23))
+        e_v5 = sp.Eq(v5, sp.Add(v3, v4))
+
+        d_y1 = sp.Derivative(y1, t)
+        d_y2 = sp.Derivative(y2, t)
+        d_y3 = sp.Derivative(y3, t)
+
+        e_y1 = sp.Eq(d_y1, sp.Number(1))
+        e_y2 = sp.Eq(d_y2, v1)
+        e_y3 = sp.Eq(d_y3, sp.Mul(v2, sp.Add(sp.Number(2), d_y1)))
+
+        # v1 with simplification: [v1=0] (simplified)
         eqs = m.get_equations_for([v1])
         assert eqs[0] == e_v1
         assert len(eqs) == 1
 
-        # Get without simplification: [v3=2/3, v1=(5-5)*v3]
-        v3 = m.get_symbol_by_name('v3')
+        # v1 without simplification: [v3=2/3, v1=(5-5)*v3]
         eqs = m.get_equations_for([v1], strip_units=False)
         assert eqs[0] == m.graph.nodes[v3]['equation']
         assert eqs[1] == m.graph.nodes[v1]['equation']
         assert len(eqs) == 2
 
-        # Get equations for v2: [v4=-23, v2=v4+23]
-        v4 = m.get_symbol_by_name('v4')
-        e_v4 = sp.Eq(v4, sp.Number(-23))
-        v2 = m.get_symbol_by_name('v2')
-        e_v2 = sp.Eq(v2, sp.Add(v4, sp.Number(23)))
-        eqs = m.get_equations_for([v2])
-        assert eqs[0] == e_v4
-        assert eqs[1] == e_v2
-        assert len(eqs) == 2
-
-        # Get equations for v3: [v3=0.67]
-        e_v3 = sp.Eq(v3, sp.Number(2 / 3))
-        eqs = m.get_equations_for([v3])
-        assert e_v3 in eqs
-        assert len(eqs) == 1
-
-        # Get equations for v4: [v4=-23]
-        eqs = m.get_equations_for([v4])
-        assert eqs[0] == e_v4
-        assert len(eqs) == 1
-
-        # Get equations for v5: [v3=0.67, v4=-23, v5=v3+v4]
-        v5 = m.get_symbol_by_name('v5')
-        e_v5 = sp.Eq(v5, sp.Add(v3, v4))
-        eqs = m.get_equations_for([v5], lexicographical_sort=True)
-        assert eqs[0] == e_v3
-        assert eqs[1] == e_v4
-        assert eqs[2] == e_v5
-        assert len(eqs) == 3
-
-        # Get equations for dy1/dt: [dy1/dt=1]
-        t = m.get_symbol_by_name('t')
-        y1 = m.get_symbol_by_name('y1')
-        d_y1 = sp.Derivative(y1, t)
-        e_y1 = sp.Eq(d_y1, sp.Number(1))
+        # dy1/dt with simplification: [dy1/dt=1]
         eqs = m.get_equations_for([d_y1])
         assert eqs[0] == e_y1
         assert len(eqs) == 1
 
-        # Get equations for dy2/dt: [v1=0, dy2/dt=v1]
-        y2 = m.get_symbol_by_name('y2')
-        d_y2 = sp.Derivative(y2, t)
-        e_y2 = sp.Eq(d_y2, v1)
+        # dy2/dt with simplification: [v1=0, dy2/dt=v1]
         eqs = m.get_equations_for([d_y2])
         assert eqs[0] == e_v1
         assert eqs[1] == e_y2
         assert len(eqs) == 2
 
-        # Check without substitutions: [v3=2/3, v1=(5-5)*v3, dy2/dt=v1]
+        # dy2/dt without simplification: [v3=2/3, v1=(5-5)*v3, dy2/dt=v1]
         eqs = m.get_equations_for([d_y2], strip_units=False)
         assert eqs[0] == m.graph.nodes[v3]['equation']
         assert eqs[1] == m.graph.nodes[v1]['equation']
         assert eqs[2] == m.graph.nodes[d_y2]['equation']
         assert len(eqs) == 3
 
-        # Get equations for dy3/dt: [dy1/dt=1, v4=-23, v2=v4+23, dy2/dt=v2*(2+dy1/dt)]
-        y3 = m.get_symbol_by_name('y3')
-        d_y3 = sp.Derivative(y3, t)
-        e_y3 = sp.Eq(d_y3, sp.Mul(v2, sp.Add(sp.Number(2), d_y1)))
+        # dy3/dt with simpification: [dy1/dt=1, v4=-23, v2=v4+23, dy2/dt=v2*(2+dy1/dt)]
         eqs = m.get_equations_for([d_y3])
         assert e_y3 in eqs
         assert e_y1 in eqs
@@ -300,8 +255,7 @@ class TestModelFunctions():
         assert e_v4 in eqs
         assert len(eqs) == 4
 
-        # Get equations for a1: [v1=0, v3=2/3, v4=-23, v2=v4+23, v5=v3+v4, a1=v1+v2+v5]
-        # With lexicographical sorting
+        # a1 with lexicographical sorting a1: [v1=0, v3=2/3, v4=-23, v2=v4+23, v5=v3+v4, a1=v1+v2+v5]
         a1 = m.get_symbol_by_name('a1')
         e_a1 = sp.Eq(a1, sp.Add(v1, v2, v5))
         eqs = m.get_equations_for([a1], lexicographical_sort=True)
@@ -313,7 +267,7 @@ class TestModelFunctions():
         assert eqs[5] == e_a1
         assert len(eqs) == 6
 
-        # Without lexicographical sorting
+        # a1 without lexicographical sorting
         eqs = m.get_equations_for([a1], lexicographical_sort=True)
         assert before(eqs, e_v1, e_a1)
         assert before(eqs, e_v2, e_a1)
@@ -323,7 +277,7 @@ class TestModelFunctions():
         assert before(eqs, e_v5, e_a1)
         assert len(eqs) == 6
 
-        # With only one level of recursion
+        # a1 with only one level of recursion
         eqs = m.get_equations_for([a1], recurse=False)
         assert eqs[0] == e_v1
         assert eqs[1] == e_v2
@@ -331,7 +285,7 @@ class TestModelFunctions():
         assert eqs[3] == e_a1
         assert len(eqs) == 4
 
-        # Test with multiple input symbols: [d_y1=1, v1=0, d_y2=v1, v4=-23, v2=23+v4, d_y3=v2*(2+d_y1)]
+        # Multiple input symbols: [d_y1=1, v1=0, d_y2=v1, v4=-23, v2=23+v4, d_y3=v2*(2+d_y1)]
         eqs = m.get_equations_for([d_y1, d_y2, d_y3])
         assert eqs[0] == e_y1
         assert eqs[1] == e_v1
