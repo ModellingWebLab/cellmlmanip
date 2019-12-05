@@ -263,6 +263,10 @@ class Model(object):
         for v, node in self.graph.nodes.items():
             if node.get('variable_type', '') == 'free':
                 return v
+        # TODO this does not work as the VariableDummy type is not set
+        # for v in self._name_to_symbol:
+        #     if self._name_to_symbol[v].type == 'free':
+        #         return self._name_to_symbol[v]
 
         # This should be unreachable
         raise ValueError('No free variable set in model.')  # pragma: no cover
@@ -302,9 +306,14 @@ class Model(object):
 
         To get symbols from e.g. an oxmeta ontology term, use :meth:`get_symbol_by_ontology_term()`.
         """
+
         for v in self.graph:
             if self.graph.nodes[v].get('cmeta_id', '') == cmeta_id:
                 return v
+        # TODO this does not work as the VariableDummy type is not set
+        # for v in self._name_to_symbol:
+        #     if self._name_to_symbol[v].cmeta_id == cmeta_id:
+        #         return self._name_to_symbol[v]
 
         raise KeyError('No variable with cmeta id "%s" found.' % str(cmeta_id))
 
