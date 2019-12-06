@@ -371,7 +371,7 @@ class TestModelFunctions():
         t = model.get_symbol_by_ontology_term(shared.OXMETA, 'time')
         equation = model.graph.nodes[sp.Derivative(v, t)]['equation']
         model.remove_equation(equation)
-        equation = sp.Eq(v, model.add_number(-80, v.units)
+        equation = sp.Eq(v, model.add_number(-80, v.units))
         model.add_equation(equation)
 
         # Check that V is no longer a state
