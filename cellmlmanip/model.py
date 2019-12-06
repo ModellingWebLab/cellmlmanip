@@ -146,52 +146,48 @@ class Model(object):
         source = self._name_to_symbol[source_name]
         target = self._name_to_symbol[target_name]
 
-        # If the source variable has already been assigned a final symbol
-        if source.assigned_to:
+        # If the source variable has not been assigned a symbol, we can't make this connection
+        if not source.assigned_to:
+            logger.info('The source variable has not been assigned to a symbol '
+                        '(i.e. expecting a connection): %s ⟶ %s',
+                        target.name, source.name)
+            return False
 
-            if target.assigned_to:
-                raise ValueError('Target already assigned to %s before assignment to %s' %
-                                 (target.assigned_to, source.assigned_to))
+        # If target is already assigned this is an error
+        if target.assigned_to:
+            raise ValueError('Target already assigned to %s before assignment to %s' %
+                             (target.assigned_to, source.assigned_to))
 
-            # If source/target variable is in the same unit
-            if source.units == target.units:
-                # Direct substitution is possible
-                target.assigned_to = source.assigned_to
-                # everywhere the target variable is used, replace with source variable
-                for index, equation in enumerate(self.equations):
-                    self.equations[index] = equation.xreplace({target: source.assigned_to})
-            # Otherwise, this connection requires a conversion
-            else:
-                # Get the scaling factor required to convert source units to target units
-                factor = self.units.convert_to(1 * source.units, target.units).magnitude
+        # If source/target variable is in the same unit
+        if source.units == target.units:
+            # Direct substitution is possible
+            target.assigned_to = source.assigned_to
+            # everywhere the target variable is used, replace with source variable
+            for index, equation in enumerate(self.equations):
+                self.equations[index] = equation.xreplace({target: source.assigned_to})
 
-                # Dummy to represent this factor in equations, having units for conversion
-                factor_dummy = self.add_number(factor, str(target.units / source.units))
+        # Otherwise, this connection requires a conversion
+        else:
+            # Get the scaling factor required to convert source units to target units
+            factor = self.units.convert_to(1 * source.units, target.units).magnitude
 
-                # Add an equations making the connection with the required conversion
-                self.equations.append(sympy.Eq(target, source.assigned_to * factor_dummy))
+            # Dummy to represent this factor in equations, having units for conversion
+            factor_dummy = self.add_number(factor, str(target.units / source.units))
 
-                logger.info('Connection req. unit conversion: %s', self.equations[-1])
+            # Add an equations making the connection with the required conversion
+            self.equations.append(sympy.Eq(target, source.assigned_to * factor_dummy))
 
-                # The assigned symbol for this variable is itself
-                target.assigned_to = target
+            logger.info('Connection req. unit conversion: %s', self.equations[-1])
 
-            logger.debug('Updated target: %s', target)
+            # The assigned symbol for this variable is itself
+            target.assigned_to = target
 
-            # Invalidate cached graphs
-            self._invalidate_cache()
-
-            return True
-
-        # The source variable has not been assigned a symbol, so we can't make this connection
-        logger.info('The source variable has not been assigned to a symbol '
-                    '(i.e. expecting a connection): %s ⟶ %s',
-                    target.name, source.name)
+        logger.debug('Updated target: %s', target)
 
         # Invalidate cached graphs
         self._invalidate_cache()
 
-        return False
+        return True
 
     def add_rdf(self, rdf: str):
         """ Takes an RDF string and stores it in the model's RDF graph. """
@@ -588,10 +584,9 @@ class Model(object):
         :param equation: The equation to remove.
         """
         try:
-            i = self.equations.index(equation)
+            self.equations.remove(equation)
         except ValueError:
             raise KeyError('Equation not found in model ' + str(equation))
-        del(self.equations[i])
 
         # Invalidate cached equation graphs
         self._invalidate_cache()
