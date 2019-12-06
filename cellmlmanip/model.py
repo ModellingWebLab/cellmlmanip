@@ -92,11 +92,16 @@ class Model(object):
         Creates and returns a :class:`NumberDummy` to represent a number with units in sympy expressions.
 
         :param number: A number (anything convertible to float).
-        :param units: A string unit representation.
+        :param units: A `pint` units representation
 
         :return: A :class:`NumberDummy` object.
         """
-        return NumberDummy(value, self.units.get_quantity(units))
+
+        # Check units
+        if not isinstance(units, self.units.ureg.Unit):
+            units = self.units.get_quantity(units)
+
+        return NumberDummy(value, units)
 
     def add_variable(self, name, units, initial_value=None,
                      public_interface=None, private_interface=None, cmeta_id=None):
@@ -104,7 +109,7 @@ class Model(object):
         Adds a variable to the model and returns a :class:`VariableDummy` to represent it in sympy expressions.
 
         :param name: A string name.
-        :param units: A string units representation.
+        :param units: A `pint` units representation.
         :param initial_value: An optional initial value.
         :param public_interface: An optional public interface specifier (only required when parsing CellML).
         :param private_interface: An optional private interface specifier (only required when parsing CellML).
@@ -116,10 +121,14 @@ class Model(object):
         if name in self._name_to_symbol:
             raise ValueError('Variable %s already exists.' % name)
 
+        # Check units
+        if not isinstance(units, self.units.ureg.Unit):
+            units = self.units.get_quantity(units)
+
         # Add variable
         self._name_to_symbol[name] = var = VariableDummy(
             name=name,
-            units=self.units.get_quantity(units),
+            units=units,
             initial_value=initial_value,
             public_interface=public_interface,
             private_interface=private_interface,
@@ -172,7 +181,7 @@ class Model(object):
             factor = self.units.convert_to(1 * source.units, target.units).magnitude
 
             # Dummy to represent this factor in equations, having units for conversion
-            factor_dummy = self.add_number(factor, str(target.units / source.units))
+            factor_dummy = self.add_number(factor, target.units / source.units)
 
             # Add an equations making the connection with the required conversion
             self.equations.append(sympy.Eq(target, source.assigned_to * factor_dummy))
@@ -395,6 +404,12 @@ class Model(object):
                         ontology_terms.append(uri_parts[-1])
         return ontology_terms
 
+    def get_units(self, name):
+        """
+        Looks up and returns a pint `Unit` object with the given name.
+        """
+        return self.units.get_quantity(name)
+
     @property
     def graph(self):
         """ A ``networkx.DiGraph`` containing the model equations. """
@@ -456,8 +471,7 @@ class Model(object):
                 else:
                     # this variable is a parameter - add to graph and connect to lhs
                     rhs.type = 'parameter'
-                    unit = rhs.units
-                    dummy = self.add_number(rhs.initial_value, str(unit))
+                    dummy = self.add_number(rhs.initial_value, rhs.units)
                     graph.add_node(rhs, equation=sympy.Eq(rhs, dummy), variable_type='parameter')
                     graph.add_edge(rhs, lhs)
 
