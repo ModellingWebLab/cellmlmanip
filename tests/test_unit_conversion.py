@@ -94,3 +94,36 @@ class TestUnitConversion:
         with pytest.raises(units.UnitError):
             # cellml file states b (per_ms) = power(a (ms), 1 (second))
             bad_units_model.units.summarise_units(equation[1].rhs)
+
+    def test_add_input(self, basic_model):
+        """ Tests the Model.add_input function that changes units. """
+        # original state
+        def test_original_state(basic_model):
+            assert len(basic_model.variables()) == 3
+            symbol_a = basic_model.get_symbol_by_cmeta_id('sv11')
+            symbol_t = basic_model.get_symbol_by_cmeta_id('time')
+            assert basic_model.get_initial_value(symbol_a) == 2.0
+            assert symbol_a.units == 'mV'
+            assert symbol_t.units == 'ms'
+            assert len(basic_model.equations) == 1
+            return True
+
+        assert test_original_state(basic_model)
+        # test no change in units
+        basic_model.add_input('env_ode$sv1', 'mV')
+        assert test_original_state(basic_model)
+
+        # non-existent name
+        basic_model.add_input('env$sv1', 'V')
+
+        # non-existent unit
+        basic_model.add_input('env_ode$sv1', 'V')
+
+        basic_model.add_input('env_ode$sv1', 'volt')
+        assert len(basic_model.variables()) == 4
+        # this needs to work without graph
+        # symbol_a = basic_model.get_symbol_by_cmeta_id('sv11')
+        symbol_t = basic_model.get_symbol_by_cmeta_id('time')
+        # assert basic_model.get_initial_value(symbol_a) == 0.002
+        # assert symbol_a.units == 'volt'
+        assert symbol_t.units == 'ms'

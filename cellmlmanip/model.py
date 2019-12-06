@@ -607,6 +607,72 @@ class Model(object):
         """ Returns an iterator over this model's variable symbols. """
         return self._name_to_symbol.values()
 
+    def add_input(self, name, units):
+        """ Adds an additional input for the variable name to the model with new units
+        and apply any necessary conversions/add additional equations.
+
+        For example:
+        Original model
+            x = 1 [pA]
+              in [pA]
+              oxmeta: current
+            y = 1 / x
+              in [1/pA]
+
+        add_input('x', 'nA') creates model
+            input_current = 1e-3 [nA]
+              in [nA]
+              oxmeta: current
+            x = input_current * 1e3 [pA/nA]
+              in [pA]
+            y = 1 / x
+              in [1/pA]
+
+        :param name: name of variable whose units are to be changed
+        :param units: unit to convert to
+
+        """
+        # TODO what if units not in model/ how to tell user
+        if not self.units._is_unit_defined(units):
+            return
+        # TODO should I throw the exception or user seamlessly gets a non changed model
+        original_variable = None
+        try:
+            original_variable = self.get_symbol_by_name(name)
+        except KeyError:
+            # name does not exist in model
+            return
+        original_units = original_variable.units
+        original_cmeta_id = original_variable.cmeta_id
+        original_initial_value = self.get_initial_value(original_variable)
+
+        # no conversion necessary
+        if original_units == units:
+            return
+
+        # conversion_factor for old units to new units
+        to_quantity = self.units.ureg(units)
+#        from_units = self.units.ureg(original_units)
+        cf = self.units.get_conversion_factor(original_units, quantity=to_quantity)
+
+        # 1. get unique name for new variable
+        new_name = name + 'converted'
+        while new_name in self.variables():
+            new_name = new_name + '_a'
+
+        # 2. if original has initial_value calculate new initial value
+        new_value = None
+        if original_initial_value:
+            new_value = original_initial_value / cf
+
+        # 3. copy cmeta_id from original and remove from original
+        original_variable.cmeta_id = ''
+        self.add_variable(name=new_name,
+                          units=units,
+                          initial_value=new_value,
+                          cmeta_id=original_cmeta_id)
+        self._invalidate_cache()
+
 
 class NumberDummy(sympy.Dummy):
     """
