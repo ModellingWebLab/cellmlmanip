@@ -359,35 +359,8 @@ class TestModelFunctions():
         assert eqn[2].lhs == symbol2
         assert eqn[2].rhs == sp.Add(symbol, symbol1)
 
-    def test_set_equation(self, local_model):
-        """ Tests the Model.set_equation method.
-        """
-        model = local_model
-        assert len(model.equations) == 1
-        # so we are adding
-        # newvar2 = newvar + newvar1
-        # but need to also add newvar1 = 2; newvar = 2 in order or the graph to resolve correctly
-        model.add_variable(name='newvar', units='mV')
-        symbol = model.get_symbol_by_name('newvar')
-        model.add_variable(name='newvar1', units='mV')
-        symbol1 = model.get_symbol_by_name('newvar1')
-        model.add_variable(name='newvar2', units='mV')
-        symbol2 = model.get_symbol_by_name('newvar2')
-        model.set_equation(symbol, 2.0)
-        model.set_equation(symbol1, 2.0)
-        model.set_equation(symbol2, sp.Add(symbol, symbol1))
-        assert len(model.equations) == 4
-        eqn = model.get_equations_for([symbol2])
-        assert len(eqn) == 3
-        assert eqn[0].lhs == symbol
-        assert eqn[0].rhs == 2.0
-        assert eqn[1].lhs == symbol1
-        assert eqn[1].rhs == 2.0
-        assert eqn[2].lhs == symbol2
-        assert eqn[2].rhs == sp.Add(symbol, symbol1)
-
-    def test_set_equation2(self, local_hh_model):
-        """ Tests replacing an equation in a model. """
+    def test_remove_equation(self, local_hh_model):
+        """ Tests the Model.remove_equation method. """
 
         model = local_hh_model
         # Get model, assert that V is a state variable
@@ -395,8 +368,11 @@ class TestModelFunctions():
         assert v.type == 'state'
 
         # Now clamp it to -80mV
-        rhs = model.add_number(-80, str(v.units))
-        model.set_equation(v, rhs)
+        t = model.get_symbol_by_ontology_term(shared.OXMETA, 'time')
+        equation = model.graph.nodes[sp.Derivative(v, t)]['equation']
+        model.remove_equation(equation)
+        equation = sp.Eq(v, model.add_number(-80, str(v.units)))
+        model.add_equation(equation)
 
         # Check that V is no longer a state
         v = model.get_symbol_by_ontology_term(shared.OXMETA, 'membrane_voltage')
@@ -406,24 +382,23 @@ class TestModelFunctions():
         # See: https://github.com/ModellingWebLab/cellmlmanip/issues/133
 
         # Now make V a state again
-        t = model.get_symbol_by_ontology_term(shared.OXMETA, 'time')
-        lhs = sp.Derivative(v, t)
         dvdt_units = 'unlikely_unit_name'
         model.add_unit(dvdt_units, [
             {'units': str(v.units)},
             {'units': str(t.units), 'exponent': -1},
         ])
-        rhs = model.add_number(0, dvdt_units)
-        model.set_equation(lhs, rhs)
+        model.remove_equation(equation)
+        equation = sp.Eq(sp.Derivative(v, t), model.add_number(0, dvdt_units))
+        model.add_equation(equation)
 
         # Check that V is a state again
         v = model.get_symbol_by_ontology_term(shared.OXMETA, 'membrane_voltage')
         assert v.type == 'state'
 
-        # Set equation for a newly created variable
-        lhs = model.add_variable(name='an_incredibly_unlikely_variable_name', units=str(v.units))
-        rhs = model.add_number(12, str(v.units))
-        model.set_equation(lhs, rhs)
+        # Test removing non-existing equation
+        equation = sp.Eq(sp.Derivative(v, t), model.add_number(5, dvdt_units))
+        with pytest.raises(KeyError, match='Equation not found'):
+            model.remove_equation(equation)
 
     def test_add_number(self, local_model):
         """ Tests the Model.add_number method. """
