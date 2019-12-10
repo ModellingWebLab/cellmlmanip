@@ -1,4 +1,4 @@
-﻿"""Classes to represent a flattened CellML model and metadata about its variables."""
+"""Classes to represent a flattened CellML model and metadata about its variables."""
 import logging
 from io import StringIO
 
@@ -92,11 +92,16 @@ class Model(object):
         Creates and returns a :class:`NumberDummy` to represent a number with units in sympy expressions.
 
         :param number: A number (anything convertible to float).
-        :param units: A string unit representation.
+        :param units: A `pint` units representation
 
         :return: A :class:`NumberDummy` object.
         """
-        return NumberDummy(value, self.units.get_quantity(units))
+
+        # Check units
+        if not isinstance(units, self.units.ureg.Unit):
+            units = self.units.get_quantity(units)
+
+        return NumberDummy(value, units)
 
     def add_variable(self, name, units, initial_value=None,
                      public_interface=None, private_interface=None, cmeta_id=None):
@@ -104,7 +109,7 @@ class Model(object):
         Adds a variable to the model and returns a :class:`VariableDummy` to represent it in sympy expressions.
 
         :param name: A string name.
-        :param units: A string units representation.
+        :param units: A `pint` units representation.
         :param initial_value: An optional initial value.
         :param public_interface: An optional public interface specifier (only required when parsing CellML).
         :param private_interface: An optional private interface specifier (only required when parsing CellML).
@@ -112,18 +117,27 @@ class Model(object):
 
         :return: A :class:`VariableDummy` object.
         """
+        # Check for clashes
         if name in self._name_to_symbol:
             raise ValueError('Variable %s already exists.' % name)
 
+        # Check units
+        if not isinstance(units, self.units.ureg.Unit):
+            units = self.units.get_quantity(units)
+
+        # Add variable
         self._name_to_symbol[name] = var = VariableDummy(
             name=name,
-            units=self.units.get_quantity(units),
+            units=units,
             initial_value=initial_value,
             public_interface=public_interface,
             private_interface=private_interface,
             order_added=len(self._name_to_symbol),
             cmeta_id=cmeta_id,
         )
+
+        # Invalidate cached graphs
+        self._invalidate_cache()
 
         return var
 
@@ -141,45 +155,48 @@ class Model(object):
         source = self._name_to_symbol[source_name]
         target = self._name_to_symbol[target_name]
 
-        # If the source variable has already been assigned a final symbol
-        if source.assigned_to:
+        # If the source variable has not been assigned a symbol, we can't make this connection
+        if not source.assigned_to:
+            logger.info('The source variable has not been assigned to a symbol '
+                        '(i.e. expecting a connection): %s ⟶ %s',
+                        target.name, source.name)
+            return False
 
-            if target.assigned_to:
-                raise ValueError('Target already assigned to %s before assignment to %s' %
-                                 (target.assigned_to, source.assigned_to))
+        # If target is already assigned this is an error
+        if target.assigned_to:
+            raise ValueError('Target already assigned to %s before assignment to %s' %
+                             (target.assigned_to, source.assigned_to))
 
-            # If source/target variable is in the same unit
-            if source.units == target.units:
-                # Direct substitution is possible
-                target.assigned_to = source.assigned_to
-                # everywhere the target variable is used, replace with source variable
-                for index, equation in enumerate(self.equations):
-                    self.equations[index] = equation.xreplace({target: source.assigned_to})
-            # Otherwise, this connection requires a conversion
-            else:
-                # Get the scaling factor required to convert source units to target units
-                factor = self.units.convert_to(1 * source.units, target.units).magnitude
+        # If source/target variable is in the same unit
+        if source.units == target.units:
+            # Direct substitution is possible
+            target.assigned_to = source.assigned_to
+            # everywhere the target variable is used, replace with source variable
+            for index, equation in enumerate(self.equations):
+                self.equations[index] = equation.xreplace({target: source.assigned_to})
 
-                # Dummy to represent this factor in equations, having units for conversion
-                factor_dummy = self.add_number(factor, str(target.units / source.units))
+        # Otherwise, this connection requires a conversion
+        else:
+            # Get the scaling factor required to convert source units to target units
+            factor = self.units.convert_to(1 * source.units, target.units).magnitude
 
-                # Add an equations making the connection with the required conversion
-                self.equations.append(sympy.Eq(target, source.assigned_to * factor_dummy))
+            # Dummy to represent this factor in equations, having units for conversion
+            factor_dummy = self.add_number(factor, target.units / source.units)
 
-                logger.info('Connection req. unit conversion: %s', self.equations[-1])
+            # Add an equations making the connection with the required conversion
+            self.equations.append(sympy.Eq(target, source.assigned_to * factor_dummy))
 
-                # The assigned symbol for this variable is itself
-                target.assigned_to = target
+            logger.info('Connection req. unit conversion: %s', self.equations[-1])
 
-            logger.debug('Updated target: %s', target)
+            # The assigned symbol for this variable is itself
+            target.assigned_to = target
 
-            return True
+        logger.debug('Updated target: %s', target)
 
-        # The source variable has not been assigned a symbol, so we can't make this connection
-        logger.info('The source variable has not been assigned to a symbol '
-                    '(i.e. expecting a connection): %s ⟶ %s',
-                    target.name, source.name)
-        return False
+        # Invalidate cached graphs
+        self._invalidate_cache()
+
+        return True
 
     def add_rdf(self, rdf: str):
         """ Takes an RDF string and stores it in the model's RDF graph. """
@@ -298,13 +315,14 @@ class Model(object):
 
     def get_symbol_by_cmeta_id(self, cmeta_id):
         """
-        Searches the given graph and returns the symbol for the variable with the given cmeta id.
+        Searches the model and returns the symbol for the variable with the given cmeta id.
 
         To get symbols from e.g. an oxmeta ontology term, use :meth:`get_symbol_by_ontology_term()`.
         """
-        for v in self.graph:
-            if self.graph.nodes[v].get('cmeta_id', '') == cmeta_id:
-                return v
+
+        for var in self._name_to_symbol.values():
+            if var.cmeta_id == cmeta_id:
+                return var
 
         raise KeyError('No variable with cmeta id "%s" found.' % str(cmeta_id))
 
@@ -387,6 +405,12 @@ class Model(object):
                         ontology_terms.append(uri_parts[-1])
         return ontology_terms
 
+    def get_units(self, name):
+        """
+        Looks up and returns a pint `Unit` object with the given name.
+        """
+        return self.units.get_quantity(name)
+
     @property
     def graph(self):
         """ A ``networkx.DiGraph`` containing the model equations. """
@@ -448,8 +472,7 @@ class Model(object):
                 else:
                     # this variable is a parameter - add to graph and connect to lhs
                     rhs.type = 'parameter'
-                    unit = rhs.units
-                    dummy = self.add_number(rhs.initial_value, str(unit))
+                    dummy = self.add_number(rhs.initial_value, rhs.units)
                     graph.add_node(rhs, equation=sympy.Eq(rhs, dummy), variable_type='parameter')
                     graph.add_edge(rhs, lhs)
 
@@ -569,36 +592,16 @@ class Model(object):
                 symbols |= self.find_symbols_and_derivatives(expr.args)
         return symbols
 
-    def set_equation(self, lhs, rhs):
+    def remove_equation(self, equation):
         """
-        Adds an equation defining the variable named in ``lhs``, or replaces an existing one.
+        Removes an equation from the model.
 
-        As with :meth:`add_equation()` the LHS must be either a variable symbol or a derivative, and all numbers and
-        variable symbols used in ``lhs`` and ``rhs`` must have been obtained from this model, e.g. via
-        :meth:`add_number()`, :meth:`add_variable()`, or :meth:`get_symbol_by_ontology_term()`.
-
-        :param lhs: An LHS expression (either a symbol or a derivative).
-        :param rhs: The new RHS expression for this variable.
+        :param equation: The equation to remove.
         """
-        # Get variable symbol named in the lhs
-        lhs_symbol = lhs
-        if lhs_symbol.is_Derivative:
-            lhs_symbol = lhs_symbol.free_symbols.pop()
-        assert isinstance(lhs_symbol, VariableDummy)
-
-        # Check if the variable named in the lhs already has an equation
-        i_existing = None
-        for i, eq in enumerate(self.equations):
-            symbol = eq.lhs.free_symbols.pop() if eq.lhs.is_Derivative else eq.lhs
-            if symbol == lhs_symbol:
-                i_existing = i
-                break
-
-        # Add or replace equation
-        if i_existing is None:
-            self.equations.append(sympy.Eq(lhs, rhs))
-        else:
-            self.equations[i_existing] = sympy.Eq(lhs, rhs)
+        try:
+            self.equations.remove(equation)
+        except ValueError:
+            raise KeyError('Equation not found in model ' + str(equation))
 
         # Invalidate cached equation graphs
         self._invalidate_cache()
