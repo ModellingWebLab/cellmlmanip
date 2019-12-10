@@ -34,29 +34,29 @@ class Model(object):
     :param name: the name of the model e.g. from ``<model name="">``.
     :param cmeta_id: An optional cmeta id, e.g. from ``<model cmeta:id="">``.
     """
-    def __init__(self, name, cmeta_id=None):
+    def __init__(elf, name, cmeta_id=None):
 
-        self.name = name
-        self.cmeta_id = cmeta_id
-        self.rdf_identity = rdflib.URIRef('#' + cmeta_id) if cmeta_id else None
+        elf.name = name
+        elf.cmeta_id = cmeta_id
+        elf.rdf_identity = rdflib.URIRef('#' + cmeta_id) if cmeta_id else None
 
         # A list of sympy.Eq equation objects
-        self.equations = []
+        elf.equations = []
 
         # A pint UnitStore, mapping unit names to unit objects
-        self.units = UnitStore(model=self)
+        elf.units = UnitStore(model=elf)
 
         # Maps string variable names to sympy.Dummy objects
-        self._name_to_symbol = dict()
+        elf._name_to_symbol = dict()
 
         # Cached nx.DiGraph of this model's equations, with number dummies or with sympy.Number objects
-        self._graph = None
-        self._graph_with_sympy_numbers = None
+        elf._graph = None
+        elf._graph_with_sympy_numbers = None
 
         # An RDF graph containing further meta data
-        self.rdf = rdflib.Graph()
+        elf.rdf = rdflib.Graph()
 
-    def add_unit(self, name, attributes=None, base_units=False):
+    def add_unit(elf, name, attributes=None, base_units=False):
         """
         Adds a unit of measurement to this model, with a given ``name`` and list of ``attributes``.
 
@@ -68,11 +68,11 @@ class Model(object):
         if base_units:
             if attributes:
                 raise ValueError('Base units can not be defined with unit attributes.')
-            self.units.add_base_unit(name)
+            elf.units.add_base_unit(name)
         else:
-            self.units.add_custom_unit(name, attributes)
+            elf.units.add_custom_unit(name, attributes)
 
-    def add_equation(self, equation):
+    def add_equation(elf, equation):
         """
         Adds an equation to this model.
 
@@ -84,10 +84,10 @@ class Model(object):
         :param equation: A ``sympy.Eq`` object.
         """
         assert isinstance(equation, sympy.Eq), 'The argument `equation` must be a sympy.Eq.'
-        self.equations.append(equation)
-        self._invalidate_cache()
+        elf.equations.append(equation)
+        elf._invalidate_cache()
 
-    def add_number(self, value, units):
+    def add_number(elf, value, units):
         """
         Creates and returns a :class:`NumberDummy` to represent a number with units in sympy expressions.
 
@@ -98,12 +98,12 @@ class Model(object):
         """
 
         # Check units
-        if not isinstance(units, self.units.ureg.Unit):
-            units = self.units.get_quantity(units)
+        if not isinstance(units, elf.units.ureg.Unit):
+            units = elf.units.get_quantity(units)
 
         return NumberDummy(value, units)
 
-    def add_variable(self, name, units, initial_value=None,
+    def add_variable(elf, name, units, initial_value=None,
                      public_interface=None, private_interface=None, cmeta_id=None):
         """
         Adds a variable to the model and returns a :class:`VariableDummy` to represent it in sympy expressions.
@@ -118,30 +118,30 @@ class Model(object):
         :return: A :class:`VariableDummy` object.
         """
         # Check for clashes
-        if name in self._name_to_symbol:
+        if name in elf._name_to_symbol:
             raise ValueError('Variable %s already exists.' % name)
 
         # Check units
-        if not isinstance(units, self.units.ureg.Unit):
-            units = self.units.get_quantity(units)
+        if not isinstance(units, elf.units.ureg.Unit):
+            units = elf.units.get_quantity(units)
 
         # Add variable
-        self._name_to_symbol[name] = var = VariableDummy(
+        elf._name_to_symbol[name] = var = VariableDummy(
             name=name,
             units=units,
             initial_value=initial_value,
             public_interface=public_interface,
             private_interface=private_interface,
-            order_added=len(self._name_to_symbol),
+            order_added=len(elf._name_to_symbol),
             cmeta_id=cmeta_id,
         )
 
         # Invalidate cached graphs
-        self._invalidate_cache()
+        elf._invalidate_cache()
 
         return var
 
-    def connect_variables(self, source_name: str, target_name: str):
+    def connect_variables(elf, source_name: str, target_name: str):
         """Given the source and target component and variable, create a connection by assigning
         the symbol from the source to the target. If units are not the same, it will add an equation
         to the target component reflecting the relationship. If a symbol has not been assigned to
@@ -152,8 +152,8 @@ class Model(object):
         """
         logger.debug('connect_variables(%s ⟶ %s)', source_name, target_name)
 
-        source = self._name_to_symbol[source_name]
-        target = self._name_to_symbol[target_name]
+        source = elf._name_to_symbol[source_name]
+        target = elf._name_to_symbol[target_name]
 
         # If the source variable has not been assigned a symbol, we can't make this connection
         if not source.assigned_to:
@@ -172,21 +172,21 @@ class Model(object):
             # Direct substitution is possible
             target.assigned_to = source.assigned_to
             # everywhere the target variable is used, replace with source variable
-            for index, equation in enumerate(self.equations):
-                self.equations[index] = equation.xreplace({target: source.assigned_to})
+            for index, equation in enumerate(elf.equations):
+                elf.equations[index] = equation.xreplace({target: source.assigned_to})
 
         # Otherwise, this connection requires a conversion
         else:
             # Get the scaling factor required to convert source units to target units
-            factor = self.units.convert_to(1 * source.units, target.units).magnitude
+            factor = elf.units.convert_to(1 * source.units, target.units).magnitude
 
             # Dummy to represent this factor in equations, having units for conversion
-            factor_dummy = self.add_number(factor, target.units / source.units)
+            factor_dummy = elf.add_number(factor, target.units / source.units)
 
             # Add an equations making the connection with the required conversion
-            self.equations.append(sympy.Eq(target, source.assigned_to * factor_dummy))
+            elf.equations.append(sympy.Eq(target, source.assigned_to * factor_dummy))
 
-            logger.info('Connection req. unit conversion: %s', self.equations[-1])
+            logger.info('Connection req. unit conversion: %s', elf.equations[-1])
 
             # The assigned symbol for this variable is itself
             target.assigned_to = target
@@ -194,28 +194,28 @@ class Model(object):
         logger.debug('Updated target: %s', target)
 
         # Invalidate cached graphs
-        self._invalidate_cache()
+        elf._invalidate_cache()
 
         return True
 
-    def add_rdf(self, rdf: str):
+    def add_rdf(elf, rdf: str):
         """ Takes an RDF string and stores it in the model's RDF graph. """
-        self.rdf.parse(StringIO(rdf))
+        elf.rdf.parse(StringIO(rdf))
 
-    def check_left_right_units_equal(self, equality):
+    def check_left_right_units_equal(elf, equality):
         """
         Checks whether the LHS and RHS in a ``sympy.Eq`` have the same units.
         :param equality: A ``sympy.Eq``.
         """
-        lhs_units = self.units.summarise_units(equality.lhs)
-        rhs_units = self.units.summarise_units(equality.rhs)
+        lhs_units = elf.units.summarise_units(equality.lhs)
+        rhs_units = elf.units.summarise_units(equality.rhs)
 
-        assert self.units.is_unit_equal(rhs_units, lhs_units), 'Units %s %s != %s %s' % (
-            lhs_units, self.units.ureg.get_base_units(lhs_units),
-            rhs_units, self.units.ureg.get_base_units(rhs_units)
+        assert elf.units.is_unit_equal(rhs_units, lhs_units), 'Units %s %s != %s %s' % (
+            lhs_units, elf.units.ureg.get_base_units(lhs_units),
+            rhs_units, elf.units.ureg.get_base_units(rhs_units)
         )
 
-    def get_equations_for(self, symbols, recurse=True, strip_units=True):
+    def get_equations_for(elf, symbols, recurse=True, strip_units=True):
         """Get all equations for a given collection of symbols.
 
         Results are sorted first by dependencies, then by variable name.
@@ -227,9 +227,9 @@ class Model(object):
         """
         # Get graph
         if strip_units:
-            graph = self.graph_with_sympy_numbers
+            graph = elf.graph_with_sympy_numbers
         else:
-            graph = self.graph
+            graph = elf.graph
 
         # Get sorted list of symbols
         sorted_symbols = nx.lexicographical_topological_sort(graph, key=str)
@@ -260,31 +260,31 @@ class Model(object):
 
         return eqs
 
-    def get_derivative_symbols(self):
+    def get_derivative_symbols(elf):
         """Returns a list of derivative symbols found in the given model graph.
         The list is ordered by appearance in the cellml document.
         """
-        derivative_symbols = [v for v in self.graph if isinstance(v, sympy.Derivative)]
+        derivative_symbols = [v for v in elf.graph if isinstance(v, sympy.Derivative)]
         return sorted(derivative_symbols, key=lambda state_var: state_var.args[0].order_added)
 
-    def get_state_symbols(self):
+    def get_state_symbols(elf):
         """Returns a list of state variables found in the given model graph.
         The list is ordered by appearance in the cellml document.
         """
-        state_symbols = [v.args[0] for v in self.get_derivative_symbols()]
+        state_symbols = [v.args[0] for v in elf.get_derivative_symbols()]
         return sorted(state_symbols, key=lambda state_var: state_var.order_added)
 
-    def get_free_variable_symbol(self):
+    def get_free_variable_symbol(elf):
         """Returns the free variable of the given model graph.
         """
-        for v, node in self.graph.nodes.items():
+        for v, node in elf.graph.nodes.items():
             if node.get('variable_type', '') == 'free':
                 return v
 
         # This should be unreachable
         raise ValueError('No free variable set in model.')  # pragma: no cover
 
-    def get_rdf_annotations(self, subject=None, predicate=None, object_=None):
+    def get_rdf_annotations(elf, subject=None, predicate=None, object_=None):
         """Searches the RDF graph and returns 'triples matching the given parameters'
 
         :param subject: the subject of the triples returned
@@ -298,39 +298,39 @@ class Model(object):
         subject = create_rdf_node(subject)
         predicate = create_rdf_node(predicate)
         object_ = create_rdf_node(object_)
-        return self.rdf.triples((subject, predicate, object_))
+        return elf.rdf.triples((subject, predicate, object_))
 
-    def get_rdf_value(self, subject, predicate):
+    def get_rdf_value(elf, subject, predicate):
         """Get the value of an RDF object connected to ``subject`` by ``predicate``.
 
         :param subject: the object of the triple returned
         :param predicate: the object of the triple returned
 
         Note: expects exactly one triple to match and the result to be a literal. It's string value is  returned."""
-        triples = list(self.get_rdf_annotations(subject, predicate))
+        triples = list(elf.get_rdf_annotations(subject, predicate))
         assert len(triples) == 1
         assert isinstance(triples[0][2], rdflib.Literal)
         value = str(triples[0][2]).strip()  # Could make this cleverer by considering data type if desired
         return value
 
-    def get_symbol_by_cmeta_id(self, cmeta_id):
+    def get_symbol_by_cmeta_id(elf, cmeta_id):
         """
         Searches the model and returns the symbol for the variable with the given cmeta id.
 
         To get symbols from e.g. an oxmeta ontology term, use :meth:`get_symbol_by_ontology_term()`.
         """
 
-        for var in self._name_to_symbol.values():
+        for var in elf._name_to_symbol.values():
             if var.cmeta_id == cmeta_id:
                 return var
 
         raise KeyError('No variable with cmeta id "%s" found.' % str(cmeta_id))
 
-    def get_symbol_by_name(self, name):
+    def get_symbol_by_name(elf, name):
         """ Returns the symbol for the variable with the given ``name``. """
-        return self._name_to_symbol[name]
+        return elf._name_to_symbol[name]
 
-    def get_symbol_by_ontology_term(self, namespace_uri, local_name):
+    def get_symbol_by_ontology_term(elf, namespace_uri, local_name):
         """Searches the RDF graph for a variable annotated with the given
         ``{namespace_uri}local_name`` and returns its symbol.
 
@@ -342,7 +342,7 @@ class Model(object):
         found, and a ``ValueError`` if more than one variable with the given
         annotation is found.
         """
-        symbols = self.get_symbols_by_rdf(
+        symbols = elf.get_symbols_by_rdf(
             ('http://biomodels.net/biology-qualifiers/', 'is'),
             (namespace_uri, local_name))
         if len(symbols) == 1:
@@ -354,7 +354,7 @@ class Model(object):
             raise ValueError('Multiple variables annotated with {%s}%s' %
                              (namespace_uri, local_name))
 
-    def get_symbols_by_rdf(self, predicate, object_=None):
+    def get_symbols_by_rdf(elf, predicate, object_=None):
         """Searches the RDF graph for variables annotated with the given predicate and object (e.g. "is oxmeta:time")
         and returns the associated symbols sorted in document order.
 
@@ -365,7 +365,7 @@ class Model(object):
 
         # Find symbols
         symbols = []
-        for result in self.rdf.subjects(predicate, object_):
+        for result in elf.rdf.subjects(predicate, object_):
             assert isinstance(result, rdflib.URIRef), 'Non-resource annotated.'
 
             # Get cmeta id from result uri
@@ -374,11 +374,11 @@ class Model(object):
                 # TODO This should eventually be implemented
                 raise NotImplementedError(
                     'Non-local annotations are not supported.')
-            symbols.append(self.get_symbol_by_cmeta_id(uri[1:]))
+            symbols.append(elf.get_symbol_by_cmeta_id(uri[1:]))
 
         return sorted(symbols, key=lambda sym: sym.order_added)
 
-    def get_ontology_terms_by_symbol(self, symbol, namespace_uri=None):
+    def get_ontology_terms_by_symbol(elf, symbol, namespace_uri=None):
         """Searches the RDF graph for the annotation ``{namespace_uri}annotation_name``
         for the given symbol and returns ``annotation_name`` and optionally restricted
         to a specific ``{namespace_uri}annotation_name``
@@ -392,33 +392,33 @@ class Model(object):
         Will return a list of term names.
         """
         ontology_terms = []
-        cmeta_id = self.graph.nodes[symbol].get('cmeta_id', None)
+        cmeta_id = elf.graph.nodes[symbol].get('cmeta_id', None)
         if cmeta_id:
             predicate = ('http://biomodels.net/biology-qualifiers/', 'is')
             predicate = create_rdf_node(predicate)
             for delimeter in ('#', '/'):  # Look for terms using either possible namespace delimiter
                 subject = rdflib.term.URIRef(delimeter + cmeta_id)
-                for object in self.rdf.objects(subject, predicate):
+                for object in elf.rdf.objects(subject, predicate):
                     # We are only interested in annotation within the namespace
                     if namespace_uri is None or str(object).startswith(namespace_uri):
                         uri_parts = str(object).split(delimeter)
                         ontology_terms.append(uri_parts[-1])
         return ontology_terms
 
-    def get_units(self, name):
+    def get_units(elf, name):
         """
         Looks up and returns a pint `Unit` object with the given name.
         """
-        return self.units.get_quantity(name)
+        return elf.units.get_quantity(name)
 
     @property
-    def graph(self):
+    def graph(elf):
         """ A ``networkx.DiGraph`` containing the model equations. """
         # TODO: Set the parameters of the model (parameters rather than use initial values)
 
         # Return cached graph
-        if self._graph is not None:
-            return self._graph
+        if elf._graph is not None:
+            return elf._graph
 
         # Store symbols, their attributes and their relationships in a directed graph
         graph = nx.DiGraph()
@@ -426,7 +426,7 @@ class Model(object):
         equation_count = 0
 
         # Add a node for every variable in the model, and set additional variable meta data
-        for equation in self.equations:
+        for equation in elf.equations:
             equation_count += 1
 
             # Determine LHS.
@@ -456,11 +456,11 @@ class Model(object):
         assert len(set([str(x) for x in graph.nodes])) == equation_count
 
         # Add edges between the nodes
-        for equation in self.equations:
+        for equation in elf.equations:
             lhs = equation.lhs
 
             # for each of the symbols or derivatives on the rhs of the equation
-            for rhs in self.find_symbols_and_derivatives([equation.rhs]):
+            for rhs in elf.find_symbols_and_derivatives([equation.rhs]):
 
                 if rhs in graph.nodes:
                     # If the symbol maps to a node in the graph just add the dependency edge
@@ -472,7 +472,7 @@ class Model(object):
                 else:
                     # this variable is a parameter - add to graph and connect to lhs
                     rhs.type = 'parameter'
-                    dummy = self.add_number(rhs.initial_value, rhs.units)
+                    dummy = elf.add_number(rhs.initial_value, rhs.units)
                     graph.add_node(rhs, equation=sympy.Eq(rhs, dummy), variable_type='parameter')
                     graph.add_edge(rhs, lhs)
 
@@ -497,20 +497,20 @@ class Model(object):
                     graph.nodes[variable]['variable_type'] = variable.type
 
         # Cache graph and return
-        self._graph = graph
+        elf._graph = graph
         return graph
 
     @property
-    def graph_with_sympy_numbers(self):
+    def graph_with_sympy_numbers(elf):
         """
         A ``networkx.DiGraph`` containing the model equations, but with numbers represented as sympy ``Number`` objects
         instead of dummies.
         """
-        if self._graph_with_sympy_numbers is not None:
-            return self._graph_with_sympy_numbers
+        if elf._graph_with_sympy_numbers is not None:
+            return elf._graph_with_sympy_numbers
 
         # Get a clone of the graph
-        graph = self.graph.copy()
+        graph = elf.graph.copy()
 
         # Replace dummies with Float objects
         for node in graph.nodes:
@@ -531,7 +531,7 @@ class Model(object):
 
                 # Check if simplification removed dependencies on other variables, and if so remove the corresponding
                 # edges.
-                refs = self.find_symbols_and_derivatives([rhs])
+                refs = elf.find_symbols_and_derivatives([rhs])
                 edges = list(graph.in_edges(equation.lhs))
                 for edge in edges:
                     ref = edge[0]
@@ -542,10 +542,10 @@ class Model(object):
                 graph.nodes[node]['equation'] = sympy.Eq(equation.lhs, rhs)
 
         # Cache graph and return
-        self._graph_with_sympy_numbers = graph
+        elf._graph_with_sympy_numbers = graph
         return graph
 
-    def has_ontology_annotation(self, symbol, namespace_uri=None):
+    def has_ontology_annotation(elf, symbol, namespace_uri=None):
         """Searches the RDF graph for the annotation ``{namespace_uri}annotation_name``
         for the given symbol and returns whether it has annotation, optionally restricted
         to a specific ``{namespace_uri}annotation_name``
@@ -558,18 +558,18 @@ class Model(object):
 
         Will return a boolean.
         """
-        return len(self.get_ontology_terms_by_symbol(symbol, namespace_uri)) != 0
+        return len(elf.get_ontology_terms_by_symbol(symbol, namespace_uri)) != 0
 
-    def _invalidate_cache(self):
+    def _invalidate_cache(elf):
         """ Removes cached graphs: should be called after manipulating variables or equations. """
-        self._graph = None
-        self._graph_with_sympy_numbers = None
+        elf._graph = None
+        elf._graph_with_sympy_numbers = None
 
-    def get_value(self, symbol):
+    def get_value(elf, symbol):
         """ Returns the evaluated value of the given symbol's RHS. """
-        return float(self.graph.nodes[symbol]['equation'].rhs.evalf())
+        return float(elf.graph.nodes[symbol]['equation'].rhs.evalf())
 
-    def get_initial_value(self, symbol):
+    def get_initial_value(elf, symbol):
         """
         Returns the initial value of the given symbol.
 
@@ -578,7 +578,7 @@ class Model(object):
         """
         return symbol.initial_value
 
-    def find_symbols_and_derivatives(self, expression):
+    def find_symbols_and_derivatives(elf, expression):
         """ Returns a set containing all symbols and derivatives referenced in a list of expressions.
 
         :param expression: a list of expressions to get symbols for.
@@ -589,26 +589,26 @@ class Model(object):
             if expr.is_Derivative or isinstance(expr, VariableDummy):
                 symbols.add(expr)
             else:
-                symbols |= self.find_symbols_and_derivatives(expr.args)
+                symbols |= elf.find_symbols_and_derivatives(expr.args)
         return symbols
 
-    def remove_equation(self, equation):
+    def remove_equation(elf, equation):
         """
         Removes an equation from the model.
 
         :param equation: The equation to remove.
         """
         try:
-            self.equations.remove(equation)
+            elf.equations.remove(equation)
         except ValueError:
             raise KeyError('Equation not found in model ' + str(equation))
 
         # Invalidate cached equation graphs
-        self._invalidate_cache()
+        elf._invalidate_cache()
 
-    def variables(self):
+    def variables(elf):
         """ Returns an iterator over this model's variable symbols. """
-        return self._name_to_symbol.values()
+        return elf._name_to_symbol.values()
 
 
 class NumberDummy(sympy.Dummy):
@@ -623,15 +623,15 @@ class NumberDummy(sympy.Dummy):
     def __new__(cls, value, *args, **kwargs):
         return super().__new__(cls, str(value))
 
-    def __init__(self, value, units):
-        self.value = float(value)
-        self.units = units
+    def __init__(elf, value, units):
+        elf.value = float(value)
+        elf.units = units
 
-    def __float__(self):
-        return self.value
+    def __float__(elf):
+        return elf.value
 
-    def __str__(self):
-        return str(self.value)
+    def __str__(elf):
+        return str(elf.value)
 
 
 class VariableDummy(sympy.Dummy):
@@ -646,7 +646,7 @@ class VariableDummy(sympy.Dummy):
     def __new__(cls, name, *args, **kwargs):
         return super().__new__(cls, name)
 
-    def __init__(self,
+    def __init__(elf,
                  name,
                  units,
                  initial_value=None,
@@ -655,32 +655,32 @@ class VariableDummy(sympy.Dummy):
                  order_added=None,
                  cmeta_id=None):
 
-        self.name = name
-        self.units = units
-        self.initial_value = None if initial_value is None else float(initial_value)
+        elf.name = name
+        elf.units = units
+        elf.initial_value = None if initial_value is None else float(initial_value)
 
         # Interface properties, only used during parsing
-        self.public_interface = public_interface
-        self.private_interface = private_interface
+        elf.public_interface = public_interface
+        elf.private_interface = private_interface
 
         # Variables are either 'source' variables, or receive their value from
         # a variable that they're connected to (using CellML connections).
         # The ``assigned_to`` property is used to indicate where this object
         # receives its value.
-        self.assigned_to = None
+        elf.assigned_to = None
         if not (private_interface == 'in' or public_interface == 'in'):
-            self.assigned_to = self
+            elf.assigned_to = elf
 
         # Optional order added, used for sorting sometimes.
-        self.order_added = order_added
+        elf.order_added = order_added
 
         # Optional cmeta id
-        self.cmeta_id = cmeta_id
+        elf.cmeta_id = cmeta_id
 
         # This variable's type
         # TODO: Define allowed types via enum
-        self.type = None
+        elf.type = None
 
-    def __str__(self):
-        return self.name
+    def __str__(elf):
+        return elf.name
 

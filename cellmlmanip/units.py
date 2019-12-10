@@ -92,9 +92,9 @@ class UnitsCannotBeCalculatedError(UnitError):
     :param expression: input expression in which the error occurred
     """
 
-    def __init__(self, expression):
-        self.expression = expression
-        self.message = 'The units of this expression cannot be calculated.'
+    def __init__(elf, expression):
+        elf.expression = expression
+        elf.message = 'The units of this expression cannot be calculated.'
 
 
 class UnexpectedMathUnitsError(UnitError):
@@ -103,9 +103,9 @@ class UnexpectedMathUnitsError(UnitError):
     :param expression: input expression in which the error occurred
     """
 
-    def __init__(self, expression):
-        self.expression = expression
-        self.message = 'The math used by this expression is not supported.'
+    def __init__(elf, expression):
+        elf.expression = expression
+        elf.message = 'The math used by this expression is not supported.'
 
 
 class InputArgumentsInvalidUnitsError(UnitError):
@@ -114,9 +114,9 @@ class InputArgumentsInvalidUnitsError(UnitError):
     :param expression: input expression in which the error occurred
     """
 
-    def __init__(self, expression):
-        self.expression = expression
-        self.message = 'The arguments to this expression should all have the same units.'
+    def __init__(elf, expression):
+        elf.expression = expression
+        elf.message = 'The arguments to this expression should all have the same units.'
 
 
 class InputArgumentsMustBeDimensionlessError(UnitError):
@@ -126,12 +126,12 @@ class InputArgumentsMustBeDimensionlessError(UnitError):
     :param expression: input expression in which the error occurred
     """
 
-    def __init__(self, expression, position=''):
-        self.expression = expression
+    def __init__(elf, expression, position=''):
+        elf.expression = expression
         if position.__len__() == 0:
-            self.message = 'The arguments to this expression should be dimensionless.'
+            elf.message = 'The arguments to this expression should be dimensionless.'
         else:
-            self.message = 'The %s argument to this expression should be dimensionless.' % position
+            elf.message = 'The %s argument to this expression should be dimensionless.' % position
 
 
 class InputArgumentMustBeNumberError(UnitError):
@@ -141,9 +141,9 @@ class InputArgumentMustBeNumberError(UnitError):
     :param position: the position of the argument with error i.e. first/second
     """
 
-    def __init__(self, expression, position):
-        self.expression = expression
-        self.message = 'The %s argument to this expression should be a number.' % position
+    def __init__(elf, expression, position):
+        elf.expression = expression
+        elf.message = 'The %s argument to this expression should be a number.' % position
 
 
 class BooleanUnitsError(UnitError):
@@ -152,10 +152,10 @@ class BooleanUnitsError(UnitError):
     :param expression: input expression in which the error occurred
     """
 
-    def __init__(self, expression):
-        self.expression = expression
-        self.message = 'This expression involves boolean values which do not conform to ' \
-                       'unit dimensionality rules.'
+    def __init__(elf, expression):
+        elf.expression = expression
+        elf.message = 'This expression involves boolean values which do not conform to ' \
+                      'unit dimensionality rules.'
 
 
 class UnitStore(object):
@@ -163,23 +163,23 @@ class UnitStore(object):
     expressions. Getting and checking units is handled by this class.
     """
 
-    def __init__(self, model):
+    def __init__(elf, model):
         """Initialise a UnitStore instance; wraps the unit registry and handles addition of new
         unit definitions"""
         cellml_unit_definition = os.path.join(
             os.path.dirname(__file__), 'cellml_units.txt')
-        self.ureg = pint.UnitRegistry(cellml_unit_definition)
+        elf.ureg = pint.UnitRegistry(cellml_unit_definition)
 
         # units that are defined and added to the unit registry, on top of default cellml units
-        self.custom_defined = set()
+        elf.custom_defined = set()
 
         # Keep reference to the underlying model
-        self.model = model
+        elf.model = model
 
         # Unit calculator
-        self.calculator = UnitCalculator(self.ureg)
+        elf.calculator = UnitCalculator(elf.ureg)
 
-    def add_custom_unit(self, units_name, unit_attributes):
+    def add_custom_unit(elf, units_name, unit_attributes):
         """Define a new Pint unit definition and adds it to the unit registry.
         :param units_name: name of unit to add - cannot be an existing CellML unit
         :param unit_attributes: dict object for unit
@@ -188,23 +188,23 @@ class UnitStore(object):
         """
         assert units_name not in CELLML_UNITS, 'Cannot redefine CellML unit <%s>' % units_name
 
-        unit_definition = self._make_pint_unit_definition(units_name, unit_attributes)
+        unit_definition = elf._make_pint_unit_definition(units_name, unit_attributes)
 
         if unit_definition is not None:
-            assert not self._is_unit_defined(units_name), 'Unit <%s> already exists' % units_name
+            assert not elf._is_unit_defined(units_name), 'Unit <%s> already exists' % units_name
 
             # check whether the definition is dimensionless (e.g. a dimensionless scaling factor)
-            definition = self.ureg.parse_expression(unit_definition.split('=')[1])
+            definition = elf.ureg.parse_expression(unit_definition.split('=')[1])
             # if the unit is dimensionless
             if definition.dimensionless:
                 # get the scale factor by converting the quantity to dimensionless
-                scale_factor = definition.to(self.ureg.dimensionless)
+                scale_factor = definition.to(elf.ureg.dimensionless)
                 # dimensionless units can't be created using definition strings
                 unit_definition = UnitDefinition(units_name, '', (), ScaleConverter(scale_factor))
 
-            self._define_pint_unit(units_name, unit_definition)
+            elf._define_pint_unit(units_name, unit_definition)
 
-    def add_preferred_custom_unit_name(self, units_name, unit_attributes):
+    def add_preferred_custom_unit_name(elf, units_name, unit_attributes):
         """
         Set a prefered name for all equivalent custom units.
 
@@ -217,50 +217,50 @@ class UnitStore(object):
             Not all fields necessary but 'units' must match a unit in Pint registry
         """
         try:
-            self.add_custom_unit(units_name, unit_attributes)
+            elf.add_custom_unit(units_name, unit_attributes)
         except AssertionError:
             pass  # Unit already exists, but that is not a problem
 
-        unit = getattr(self.ureg, units_name)
-        for variable in self.model.variables():
-            if self.is_unit_equal(variable.units, unit):
+        unit = getattr(elf.ureg, units_name)
+        for variable in elf.model.variables():
+            if elf.is_unit_equal(variable.units, unit):
                 variable.units = unit
 
-    def add_base_unit(self, units_name):
+    def add_base_unit(elf, units_name):
         """Define a new base unit in the Pint registry.
         :param units_name: string name of unit to add
         """
         assert units_name not in CELLML_UNITS, 'Cannot redefine CellML unit <%s>' % units_name
-        assert not self._is_unit_defined(units_name), 'Unit <%s> already exists' % units_name
-        self._define_pint_unit(units_name, '{name}=[{name}]'.format_map({'name': units_name}))
+        assert not elf._is_unit_defined(units_name), 'Unit <%s> already exists' % units_name
+        elf._define_pint_unit(units_name, '{name}=[{name}]'.format_map({'name': units_name}))
 
-    def _is_unit_defined(self, name):
+    def _is_unit_defined(elf, name):
         """ Check whether the unit already exists in Pint registry.
         :param name: string name of the unit
         :return: True if exists, else False
         """
         try:
-            getattr(self.ureg, name)
+            getattr(elf.ureg, name)
             return True
         except pint.UndefinedUnitError:
             return False
 
-    def _define_pint_unit(self, units_name, definition_string_or_instance):
-        self.ureg.define(definition_string_or_instance)
-        self.custom_defined.add(units_name)
+    def _define_pint_unit(elf, units_name, definition_string_or_instance):
+        elf.ureg.define(definition_string_or_instance)
+        elf.custom_defined.add(units_name)
 
-    def get_quantity(self, unit_name):
+    def get_quantity(elf, unit_name):
         """Returns a pint `Unit` with the given name from the UnitRegistry.
         :param unit_name: string name of the unit
         :return: `Unit`
         throws pint.UndefinedUnitError if the unit is not present in registry
         """
         try:
-            return self.ureg.parse_expression(unit_name).units
+            return elf.ureg.parse_expression(unit_name).units
         except pint.UndefinedUnitError:
             raise KeyError('Cannot find unit <%s> in unit registry' % unit_name)
 
-    def _make_pint_unit_definition(self, units_name, unit_attributes):
+    def _make_pint_unit_definition(elf, units_name, unit_attributes):
         """
         Uses a CellML definition to construct a Pint unit definition string.
 
@@ -272,7 +272,7 @@ class UnitStore(object):
         # For each of the <unit> elements for this unit definition
         for unit_element in unit_attributes:
             # Source the <unit units="XXX"> from our store
-            matched_unit = self.get_quantity(unit_element['units'])
+            matched_unit = elf.get_quantity(unit_element['units'])
 
             # Construct a string representing the expression for this <unit>
             expr = str(matched_unit)
@@ -304,32 +304,32 @@ class UnitStore(object):
         logger.debug('Unit %s => %s', units_name, full_unit_expr)
         return '%s=%s' % (units_name, full_unit_expr)
 
-    def is_unit_equal(self, unit1, unit2):
+    def is_unit_equal(elf, unit1, unit2):
         """Compares whether two units are equivalent by converting them into base units and comparing the
         resulting units and multiplicative factors
         :param unit1: the first Unit object to compare
         :param unit2: the second Unit object to compare
         :return True if units are equal, False otherwise
         """
-        assert isinstance(unit1, self.ureg.Unit)
-        assert isinstance(unit2, self.ureg.Unit)
-        base1 = self.ureg.get_base_units(unit1)
-        base2 = self.ureg.get_base_units(unit2)
+        assert isinstance(unit1, elf.ureg.Unit)
+        assert isinstance(unit2, elf.ureg.Unit)
+        base1 = elf.ureg.get_base_units(unit1)
+        base2 = elf.ureg.get_base_units(unit2)
         is_equal = math.isclose(base1[0], base2[0]) and base1[1] == base2[1]
         logger.debug('is_unit_equal(%s, %s) ⟶ %s', unit1, unit2, is_equal)
         return is_equal
 
-    def convert_to(self, quantity, unit):
+    def convert_to(elf, quantity, unit):
         """Returns a quantity that is the result of converting [one of] unit1 into unit2.
         :param quantity: the Unit to be converted, multiplied by '1' to form a Quantity object
         :param unit: Unit object into which the first units should be converted
         :return a quantity object with the converted unit and corresponding quantity
         """
-        assert isinstance(quantity, self.ureg.Quantity)
-        assert isinstance(unit, self.ureg.Unit)
+        assert isinstance(quantity, elf.ureg.Quantity)
+        assert isinstance(unit, elf.ureg.Unit)
         return quantity.to(unit)
 
-    def summarise_units(self, expr):
+    def summarise_units(elf, expr):
         """
         Given a Sympy expression, will get the lambdified string to evaluate units.
         Note the call to UnitCalculator:traverse will throw an error if units are bad or cannot be calculated.
@@ -343,12 +343,12 @@ class UnitStore(object):
                  InputArgumentsInvalidUnitsError - if input arguments should have same units
                  InputArgumentMustBeNumberError - if one of input arguments should be a number
        """
-        found = self.calculator.traverse(expr)
+        found = elf.calculator.traverse(expr)
 
         logger.debug('summarise_units(%s) ⟶ %s', expr, found.units)
         return found.units
 
-    def get_conversion_factor(self,
+    def get_conversion_factor(elf,
                               to_unit,
                               from_unit=None,
                               quantity=None,
@@ -374,21 +374,21 @@ class UnitStore(object):
             'Multiple target specified; please use only one of from_unit, quantity or expression'
 
         if from_unit is not None:
-            assert isinstance(from_unit, self.ureg.Unit), 'from_unit must be of type pint:Unit'
-            conversion_factor = self.convert_to(1 * from_unit, to_unit).magnitude
+            assert isinstance(from_unit, elf.ureg.Unit), 'from_unit must be of type pint:Unit'
+            conversion_factor = elf.convert_to(1 * from_unit, to_unit).magnitude
         elif quantity is not None:
-            assert isinstance(quantity, self.ureg.Quantity), 'quantity must be of type pint:Quantity'
-            conversion_factor = self.convert_to(quantity, to_unit).magnitude
+            assert isinstance(quantity, elf.ureg.Quantity), 'quantity must be of type pint:Quantity'
+            conversion_factor = elf.convert_to(quantity, to_unit).magnitude
         else:
             assert isinstance(expression, sympy.Expr), 'expression must be of type Sympy expression'
-            conversion_factor = self.convert_to(1 * self.summarise_units(expression), to_unit).magnitude
+            conversion_factor = elf.convert_to(1 * elf.summarise_units(expression), to_unit).magnitude
 
         if math.isclose(conversion_factor, 1.0):
             return 1.0
         else:
             return conversion_factor
 
-    def dimensionally_equivalent(self, symbol1, symbol2):
+    def dimensionally_equivalent(elf, symbol1, symbol2):
         """Returns whether two expressions, symbol1 and symbol2,
          are dimensionally_equivalent (same units ignoring a calling factor).
         :param symbol1: the first expression to compare
@@ -396,8 +396,8 @@ class UnitStore(object):
         :return True if units are equal (regardless of quantity), False otherwise
         """
         try:
-            self.get_conversion_factor(from_unit=self.summarise_units(symbol1),
-                                       to_unit=self.summarise_units(symbol2))
+            elf.get_conversion_factor(from_unit=elf.summarise_units(symbol1),
+                                      to_unit=elf.summarise_units(symbol2))
             return True
         except pint.errors.DimensionalityError:
             return False
@@ -409,14 +409,14 @@ class UnitCalculator(object):
 
     Note: only supports subset of Sympy math.
     """
-    def __init__(self, unit_registry):
+    def __init__(elf, unit_registry):
         """ Initialises the UnitCalculator class
         :param unit_registry: instance of Pint UnitRegistry
         """
         # A pint.UnitRegistry
-        self.ureg = unit_registry
+        elf.ureg = unit_registry
 
-    def _check_unit_of_quantities_equal(self, list_of_quantities):
+    def _check_unit_of_quantities_equal(elf, list_of_quantities):
         """Checks whether all units in a list are equivalent.
         :param list_of_quantities: a list of Pint quantities
         :return: boolean indicating whether all units are equivalent
@@ -428,18 +428,18 @@ class UnitCalculator(object):
         first = next(list_of_quantities)
 
         def _is_equal(quantity1, quantity2):
-            assert isinstance(quantity1, self.ureg.Quantity)
-            assert isinstance(quantity2, self.ureg.Quantity)
-            base1 = self.ureg.get_base_units(1 * quantity1.units)
-            base2 = self.ureg.get_base_units(1 * quantity2.units)
+            assert isinstance(quantity1, elf.ureg.Quantity)
+            assert isinstance(quantity2, elf.ureg.Quantity)
+            base1 = elf.ureg.get_base_units(1 * quantity1.units)
+            base2 = elf.ureg.get_base_units(1 * quantity2.units)
             return math.isclose(base1[0], base2[0]) and base1[1] == base2[1]
 
         return all(_is_equal(first, rest) for rest in list_of_quantities)
 
-    def _is_dimensionless(self, quantity):
-        return quantity.units.dimensionality == self.ureg.dimensionless.dimensionality
+    def _is_dimensionless(elf, quantity):
+        return quantity.units.dimensionality == elf.ureg.dimensionless.dimensionality
 
-    def traverse(self, expr):
+    def traverse(elf, expr):
         """Descends the Sympy expression and performs Pint unit arithmetic on sub-expressions
 
         :param expr: a Sympy expression
@@ -465,16 +465,16 @@ class UnitCalculator(object):
         if expr.is_Piecewise:
             # Treat each sub-function an argument (& ignore the conditional statements)
             for arg in expr.args:
-                quantity_per_arg.append(self.traverse(arg[0]))
+                quantity_per_arg.append(elf.traverse(arg[0]))
         elif expr.is_Derivative:
             # In a derivative expression the first argument is function to be differentiated
             # the second argument is a tuple of which the first is symbol of the differentiator(?)
-            quantity_per_arg.append(self.traverse(expr.args[0]))
-            quantity_per_arg.append(self.traverse(expr.args[1][0]))
+            quantity_per_arg.append(elf.traverse(expr.args[0]))
+            quantity_per_arg.append(elf.traverse(expr.args[1][0]))
         else:
             # Otherwise, collect the quantity for each argument of the expression
             for arg in expr.args:
-                quantity_per_arg.append(self.traverse(arg))
+                quantity_per_arg.append(elf.traverse(arg))
 
         # if there was an error determining the quantity of an argument quit now
         # we shouldn't ever get here as an exception should already be thrown
@@ -494,21 +494,21 @@ class UnitCalculator(object):
                 if expr.initial_value and expr.initial_value != 0.0:
                     #  if this symbol has an initial value (that is not zero)
                     # substitute with the initial value for unit arithmetic
-                    return self.ureg.Quantity(float(expr.initial_value), expr.units)
+                    return elf.ureg.Quantity(float(expr.initial_value), expr.units)
                 else:
                     # otherwise, keep the symbol
-                    return self.ureg.Quantity(expr, expr.units)
+                    return elf.ureg.Quantity(expr, expr.units)
             else:   # pragma: no cover
                 # An unexpected type of symbol: print anyway for debugging
                 return str(expr)
         elif expr == sympy.oo:
-            return math.inf * self.ureg.dimensionless
+            return math.inf * elf.ureg.dimensionless
 
         elif expr == sympy.nan:
-            return math.nan * self.ureg.dimensionless
+            return math.nan * elf.ureg.dimensionless
 
         elif expr.is_Number:
-            units = self.ureg.dimensionless
+            units = elf.ureg.dimensionless
             if expr.is_Integer:
                 out = int(expr) * units
             elif expr.is_Rational:
@@ -533,7 +533,7 @@ class UnitCalculator(object):
             exponent = quantity_per_arg[1]
 
             # exponent must be dimensionless
-            if exponent.units != self.ureg.dimensionless:
+            if exponent.units != elf.ureg.dimensionless:
                 logger.critical('Exponent of Pow is not dimensionless %s', expr)
                 raise InputArgumentsMustBeDimensionlessError(str(expr), 'second')
 
@@ -544,9 +544,9 @@ class UnitCalculator(object):
                 raise InputArgumentMustBeNumberError(str(expr), 'second')
 
             # if base is dimensionless, return is dimensionless
-            if base.units == self.ureg.dimensionless:
-                return self.ureg.Quantity(base.magnitude**exponent.magnitude,
-                                          self.ureg.dimensionless)
+            if base.units == elf.ureg.dimensionless:
+                return elf.ureg.Quantity(base.magnitude**exponent.magnitude,
+                                         elf.ureg.dimensionless)
 
             # base is not dimensionless, raise quantity (magnitude and unit) to power
             return base ** exponent
@@ -557,7 +557,7 @@ class UnitCalculator(object):
             # reference units that have dimensional equivalence, as defined in Appendix C.2.2.
 
             # If all the Add argument quantities are of the same unit
-            if self._check_unit_of_quantities_equal(quantity_per_arg):
+            if elf._check_unit_of_quantities_equal(quantity_per_arg):
                 # Return the first quantity as representative unit
                 out = quantity_per_arg[0]
                 return out
@@ -567,7 +567,7 @@ class UnitCalculator(object):
 
         elif expr.is_Piecewise:
             # If unit of each expression in piecewise is the same
-            if self._check_unit_of_quantities_equal(quantity_per_arg):
+            if elf._check_unit_of_quantities_equal(quantity_per_arg):
                 # return one of them for the unit arithmetic
                 out = quantity_per_arg[0]
                 return out
@@ -581,7 +581,7 @@ class UnitCalculator(object):
             # we should not encounter expression that return booleans
             # but cellml spec says these should have same arguments so
             # log this
-            if not self._check_unit_of_quantities_equal(quantity_per_arg):
+            if not elf._check_unit_of_quantities_equal(quantity_per_arg):
                 logger.warning('Relational args do not have the same unit: %s', expr)
             logger.critical('Boolean return: %s', expr)
             raise BooleanUnitsError(str(expr))
@@ -612,40 +612,40 @@ class UnitCalculator(object):
                     return 1 * quantity_per_arg[0].units
                 return math.ceil(quantity_per_arg[0].magnitude) * quantity_per_arg[0].units
             elif expr.func == sympy.log:
-                if self._is_dimensionless(quantity_per_arg[0]):
-                    return 1 * self.ureg.dimensionless
+                if elf._is_dimensionless(quantity_per_arg[0]):
+                    return 1 * elf.ureg.dimensionless
                 raise InputArgumentsMustBeDimensionlessError(str(expr))
             elif expr.func == sympy.factorial:
-                if self._is_dimensionless(quantity_per_arg[0]):
-                    return 1 * self.ureg.dimensionless
+                if elf._is_dimensionless(quantity_per_arg[0]):
+                    return 1 * elf.ureg.dimensionless
                 raise InputArgumentsMustBeDimensionlessError(str(expr))
             elif expr.func == sympy.exp:
                 # requires operands to have units of dimensionless.
                 # result of these has units of dimensionless.
-                if self._is_dimensionless(quantity_per_arg[0]):
+                if elf._is_dimensionless(quantity_per_arg[0]):
                     # is the operand is a float
                     if isinstance(quantity_per_arg[0].magnitude, float):
                         # return the exponential of the float as dimensionless
-                        return self.ureg.Quantity(math.exp(quantity_per_arg[0].magnitude),
-                                                  self.ureg.dimensionless)
+                        return elf.ureg.Quantity(math.exp(quantity_per_arg[0].magnitude),
+                                                 elf.ureg.dimensionless)
 
                     # magnitude contains an unresolved symbol, we lose it here!
                     # we don't lose it - the unit will be dimensionless - we are just not able to
                     # determine the magnitude of the result
-                    return 1 * self.ureg.dimensionless
+                    return 1 * elf.ureg.dimensionless
 
                 logger.critical('Exp operand is not dimensionless: %s', expr)
                 raise InputArgumentsMustBeDimensionlessError(str(expr))
             # trig. function on any dimensionless operand is dimensionless
             elif str(expr.func) in TRIG_FUNCTIONS:
-                if self._is_dimensionless(quantity_per_arg[0]):
-                    return 1 * self.ureg.dimensionless
+                if elf._is_dimensionless(quantity_per_arg[0]):
+                    return 1 * elf.ureg.dimensionless
                 raise InputArgumentsMustBeDimensionlessError(str(expr))
 
             # if the function has exactly one dimensionless argument
-            if len(quantity_per_arg) == 1 and self._is_dimensionless(quantity_per_arg[0]):
+            if len(quantity_per_arg) == 1 and elf._is_dimensionless(quantity_per_arg[0]):
                 # assume the result is dimensionless
-                return 1 * self.ureg.dimensionless
+                return 1 * elf.ureg.dimensionless
 
         elif expr.is_Derivative:
             out = quantity_per_arg[0] / quantity_per_arg[1]
@@ -653,9 +653,9 @@ class UnitCalculator(object):
 
         # constants in cellml that are all specified as dimensionless
         elif expr == sympy.pi:
-            return math.pi * self.ureg.dimensionless
+            return math.pi * elf.ureg.dimensionless
         elif expr == sympy.E:
-            return math.e * self.ureg.dimensionless
+            return math.e * elf.ureg.dimensionless
 
         raise UnexpectedMathUnitsError(str(expr))
 
@@ -663,13 +663,13 @@ class UnitCalculator(object):
 class ExpressionWithUnitPrinter(LambdaPrinter):
     """Sympy expression printer to print expressions with unit information."""
 
-    def _print_NumberDummy(self, expr):
+    def _print_NumberDummy(elf, expr):
         return '%f[%s]' % (float(expr), str(expr.units))
 
-    def _print_VariableDummy(self, expr):
+    def _print_VariableDummy(elf, expr):
         return '%s[%s]' % (expr.name, str(expr.units))
 
-    def _print_Derivative(self, expr):
+    def _print_Derivative(elf, expr):
         state = expr.free_symbols.pop()
         freev = expr.variables[0]
         return 'Derivative(%s[%s], %s[%s])' % (state, state.units, freev, freev.units)

@@ -23,31 +23,31 @@ class XmlNs(Enum):
 class _Component:
     """This hold information about a CellML component. It's for internal-use only. Once the parser
     has created the flattened cellmlmanip.Model instance, components are no longer used"""
-    def __init__(self, name):
-        self.name = name
-        self.parent = None
-        self.siblings = set()
-        self.encapsulated = set()
+    def __init__(elf, name):
+        elf.name = name
+        elf.parent = None
+        elf.siblings = set()
+        elf.encapsulated = set()
 
-    def set_parent(self, parent_name):
+    def set_parent(elf, parent_name):
         """Sets the parent of this component"""
-        if self.parent:
-            raise ValueError('Parent of component %s already %s. Cannot set %s!' % (self.name,
-                                                                                    self.parent,
+        if elf.parent:
+            raise ValueError('Parent of component %s already %s. Cannot set %s!' % (elf.name,
+                                                                                    elf.parent,
                                                                                     parent_name))
-        self.parent = parent_name
+        elf.parent = parent_name
 
-    def add_sibling(self, sibling_name):
+    def add_sibling(elf, sibling_name):
         """Adds a sibling for this component"""
-        if sibling_name in self.siblings:
+        if sibling_name in elf.siblings:
             raise ValueError('Sibling component %s already added!' % sibling_name)
-        self.siblings.add(sibling_name)
+        elf.siblings.add(sibling_name)
 
-    def add_encapsulated(self, encapsulated_name):
+    def add_encapsulated(elf, encapsulated_name):
         """Adds an encapsulated component to this component"""
-        if encapsulated_name in self.encapsulated:
+        if encapsulated_name in elf.encapsulated:
             raise ValueError('Encapsulated component %s already added!' % encapsulated_name)
-        self.encapsulated.add(encapsulated_name)
+        elf.encapsulated.add(encapsulated_name)
 
 
 class Parser(object):
@@ -58,56 +58,56 @@ class Parser(object):
         """Returns an ElementTree-friendly name with namespace in brackets"""
         return '{%s}%s' % (ns_enum.value, name)
 
-    def __init__(self, filepath):
+    def __init__(elf, filepath):
         """Initialise an instance of Parser
 
         :param filepath: the full filepath to the CellML model file
         """
-        self.filepath = filepath
+        elf.filepath = filepath
 
         # A :class:`Model` object or None
-        self.model = None
+        elf.model = None
 
         # A dictionary mapping component names to _Component objects
-        self.components = OrderedDict()
+        elf.components = OrderedDict()
 
-    def parse(self):
+    def parse(elf):
         """
         The main method that reads the XML file and extracts the relevant parts of the CellML model
         definition.
 
         :return: a :class:`Model` holding CellML model definition, reading for manipulation.
         """
-        tree = etree.parse(self.filepath)
+        tree = etree.parse(elf.filepath)
 
         # <model> root node - initialise the model object
         model_xml = tree.getroot()
-        self.model = Model(model_xml.get('name'), model_xml.get(Parser.with_ns(XmlNs.CMETA, 'id')))
+        elf.model = Model(model_xml.get('name'), model_xml.get(Parser.with_ns(XmlNs.CMETA, 'id')))
 
         # handle the child elements of <model>
-        self._add_units(model_xml)
-        self._add_rdf(model_xml)
+        elf._add_units(model_xml)
+        elf._add_rdf(model_xml)
 
-        self._add_components(model_xml)
-        self._add_relationships(model_xml)
-        self._add_connection(model_xml)
+        elf._add_components(model_xml)
+        elf._add_relationships(model_xml)
+        elf._add_connection(model_xml)
 
-        return self.model
+        return elf.model
 
     @staticmethod
     def _get_variable_name(component_name, variable_name):
         return component_name + SYMPY_SYMBOL_DELIMITER + variable_name
 
-    def _add_rdf(self, element):
+    def _add_rdf(elf, element):
         """
         Finds all ``<RDF>`` definitions under ``<element>`` and adds them to the model.
 
         :param element: the CellML parent element to search for children RDF tags
         """
         for rdf in element.iter(Parser.with_ns(XmlNs.RDF, 'RDF')):
-            self.model.add_rdf(etree.tostring(rdf, encoding=str))
+            elf.model.add_rdf(etree.tostring(rdf, encoding=str))
 
-    def _add_units(self, model):
+    def _add_units(elf, model):
         """
         <model> <units> <unit /> </units> </model>
         :param model: an etree.Element
@@ -124,7 +124,7 @@ class Parser(object):
             units_name = units_element.get('name')
             # if it's a defined base unit, we can be add immediately to the model
             if units_element.get('base_units'):
-                self.model.add_unit(units_name, attributes=None, base_units=True)
+                elf.model.add_unit(units_name, attributes=None, base_units=True)
                 units_found.add(units_name)
             # all other units are collected (because they may depend on further user-defined units)
             else:
@@ -148,7 +148,7 @@ class Parser(object):
 
             # unit is defined in terms of known units - ok to add to model
             if add_now:
-                self.model.add_unit(unit_name, attributes=unit_elements)
+                elf.model.add_unit(unit_name, attributes=unit_elements)
                 units_found.add(unit_name)
                 iteration = 0
                 continue
@@ -161,7 +161,7 @@ class Parser(object):
                 raise ValueError('Cannot create units %s. '
                                  'Cycles or unknown units.' % definitions_to_add)
 
-    def _add_components(self, model):
+    def _add_components(elf, model):
         """
         <model> <component> </model>
         :param model: an etree.Element
@@ -172,13 +172,13 @@ class Parser(object):
         for element in component_elements:
             # component are only kept in parser to resolve relationships and connections
             name = element.get('name')
-            self.components[name] = _Component(name)
+            elf.components[name] = _Component(name)
 
             # process the <variable> tags in this component
-            variable_to_symbol = self._add_variables(element)
+            variable_to_symbol = elf._add_variables(element)
 
             # process the <math> tags in this component
-            self._add_maths(element, variable_to_symbol)
+            elf._add_maths(element, variable_to_symbol)
 
             # Raise error if component units are defined
             component_units = element.findall(Parser.with_ns(XmlNs.CELLML, 'units'))
@@ -192,7 +192,7 @@ class Parser(object):
                 raise ValueError(
                     'Reactions are not supported (found in component ' + name + ').')
 
-    def _add_variables(self, component_element):
+    def _add_variables(elf, component_element):
         """
         <model> <component> <variable> </component> </model>
         :param component_element: an etree.Element
@@ -215,14 +215,14 @@ class Parser(object):
                                                            attributes['name'])
 
             # look up units
-            attributes['units'] = self.model.get_units(attributes['units'])
+            attributes['units'] = elf.model.get_units(attributes['units'])
 
             # model.add_variable() returns sympy dummy created for this variable - keep it
-            variable_lookup_symbol[attributes['name']] = self.model.add_variable(**attributes)
+            variable_lookup_symbol[attributes['name']] = elf.model.add_variable(**attributes)
 
         return variable_lookup_symbol
 
-    def _add_maths(self, component_element, variable_to_symbol):
+    def _add_maths(elf, component_element, variable_to_symbol):
         """
         <model> <component> <math> </component> </model>
 
@@ -247,7 +247,7 @@ class Parser(object):
         # reuse transpiler so dummy symbols are kept across <math> elements
         transpiler = Transpiler(
             symbol_generator=symbol_generator,
-            number_generator=lambda x, y: self.model.add_number(x, self.model.get_units(y)),
+            number_generator=lambda x, y: elf.model.add_number(x, elf.model.get_units(y)),
         )
 
         # for each math element
@@ -256,9 +256,9 @@ class Parser(object):
 
             # add each equation from <math> to the model
             for expr in sympy_exprs:
-                self.model.add_equation(expr)
+                elf.model.add_equation(expr)
 
-    def _add_relationships(self, model: etree.Element):
+    def _add_relationships(elf, model: etree.Element):
         group_elements = model.findall(Parser.with_ns(XmlNs.CELLML, 'group'))
 
         # find all the <group> elements
@@ -272,9 +272,9 @@ class Parser(object):
 
             # we only handle 'encapsulation' relationships (i.e. ignoring 'containment')
             if relationship == 'encapsulation':
-                self._handle_component_ref(group_element, None)
+                elf._handle_component_ref(group_element, None)
 
-    def _handle_component_ref(self, parent_tag, parent_component):
+    def _handle_component_ref(elf, parent_tag, parent_component):
         # we're going to process all the siblings at the end
         siblings = []
 
@@ -291,20 +291,20 @@ class Parser(object):
             # if we have a parent component for this child component (i.e. not top-level anonymous)
             if parent_component:
                 # add the relationship in the component
-                self.components[parent_component].add_encapsulated(child_component)
-                self.components[child_component].set_parent(parent_component)
+                elf.components[parent_component].add_encapsulated(child_component)
+                elf.components[child_component].set_parent(parent_component)
 
             # descend into this <component_ref> tag to handle any children
-            self._handle_component_ref(component_ref_element, child_component)
+            elf._handle_component_ref(component_ref_element, child_component)
 
         # if there are siblings in this non-anonymous group
         if parent_component and len(siblings) > 1:
             # register each of the siblings with each other
             for component_a, component_b in itertools.product(siblings, siblings):
                 if component_a != component_b:
-                    self.components[component_a].add_sibling(component_b)
+                    elf.components[component_a].add_sibling(component_b)
 
-    def _add_connection(self, model):
+    def _add_connection(elf, model):
         """
         :param model: an etree.Element
         """
@@ -325,8 +325,8 @@ class Parser(object):
             for child in connection[1:]:
                 assert child.tag == Parser.with_ns(XmlNs.CELLML, 'map_variables')
                 connect_from_to.append(
-                    self._determine_connection_direction(comp_1, child.attrib.get('variable_1'),
-                                                         comp_2, child.attrib.get('variable_2'))
+                    elf._determine_connection_direction(comp_1, child.attrib.get('variable_1'),
+                                                        comp_2, child.attrib.get('variable_2'))
                 )
 
         # we add the connection to the model by first connecting
@@ -345,7 +345,7 @@ class Parser(object):
 
             # if we did not successfully connect this variable (because, e.g., we don't know the
             # source of *this* source)
-            if not self.model.connect_variables(*connection):
+            if not elf.model.connect_variables(*connection):
                 # add it back to the list
                 connections_to_process.append(connection)
                 unchanged_loop_count += 1
@@ -355,7 +355,7 @@ class Parser(object):
             if unchanged_loop_count > len(connections_to_process):
                 raise ValueError('Unable to add connections to the model')
 
-    def _determine_connection_direction(self, comp_1, var_1, comp_2, var_2):
+    def _determine_connection_direction(elf, comp_1, var_1, comp_2, var_2):
         """Takes a CellML connection and attempts to resolve the connect by assigning the target
         variable to the assigned source variable
 
@@ -375,14 +375,14 @@ class Parser(object):
             of an interface.
         """
         def _are_siblings(comp_a, comp_b):
-            return self.components[comp_a].parent == self.components[comp_b].parent
+            return elf.components[comp_a].parent == elf.components[comp_b].parent
 
         def _parent_of(parent_name, child_name):
-            return parent_name == self.components[child_name].parent
+            return parent_name == elf.components[child_name].parent
 
         # get the variable information from the model about each end of the connection
-        variable_1 = self.model.get_symbol_by_name(self._get_variable_name(comp_1, var_1))
-        variable_2 = self.model.get_symbol_by_name(self._get_variable_name(comp_2, var_2))
+        variable_1 = elf.model.get_symbol_by_name(elf._get_variable_name(comp_1, var_1))
+        variable_2 = elf.model.get_symbol_by_name(elf._get_variable_name(comp_2, var_2))
 
         # if the components are siblings (either same parent or top-level)
         if _are_siblings(comp_1, comp_2):

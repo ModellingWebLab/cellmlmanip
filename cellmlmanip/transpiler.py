@@ -21,7 +21,7 @@ class Transpiler(object):
         Must have signature ``f(value, unit) -> sympy.Basic``.
     """
 
-    def __init__(self, symbol_generator=None, number_generator=None):
+    def __init__(elf, symbol_generator=None, number_generator=None):
 
         # Create simple lambdas for symbol and number generators
         if symbol_generator is None:
@@ -30,43 +30,43 @@ class Transpiler(object):
             number_generator = lambda x, y: sympy.Float(x)      # noqa: E731
 
         # Store symbol and number generators
-        self.symbol_generator = symbol_generator
-        self.number_generator = number_generator
+        elf.symbol_generator = symbol_generator
+        elf.number_generator = number_generator
 
         # Mapping MathML tag element names (keys) to appropriate handler for SymPy output (values)
         # These tags require explicit handling because they have children or context etc.
-        self.handlers = {
-            'apply': self._apply_handler,
-            'bvar': self._bvar_handler,
-            'ci': self._ci_handler,
-            'cn': self._cn_handler,
-            'degree': self._degree_handler,
-            'diff': self._diff_handler,
-            'divide': self._divide_handler,
-            'log': self._log_handler,
-            'logbase': self._logbase_handler,
-            'math': self._math_handler,
-            'minus': self._minus_handler,
-            'otherwise': self._otherwise_handler,
-            'piece': self._piece_handler,
-            'piecewise': self._piecewise_handler,
-            'power': self._power_handler,
-            'root': self._root_handler
+        elf.handlers = {
+            'apply': elf._apply_handler,
+            'bvar': elf._bvar_handler,
+            'ci': elf._ci_handler,
+            'cn': elf._cn_handler,
+            'degree': elf._degree_handler,
+            'diff': elf._diff_handler,
+            'divide': elf._divide_handler,
+            'log': elf._log_handler,
+            'logbase': elf._logbase_handler,
+            'math': elf._math_handler,
+            'minus': elf._minus_handler,
+            'otherwise': elf._otherwise_handler,
+            'piece': elf._piece_handler,
+            'piecewise': elf._piecewise_handler,
+            'power': elf._power_handler,
+            'root': elf._root_handler
         }
 
         # Add tags that can be handled by simple_operator_handler
         for tag_name in SIMPLE_MATHML_TO_SYMPY_NAMES:
-            self.handlers[tag_name] = self._simple_operator_handler
+            elf.handlers[tag_name] = elf._simple_operator_handler
 
-    def parse_string(self, xml_string):
+    def parse_string(elf, xml_string):
         """
         Reads MathML content from a string and returns equivalent SymPy expressions.
         :return: A list of SymPy expressions.
         """
         dom = minidom.parseString(xml_string)
-        return self.parse_dom(dom.childNodes[0])
+        return elf.parse_dom(dom.childNodes[0])
 
-    def parse_dom(self, math_dom_element):
+    def parse_dom(elf, math_dom_element):
         """Accepts a <math> node of DOM structure and returns equivalent SymPy expressions.
 
         Note: math_dom_element must point the <math> XmlNode, not the root XmlDocument
@@ -74,9 +74,9 @@ class Transpiler(object):
         :param math_dom_element: <math> XmlNode object of a MathML DOM structure
         :return: A list of SymPy expressions.
         """
-        return self.transpile(math_dom_element)
+        return elf.transpile(math_dom_element)
 
-    def transpile(self, xml_node):
+    def transpile(elf, xml_node):
         """Descends the given MathML element node and calls the corresponding handler for child
         elements and returns the SymPy expression of node.
         :param xml_node: a DOM element of parsed MathML
@@ -97,8 +97,8 @@ class Transpiler(object):
             elif child_node.nodeType == child_node.ELEMENT_NODE:
                 # Call the appropriate MathML handler function for this tag
                 tag_name = child_node.tagName
-                if tag_name in self.handlers:
-                    sympy_expressions.append(self.handlers[tag_name](child_node))
+                if tag_name in elf.handlers:
+                    sympy_expressions.append(elf.handlers[tag_name](child_node))
                     logger.debug('Transpiled node %s ⟶ %s',
                                  child_node.toxml(), sympy_expressions[-1])
                 else:
@@ -111,22 +111,22 @@ class Transpiler(object):
 
     # MATHML ELEMENT HANDLERS ######################################################################
 
-    def _math_handler(self, node):
+    def _math_handler(elf, node):
         """Descend XML node <math>...</math>
         """
-        result = self.transpile(node)
+        result = elf.transpile(node)
         return result
 
     # TOKEN ELEMENTS ###############################################################################
 
-    def _ci_handler(self, node):
+    def _ci_handler(elf, node):
         """MathML:  https://www.w3.org/TR/MathML2/chapter4.html#contm.ci
         SymPy: http://docs.sympy.org/latest/modules/core.html#id17
         """
         identifier = node.childNodes[0].data.strip()
-        return self.symbol_generator(identifier)
+        return elf.symbol_generator(identifier)
 
-    def _cn_handler(self, node):
+    def _cn_handler(elf, node):
         """MathML: https://www.w3.org/TR/MathML2/chapter4.html#contm.cn
         SymPy: http://docs.sympy.org/latest/modules/core.html#number
         """
@@ -159,14 +159,14 @@ class Transpiler(object):
         if units is not None:
             units = units.value
 
-        return self.number_generator(number, units)
+        return elf.number_generator(number, units)
 
     # BASIC CONTENT ELEMENTS #######################################################################
 
-    def _apply_handler(self, node):
+    def _apply_handler(elf, node):
         """https://www.w3.org/TR/MathML2/chapter4.html#contm.apply
         """
-        result = self.transpile(node)
+        result = elf.transpile(node)
 
         logger.debug('Result of <apply>:\n\t%s\t⟶\t%s', node.toxml(), result)
 
@@ -176,37 +176,37 @@ class Transpiler(object):
             expression = result[0]
         return expression
 
-    def _piecewise_handler(self, node):
+    def _piecewise_handler(elf, node):
         """MathML: https://www.w3.org/TR/MathML2/chapter4.html#contm.piecewise
         SymPy: http://docs.sympy.org/latest/modules/functions/elementary.html#piecewise
 
         constructor, zero or more <piece>, zero or one <otherwise>
         """
-        result = self.transpile(node)
+        result = elf.transpile(node)
         return sympy.Piecewise(*result)
 
-    def _piece_handler(self, node):
+    def _piece_handler(elf, node):
         """MathML: https://www.w3.org/TR/MathML2/chapter4.html#contm.piecewise
         Returns a 2-tuple defining an expression and condition
         <piece> element contains exactly two children
         """
-        result = self.transpile(node)
+        result = elf.transpile(node)
         if len(result) != 2:
             raise ValueError('Need exactly 2 children for <piece>')
         return result[0], result[1]
 
-    def _otherwise_handler(self, node):
+    def _otherwise_handler(elf, node):
         """MathML: https://www.w3.org/TR/MathML2/chapter4.html#contm.piecewise
         Returns a 2-tuple defining an expression and condition
         """
-        result = self.transpile(node)
+        result = elf.transpile(node)
         if len(result) != 1:
             raise ValueError('More than 1 child for <otherwise>')
         return result[0], True
 
     # ARITHMETIC, ALGEBRA AND LOGIC ################################################################
 
-    def _minus_handler(self, node):
+    def _minus_handler(elf, node):
         """https://www.w3.org/TR/MathML2/chapter4.html#contm.minus
         unary arithmetic operator OR binary arithmetic operator
 
@@ -225,7 +225,7 @@ class Transpiler(object):
             return left_operand - right_operand
         return _wrapped_minus
 
-    def _divide_handler(self, node):
+    def _divide_handler(elf, node):
         """https://www.w3.org/TR/MathML2/chapter4.html#contm.divide
         binary arithmetic operator
         There is no class in SymPy for division. Rather, division is represented by a power of -1.
@@ -236,7 +236,7 @@ class Transpiler(object):
             return dividend / divisor
         return _wrapped_divide
 
-    def _power_handler(self, node):
+    def _power_handler(elf, node):
         """https://www.w3.org/TR/MathML2/chapter4.html#contm.power
         binary arithmetic operator
         equivalent to sympy.Pow(a, b)
@@ -245,7 +245,7 @@ class Transpiler(object):
             return base ** exponent
         return _wrapped_power
 
-    def _root_handler(self, node):
+    def _root_handler(elf, node):
         """https://www.w3.org/TR/MathML2/chapter4.html#contm.root
         operator taking qualifiers
 
@@ -262,12 +262,12 @@ class Transpiler(object):
             return sympy.root(second_argument, first_argument)
         return _wrapped_root
 
-    def _degree_handler(self, node):
+    def _degree_handler(elf, node):
         """https://www.w3.org/TR/MathML2/chapter4.html#contm.degree
         Meaning of <degree> depends on context! We implement it for order of <bvar> in <diff> and
         the kind of root in <root>
         """
-        result = self.transpile(node)
+        result = elf.transpile(node)
         if len(result) != 1:
             raise ValueError('Expected single value in <degree> tag.'
                              'Got: ' + node.toxml())
@@ -275,7 +275,7 @@ class Transpiler(object):
 
     # CALCULUS AND VECTOR CALCULUS #################################################################
 
-    def _diff_handler(self, node):
+    def _diff_handler(elf, node):
         """https://www.w3.org/TR/MathML2/chapter4.html#contm.diff
         operator taking qualifiers
         """
@@ -294,7 +294,7 @@ class Transpiler(object):
 
         return _wrapped_diff
 
-    def _bvar_handler(self, node):
+    def _bvar_handler(elf, node):
         """https://www.w3.org/TR/MathML2/chapter4.html#contm.bvar
         NASTY: bvar element depends on the context it is being used
         In a derivative, it indicates the variable with respect to which a function is being
@@ -302,7 +302,7 @@ class Transpiler(object):
 
         The bound variable <bvar> can also specify degree. In this case, we'll have two elements
         """
-        result = self.transpile(node)
+        result = elf.transpile(node)
         if len(result) == 1:
             # Bound variable without specifying degree
             return result[0]
@@ -313,7 +313,7 @@ class Transpiler(object):
 
     # ELEMENTARY CLASSICAL FUNCTIONS ###############################################################
 
-    def _log_handler(self, node):
+    def _log_handler(elf, node):
         """https://www.w3.org/TR/MathML2/chapter4.html#contm.log
         operator taking qualifiers or a unary calculus operator
         """
@@ -326,7 +326,7 @@ class Transpiler(object):
             return sympy.log(second_element, first_element)
         return _wrapped_log
 
-    def _logbase_handler(self, node):
+    def _logbase_handler(elf, node):
         """Qualifier for <log>
 
         The log function accepts only the logbase schema. If present, the logbase schema denotes the
@@ -337,9 +337,9 @@ class Transpiler(object):
         Should be the first element following log, i.e. the second child of the containing apply
         element.
         """
-        return self.transpile(node)[0]
+        return elf.transpile(node)[0]
 
-    def _get_nary_relation_callback(self, sympy_relation):
+    def _get_nary_relation_callback(elf, sympy_relation):
         """Wraps the Sympy binary relation to handle n-ary MathML relations
 
         :param sympy_relation: handle for binary Sympy relation (Eq, Le, Lt, Ge, Gt)
@@ -356,7 +356,7 @@ class Transpiler(object):
             return sympy_relation(*expressions)
         return _wrapper_relational
 
-    def _simple_operator_handler(self, node):
+    def _simple_operator_handler(elf, node):
         """This function handles simple MathML <tagName> to sympy.Class operators, where no unique
         handling of tag children etc. is required.
         """
@@ -366,7 +366,7 @@ class Transpiler(object):
 
         # Some MathML relations allow chaining but Sympy relations are binary operations
         if tag_name in MATHML_NARY_RELATIONS:
-            return self._get_nary_relation_callback(handler)
+            return elf._get_nary_relation_callback(handler)
 
         return handler
 
