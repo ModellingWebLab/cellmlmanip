@@ -365,7 +365,12 @@ class TestModelFunctions():
         model = local_hh_model
         # Get model, assert that V is a state variable
         v = model.get_symbol_by_ontology_term(shared.OXMETA, 'membrane_voltage')
-        assert v.type == 'state'
+        # the issue here is that retrieving the variable uses the internal structure
+        # which does not give the variable a type
+        # to check type you need to use the graph
+        # assert v.type == 'state'
+        state_var = model.get_state_symbols()
+        assert v in state_var
 
         # Now clamp it to -80mV
         t = model.get_symbol_by_ontology_term(shared.OXMETA, 'time')
@@ -376,7 +381,8 @@ class TestModelFunctions():
 
         # Check that V is no longer a state
         v = model.get_symbol_by_ontology_term(shared.OXMETA, 'membrane_voltage')
-        assert v.type != 'state'
+        state_var = model.get_state_symbols()
+        assert v not in state_var
 
         # Now make V a state again
         dvdt_units = v.units / t.units
@@ -386,7 +392,8 @@ class TestModelFunctions():
 
         # Check that V is a state again
         v = model.get_symbol_by_ontology_term(shared.OXMETA, 'membrane_voltage')
-        assert v.type == 'state'
+        state_var = model.get_state_symbols()
+        assert v in state_var
 
         # Test removing non-existing equation
         equation = sp.Eq(sp.Derivative(v, t), model.add_number(5, dvdt_units))
