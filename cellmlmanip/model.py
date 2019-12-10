@@ -632,12 +632,12 @@ class Model(object):
               in [1/pA]
 
         :param name: name of variable whose units are to be changed
-        :param units: unit to convert to
+        :param units: A `pint` units representation
 
         """
-        # TODO what if units not in model/ how to tell user
-        if not self.units._is_unit_defined(units):
-            return
+        # check units is of type Unit
+        assert isinstance(units, self.units.ureg.Unit)
+
         # TODO should I throw the exception or user seamlessly gets a non changed model
         original_variable = None
         try:
@@ -654,9 +654,7 @@ class Model(object):
             return
 
         # conversion_factor for old units to new units
-        to_quantity = self.units.ureg(units)
-#        from_units = self.units.ureg(original_units)
-        cf = self.units.get_conversion_factor(original_units, quantity=to_quantity)
+        cf = self.units.get_conversion_factor(from_unit=original_units, to_unit=units)
 
         # 1. get unique name for new variable
         new_name = name + 'converted'
@@ -666,7 +664,7 @@ class Model(object):
         # 2. if original has initial_value calculate new initial value
         new_value = None
         if original_initial_value:
-            new_value = original_initial_value / cf
+            new_value = original_initial_value * cf
 
         # 3. copy cmeta_id from original and remove from original
         original_variable.cmeta_id = ''

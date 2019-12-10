@@ -1,6 +1,7 @@
 import pytest
 
 from cellmlmanip import units
+from cellmlmanip.units import UnitStore
 from . import shared
 
 
@@ -107,23 +108,29 @@ class TestUnitConversion:
             assert symbol_t.units == 'ms'
             assert len(basic_model.equations) == 1
             return True
+        mV_unit = basic_model.get_units('mV')
+        volt_unit = basic_model.get_units('volt')
 
         assert test_original_state(basic_model)
         # test no change in units
-        basic_model.add_input('env_ode$sv1', 'mV')
+        basic_model.add_input('env_ode$sv1', mV_unit)
         assert test_original_state(basic_model)
 
-        # non-existent name
-        basic_model.add_input('env$sv1', 'V')
-
         # non-existent unit
-        basic_model.add_input('env_ode$sv1', 'V')
+        # TODO what if unit not in model
+        unit_attributes = [{'prefix': -3, 'units': 'metre'},
+                           {'prefix': 'milli', 'exponent': -1, 'units': 'second'},
+                           {'multiplier': 2, 'units': 'kilograms'}
+                           ]
+        qs = UnitStore(model=None)
+        qs.add_custom_unit('kg_ms_m', unit_attributes)
+        # unit_not_in_model = qs.get_units('kg_ms_m')
+        # basic_model.add_input('env$sv1', unit_not_in_model)
 
-        basic_model.add_input('env_ode$sv1', 'volt')
+        basic_model.add_input('env_ode$sv1', volt_unit)
         assert len(basic_model.variables()) == 4
-        # this needs to work without graph
-        # symbol_a = basic_model.get_symbol_by_cmeta_id('sv11')
+        symbol_a = basic_model.get_symbol_by_cmeta_id('sv11')
         symbol_t = basic_model.get_symbol_by_cmeta_id('time')
-        # assert basic_model.get_initial_value(symbol_a) == 0.002
-        # assert symbol_a.units == 'volt'
+        assert basic_model.get_initial_value(symbol_a) == 0.002
+        assert symbol_a.units == 'volt'
         assert symbol_t.units == 'ms'
