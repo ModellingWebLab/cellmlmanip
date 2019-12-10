@@ -315,18 +315,14 @@ class Model(object):
 
     def get_symbol_by_cmeta_id(self, cmeta_id):
         """
-        Searches the given graph and returns the symbol for the variable with the given cmeta id.
+        Searches the model and returns the symbol for the variable with the given cmeta id.
 
         To get symbols from e.g. an oxmeta ontology term, use :meth:`get_symbol_by_ontology_term()`.
         """
 
-        # for v in self.graph:
-        #     if self.graph.nodes[v].get('cmeta_id', '') == cmeta_id:
-        #         return v
-        # TODO this does not work as the VariableDummy type is not set
-        for v in self._name_to_symbol:
-            if self._name_to_symbol[v].cmeta_id == cmeta_id:
-                return self._name_to_symbol[v]
+        for var in self._name_to_symbol.values():
+            if var.cmeta_id == cmeta_id:
+                return var
 
         raise KeyError('No variable with cmeta id "%s" found.' % str(cmeta_id))
 
