@@ -3,7 +3,7 @@ import os
 import pytest
 import sympy as sp
 
-from cellmlmanip import parser
+from cellmlmanip import parser, units
 from cellmlmanip.model import Model, VariableDummy
 
 from . import shared
@@ -160,7 +160,7 @@ class TestModelFunctions():
         """
 
         m = Model('simplification')
-        u = 'dimensionless'
+        u = m.get_units('dimensionless')
         t = m.add_variable('t', u)
         y1 = m.add_variable('y1', u, initial_value=10)
         y2 = m.add_variable('y2', u, initial_value=20)
@@ -365,35 +365,35 @@ class TestModelFunctions():
         model = local_hh_model
         # Get model, assert that V is a state variable
         v = model.get_symbol_by_ontology_term(shared.OXMETA, 'membrane_voltage')
-        assert v.type == 'state'
+        # the issue here is that retrieving the variable uses the internal structure
+        # which does not give the variable a type
+        # to check type you need to use the graph
+        # assert v.type == 'state'
+        state_var = model.get_state_symbols()
+        assert v in state_var
 
         # Now clamp it to -80mV
         t = model.get_symbol_by_ontology_term(shared.OXMETA, 'time')
         equation = model.graph.nodes[sp.Derivative(v, t)]['equation']
         model.remove_equation(equation)
-        equation = sp.Eq(v, model.add_number(-80, str(v.units)))
+        equation = sp.Eq(v, model.add_number(-80, v.units))
         model.add_equation(equation)
 
         # Check that V is no longer a state
         v = model.get_symbol_by_ontology_term(shared.OXMETA, 'membrane_voltage')
-        assert v.type != 'state'
-
-        # TODO: Get dvdt_unit in a more sensible way
-        # See: https://github.com/ModellingWebLab/cellmlmanip/issues/133
+        state_var = model.get_state_symbols()
+        assert v not in state_var
 
         # Now make V a state again
-        dvdt_units = 'unlikely_unit_name'
-        model.add_unit(dvdt_units, [
-            {'units': str(v.units)},
-            {'units': str(t.units), 'exponent': -1},
-        ])
+        dvdt_units = v.units / t.units
         model.remove_equation(equation)
         equation = sp.Eq(sp.Derivative(v, t), model.add_number(0, dvdt_units))
         model.add_equation(equation)
 
         # Check that V is a state again
         v = model.get_symbol_by_ontology_term(shared.OXMETA, 'membrane_voltage')
-        assert v.type == 'state'
+        state_var = model.get_state_symbols()
+        assert v in state_var
 
         # Test removing non-existing equation
         equation = sp.Eq(sp.Derivative(v, t), model.add_number(5, dvdt_units))
@@ -441,6 +441,51 @@ class TestModelFunctions():
         assert len(model.variables()) == 6
         with pytest.raises(ValueError, match='already exists'):
             model.add_variable(name='varvar1', units=unit)
+
+    ###################################################################
+    # Unit related functionality
+
+    def test_get_units(self):
+        """ Tests Model.get_units(). """
+
+        # Get predefined unit
+        m = Model('test')
+        m.get_units('volt')
+
+        # Non-existent unit
+        with pytest.raises(KeyError, match='Cannot find unit'):
+            m.get_units('towel')
+
+    def test_units(self, simple_units_model):
+        """ Tests units read and calculated from a model. """
+        symbol_a = simple_units_model.get_symbol_by_cmeta_id("a")
+        equation = simple_units_model.get_equations_for([symbol_a], strip_units=False)
+        assert simple_units_model.units.summarise_units(equation[0].lhs) == 'ms'
+        assert simple_units_model.units.summarise_units(equation[0].rhs) == 'ms'
+
+        symbol_b = simple_units_model.get_symbol_by_cmeta_id("b")
+        equation = simple_units_model.get_equations_for([symbol_b])
+        assert simple_units_model.units.summarise_units(equation[1].lhs) == 'per_ms'
+        assert simple_units_model.units.summarise_units(equation[1].rhs) == '1 / ms'
+        assert simple_units_model.units.is_unit_equal(simple_units_model.units.summarise_units(equation[1].lhs),
+                                                      simple_units_model.units.summarise_units(equation[1].rhs))
+
+    def test_bad_units(self, bad_units_model):
+        """ Tests units read and calculated from an inconsistent model. """
+        symbol_a = bad_units_model.get_symbol_by_cmeta_id("a")
+        symbol_b = bad_units_model.get_symbol_by_cmeta_id("b")
+        equation = bad_units_model.get_equations_for([symbol_b], strip_units=False)
+        assert len(equation) == 2
+        assert equation[0].lhs == symbol_a
+        assert bad_units_model.units.summarise_units(equation[0].lhs) == 'ms'
+        with pytest.raises(units.UnitError):
+            # cellml file states a (ms) = 1 (ms) + 1 (second)
+            bad_units_model.units.summarise_units(equation[0].rhs)
+
+        assert equation[1].lhs == symbol_b
+        with pytest.raises(units.UnitError):
+            # cellml file states b (per_ms) = power(a (ms), 1 (second))
+            bad_units_model.units.summarise_units(equation[1].rhs)
 
     ###################################################################
     # this section is for other functions

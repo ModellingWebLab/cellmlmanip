@@ -223,6 +223,9 @@ class Parser(object):
             attributes['name'] = Parser._get_variable_name(component_element.get('name'),
                                                            attributes['name'])
 
+            # look up units
+            attributes['units'] = self.model.get_units(attributes['units'])
+
             # model.add_variable() returns sympy dummy created for this variable - keep it
             variable_lookup_symbol[attributes['name']] = self.model.add_variable(**attributes)
 
@@ -253,7 +256,7 @@ class Parser(object):
         # reuse transpiler so dummy symbols are kept across <math> elements
         transpiler = Transpiler(
             symbol_generator=symbol_generator,
-            number_generator=lambda x, y: self.model.add_number(x, y),
+            number_generator=lambda x, y: self.model.add_number(x, self.model.get_units(y)),
         )
 
         # for each math element
