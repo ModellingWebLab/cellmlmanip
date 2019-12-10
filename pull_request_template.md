@@ -16,7 +16,7 @@
 - [ ] I have updated all documentation necessary.
 - [ ] I have checked spelling in (new) comments.
 
-##Testing
-- [X] Testing is done automaticly and codecov shows test coverage
-- [ ] This cannot be tested automatically <!-- describe how it has been tested)-->
+## Testing
+- [X] Testing is done automatically and codecov shows test coverage
+- [ ] This cannot be tested automatically <!-- describe how it has been tested -->
 
