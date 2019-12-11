@@ -3,6 +3,7 @@ model information in the cellmlmanip.Model class. MathML equations are translate
 handled by RDFLib.
 """
 import itertools
+import os
 from collections import OrderedDict, deque
 from enum import Enum
 
@@ -78,7 +79,15 @@ class Parser(object):
 
         :return: a :class:`Model` holding CellML model definition, reading for manipulation.
         """
-        tree = etree.parse(self.filepath)
+
+        # Create lxml parser
+        parser = etree.XMLParser(no_network=True)
+
+        # Parse, get ElementTree
+        tree = etree.parse(self.filepath, parser)
+
+        # Validate CellML syntax
+        self._validate(parser, tree)
 
         # <model> root node - initialise the model object
         model_xml = tree.getroot()
@@ -406,3 +415,21 @@ class Parser(object):
 
         raise ValueError('Cannot determine the source & target for connection (%s, %s) - (%s, %s)' %
                          (comp_1, var_1, comp_2, var_2))
+
+    def _validate(self, parser, tree):
+        """
+        Validates the given lxml ``tree`` against the CellML 1.0 RELAX NG schema.
+
+        :param parser: An `lxml.etree.XMLParser`
+        :param tree: An `lxml.etree.ElementTree` made with the given parser.
+        """
+
+        # Create RelaxNG object
+        path = os.path.join(os.path.dirname(__file__), 'data', 'cellml_1_0.rng')
+        rnc = etree.RelaxNG(etree.parse(path, parser))
+
+        # Validate
+        if not rnc.validate(tree):
+            msg = '. '.join([str(x) for x in rnc.error_log])
+            raise ValueError('Invalid or unsupported CellML file. ' + msg)
+

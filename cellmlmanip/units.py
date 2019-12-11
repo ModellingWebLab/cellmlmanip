@@ -167,7 +167,7 @@ class UnitStore(object):
         """Initialise a UnitStore instance; wraps the unit registry and handles addition of new
         unit definitions"""
         cellml_unit_definition = os.path.join(
-            os.path.dirname(__file__), 'cellml_units.txt')
+            os.path.dirname(__file__), 'data', 'cellml_units.txt')
         self.ureg = pint.UnitRegistry(cellml_unit_definition)
 
         # units that are defined and added to the unit registry, on top of default cellml units

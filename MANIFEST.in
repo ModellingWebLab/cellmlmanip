@@ -1,1 +1,1 @@
-include cellmlmanip/*.txt
+include cellmlmanip/data/*
