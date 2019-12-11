@@ -252,3 +252,11 @@ class TestParser(object):
         with pytest.raises(ValueError, match='Reactions are not supported'):
             p.parse()
 
+    def test_validation(self):
+        """ Tests that RNG validation can pick stuff up. """
+
+        path = os.path.join(os.path.dirname(__file__), 'cellml_files', 'err_extra_content.cellml')
+        p = parser.Parser(path)
+        with pytest.raises(ValueError, match='Element model has extra content'):
+            p.parse()
+

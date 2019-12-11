@@ -17,7 +17,6 @@ setup(
     url='https://github.com/ModellingWebLab/cellmlmanip',
     license=license_,
     packages=find_packages(exclude=('tests', 'docs')),
-    package_data={'cellmlmanip': ['cellml_units.txt']},
     include_package_data=True,
     python_requires='>=3.5',
     install_requires=[
