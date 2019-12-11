@@ -1,7 +1,6 @@
 import pytest
 
 from cellmlmanip import units
-from cellmlmanip.units import UnitStore
 from . import shared
 
 
@@ -107,7 +106,9 @@ class TestUnitConversion:
             assert symbol_a.units == 'mV'
             assert symbol_t.units == 'ms'
             assert len(basic_model.equations) == 1
+            assert str(basic_model.equations[0]) == 'Eq(Derivative(_env_ode$sv1, _environment$time), _1.0)'
             return True
+
         mV_unit = basic_model.get_units('mV')
         volt_unit = basic_model.get_units('volt')
 
@@ -118,19 +119,22 @@ class TestUnitConversion:
 
         # non-existent unit
         # TODO what if unit not in model
-        unit_attributes = [{'prefix': -3, 'units': 'metre'},
-                           {'prefix': 'milli', 'exponent': -1, 'units': 'second'},
-                           {'multiplier': 2, 'units': 'kilograms'}
-                           ]
-        qs = UnitStore(model=None)
-        qs.add_custom_unit('kg_ms_m', unit_attributes)
-        # unit_not_in_model = qs.get_units('kg_ms_m')
-        # basic_model.add_input('env$sv1', unit_not_in_model)
 
+        # change mV to V
         basic_model.add_input('env_ode$sv1', volt_unit)
-        assert len(basic_model.variables()) == 4
+        assert len(basic_model.variables()) == 5
         symbol_a = basic_model.get_symbol_by_cmeta_id('sv11')
-        symbol_t = basic_model.get_symbol_by_cmeta_id('time')
         assert basic_model.get_initial_value(symbol_a) == 0.002
         assert symbol_a.units == 'volt'
+        assert symbol_a.name == 'env_ode$sv1_converted'
+        symbol_t = basic_model.get_symbol_by_cmeta_id('time')
         assert symbol_t.units == 'ms'
+        symbol_orig = basic_model.get_symbol_by_name('env_ode$sv1')
+        assert symbol_orig.units == 'mV'
+        symbol_derv = basic_model.get_symbol_by_name('env_ode$sv1_orig_deriv')
+        assert symbol_derv.units == 'mV / ms'
+        assert len(basic_model.equations) == 3
+        assert str(basic_model.equations[0]) == 'Eq(_env_ode$sv1, 1000.0*_env_ode$sv1_converted)'
+        assert str(basic_model.equations[1]) == 'Eq(_env_ode$sv1_orig_deriv, _1.0)'
+        assert str(basic_model.equations[2]) == 'Eq(Derivative(_env_ode$sv1_converted, _environment$time), ' \
+                                                '0.001*_env_ode$sv1_orig_deriv)'

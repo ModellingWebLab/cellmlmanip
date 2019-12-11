@@ -7,8 +7,7 @@ import rdflib
 import sympy
 
 from cellmlmanip.rdf import create_rdf_node
-from cellmlmanip.units import UnitStore
-
+from cellmlmanip.units import UnitStore, UnitCalculator
 
 logger = logging.getLogger(__name__)
 
@@ -639,6 +638,7 @@ class Model(object):
         assert isinstance(units, self.units.ureg.Unit)
 
         # TODO should I throw the exception or user seamlessly gets a non changed model
+        # if unit not in model
         original_variable = None
         try:
             original_variable = self.get_symbol_by_name(name)
@@ -653,11 +653,13 @@ class Model(object):
         if original_units == units:
             return
 
+        state_symbols = self.get_state_symbols()
+        unit_calculator = UnitCalculator(self.units.ureg)
         # conversion_factor for old units to new units
         cf = self.units.get_conversion_factor(from_unit=original_units, to_unit=units)
 
         # 1. get unique name for new variable
-        new_name = name + 'converted'
+        new_name = name + '_converted'
         while new_name in self.variables():
             new_name = new_name + '_a'
 
@@ -668,10 +670,41 @@ class Model(object):
 
         # 3. copy cmeta_id from original and remove from original
         original_variable.cmeta_id = ''
-        self.add_variable(name=new_name,
-                          units=units,
-                          initial_value=new_value,
-                          cmeta_id=original_cmeta_id)
+        new_variable = self.add_variable(name=new_name,
+                                         units=units,
+                                         initial_value=new_value,
+                                         cmeta_id=original_cmeta_id)
+
+        # 4. add an equation for original variable
+        expression = sympy.Eq(original_variable, new_variable / cf)
+        self.add_equation(expression)
+
+        # if state variable
+        if original_variable in state_symbols:
+            # find the derivative equation for this variable
+            eqn = None
+            for equation in self.equations:
+                if equation.args[0].is_Derivative:
+                    if equation.args[0].args[0] == original_variable:
+                        eqn = equation
+            # get deriv symbol
+            wrt_variable = eqn.args[0].args[1]
+            # create new variable for rhs
+            deriv_name = name + '_orig_deriv'
+            while deriv_name in self.variables():
+                deriv_name = deriv_name + '_a'
+            deriv_units = unit_calculator.traverse(eqn.args[0])
+            new_deriv_variable = self.add_variable(name=deriv_name,
+                                                   units=deriv_units.units)
+            # add new equation for new deriv variable and remove existing one
+            expression = sympy.Eq(new_deriv_variable, eqn.args[1])
+            self.add_equation(expression)
+            self.remove_equation(eqn)
+            # TODO replace any instance of deriv on rhs of any eqn with new deriv var
+            # new derivative
+            expression = sympy.Eq(sympy.Derivative(new_variable, wrt_variable), new_deriv_variable * cf)
+            self.add_equation(expression)
+
         self._invalidate_cache()
 
 
