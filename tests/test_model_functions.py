@@ -70,10 +70,10 @@ class TestModelFunctions():
 
         derived_quantities = simple_ode_model.get_derived_quantities()
         assert str(sorted(derived_quantities, key=str)) == \
-        '[_circle_sibling$local_complex_maths, _circle_x_sibling$x2, _circle_y_implementation$rhs, '\
-        '_deriv_on_rhs$sv1_rate, _deriv_on_rhs1a$sv1_rate, _deriv_on_rhs1b$sv1_rate, _deriv_on_rhs2a$sv1_rate, '\
-        '_deriv_on_rhs2b$sv1_rate, _derived_from_state_var$dbl_sv1, _single_ode_rhs_computed_var$a, '\
-        '_time_units_conversion1$time, _time_units_conversion2$time]'
+            '[_circle_sibling$local_complex_maths, _circle_x_sibling$x2, _circle_y_implementation$rhs, '\
+            '_deriv_on_rhs$sv1_rate, _deriv_on_rhs1a$sv1_rate, _deriv_on_rhs1b$sv1_rate, _deriv_on_rhs2a$sv1_rate, '\
+            '_deriv_on_rhs2b$sv1_rate, _derived_from_state_var$dbl_sv1, _single_ode_rhs_computed_var$a, '\
+            '_time_units_conversion1$time, _time_units_conversion2$time]'
 
     def test_get_state_symbols(self, basic_model):
         """ Tests Model.get_state_symbols() works correctly. """
