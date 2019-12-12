@@ -85,10 +85,11 @@ class TestModelFunctions():
     def test_get_derived_quantities3(self):
         """ Tests Model.get_state_symbols() works correctly. """
         model = shared.load_model('matsuoka_model_2003')
+        print(model.get_derived_quantities(namespace_uri=shared.OXMETA))
         derived_quantities = \
-            [v for v in model.get_derived_quantities(namespace_uri=shared.OXMETA)
+            [(v, model.get_ontology_terms_by_symbol(v, namespace_uri=shared.OXMETA)[-1])  for v in model.get_derived_quantities(namespace_uri=shared.OXMETA)
              if not model.get_ontology_terms_by_symbol(v, namespace_uri=shared.OXMETA)[-1]
-             .startswith('membrane_stimulus_current_')]
+             .startswith('membrane_stimulus_current')]
         assert derived_quantities == '[_internal_ion_concentrations$Cai]'
 
     def test_get_state_symbols(self, basic_model):
