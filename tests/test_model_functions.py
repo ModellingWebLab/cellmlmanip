@@ -66,15 +66,17 @@ class TestModelFunctions():
         """ Tests Model.get_state_symbols() works correctly. """
 
         derived_quantities = basic_model.get_derived_quantities()
-        assert str(derived_quantities) == '[Derivative(_env_ode$sv1, _environment$time)]'
+        print(derived_quantities)
+        assert len(derived_quantities) == 0
         derived_quantities = basic_model.get_derived_quantities(namespace_uri=shared.OXMETA)
+        print(derived_quantities)
         assert len(derived_quantities) == 0
 
     def test_get_derived_quantities2(self, aslanidi_model):
         """ Tests Model.get_state_symbols() works correctly. """
 
         derived_quantities = aslanidi_model.get_derived_quantities()
-        assert len(derived_quantities) == 107
+        assert len(derived_quantities) == 78
         derived_quantities = aslanidi_model.get_derived_quantities(namespace_uri=shared.OXMETA)
         assert str(derived_quantities) == '[_membrane$i_Stim]'
         derived_quantities = aslanidi_model.get_derived_quantities(namespace_uri='http://example.com#')

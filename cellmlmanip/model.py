@@ -269,14 +269,15 @@ class Model(object):
 
     def get_derived_quantities(self, namespace_uri=None):
         """Returns a list of derived quantities found in the given model graph.
-        A derived quantity is anything is not a state variable, free variable or parameter.
+        A derived quantity is any variable that is not a state variable or parameter/constant.
 
         :param namespace_uri only return variables with ``{namespace_uri}annotation_name`` annotation are returned
             If namespace_uri is not None
         """
         return [v for v, node in self.graph.nodes.items()
-                if node.get('variable_type', '') not in ('state', 'free', 'parameter')
-                if namespace_uri is None or self.has_ontology_annotation(v, namespace_uri)]
+                if not isinstance(v, sympy.Derivative)
+                and node.get('variable_type', '') not in ('state', 'free', 'parameter')
+                and (namespace_uri is None or self.has_ontology_annotation(v, namespace_uri))]
 
     def get_state_symbols(self):
         """Returns a list of state variables found in the given model graph.
