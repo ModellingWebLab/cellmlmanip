@@ -62,35 +62,18 @@ class TestModelFunctions():
     #######################################################################
     # this section contains tests for each get_XXX function on Model
 
-    def test_get_derived_quantities(self, basic_model):
+    def test_get_derived_quantities(self, basic_model, simple_ode_model):
         """ Tests Model.get_state_symbols() works correctly. """
 
         derived_quantities = basic_model.get_derived_quantities()
-        print(derived_quantities)
-        assert len(derived_quantities) == 0
-        derived_quantities = basic_model.get_derived_quantities(namespace_uri=shared.OXMETA)
-        print(derived_quantities)
         assert len(derived_quantities) == 0
 
-    def test_get_derived_quantities2(self, aslanidi_model):
-        """ Tests Model.get_state_symbols() works correctly. """
-
-        derived_quantities = aslanidi_model.get_derived_quantities()
-        assert len(derived_quantities) == 78
-        derived_quantities = aslanidi_model.get_derived_quantities(namespace_uri=shared.OXMETA)
-        assert str(derived_quantities) == '[_membrane$i_Stim]'
-        derived_quantities = aslanidi_model.get_derived_quantities(namespace_uri='http://example.com#')
-        assert len(derived_quantities) == 0
-
-    def test_get_derived_quantities3(self):
-        """ Tests Model.get_state_symbols() works correctly. """
-        model = shared.load_model('matsuoka_model_2003')
-        print(model.get_derived_quantities(namespace_uri=shared.OXMETA))
-        derived_quantities = \
-            [(v, model.get_ontology_terms_by_symbol(v, namespace_uri=shared.OXMETA)[-1])  for v in model.get_derived_quantities(namespace_uri=shared.OXMETA)
-             if not model.get_ontology_terms_by_symbol(v, namespace_uri=shared.OXMETA)[-1]
-             .startswith('membrane_stimulus_current')]
-        assert derived_quantities == '[_internal_ion_concentrations$Cai]'
+        derived_quantities = simple_ode_model.get_derived_quantities()
+        assert str(sorted(derived_quantities, key=str)) == \
+        '[_circle_sibling$local_complex_maths, _circle_x_sibling$x2, _circle_y_implementation$rhs, '\
+        '_deriv_on_rhs$sv1_rate, _deriv_on_rhs1a$sv1_rate, _deriv_on_rhs1b$sv1_rate, _deriv_on_rhs2a$sv1_rate, '\
+        '_deriv_on_rhs2b$sv1_rate, _derived_from_state_var$dbl_sv1, _single_ode_rhs_computed_var$a, '\
+        '_time_units_conversion1$time, _time_units_conversion2$time]'
 
     def test_get_state_symbols(self, basic_model):
         """ Tests Model.get_state_symbols() works correctly. """
