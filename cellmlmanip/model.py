@@ -7,7 +7,7 @@ import rdflib
 import sympy
 
 from cellmlmanip.rdf import create_rdf_node
-from cellmlmanip.units import UnitCalculator, UnitStore
+from cellmlmanip.units import UnitStore, UnitCalculator
 
 logger = logging.getLogger(__name__)
 
@@ -817,4 +817,3 @@ class VariableDummy(sympy.Dummy):
 
     def __str__(self):
         return self.name
-
