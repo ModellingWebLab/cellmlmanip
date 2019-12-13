@@ -648,12 +648,12 @@ class Model(object):
 
         # TODO should I throw the exception or user seamlessly gets a non changed model
         # if unit not in model
-        original_variable = None
-        try:
-            original_variable = self.get_symbol_by_name(name)
-        except KeyError:
-            # name does not exist in model
-            return
+
+        # check variable is in model
+        original_variable = self.get_symbol_by_name(name)
+        if not original_variable:
+            raise KeyError('No variable with name "%s" found.' % name)
+
         original_units = original_variable.units
         original_cmeta_id = original_variable.cmeta_id
         original_initial_value = self.get_initial_value(original_variable)
@@ -663,6 +663,7 @@ class Model(object):
             return
 
         state_symbols = self.get_state_symbols()
+        free_symbols = self.get_free_variable_symbol()
         unit_calculator = UnitCalculator(self.units.ureg)
         # conversion_factor for old units to new units
         cf = self.units.get_conversion_factor(from_unit=original_units, to_unit=units)
@@ -712,6 +713,33 @@ class Model(object):
             # TODO replace any instance of deriv on rhs of any eqn with new deriv var
             # new derivative
             expression = sympy.Eq(sympy.Derivative(new_variable, wrt_variable), new_deriv_variable * cf)
+            self.add_equation(expression)
+
+        # if free variable
+        if original_variable == free_symbols:
+            # find the derivative equation for this variable
+            # todo free variable might appear in more than one deriv
+            eqn = None
+            for equation in self.equations:
+                if equation.args[0].is_Derivative:
+                    if equation.args[0].args[1].args[0] == original_variable:
+                        eqn = equation
+            # get deriv symbol
+            derivative_variable = eqn.args[0].args[0]
+            # create new variable for rhs
+            deriv_name = derivative_variable.name + '_orig_deriv'
+            while deriv_name in self.variables():
+                deriv_name = deriv_name + '_a'
+            deriv_units = unit_calculator.traverse(eqn.args[0])
+            new_deriv_variable = self.add_variable(name=deriv_name,
+                                                   units=deriv_units.units)
+            # add new equation for new deriv variable and remove existing one
+            expression = sympy.Eq(new_deriv_variable, eqn.args[1])
+            self.add_equation(expression)
+            self.remove_equation(eqn)
+            # TODO replace any instance of deriv on rhs of any eqn with new deriv var
+            # new derivative
+            expression = sympy.Eq(sympy.Derivative(derivative_variable, new_variable), new_deriv_variable / cf)
             self.add_equation(expression)
 
         self._invalidate_cache()
