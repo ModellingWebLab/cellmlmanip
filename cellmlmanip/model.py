@@ -270,9 +270,10 @@ class Model(object):
         """Returns a list of derived quantities found in the given model graph.
         A derived quantity is any variable that is not a state variable or parameter/constant.
         """
-        return [v for v, node in self.graph.nodes.items()
-                if not isinstance(v, sympy.Derivative)
-                and node.get('variable_type', '') not in ('state', 'free', 'parameter')]
+        derived_quantities = [v for v, node in self.graph.nodes.items()
+                              if not isinstance(v, sympy.Derivative)
+                              and node.get('variable_type', '') not in ('state', 'free', 'parameter')]
+        return sorted(derived_quantities, key=lambda var: var.order_added)
 
     def get_state_symbols(self):
         """Returns a list of state variables found in the given model graph.
