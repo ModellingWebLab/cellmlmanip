@@ -654,9 +654,8 @@ class Model(object):
         if not original_variable:
             raise KeyError('No variable with name "%s" found.' % name)
 
+        # todo what it variable has no cmeta_id
         original_units = original_variable.units
-        original_cmeta_id = original_variable.cmeta_id
-        original_initial_value = self.get_initial_value(original_variable)
 
         # no conversion necessary
         if original_units == units:
@@ -667,27 +666,7 @@ class Model(object):
         unit_calculator = UnitCalculator(self.units.ureg)
         # conversion_factor for old units to new units
         cf = self.units.get_conversion_factor(from_unit=original_units, to_unit=units)
-
-        # 1. get unique name for new variable
-        new_name = name + '_converted'
-        while new_name in self.variables():
-            new_name = new_name + '_a'
-
-        # 2. if original has initial_value calculate new initial value
-        new_value = None
-        if original_initial_value:
-            new_value = original_initial_value * cf
-
-        # 3. copy cmeta_id from original and remove from original
-        original_variable.cmeta_id = ''
-        new_variable = self.add_variable(name=new_name,
-                                         units=units,
-                                         initial_value=new_value,
-                                         cmeta_id=original_cmeta_id)
-
-        # 4. add an equation for original variable
-        expression = sympy.Eq(original_variable, new_variable / cf)
-        self.add_equation(expression)
+        new_variable = self._convert_variable_instance(original_variable, cf, units)
 
         # if state variable
         if original_variable in state_symbols:
@@ -743,6 +722,37 @@ class Model(object):
             self.add_equation(expression)
 
         self._invalidate_cache()
+
+    def _convert_variable_instance(self, original_variable, cf, units):
+        """
+        Internal function to create new variable and an equation for it.
+        :param original_variable: VariableDummy object to be converted
+        :param cf: conversion factor
+        :param units: Unit object for new units
+        :return: the new variable created
+        """
+        # 1. get unique name for new variable
+        new_name = original_variable.name + '_converted'
+        while new_name in self.variables():
+            new_name = new_name + '_a'
+
+        # 2. if original has initial_value calculate new initial value
+        new_value = None
+        if original_variable.initial_value:
+            new_value = original_variable.initial_value * cf
+
+        # 3. copy cmeta_id from original and remove from original
+        new_variable = self.add_variable(name=new_name,
+                                         units=units,
+                                         initial_value=new_value,
+                                         cmeta_id=original_variable.cmeta_id)
+        original_variable.cmeta_id = ''
+
+        # 4. add an equation for original variable
+        expression = sympy.Eq(original_variable, new_variable / cf)
+        self.add_equation(expression)
+
+        return new_variable
 
 
 class NumberDummy(sympy.Dummy):
