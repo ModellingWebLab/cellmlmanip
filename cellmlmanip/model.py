@@ -266,6 +266,14 @@ class Model(object):
         derivative_symbols = [v for v in self.graph if isinstance(v, sympy.Derivative)]
         return sorted(derivative_symbols, key=lambda state_var: state_var.args[0].order_added)
 
+    def get_derived_quantities(self):
+        """Returns a list of derived quantities found in the given model graph.
+        A derived quantity is any variable that is not a state variable or parameter/constant.
+        """
+        return [v for v, node in self.graph.nodes.items()
+                if not isinstance(v, sympy.Derivative)
+                and node.get('variable_type', '') not in ('state', 'free', 'parameter')]
+
     def get_state_symbols(self):
         """Returns a list of state variables found in the given model graph.
         The list is ordered by appearance in the cellml document.
