@@ -654,7 +654,6 @@ class Model(object):
         if not original_variable:
             raise KeyError('No variable with name "%s" found.' % name)
 
-        # todo what it variable has no cmeta_id
         original_units = original_variable.units
 
         # no conversion necessary
@@ -662,66 +661,92 @@ class Model(object):
             return
 
         state_symbols = self.get_state_symbols()
-        free_symbols = self.get_free_variable_symbol()
-        unit_calculator = UnitCalculator(self.units.ureg)
+        free_symbol = self.get_free_variable_symbol()
         # conversion_factor for old units to new units
         cf = self.units.get_conversion_factor(from_unit=original_units, to_unit=units)
+
+        # create new variable and relevant equations
         new_variable = self._convert_variable_instance(original_variable, cf, units)
 
         # if state variable
         if original_variable in state_symbols:
-            # find the derivative equation for this variable
-            eqn = None
-            for equation in self.equations:
-                if equation.args[0].is_Derivative:
-                    if equation.args[0].args[0] == original_variable:
-                        eqn = equation
-            # get deriv symbol
-            wrt_variable = eqn.args[0].args[1]
-            # create new variable for rhs
-            deriv_name = name + '_orig_deriv'
-            while deriv_name in self.variables():
-                deriv_name = deriv_name + '_a'
-            deriv_units = unit_calculator.traverse(eqn.args[0])
-            new_deriv_variable = self.add_variable(name=deriv_name,
-                                                   units=deriv_units.units)
-            # add new equation for new deriv variable and remove existing one
-            expression = sympy.Eq(new_deriv_variable, eqn.args[1])
-            self.add_equation(expression)
-            self.remove_equation(eqn)
+            self._convert_state_variable_deriv(original_variable, new_variable, cf)
             # TODO replace any instance of deriv on rhs of any eqn with new deriv var
-            # new derivative
-            expression = sympy.Eq(sympy.Derivative(new_variable, wrt_variable), new_deriv_variable * cf)
-            self.add_equation(expression)
 
         # if free variable
-        if original_variable == free_symbols:
-            # find the derivative equation for this variable
-            # todo free variable might appear in more than one deriv
-            eqn = None
+        if original_variable == free_symbol:
+            # for each derivative wrt to free variable add necessary variables/equations
             for equation in self.equations:
                 if equation.args[0].is_Derivative:
                     if equation.args[0].args[1].args[0] == original_variable:
-                        eqn = equation
-            # get deriv symbol
-            derivative_variable = eqn.args[0].args[0]
-            # create new variable for rhs
-            deriv_name = derivative_variable.name + '_orig_deriv'
-            while deriv_name in self.variables():
-                deriv_name = deriv_name + '_a'
-            deriv_units = unit_calculator.traverse(eqn.args[0])
-            new_deriv_variable = self.add_variable(name=deriv_name,
-                                                   units=deriv_units.units)
-            # add new equation for new deriv variable and remove existing one
-            expression = sympy.Eq(new_deriv_variable, eqn.args[1])
-            self.add_equation(expression)
-            self.remove_equation(eqn)
+                        self._convert_free_variable_deriv(equation, new_variable, cf)
             # TODO replace any instance of deriv on rhs of any eqn with new deriv var
-            # new derivative
-            expression = sympy.Eq(sympy.Derivative(derivative_variable, new_variable), new_deriv_variable / cf)
-            self.add_equation(expression)
 
         self._invalidate_cache()
+
+    def _create_new_deriv_variable_and_equation(self, eqn, derivative_variable):
+        """
+        Create a new variable and equation for the derivative.
+        :param eqn: the original derivative eqn
+        :param derivative_variable: the dependent variable
+        :return: new variable for the derivative
+        """
+        # 1. create a new variable
+        deriv_name = derivative_variable.name + '_orig_deriv'
+        while deriv_name in self.variables():
+            deriv_name = deriv_name + '_a'
+        deriv_units = UnitCalculator(self.units.ureg).traverse(eqn.args[0])
+        new_deriv_variable = self.add_variable(name=deriv_name,
+                                               units=deriv_units.units)
+
+        # 2. create new equation and remove original
+        expression = sympy.Eq(new_deriv_variable, eqn.args[1])
+        self.add_equation(expression)
+        self.remove_equation(eqn)
+
+        return new_deriv_variable
+
+    def _convert_free_variable_deriv(self, eqn, new_variable, cf):
+        """
+        Create relevant variables/equations when converting a free variable.
+        :param eqn: the derivative equation containing free variable
+        :param new_variable: the new variable representing the converted symbol
+        :param cf: conversion factor for unit conversion
+        """
+        derivative_variable = eqn.args[0].args[0]
+        # 1. create a new variable/equation for derivative
+        new_deriv_variable = self._create_new_deriv_variable_and_equation(eqn, derivative_variable)
+
+        # 3. create equation for derivative wrt new variable
+        expression = sympy.Eq(sympy.Derivative(derivative_variable, new_variable), new_deriv_variable / cf)
+        self.add_equation(expression)
+
+    def _convert_state_variable_deriv(self, original_variable, new_variable, cf):
+        """
+        Create relevant variables/equations when converting a state variable.
+        :param original_variable: the variable to be converted
+        :param new_variable: the new variable representing the converted symbol
+        :param cf: conversion factor for unit conversion
+        :return:
+        """
+        # 1. find the derivative equation for this variable
+        # and get the free variable (wrt_variable)
+        eqn = None
+        for equation in self.equations:
+            if equation.args[0].is_Derivative:
+                if equation.args[0].args[0] == original_variable:
+                    eqn = equation
+                    break
+
+        # get free variable symbol
+        wrt_variable = eqn.args[0].args[1]
+
+        # 2. create new variable for derivative
+        new_deriv_variable = self._create_new_deriv_variable_and_equation(eqn, original_variable)
+
+        # 3. add a new derivative equation
+        expression = sympy.Eq(sympy.Derivative(new_variable, wrt_variable), new_deriv_variable * cf)
+        self.add_equation(expression)
 
     def _convert_variable_instance(self, original_variable, cf, units):
         """

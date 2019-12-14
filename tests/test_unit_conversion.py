@@ -256,3 +256,6 @@ class TestUnitConversion:
         assert str(local_model_2.equations[1]) == 'Eq(_env_ode$y, _1.0/_env_ode$x)'
         assert str(local_model_2.equations[2]) == 'Eq(_env_ode$x_converted, 0.001*_1.0)'
         assert str(local_model_2.equations[3]) == 'Eq(_env_ode$x, 1000.0*_env_ode$x_converted)'
+
+# todo tests for replacing derivs
+# todo tests for multiple free variable derivs
