@@ -13,6 +13,11 @@ class TestUnitConversion:
         """ Fixture to load a local copy of  the basic_ode model that may get modified. """
         return shared.load_model('basic_ode')
 
+    @pytest.fixture
+    def local_model_2(scope='function'):
+        """ Fixture to load a local copy of  the basic_ode model that may get modified. """
+        return shared.load_model('new_basic_ode_for_conversion_tests')
+
     def test_add_preferred_custom_unit_name(self, simple_ode_model):
         """ Tests Units.add_preferred_custom_unit_name() function. """
         time_var = simple_ode_model.get_symbol_by_ontology_term(shared.OXMETA, "time")
@@ -194,3 +199,60 @@ class TestUnitConversion:
         assert str(local_model.equations[1]) == 'Eq(_env_ode$sv1_orig_deriv, _1.0)'
         assert str(local_model.equations[2]) == 'Eq(Derivative(_env_ode$sv1, _environment$time_converted), ' \
                                                 '1000.0*_env_ode$sv1_orig_deriv)'
+
+    def test_add_input_literal_variable(self, local_model_2):
+        """ Tests the Model.add_input function that changes units. """
+        # original state
+        def test_original_state(model):
+            assert len(model.variables()) == 5
+            symbol_a = model.get_symbol_by_cmeta_id('sv11')
+            symbol_t = model.get_symbol_by_cmeta_id('time')
+            symbol_x = model.get_symbol_by_cmeta_id('current')
+            symbol_y = model.get_symbol_by_name('env_ode$y')
+            assert symbol_x.name == 'env_ode$x'
+            assert model.get_initial_value(symbol_a) == 2.0
+            assert not model.get_initial_value(symbol_t)
+            assert not model.get_initial_value(symbol_x)
+            assert not model.get_initial_value(symbol_y)
+            assert symbol_a.units == 'mV'
+            assert symbol_t.units == 'ms'
+            assert symbol_x.units == 'pA'
+            assert symbol_y.units == 'per_pA'
+            assert len(model.equations) == 3
+            assert str(model.equations[0]) == 'Eq(Derivative(_env_ode$sv1, _environment$time), _1.0)'
+            assert str(model.equations[1]) == 'Eq(_env_ode$x, _1.0)'
+            assert str(model.equations[2]) == 'Eq(_env_ode$y, _1.0/_env_ode$x)'
+            return True
+
+        pA_unit = local_model_2.get_units('pA')
+        nA_unit = local_model_2.get_units('nA')
+
+        assert test_original_state(local_model_2)
+        # test no change in units
+        local_model_2.add_input('env_ode$x', pA_unit)
+        assert test_original_state(local_model_2)
+
+        # change pA to nA
+        local_model_2.add_input('env_ode$x', nA_unit)
+        assert len(local_model_2.variables()) == 6
+        symbol_a = local_model_2.get_symbol_by_cmeta_id('sv11')
+        symbol_t = local_model_2.get_symbol_by_cmeta_id('time')
+        symbol_x = local_model_2.get_symbol_by_cmeta_id('current')
+        assert symbol_x.name == 'env_ode$x_converted'
+        symbol_y = local_model_2.get_symbol_by_name('env_ode$y')
+        symbol_x_orig = local_model_2.get_symbol_by_name('env_ode$x')
+        assert local_model_2.get_initial_value(symbol_a) == 2.0
+        assert not local_model_2.get_initial_value(symbol_t)
+        assert not local_model_2.get_initial_value(symbol_x)
+        assert not local_model_2.get_initial_value(symbol_y)
+        assert not local_model_2.get_initial_value(symbol_x_orig)
+        assert symbol_a.units == 'mV'
+        assert symbol_t.units == 'ms'
+        assert symbol_x.units == 'nA'
+        assert symbol_y.units == 'per_pA'
+        assert symbol_x_orig.units == 'pA'
+        assert len(local_model_2.equations) == 4
+        assert str(local_model_2.equations[0]) == 'Eq(Derivative(_env_ode$sv1, _environment$time), _1.0)'
+        assert str(local_model_2.equations[1]) == 'Eq(_env_ode$y, _1.0/_env_ode$x)'
+        assert str(local_model_2.equations[2]) == 'Eq(_env_ode$x_converted, 0.001*_1.0)'
+        assert str(local_model_2.equations[3]) == 'Eq(_env_ode$x, 1000.0*_env_ode$x_converted)'

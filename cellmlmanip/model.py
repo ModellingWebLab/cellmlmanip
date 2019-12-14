@@ -731,6 +731,7 @@ class Model(object):
         :param units: Unit object for new units
         :return: the new variable created
         """
+        eqns = self.get_equations_for([original_variable])
         # 1. get unique name for new variable
         new_name = original_variable.name + '_converted'
         while new_name in self.variables():
@@ -748,7 +749,16 @@ class Model(object):
                                          cmeta_id=original_variable.cmeta_id)
         original_variable.cmeta_id = ''
 
-        # 4. add an equation for original variable
+        # 4. check whether we had an eqn for original
+        # if so, remove it and replace with new_var = rhs * cf
+        for equation in self.equations:
+            if equation.is_Equality and equation.args[0] == original_variable:
+                expression = sympy.Eq(new_variable, equation.args[1] * cf)
+                self.add_equation(expression)
+                self.remove_equation(equation)
+                break
+
+        # 5. add an equation for original variable
         expression = sympy.Eq(original_variable, new_variable / cf)
         self.add_equation(expression)
 
