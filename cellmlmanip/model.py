@@ -6,8 +6,9 @@ import networkx as nx
 import rdflib
 import sympy
 
-from cellmlmanip.rdf import create_rdf_node
 from cellmlmanip.units import UnitStore
+from cellmlmanip.rdf import create_rdf_node
+
 
 logger = logging.getLogger(__name__)
 
