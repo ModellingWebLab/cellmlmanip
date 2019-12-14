@@ -7,7 +7,7 @@ import rdflib
 import sympy
 
 from cellmlmanip.rdf import create_rdf_node
-from cellmlmanip.units import UnitStore, UnitCalculator
+from cellmlmanip.units import UnitCalculator, UnitStore
 
 logger = logging.getLogger(__name__)
 
