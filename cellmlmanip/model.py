@@ -7,7 +7,7 @@ import rdflib
 import sympy
 
 from cellmlmanip.rdf import create_rdf_node
-from cellmlmanip.units import UnitCalculator, UnitStore
+from cellmlmanip.units import UnitStore
 
 logger = logging.getLogger(__name__)
 
@@ -695,7 +695,7 @@ class Model(object):
         deriv_name = derivative_variable.name + '_orig_deriv'
         while deriv_name in self.variables():
             deriv_name = deriv_name + '_a'
-        deriv_units = UnitCalculator(self.units.ureg).traverse(eqn.args[0])
+        deriv_units = self.units.calculator.traverse(eqn.args[0])
         new_deriv_variable = self.add_variable(name=deriv_name,
                                                units=deriv_units.units)
 
