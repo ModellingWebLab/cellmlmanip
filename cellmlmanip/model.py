@@ -731,7 +731,6 @@ class Model(object):
         :param units: Unit object for new units
         :return: the new variable created
         """
-        eqns = self.get_equations_for([original_variable])
         # 1. get unique name for new variable
         new_name = original_variable.name + '_converted'
         while new_name in self.variables():
