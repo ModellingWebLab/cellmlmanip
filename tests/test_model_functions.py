@@ -167,7 +167,7 @@ class TestModelFunctions():
             'Derivative(_Ca_handling_by_the_SR$F2, _environment$time), '\
             'Derivative(_Ca_handling_by_the_SR$F3, _environment$time)]'
 
-    def test_get_equations_for(self):
+    def test_get_equations_for(self, hh_model):
         """
         Tests Model.get_equations_for().
         """
@@ -243,7 +243,6 @@ class TestModelFunctions():
 
         # Multiple input symbols: [d_y1=1, v1=0, d_y2=v1, v4=-23, v2=23+v4, d_y3=v2*(2+d_y1)]
         eqs = m.get_equations_for([d_y1, d_y2, d_y3])
-        print(eqs)
         assert eqs[0] == e_y1
         assert sp.simplify(eqs[1]) == e_v3
         assert sp.simplify(eqs[2]) == e_v1
@@ -252,6 +251,11 @@ class TestModelFunctions():
         assert eqs[5] == e_v2
         assert sp.simplify(eqs[6]) == e_y3
         assert len(eqs) == 7
+
+        # What's going on here?
+        model = shared.load_model('viswanathan_model_1999_epi')
+        membrane_stimulus_current = model.get_symbol_by_ontology_term(shared.OXMETA, 'membrane_stimulus_current')
+        eqs = model.get_equations_for([membrane_stimulus_current])
 
     def test_get_value(self, aslanidi_model):
         """ Tests Model.get_value() works correctly. """
