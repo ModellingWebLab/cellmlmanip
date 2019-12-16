@@ -173,7 +173,8 @@ class Model(object):
             target.assigned_to = source.assigned_to
             # everywhere the target variable is used, replace with source variable
             for index, equation in enumerate(self.equations):
-                self.equations[index] = equation.xreplace({target: source.assigned_to})
+                with sympy.evaluate(False):  # prevent simplifying now, as that may introduce float precision errors
+                    self.equations[index] = equation.xreplace({target: source.assigned_to})
 
         # Otherwise, this connection requires a conversion
         else:
@@ -535,8 +536,9 @@ class Model(object):
 
             # And replace the equation with one with the rhs subbed with sympy.Number objects
             if subs_dict:
-                # Update rhs
-                rhs = equation.rhs.subs(subs_dict)
+                # Update rhs, prevent simplifying now as that may introduce float precision errors
+                with sympy.evaluate(False):
+                    rhs = equation.rhs.subs(subs_dict)
 
                 # Check if simplification removed dependencies on other variables, and if so remove the corresponding
                 # edges.

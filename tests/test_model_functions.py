@@ -207,7 +207,7 @@ class TestModelFunctions():
         # Simplified equations
         e_v1 = sp.Eq(v1, sp.Number(0))
         e_v2 = sp.Eq(v2, sp.Add(v4, sp.Number(23)))
-        e_v3 = sp.Eq(v3, sp.Number(2 / 3))
+        e_v3 = sp.Eq(v3, sp.Number(2.0 / 3.0))
         e_v4 = sp.Eq(v4, sp.Number(-23))
         e_v5 = sp.Eq(v5, sp.Add(v3, v4))
         e_a1 = sp.Eq(a1, sp.Add(v1, v2, v5, t))
@@ -220,56 +220,22 @@ class TestModelFunctions():
         e_y2 = sp.Eq(d_y2, v1)
         e_y3 = sp.Eq(d_y3, sp.Mul(v2, sp.Add(sp.Number(2), d_y1)))
 
-        # v1 with simplification: [v1=0] (simplified)
-        eqs = m.get_equations_for([v1])
-        assert eqs[0] == e_v1
-        assert len(eqs) == 1
-
-        # v1 without simplification: [v3=2/3, v1=(5-5)*v3]
+        # v1 (without simplification): [v3=2/3, v1=(5-5)*v3]
         eqs = m.get_equations_for([v1], strip_units=False)
         assert eqs[0] == m.graph.nodes[v3]['equation']
         assert eqs[1] == m.graph.nodes[v1]['equation']
         assert len(eqs) == 2
 
-        # dy1/dt with simplification: [dy1/dt=1]
-        eqs = m.get_equations_for([d_y1])
-        assert eqs[0] == e_y1
-        assert len(eqs) == 1
-
-        # dy2/dt with simplification: [v1=0, dy2/dt=v1]
-        eqs = m.get_equations_for([d_y2])
-        assert eqs[0] == e_v1
-        assert eqs[1] == e_y2
-        assert len(eqs) == 2
-
-        # dy2/dt without simplification: [v3=2/3, v1=(5-5)*v3, dy2/dt=v1]
+        # dy2/dt (without simplification): [v3=2/3, v1=(5-5)*v3, dy2/dt=v1]
         eqs = m.get_equations_for([d_y2], strip_units=False)
         assert eqs[0] == m.graph.nodes[v3]['equation']
         assert eqs[1] == m.graph.nodes[v1]['equation']
         assert eqs[2] == m.graph.nodes[d_y2]['equation']
         assert len(eqs) == 3
 
-        # dy3/dt with simpification: [dy1/dt=1, v4=-23, v2=v4+23, dy2/dt=v2*(2+dy1/dt)]
-        eqs = m.get_equations_for([d_y3])
-        assert e_y3 in eqs
-        assert e_y1 in eqs
-        assert e_v2 in eqs
-        assert e_v4 in eqs
-        assert len(eqs) == 4
-
-        # a1 with simplification: [v1=0, v3=2/3, v4=-23, v2=v4+23, v5=v3+v4, a1=v1+v2+v5]
-        eqs = m.get_equations_for([a1])
-        assert eqs[0] == e_v1
-        assert eqs[1] == e_v3
-        assert eqs[2] == e_v4
-        assert eqs[3] == e_v2
-        assert eqs[4] == e_v5
-        assert eqs[5] == e_a1
-        assert len(eqs) == 6
-
         # a1 with only one level of recursion
         eqs = m.get_equations_for([a1], recurse=False)
-        assert eqs[0] == e_v1
+        assert sp.simplify(eqs[0]) == e_v1
         assert eqs[1] == e_v2
         assert eqs[2] == e_v5
         assert eqs[3] == e_a1
@@ -277,13 +243,15 @@ class TestModelFunctions():
 
         # Multiple input symbols: [d_y1=1, v1=0, d_y2=v1, v4=-23, v2=23+v4, d_y3=v2*(2+d_y1)]
         eqs = m.get_equations_for([d_y1, d_y2, d_y3])
+        print(eqs)
         assert eqs[0] == e_y1
-        assert eqs[1] == e_v1
-        assert eqs[2] == e_y2
-        assert eqs[3] == e_v4
-        assert eqs[4] == e_v2
-        assert eqs[5] == e_y3
-        assert len(eqs) == 6
+        assert sp.simplify(eqs[1]) == e_v3
+        assert sp.simplify(eqs[2]) == e_v1
+        assert eqs[3] == e_y2
+        assert eqs[4] == e_v4
+        assert eqs[5] == e_v2
+        assert sp.simplify(eqs[6]) == e_y3
+        assert len(eqs) == 7
 
     def test_get_value(self, aslanidi_model):
         """ Tests Model.get_value() works correctly. """
