@@ -669,10 +669,11 @@ class Model(object):
         # create new variable and relevant equations
         new_variable = self._convert_variable_instance(original_variable, cf, units)
 
+        deriv_variable = None
+        deriv_expression = None
         # if state variable
         if original_variable in state_symbols:
-            self._convert_state_variable_deriv(original_variable, new_variable, cf)
-            # TODO replace any instance of deriv on rhs of any eqn with new deriv var
+            [deriv_variable, deriv_expression] = self._convert_state_variable_deriv(original_variable, new_variable, cf)
 
         # if free variable
         if original_variable == free_symbol:
@@ -681,7 +682,18 @@ class Model(object):
                 if equation.args[0].is_Derivative:
                     if equation.args[0].args[1].args[0] == original_variable:
                         self._convert_free_variable_deriv(equation, new_variable, cf)
-            # TODO replace any instance of deriv on rhs of any eqn with new deriv var
+
+        if deriv_variable:
+            for equation in self.equations:
+                for argument in equation.rhs.args:
+                    if deriv_expression == argument:
+                        # add new equation
+                        new_eqn = equation.subs(deriv_expression, deriv_variable)
+                        self.add_equation(new_eqn)
+                        self.remove_equation(equation)
+                        break
+
+
 
         self._invalidate_cache()
 
@@ -728,7 +740,8 @@ class Model(object):
         :param original_variable: the variable to be converted
         :param new_variable: the new variable representing the converted symbol
         :param cf: conversion factor for unit conversion
-        :return:
+        :return: a tuple containing the new variable representing the original derivative
+        and the sympy expression for the original derivative function
         """
         # 1. find the derivative equation for this variable
         # and get the free variable (wrt_variable)
@@ -748,6 +761,7 @@ class Model(object):
         # 3. add a new derivative equation
         expression = sympy.Eq(sympy.Derivative(new_variable, wrt_variable), new_deriv_variable * cf)
         self.add_equation(expression)
+        return [new_deriv_variable, eqn.args[0]]
 
     def _convert_variable_instance(self, original_variable, cf, units):
         """
