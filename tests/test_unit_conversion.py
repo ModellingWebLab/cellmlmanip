@@ -13,24 +13,25 @@ class TestUnitConversion:
         """ Fixture to load a local copy of  the basic_ode model that may get modified. """
         return shared.load_model('basic_ode')
 
-
     @pytest.fixture
     def model_missing_units(scope='function'):
         """ Fixture to load a local copy of  the basic_ode model that may get modified. """
         return shared.load_model('missing_units_for_conversion_tests')
-
 
     @pytest.fixture
     def literals_model(scope='function'):
         """ Fixture to load a local copy of  the basic_ode model that may get modified. """
         return shared.load_model('literals_for_conversion_tests')
 
-
     @pytest.fixture
     def multiode_model(scope='function'):
         """ Fixture to load a local copy of  the basic_ode model that may get modified. """
         return shared.load_model('repeated_ode_for_conversion_tests')
 
+    @pytest.fixture
+    def multiode_freevar_model(scope='function'):
+        """ Fixture to load a local copy of  the basic_ode model that may get modified. """
+        return shared.load_model('repeated_ode_freevar_for_conversion_tests')
 
     def test_add_preferred_custom_unit_name(self, simple_ode_model):
         """ Tests Units.add_preferred_custom_unit_name() function. """
@@ -129,7 +130,28 @@ class TestUnitConversion:
             local_model.add_input('nonsense_name', mV_unit)
 
     def test_add_input_state_variable(self, local_model):
-        """ Tests the Model.add_input function that changes units. """
+        """ Tests the Model.add_input function that changes units.
+        This particular test is when a state variable is being converted
+        e.g.
+            var{time} time: ms {pub: in};
+            var{sv11} sv1: mV {init: 2};
+
+            ode(sv1, time) = 1{mV_per_ms};
+
+        convert sv11 from mV to V
+
+        becomes
+            var{time} time: ms {pub: in};
+            var{sv11} sv1_converted: V {init: 0.002};
+            var sv1 mV {init: 2}
+            var sv1_orig_deriv mV_per_ms
+
+            ode(y, time) = 2{mv_per_ms};
+            sv1 = 1000 * sv1_converted
+            sv1_orig_deriv = 1{mV_per_ms}
+            ode(sv1_converted, time) = 0.001 * sv1_orig_deriv
+            x = 3 * sv1_orig_deriv
+        """
         # original state
         def test_original_state(local_model):
             assert len(local_model.variables()) == 3
@@ -150,9 +172,6 @@ class TestUnitConversion:
         local_model.add_input('env_ode$sv1', mV_unit)
         assert test_original_state(local_model)
 
-        # non-existent unit
-        # TODO what if unit not in model
-
         # change mV to V
         local_model.add_input('env_ode$sv1', volt_unit)
         assert len(local_model.variables()) == 5
@@ -164,8 +183,10 @@ class TestUnitConversion:
         assert symbol_t.units == 'ms'
         symbol_orig = local_model.get_symbol_by_name('env_ode$sv1')
         assert symbol_orig.units == 'mV'
+        assert local_model.get_initial_value(symbol_orig) == 2.0
         symbol_derv = local_model.get_symbol_by_name('env_ode$sv1_orig_deriv')
         assert symbol_derv.units == 'mV / ms'
+        assert not local_model.get_initial_value(symbol_derv)
         assert len(local_model.equations) == 3
         assert str(local_model.equations[0]) == 'Eq(_env_ode$sv1, 1000.0*_env_ode$sv1_converted)'
         assert str(local_model.equations[1]) == 'Eq(_env_ode$sv1_orig_deriv, _1.0)'
@@ -173,7 +194,26 @@ class TestUnitConversion:
                                                 '0.001*_env_ode$sv1_orig_deriv)'
 
     def test_add_input_free_variable(self, local_model):
-        """ Tests the Model.add_input function that changes units. """
+        """ Tests the Model.add_input function that changes units.
+        This particular case tests changing a free variable
+        e.g.
+            var{time} time: ms {pub: in};
+            var{sv11} sv1: mV {init: 2};
+
+            ode(sv1, time) = 1{mV_per_ms};
+
+        convert time from ms to s
+
+        becomes
+            var time: ms;
+            var{time} time_converted: s;
+            var{sv11} sv1: mV {init: 2};
+            var sv1_orig_deriv mV_per_ms
+
+            time = 1000 * time_converted;
+            sv1_orig_deriv = 1{mV_per_ms}
+            ode(sv1, time_converted) = 1000 * sv1_orig_deriv
+        """
         # original state
         def test_original_state(local_model):
             assert len(local_model.variables()) == 3
@@ -215,7 +255,30 @@ class TestUnitConversion:
                                                 '1000.0*_env_ode$sv1_orig_deriv)'
 
     def test_add_input_literal_variable(self, literals_model):
-        """ Tests the Model.add_input function that changes units. """
+        """ Tests the Model.add_input function that changes units.
+        This particular case tests changing a free variable
+        e.g.
+            var time: ms {pub: in};
+            var{sv11} sv1: mV {init: 2};
+            var{current} x: pA;
+            var y: per_pA;
+
+            ode(sv1, time) = 1{mV_per_ms};
+            x = 1{pA};
+            y = 1{dimensionless}/x;
+
+        change x from pA to nA
+            var time: ms {pub: in};
+            var{sv11} sv1: mV {init: 2};
+            var x: pA;
+            var y: per_pA;
+            var x_converted: nA
+
+            ode(sv1, time) = 1 :mV_per_ms;
+            x = 1000 * x_converted: pA;
+            y = 1{dimensionless}/x;
+            x_converted = 0.001 * 1 : nA
+        """
         # original state
         def test_original_state(model):
             assert len(model.variables()) == 5
@@ -271,24 +334,127 @@ class TestUnitConversion:
         assert str(literals_model.equations[2]) == 'Eq(_env_ode$x_converted, 0.001*_1.0)'
         assert str(literals_model.equations[3]) == 'Eq(_env_ode$x, 1000.0*_env_ode$x_converted)'
 
+    def test_add_input_free_variable_multiple(self, multiode_freevar_model):
+        """ Tests the Model.add_input function that changes units.
+        This particular case tests changing a free variable
+        e.g.
+            var{time} time: ms {pub: in};
+            var{sv11} sv1: mV {init: 2};
+            var y: mV {init: 3};
+            ode(sv1, time) = 1{mV_per_ms};
+            ode(y, time) = 2{mV_per_ms}
+
+        convert time from ms to s
+
+        becomes
+            var time: ms;
+            var{time} time_converted: s;
+            var{sv11} sv1: mV {init: 2};
+            var sv1_orig_deriv mV_per_ms
+            var y : mV
+            var y_orig_deriv mV_per_ms
+
+            time = 1000 * time_converted;
+            sv1_orig_deriv = 1{mV_per_ms}
+            ode(sv1, time_converted) = 1000 * sv1_orig_deriv
+            y_orig_deriv = 2{mV_per_ms}
+            ode(y, time_converted) = 1000 * y_orig_deriv
+        """
+        # original state
+        def test_original_state(multiode_freevar_model):
+            assert len(multiode_freevar_model.variables()) == 4
+            symbol_a = multiode_freevar_model.get_symbol_by_cmeta_id('sv11')
+            symbol_t = multiode_freevar_model.get_symbol_by_cmeta_id('time')
+            symbol_y = multiode_freevar_model.get_symbol_by_name('env_ode$y')
+            assert multiode_freevar_model.get_initial_value(symbol_a) == 2.0
+            assert multiode_freevar_model.get_initial_value(symbol_y) == 3.0
+            assert symbol_a.units == 'mV'
+            assert symbol_t.units == 'ms'
+            assert symbol_y.units == 'mV'
+            assert len(multiode_freevar_model.equations) == 2
+            assert str(multiode_freevar_model.equations[0]) == 'Eq(Derivative(_env_ode$sv1, _environment$time), _1.0)'
+            assert str(multiode_freevar_model.equations[1]) == 'Eq(Derivative(_env_ode$y, _environment$time), _2.0)'
+            return True
+
+        ms_unit = multiode_freevar_model.get_units('ms')
+        second_unit = multiode_freevar_model.get_units('second')
+
+        assert test_original_state(multiode_freevar_model)
+        # test no change in units
+        multiode_freevar_model.add_input('env_ode$time', ms_unit)
+        assert test_original_state(multiode_freevar_model)
+
+        # change ms to s
+        multiode_freevar_model.add_input('environment$time', second_unit)
+        assert len(multiode_freevar_model.variables()) == 7
+        symbol_a = multiode_freevar_model.get_symbol_by_cmeta_id('sv11')
+        assert multiode_freevar_model.get_initial_value(symbol_a) == 2.0
+        assert symbol_a.units == 'mV'
+        assert symbol_a.name == 'env_ode$sv1'
+        symbol_t = multiode_freevar_model.get_symbol_by_cmeta_id('time')
+        assert symbol_t.units == 'second'
+        assert symbol_t.name == 'environment$time_converted'
+        symbol_orig = multiode_freevar_model.get_symbol_by_name('env_ode$sv1')
+        assert symbol_orig.units == 'mV'
+        symbol_derv = multiode_freevar_model.get_symbol_by_name('env_ode$sv1_orig_deriv')
+        assert symbol_derv.units == 'mV / ms'
+        symbol_orig_y = multiode_freevar_model.get_symbol_by_name('env_ode$y')
+        assert symbol_orig_y.units == 'mV'
+        symbol_derv_y = multiode_freevar_model.get_symbol_by_name('env_ode$y_orig_deriv')
+        assert symbol_derv_y.units == 'mV / ms'
+        assert len(multiode_freevar_model.equations) == 5
+        assert str(multiode_freevar_model.equations[0]) == 'Eq(_environment$time, 1000.0*_environment$time_converted)'
+        assert str(multiode_freevar_model.equations[1]) == 'Eq(_env_ode$sv1_orig_deriv, _1.0)'
+        assert str(multiode_freevar_model.equations[2]) == 'Eq(Derivative(_env_ode$sv1, ' \
+                                                           '_environment$time_converted), ' \
+                                                           '1000.0*_env_ode$sv1_orig_deriv)'
+        assert str(multiode_freevar_model.equations[3]) == 'Eq(_env_ode$y_orig_deriv, _2.0)'
+        assert str(multiode_freevar_model.equations[4]) == 'Eq(Derivative(_env_ode$y, _environment$time_converted), ' \
+                                                           '1000.0*_env_ode$y_orig_deriv)'
 
     def test_multiple_odes(self, multiode_model):
-        """ Tests the Model.add_input function that changes units. """
+        """ Tests the Model.add_input function that changes units.
+        This tests that any other uses of the derivative on the rhs of other equations
+        are replaced with the new variable representing the old derivative
+        e.g.
+            var time: ms {pub: in};
+            var{sv11} sv1: mV {init: 2};
+            var x: mV_per_ms;
+            var y: mV {init: 3};
 
+            ode(sv1, time) = 1{mV_per_ms};
+            x = ode(sv1, time) * 3{mV_per_ms};
+            ode(y, time) = 2{mV_per_ms};
+
+        change sv1 from mV to V
+
+        becomes
+            var{time} time: ms {pub: in};
+            var{sv11} sv1_converted: V {init: 0.002};
+            var sv1 mV {init: 2}
+            var sv1_orig_deriv mV_per_ms
+            var x: mV_per_ms;
+            var y: mV {init: 3};
+            var y_orig_deriv
+
+            ode(y, time) = 2{mv_per_ms};
+            sv1 = 100 * sv1_converted
+            sv1_orig_deriv = 1{mV_per_ms}
+            ode(sv1_converted, time) = 0.001 * sv1_orig_deriv
+            x = 3 * sv1_orig_deriv
+        """
         # original state
         def test_original_state(multiode_model):
             assert len(multiode_model.variables()) == 5
             symbol_a = multiode_model.get_symbol_by_cmeta_id('sv11')
             symbol_t = multiode_model.get_symbol_by_cmeta_id('time')
-            symbol_x = multiode_model.get_symbol_by_name('env_ode$x')
-            symbol_y = multiode_model.get_symbol_by_name('env_ode$y')
             assert multiode_model.get_initial_value(symbol_a) == 2.0
             assert symbol_a.units == 'mV'
             assert symbol_t.units == 'ms'
             assert len(multiode_model.equations) == 3
             assert str(multiode_model.equations[0]) == 'Eq(Derivative(_env_ode$sv1, _environment$time), _1.0)'
-            assert str(multiode_model.equations[1]) == \
-                   'Eq(_env_ode$x, _3.0*Derivative(_env_ode$sv1, _environment$time))'
+            assert str(multiode_model.equations[1]) == 'Eq(_env_ode$x, ' \
+                                                       '_3.0*Derivative(_env_ode$sv1, _environment$time))'
             assert str(multiode_model.equations[2]) == 'Eq(Derivative(_env_ode$y, _environment$time), _2.0)'
             return True
 
@@ -303,11 +469,76 @@ class TestUnitConversion:
         # change mV to V
         multiode_model.add_input('env_ode$sv1', volt_unit)
         assert len(multiode_model.equations) == 5
-        assert str(multiode_model.equations[4]) == 'Eq(_env_ode$x, _3.0*_env_ode$sv1_orig_deriv)'
         assert str(multiode_model.equations[0]) == 'Eq(Derivative(_env_ode$y, _environment$time), _2.0)'
         assert str(multiode_model.equations[1]) == 'Eq(_env_ode$sv1, 1000.0*_env_ode$sv1_converted)'
         assert str(multiode_model.equations[2]) == 'Eq(_env_ode$sv1_orig_deriv, _1.0)'
-        assert str(multiode_model.equations[3]) == 'Eq(Derivative(_env_ode$sv1_converted, _environment$time), 0.001*_env_ode$sv1_orig_deriv)'
+        assert str(multiode_model.equations[3]) == 'Eq(Derivative(_env_ode$sv1_converted, _environment$time), ' \
+                                                   '0.001*_env_ode$sv1_orig_deriv)'
+        assert str(multiode_model.equations[4]) == 'Eq(_env_ode$x, _3.0*_env_ode$sv1_orig_deriv)'
 
-# todo tests for replacing derivs
-# todo tests for multiple free variable derivs
+    def test_multiple_odes_1(self, multiode_model):
+        """ Tests the Model.add_input function that changes units.
+        This tests that any other uses of the derivative on the rhs of other equations
+        are replaced with the new variable representing the old derivative
+        e.g.
+            var time: ms {pub: in};
+            var{sv11} sv1: mV {init: 2};
+            var x: mV_per_ms;
+            var y: mV {init: 3};
+
+            ode(sv1, time) = 1{mV_per_ms};
+            x = ode(sv1, time) * 3{mV_per_ms};
+            ode(y, time) = 2{mV_per_ms};
+
+        change time from ms to s
+
+        becomes
+            var time: ms;
+            var{time} time_converted: s;
+            var{sv11} sv1: mV {init: 2};
+            var sv1_orig_deriv mV_per_ms
+            var x: mV_per_ms;
+            var y: mV {init: 3};
+            var y_orig_deriv: {mv_per_ms}
+
+            ode(y, time) = 2{mv_per_ms};
+            sv1 = 100 * sv1_converted
+            sv1_orig_deriv = 1{mV_per_ms}
+            ode(sv1_converted, time) = 0.001 * sv1_orig_deriv
+            x = 3 * sv1_orig_deriv
+        """
+        # original state
+        def test_original_state(multiode_model):
+            assert len(multiode_model.variables()) == 5
+            symbol_a = multiode_model.get_symbol_by_cmeta_id('sv11')
+            symbol_t = multiode_model.get_symbol_by_cmeta_id('time')
+            assert multiode_model.get_initial_value(symbol_a) == 2.0
+            assert symbol_a.units == 'mV'
+            assert symbol_t.units == 'ms'
+            assert len(multiode_model.equations) == 3
+            assert str(multiode_model.equations[0]) == 'Eq(Derivative(_env_ode$sv1, _environment$time), _1.0)'
+            assert str(multiode_model.equations[1]) == 'Eq(_env_ode$x, ' \
+                                                       '_3.0*Derivative(_env_ode$sv1, _environment$time))'
+            assert str(multiode_model.equations[2]) == 'Eq(Derivative(_env_ode$y, _environment$time), _2.0)'
+            return True
+
+        ms_unit = multiode_model.get_units('ms')
+        second_unit = multiode_model.get_units('second')
+
+        assert test_original_state(multiode_model)
+        # test no change in units
+        multiode_model.add_input('env_ode$time', ms_unit)
+        assert test_original_state(multiode_model)
+
+        # change ms to s
+        multiode_model.add_input('environment$time', second_unit)
+        assert len(multiode_model.equations) == 6
+        assert str(multiode_model.equations[0]) == 'Eq(_environment$time, 1000.0*_environment$time_converted)'
+        assert str(multiode_model.equations[1]) == 'Eq(_env_ode$sv1_orig_deriv, _1.0)'
+        assert str(multiode_model.equations[2]) == 'Eq(Derivative(_env_ode$sv1, _environment$time_converted), ' \
+                                                   '1000.0*_env_ode$sv1_orig_deriv)'
+        assert str(multiode_model.equations[3]) == 'Eq(_env_ode$y_orig_deriv, _2.0)'
+        assert str(multiode_model.equations[4]) == 'Eq(Derivative(_env_ode$y, _environment$time_converted), ' \
+                                                   '1000.0*_env_ode$y_orig_deriv)'
+        assert str(multiode_model.equations[5]) == 'Eq(_env_ode$x, _3.0*_env_ode$sv1_orig_deriv)'
+

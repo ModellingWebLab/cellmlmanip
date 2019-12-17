@@ -669,33 +669,38 @@ class Model(object):
         # create new variable and relevant equations
         new_variable = self._convert_variable_instance(original_variable, cf, units)
 
-        deriv_variable = None
-        deriv_expression = None
+        new_derivatives = []
         # if state variable
         if original_variable in state_symbols:
-            [deriv_variable, deriv_expression] = self._convert_state_variable_deriv(original_variable, new_variable, cf)
+            new_derivatives.append(self._convert_state_variable_deriv(original_variable, new_variable, cf))
 
         # if free variable
         if original_variable == free_symbol:
             # for each derivative wrt to free variable add necessary variables/equations
-            for equation in self.equations:
+            current_equations = self.equations.copy()
+            for equation in current_equations:
                 if equation.args[0].is_Derivative:
                     if equation.args[0].args[1].args[0] == original_variable:
-                        self._convert_free_variable_deriv(equation, new_variable, cf)
+                        new_derivatives.append(self._convert_free_variable_deriv(equation, new_variable, cf))
 
-        if deriv_variable:
-            for equation in self.equations:
-                for argument in equation.rhs.args:
-                    if deriv_expression == argument:
-                        # add new equation
-                        new_eqn = equation.subs(deriv_expression, deriv_variable)
-                        self.add_equation(new_eqn)
-                        self.remove_equation(equation)
-                        break
-
-
+        for new_derivative in new_derivatives:
+            self._replace_derivatives(new_derivative)
 
         self._invalidate_cache()
+
+    def _replace_derivatives(self, new_derivative):
+        """
+        Function to replace an instance of a derivative that occurs on the RHS of any equation
+        :param new_derivative: new variable representing the derivative
+        """
+        for equation in self.equations:
+            for argument in equation.rhs.args:
+                if new_derivative['expression'] == argument:
+                    # add new equation
+                    new_eqn = equation.subs(new_derivative['expression'], new_derivative['variable'])
+                    self.add_equation(new_eqn)
+                    self.remove_equation(equation)
+                    break
 
     def _create_new_deriv_variable_and_equation(self, eqn, derivative_variable):
         """
@@ -733,6 +738,7 @@ class Model(object):
         # 3. create equation for derivative wrt new variable
         expression = sympy.Eq(sympy.Derivative(derivative_variable, new_variable), new_deriv_variable / cf)
         self.add_equation(expression)
+        return {'variable': new_deriv_variable, 'expression': eqn.args[0]}
 
     def _convert_state_variable_deriv(self, original_variable, new_variable, cf):
         """
@@ -740,8 +746,7 @@ class Model(object):
         :param original_variable: the variable to be converted
         :param new_variable: the new variable representing the converted symbol
         :param cf: conversion factor for unit conversion
-        :return: a tuple containing the new variable representing the original derivative
-        and the sympy expression for the original derivative function
+        :return: a dictionary containing the 'variable' and 'expression' for new derivative
         """
         # 1. find the derivative equation for this variable
         # and get the free variable (wrt_variable)
@@ -761,7 +766,7 @@ class Model(object):
         # 3. add a new derivative equation
         expression = sympy.Eq(sympy.Derivative(new_variable, wrt_variable), new_deriv_variable * cf)
         self.add_equation(expression)
-        return [new_deriv_variable, eqn.args[0]]
+        return {'variable': new_deriv_variable, 'expression': eqn.args[0]}
 
     def _convert_variable_instance(self, original_variable, cf, units):
         """
