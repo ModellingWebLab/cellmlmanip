@@ -619,7 +619,7 @@ class Model(object):
         """ Returns an iterator over this model's variable symbols. """
         return self._name_to_symbol.values()
 
-    def add_input(self, name, units):
+    def add_input(self, name, units, is_output=False):
         """ Adds an additional input for the variable name to the model with new units
         and apply any necessary conversions/add additional equations.
 
@@ -642,13 +642,10 @@ class Model(object):
 
         :param name: name of variable whose units are to be changed
         :param units: A `pint` units representation
-
+        :param is_output: the variable is an output rather than an input
         """
         # check units is of type Unit
         assert isinstance(units, self.units.ureg.Unit)
-
-        # TODO should I throw the exception or user seamlessly gets a non changed model
-        # if unit not in model
 
         # check variable is in model
         original_variable = self.get_symbol_by_name(name)
@@ -669,6 +666,10 @@ class Model(object):
         # create new variable and relevant equations
         new_variable = self._convert_variable_instance(original_variable, cf, units)
 
+        # if is output do not need to do additional changes for state/free symbols
+        if is_output:
+            return
+
         new_derivatives = []
         # if state variable
         if original_variable in state_symbols:
@@ -683,10 +684,19 @@ class Model(object):
                     if equation.args[0].args[1].args[0] == original_variable:
                         new_derivatives.append(self._convert_free_variable_deriv(equation, new_variable, cf))
 
+        # replace any instances of derivative of rhs of other eqns with new derivative variable
         for new_derivative in new_derivatives:
             self._replace_derivatives(new_derivative)
 
         self._invalidate_cache()
+
+    def add_output(self, name, units):
+        """ Adds an additional output for the variable name to the model with new units
+        and apply any necessary conversions/add additional equations.
+        :param name: name of variable whose units are to be changed
+        :param units: A `pint` units representation
+        """
+        self.add_input(name, units, is_output=True)
 
     def _replace_derivatives(self, new_derivative):
         """

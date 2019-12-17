@@ -256,7 +256,7 @@ class TestUnitConversion:
 
     def test_add_input_literal_variable(self, literals_model):
         """ Tests the Model.add_input function that changes units.
-        This particular case tests changing a free variable
+        This particular case tests changing a literal variable/constant
         e.g.
             var time: ms {pub: in};
             var{sv11} sv1: mV {init: 2};
@@ -542,3 +542,116 @@ class TestUnitConversion:
                                                    '1000.0*_env_ode$y_orig_deriv)'
         assert str(multiode_model.equations[5]) == 'Eq(_env_ode$x, _3.0*_env_ode$sv1_orig_deriv)'
 
+    def test_add_output(self, literals_model):
+        """ Tests the Model.add_output function that changes units.
+        e.g.
+            var time: ms {pub: in};
+            var{sv11} sv1: mV {init: 2};
+            var{current} x: pA;
+            var y: per_pA;
+
+            ode(sv1, time) = 1{mV_per_ms};
+            x = 1{pA};
+            y = 1{dimensionless}/x;
+
+        change x from pA to nA
+            var time: ms {pub: in};
+            var{sv11} sv1: mV {init: 2};
+            var x: pA;
+            var y: per_pA;
+            var{current} x_converted: nA
+
+            ode(sv1, time) = 1 :mV_per_ms;
+            x = 1000 * x_converted: pA;
+            y = 1{dimensionless}/x;
+            x_converted = 0.001 * 1 : nA
+        """
+        # original state
+        def test_original_state(model):
+            assert len(model.variables()) == 5
+            symbol_a = model.get_symbol_by_cmeta_id('sv11')
+            symbol_t = model.get_symbol_by_cmeta_id('time')
+            symbol_x = model.get_symbol_by_cmeta_id('current')
+            symbol_y = model.get_symbol_by_name('env_ode$y')
+            assert symbol_x.name == 'env_ode$x'
+            assert model.get_initial_value(symbol_a) == 2.0
+            assert not model.get_initial_value(symbol_t)
+            assert not model.get_initial_value(symbol_x)
+            assert not model.get_initial_value(symbol_y)
+            assert symbol_a.units == 'mV'
+            assert symbol_t.units == 'ms'
+            assert symbol_x.units == 'pA'
+            assert symbol_y.units == 'per_pA'
+            assert len(model.equations) == 3
+            assert str(model.equations[0]) == 'Eq(Derivative(_env_ode$sv1, _environment$time), _1.0)'
+            assert str(model.equations[1]) == 'Eq(_env_ode$x, _1.0)'
+            assert str(model.equations[2]) == 'Eq(_env_ode$y, _1.0/_env_ode$x)'
+            return True
+
+        pA_unit = literals_model.get_units('pA')
+        nA_unit = literals_model.get_units('nA')
+
+        assert test_original_state(literals_model)
+        # test no change in units
+        literals_model.add_output('env_ode$x', pA_unit)
+        assert test_original_state(literals_model)
+
+        # change pA to nA
+        literals_model.add_output('env_ode$x', nA_unit)
+        assert len(literals_model.variables()) == 6
+        symbol_a = literals_model.get_symbol_by_cmeta_id('sv11')
+        symbol_t = literals_model.get_symbol_by_cmeta_id('time')
+        symbol_x = literals_model.get_symbol_by_cmeta_id('current')
+        assert symbol_x.name == 'env_ode$x_converted'
+        symbol_y = literals_model.get_symbol_by_name('env_ode$y')
+        symbol_x_orig = literals_model.get_symbol_by_name('env_ode$x')
+        assert literals_model.get_initial_value(symbol_a) == 2.0
+        assert not literals_model.get_initial_value(symbol_t)
+        assert not literals_model.get_initial_value(symbol_x)
+        assert not literals_model.get_initial_value(symbol_y)
+        assert not literals_model.get_initial_value(symbol_x_orig)
+        assert symbol_a.units == 'mV'
+        assert symbol_t.units == 'ms'
+        assert symbol_x.units == 'nA'
+        assert symbol_y.units == 'per_pA'
+        assert symbol_x_orig.units == 'pA'
+        assert len(literals_model.equations) == 4
+        assert str(literals_model.equations[0]) == 'Eq(Derivative(_env_ode$sv1, _environment$time), _1.0)'
+        assert str(literals_model.equations[1]) == 'Eq(_env_ode$y, _1.0/_env_ode$x)'
+        assert str(literals_model.equations[2]) == 'Eq(_env_ode$x_converted, 0.001*_1.0)'
+        assert str(literals_model.equations[3]) == 'Eq(_env_ode$x, 1000.0*_env_ode$x_converted)'
+
+    # def test_missing_units(self, model_missing_units, literals_model):
+    #     """ Tests the Model.add_output function that changes units.
+    #     In this case the model needs to add the unit it wants to change to.
+    #     e.g.
+    #         var time: ms {pub: in};
+    #         var{sv11} sv1: mV {init: 2};
+    #         var{current} x: pA;
+    #         var y: per_pA;
+    #
+    #         ode(sv1, time) = 1{mV_per_ms};
+    #         x = 1{pA};
+    #         y = 1{dimensionless}/x;
+    #
+    #     change x from pA to nA
+    #         var time: ms {pub: in};
+    #         var{sv11} sv1: mV {init: 2};
+    #         var x: pA;
+    #         var y: per_pA;
+    #         var{current} x_converted: nA
+    #
+    #         ode(sv1, time) = 1 :mV_per_ms;
+    #         x = 1000 * x_converted: pA;
+    #         y = 1{dimensionless}/x;
+    #         x_converted = 0.001 * 1 : nA
+    #     """
+    #     pA_unit = model_missing_units.get_units('pA')
+    #     nA_unit = literals_model.get_units('nA')
+    #
+    #     # check nA not in missing_units
+    #     with pytest.raises(KeyError):
+    #         model_missing_units.get_units('nA')
+    #
+    #     model_missing_units.add_input('env_ode$x', nA_unit)
+    #
