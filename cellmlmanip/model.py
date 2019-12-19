@@ -823,14 +823,7 @@ class Model(object):
                     self.remove_equation(equation)
                 original_had_eqn = True
                 break
-        if is_output:
-            print(new_variable.name + ' output')
-        else:
-            print(new_variable.name + ' not output')
-        if original_had_eqn:
-            print(new_variable.name + ' eqn')
-        else:
-            print(new_variable.name + ' not eqn')
+
         # 5. add an equation for original variable if there wasnt one
         # oldvar [old units] = newvar [new units] / cf [new units/old units]
         if not is_output:

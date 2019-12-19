@@ -241,7 +241,7 @@ class TestUnitConversion:
 
         assert test_original_state(local_model)
         # test no change in units
-        local_model.add_input('env_ode$time', ms_unit)
+        local_model.add_input('environment$time', ms_unit)
         assert test_original_state(local_model)
 
         # change ms to s
@@ -395,7 +395,7 @@ class TestUnitConversion:
 
         assert test_original_state(multiode_freevar_model)
         # test no change in units
-        multiode_freevar_model.add_input('env_ode$time', ms_unit)
+        multiode_freevar_model.add_input('environment$time', ms_unit)
         assert test_original_state(multiode_freevar_model)
 
         # change ms to s
@@ -710,73 +710,73 @@ class TestUnitConversion:
         assert len(state_symbols) == 1
         assert symbol_orig in state_symbols
 
-    # def test_add_output_free_variable(self, local_model):
-    #     """ Tests the Model.add_input function that changes units.
-    #     This particular test is when a free variable is being converted as an output
-    #
-    #     For example::
-    #
-    #         Original model
-    #             var{time} time: ms {pub: in};
-    #             var{sv11} sv1: mV {init: 2};
-    #
-    #             ode(sv1, time) = 1{mV_per_ms};
-    #
-    #     convert time from ms to s
-    #
-    #         creates model
-    #             var{time} time: ms {pub: in};
-    #             var{sv11} sv1: mV {init: 2};
-    #             var{time} time_converted: s
-    #
-    #             ode(sv1, time) = 1{mV_per_ms};
-    #             time_converted = 0.001 * time
-    #     """
-    #
-    #     # original state
-    #     def test_original_state(local_model):
-    #         assert len(local_model.variables()) == 3
-    #         symbol_a = local_model.get_symbol_by_cmeta_id('sv11')
-    #         symbol_t = local_model.get_symbol_by_cmeta_id('time')
-    #         assert local_model.get_initial_value(symbol_a) == 2.0
-    #         assert symbol_a.units == 'mV'
-    #         assert symbol_t.units == 'ms'
-    #         assert len(local_model.equations) == 1
-    #         assert str(local_model.equations[0]) == 'Eq(Derivative(_env_ode$sv1, _environment$time), _1.0)'
-    #         state_symbols = local_model.get_state_symbols()
-    #         assert len(state_symbols) == 1
-    #         assert symbol_a in state_symbols
-    #         assert local_model.get_free_variable_symbol() == symbol_t
-    #         return True
-    #
-    #     ms_unit = local_model.get_units('ms')
-    #     second_unit = local_model.get_units('second')
-    #
-    #     assert test_original_state(local_model)
-    #     # test no change in units
-    #     local_model.add_output('_environment$time', ms_unit)
-    #     assert test_original_state(local_model)
-    #
-    #     # change ms to s
-    #     local_model.add_output('_environment$time', second_unit)
-    #     assert len(local_model.variables()) == 3
-    #     symbol_a = local_model.get_symbol_by_cmeta_id('sv11')
-    #     assert local_model.get_initial_value(symbol_a) == 0.002
-    #     assert symbol_a.units == 'mV'
-    #     assert symbol_a.name == 'env_ode$sv1_converted'
-    #     symbol_t = local_model.get_symbol_by_cmeta_id('time')
-    #     assert symbol_t.units == 'second'
-    #     assert symbol_t.name == 'environment$time_converted'
-    #     symbol_orig = local_model.get_symbol_by_name('env_ode$time')
-    #     assert symbol_orig.units == 'ms'
-    #     assert len(local_model.equations) == 2
-    #     assert str(local_model.equations[0]) == 'Eq(Derivative(_env_ode$sv1, _environment$time), _1.0)'
-    #     assert str(local_model.equations[1]) == 'Eq(_environment$time_converted, 0.001*_environment$time)'
-    #     state_symbols = local_model.get_state_symbols()
-    #     assert len(state_symbols) == 1
-    #     assert symbol_a in state_symbols
-    #     assert local_model.get_free_variable_symbol() == symbol_t
-    #
+    def test_add_output_free_variable(self, local_model):
+        """ Tests the Model.add_input function that changes units.
+        This particular test is when a free variable is being converted as an output
+
+        For example::
+
+            Original model
+                var{time} time: ms {pub: in};
+                var{sv11} sv1: mV {init: 2};
+
+                ode(sv1, time) = 1{mV_per_ms};
+
+        convert time from ms to s
+
+            creates model
+                var{time} time: ms {pub: in};
+                var{sv11} sv1: mV {init: 2};
+                var{time} time_converted: s
+
+                ode(sv1, time) = 1{mV_per_ms};
+                time_converted = 0.001 * time
+        """
+
+        # original state
+        def test_original_state(local_model):
+            assert len(local_model.variables()) == 3
+            symbol_a = local_model.get_symbol_by_cmeta_id('sv11')
+            symbol_t = local_model.get_symbol_by_cmeta_id('time')
+            assert local_model.get_initial_value(symbol_a) == 2.0
+            assert symbol_a.units == 'mV'
+            assert symbol_t.units == 'ms'
+            assert len(local_model.equations) == 1
+            assert str(local_model.equations[0]) == 'Eq(Derivative(_env_ode$sv1, _environment$time), _1.0)'
+            state_symbols = local_model.get_state_symbols()
+            assert len(state_symbols) == 1
+            assert symbol_a in state_symbols
+            assert local_model.get_free_variable_symbol() == symbol_t
+            return True
+
+        ms_unit = local_model.get_units('ms')
+        second_unit = local_model.get_units('second')
+
+        assert test_original_state(local_model)
+        # test no change in units
+        local_model.add_output('environment$time', ms_unit)
+        assert test_original_state(local_model)
+
+        # change ms to s
+        local_model.add_output('environment$time', second_unit)
+        assert len(local_model.variables()) == 4
+        symbol_a = local_model.get_symbol_by_cmeta_id('sv11')
+        assert local_model.get_initial_value(symbol_a) == 2.0
+        assert symbol_a.units == 'mV'
+        assert symbol_a.name == 'env_ode$sv1'
+        symbol_t = local_model.get_symbol_by_cmeta_id('time')
+        assert symbol_t.units == 'second'
+        assert symbol_t.name == 'environment$time_converted'
+        symbol_orig = local_model.get_symbol_by_name('environment$time')
+        assert symbol_orig.units == 'ms'
+        assert len(local_model.equations) == 2
+        assert str(local_model.equations[0]) == 'Eq(Derivative(_env_ode$sv1, _environment$time), _1.0)'
+        assert str(local_model.equations[1]) == 'Eq(_environment$time_converted, 0.001*_environment$time)'
+        state_symbols = local_model.get_state_symbols()
+        assert len(state_symbols) == 1
+        assert symbol_a in state_symbols
+        assert local_model.get_free_variable_symbol() == symbol_orig
+
     # def test_missing_units(self, model_missing_units, literals_model):
     #     """ Tests the Model.add_output function that changes units.
     #     In this case the model needs to add the unit it wants to change to.
