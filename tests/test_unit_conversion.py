@@ -132,25 +132,28 @@ class TestUnitConversion:
     def test_add_input_state_variable(self, local_model):
         """ Tests the Model.add_input function that changes units.
         This particular test is when a state variable is being converted
-        e.g.
-            var{time} time: ms {pub: in};
-            var{sv11} sv1: mV {init: 2};
 
-            ode(sv1, time) = 1{mV_per_ms};
+        For example::
+
+            Original model
+                var{time} time: ms {pub: in};
+                var{sv11} sv1: mV {init: 2};
+
+                ode(sv1, time) = 1{mV_per_ms};
 
         convert sv11 from mV to V
 
-        becomes
-            var{time} time: ms {pub: in};
-            var{sv11} sv1_converted: V {init: 0.002};
-            var sv1 mV {init: 2}
-            var sv1_orig_deriv mV_per_ms
+            creates model
+                var{time} time: ms {pub: in};
+                var{sv11} sv1_converted: V {init: 0.002};
+                var sv1 mV {init: 2}
+                var sv1_orig_deriv mV_per_ms
 
-            ode(y, time) = 2{mv_per_ms};
-            sv1 = 1000 * sv1_converted
-            sv1_orig_deriv = 1{mV_per_ms}
-            ode(sv1_converted, time) = 0.001 * sv1_orig_deriv
-            x = 3 * sv1_orig_deriv
+                ode(y, time) = 2{mv_per_ms};
+                sv1 = 1000 * sv1_converted
+                sv1_orig_deriv = 1{mV_per_ms}
+                ode(sv1_converted, time) = 0.001 * sv1_orig_deriv
+                x = 3 * sv1_orig_deriv
         """
         # original state
         def test_original_state(local_model):
