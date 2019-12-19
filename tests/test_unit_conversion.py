@@ -149,11 +149,9 @@ class TestUnitConversion:
                 var sv1 mV {init: 2}
                 var sv1_orig_deriv mV_per_ms
 
-                ode(y, time) = 2{mv_per_ms};
                 sv1 = 1000 * sv1_converted
                 sv1_orig_deriv = 1{mV_per_ms}
                 ode(sv1_converted, time) = 0.001 * sv1_orig_deriv
-                x = 3 * sv1_orig_deriv
         """
         # original state
         def test_original_state(local_model):
@@ -165,6 +163,9 @@ class TestUnitConversion:
             assert symbol_t.units == 'ms'
             assert len(local_model.equations) == 1
             assert str(local_model.equations[0]) == 'Eq(Derivative(_env_ode$sv1, _environment$time), _1.0)'
+            state_symbols = local_model.get_state_symbols()
+            assert len(state_symbols) == 1
+            assert symbol_a in state_symbols
             return True
 
         mV_unit = local_model.get_units('mV')
@@ -196,26 +197,32 @@ class TestUnitConversion:
         assert str(local_model.equations[2]) == 'Eq(Derivative(_env_ode$sv1_converted, _environment$time), ' \
                                                 '0.001*_env_ode$sv1_orig_deriv)'
 
+        state_symbols = local_model.get_state_symbols()
+        assert len(state_symbols) == 1
+        assert symbol_a in state_symbols
+
     def test_add_input_free_variable(self, local_model):
         """ Tests the Model.add_input function that changes units.
         This particular case tests changing a free variable
-        e.g.
-            var{time} time: ms {pub: in};
-            var{sv11} sv1: mV {init: 2};
+        For example::
 
-            ode(sv1, time) = 1{mV_per_ms};
+            Original model
+                var{time} time: ms {pub: in};
+                var{sv11} sv1: mV {init: 2};
+
+                ode(sv1, time) = 1{mV_per_ms};
 
         convert time from ms to s
 
         becomes
-            var time: ms;
-            var{time} time_converted: s;
-            var{sv11} sv1: mV {init: 2};
-            var sv1_orig_deriv mV_per_ms
+                var time: ms;
+                var{time} time_converted: s;
+                var{sv11} sv1: mV {init: 2};
+                var sv1_orig_deriv mV_per_ms
 
-            time = 1000 * time_converted;
-            sv1_orig_deriv = 1{mV_per_ms}
-            ode(sv1, time_converted) = 1000 * sv1_orig_deriv
+                time = 1000 * time_converted;
+                sv1_orig_deriv = 1{mV_per_ms}
+                ode(sv1, time_converted) = 1000 * sv1_orig_deriv
         """
         # original state
         def test_original_state(local_model):
@@ -260,27 +267,31 @@ class TestUnitConversion:
     def test_add_input_literal_variable(self, literals_model):
         """ Tests the Model.add_input function that changes units.
         This particular case tests changing a literal variable/constant
-        e.g.
-            var time: ms {pub: in};
-            var{sv11} sv1: mV {init: 2};
-            var{current} x: pA;
-            var y: per_pA;
+        For example::
 
-            ode(sv1, time) = 1{mV_per_ms};
-            x = 1{pA};
-            y = 1{dimensionless}/x;
+            Original model
+                var{time} time: ms {pub: in};
+                var{sv11} sv1: mV {init: 2};
+                var{current} x: pA;
+                var y: per_pA;
 
-        change x from pA to nA
-            var time: ms {pub: in};
-            var{sv11} sv1: mV {init: 2};
-            var x: pA;
-            var y: per_pA;
-            var x_converted: nA
+                ode(sv1, time) = 1{mV_per_ms};
+                x = 1{pA};
+                y = 1{dimensionless}/x;
 
-            ode(sv1, time) = 1 :mV_per_ms;
-            x = 1000 * x_converted: pA;
-            y = 1{dimensionless}/x;
-            x_converted = 0.001 * 1 : nA
+        convert current from pA to nA
+
+        becomes
+                var time: ms;
+                var{sv11} sv1: mV {init: 2};
+                var{current} x_converted: nA;
+                var x : pA
+                var y: per_pA;
+
+                ode(sv1, time) = 1{mV_per_ms};
+                x_converted = 0.001 * 1{pA}
+                x = 1000* x_converted;
+                y = 1{dimensionless}/x;
         """
         # original state
         def test_original_state(model):
@@ -547,27 +558,32 @@ class TestUnitConversion:
 
     def test_add_output(self, literals_model):
         """ Tests the Model.add_output function that changes units.
-        e.g.
-            var time: ms {pub: in};
-            var{sv11} sv1: mV {init: 2};
-            var{current} x: pA;
-            var y: per_pA;
 
-            ode(sv1, time) = 1{mV_per_ms};
-            x = 1{pA};
-            y = 1{dimensionless}/x;
+        For example::
 
-        change x from pA to nA
-            var time: ms {pub: in};
-            var{sv11} sv1: mV {init: 2};
-            var x: pA;
-            var y: per_pA;
-            var{current} x_converted: nA
+            Original model
+                var{time} time: ms {pub: in};
+                var{sv11} sv1: mV {init: 2};
+                var{current} x: pA;
+                var y: per_pA;
 
-            ode(sv1, time) = 1 :mV_per_ms;
-            x = 1000 * x_converted: pA;
-            y = 1{dimensionless}/x;
-            x_converted = 0.001 * 1 : nA
+                ode(sv1, time) = 1{mV_per_ms};
+                x = 1{pA};
+                y = 1{dimensionless}/x;
+
+        convert current from pA to nA
+
+        becomes
+                var time: ms;
+                var{sv11} sv1: mV {init: 2};
+                var{current} x_converted: nA;
+                var x : pA
+                var y: per_pA;
+
+                ode(sv1, time) = 1{mV_per_ms};
+                x = 1{pA}
+                y = 1{dimensionless}/x;
+                x_converted = 0.001 * x
         """
         # original state
         def test_original_state(model):
@@ -589,6 +605,9 @@ class TestUnitConversion:
             assert str(model.equations[0]) == 'Eq(Derivative(_env_ode$sv1, _environment$time), _1.0)'
             assert str(model.equations[1]) == 'Eq(_env_ode$x, _1.0)'
             assert str(model.equations[2]) == 'Eq(_env_ode$y, _1.0/_env_ode$x)'
+            state_symbols = model.get_state_symbols()
+            assert len(state_symbols) == 1
+            assert symbol_a in state_symbols
             return True
 
         pA_unit = literals_model.get_units('pA')
@@ -620,10 +639,144 @@ class TestUnitConversion:
         assert symbol_x_orig.units == 'pA'
         assert len(literals_model.equations) == 4
         assert str(literals_model.equations[0]) == 'Eq(Derivative(_env_ode$sv1, _environment$time), _1.0)'
-        assert str(literals_model.equations[1]) == 'Eq(_env_ode$y, _1.0/_env_ode$x)'
-        assert str(literals_model.equations[2]) == 'Eq(_env_ode$x_converted, 0.001*_1.0)'
-        assert str(literals_model.equations[3]) == 'Eq(_env_ode$x, 1000.0*_env_ode$x_converted)'
+        assert str(literals_model.equations[1]) == 'Eq(_env_ode$x, _1.0)'
+        assert str(literals_model.equations[2]) == 'Eq(_env_ode$y, _1.0/_env_ode$x)'
+        assert str(literals_model.equations[3]) == 'Eq(_env_ode$x_converted, 0.001*_env_ode$x)'
+        state_symbols = literals_model.get_state_symbols()
+        assert len(state_symbols) == 1
+        assert symbol_a in state_symbols
 
+    def test_add_output_state_variable(self, local_model):
+        """ Tests the Model.add_input function that changes units.
+        This particular test is when a state variable is being converted as an output
+
+        For example::
+
+            Original model
+                var{time} time: ms {pub: in};
+                var{sv11} sv1: mV {init: 2};
+
+                ode(sv1, time) = 1{mV_per_ms};
+
+        convert sv11 from mV to V
+
+            creates model
+                var{time} time: ms {pub: in};
+                var{sv11} sv1_converted: V {init: 0.002};
+                var sv1 mV {init: 2}
+
+                ode(sv1, time) = 1{mV_per_ms};
+                sv1_converted = sv1 / 1000
+        """
+        # original state
+        def test_original_state(local_model):
+            assert len(local_model.variables()) == 3
+            symbol_a = local_model.get_symbol_by_cmeta_id('sv11')
+            symbol_t = local_model.get_symbol_by_cmeta_id('time')
+            assert local_model.get_initial_value(symbol_a) == 2.0
+            assert symbol_a.units == 'mV'
+            assert symbol_t.units == 'ms'
+            assert len(local_model.equations) == 1
+            assert str(local_model.equations[0]) == 'Eq(Derivative(_env_ode$sv1, _environment$time), _1.0)'
+            state_symbols = local_model.get_state_symbols()
+            assert len(state_symbols) == 1
+            assert symbol_a in state_symbols
+            return True
+
+        mV_unit = local_model.get_units('mV')
+        volt_unit = local_model.get_units('volt')
+
+        assert test_original_state(local_model)
+        # test no change in units
+        local_model.add_output('env_ode$sv1', mV_unit)
+        assert test_original_state(local_model)
+
+        # change mV to V
+        local_model.add_output('env_ode$sv1', volt_unit)
+        assert len(local_model.variables()) == 4
+        symbol_a = local_model.get_symbol_by_cmeta_id('sv11')
+        assert local_model.get_initial_value(symbol_a) == 0.002
+        assert symbol_a.units == 'volt'
+        assert symbol_a.name == 'env_ode$sv1_converted'
+        symbol_t = local_model.get_symbol_by_cmeta_id('time')
+        assert symbol_t.units == 'ms'
+        symbol_orig = local_model.get_symbol_by_name('env_ode$sv1')
+        assert symbol_orig.units == 'mV'
+        assert local_model.get_initial_value(symbol_orig) == 2.0
+        assert len(local_model.equations) == 2
+        assert str(local_model.equations[0]) == 'Eq(Derivative(_env_ode$sv1, _environment$time), _1.0)'
+        assert str(local_model.equations[1]) == 'Eq(_env_ode$sv1_converted, 0.001*_env_ode$sv1)'
+        state_symbols = local_model.get_state_symbols()
+        assert len(state_symbols) == 1
+        assert symbol_orig in state_symbols
+
+    # def test_add_output_free_variable(self, local_model):
+    #     """ Tests the Model.add_input function that changes units.
+    #     This particular test is when a free variable is being converted as an output
+    #
+    #     For example::
+    #
+    #         Original model
+    #             var{time} time: ms {pub: in};
+    #             var{sv11} sv1: mV {init: 2};
+    #
+    #             ode(sv1, time) = 1{mV_per_ms};
+    #
+    #     convert time from ms to s
+    #
+    #         creates model
+    #             var{time} time: ms {pub: in};
+    #             var{sv11} sv1: mV {init: 2};
+    #             var{time} time_converted: s
+    #
+    #             ode(sv1, time) = 1{mV_per_ms};
+    #             time_converted = 0.001 * time
+    #     """
+    #
+    #     # original state
+    #     def test_original_state(local_model):
+    #         assert len(local_model.variables()) == 3
+    #         symbol_a = local_model.get_symbol_by_cmeta_id('sv11')
+    #         symbol_t = local_model.get_symbol_by_cmeta_id('time')
+    #         assert local_model.get_initial_value(symbol_a) == 2.0
+    #         assert symbol_a.units == 'mV'
+    #         assert symbol_t.units == 'ms'
+    #         assert len(local_model.equations) == 1
+    #         assert str(local_model.equations[0]) == 'Eq(Derivative(_env_ode$sv1, _environment$time), _1.0)'
+    #         state_symbols = local_model.get_state_symbols()
+    #         assert len(state_symbols) == 1
+    #         assert symbol_a in state_symbols
+    #         assert local_model.get_free_variable_symbol() == symbol_t
+    #         return True
+    #
+    #     ms_unit = local_model.get_units('ms')
+    #     second_unit = local_model.get_units('second')
+    #
+    #     assert test_original_state(local_model)
+    #     # test no change in units
+    #     local_model.add_output('_environment$time', ms_unit)
+    #     assert test_original_state(local_model)
+    #
+    #     # change ms to s
+    #     local_model.add_output('_environment$time', second_unit)
+    #     assert len(local_model.variables()) == 3
+    #     symbol_a = local_model.get_symbol_by_cmeta_id('sv11')
+    #     assert local_model.get_initial_value(symbol_a) == 0.002
+    #     assert symbol_a.units == 'mV'
+    #     assert symbol_a.name == 'env_ode$sv1_converted'
+    #     symbol_t = local_model.get_symbol_by_cmeta_id('time')
+    #     assert symbol_t.units == 'second'
+    #     assert symbol_t.name == 'environment$time_converted'
+    #     symbol_orig = local_model.get_symbol_by_name('env_ode$time')
+    #     assert symbol_orig.units == 'ms'
+    #     assert len(local_model.equations) == 2
+    #     assert str(local_model.equations[0]) == 'Eq(Derivative(_env_ode$sv1, _environment$time), _1.0)'
+    #     assert str(local_model.equations[1]) == 'Eq(_environment$time_converted, 0.001*_environment$time)'
+    #     state_symbols = local_model.get_state_symbols()
+    #     assert len(state_symbols) == 1
+    #     assert symbol_a in state_symbols
+    #     assert local_model.get_free_variable_symbol() == symbol_t
+    #
     # def test_missing_units(self, model_missing_units, literals_model):
     #     """ Tests the Model.add_output function that changes units.
     #     In this case the model needs to add the unit it wants to change to.

@@ -664,7 +664,7 @@ class Model(object):
         cf = self.units.get_conversion_factor(from_unit=original_units, to_unit=units)
 
         # create new variable and relevant equations
-        new_variable = self._convert_variable_instance(original_variable, cf, units)
+        new_variable = self._convert_variable_instance(original_variable, cf, units, is_output)
 
         # if is output do not need to do additional changes for state/free symbols
         if is_output:
@@ -736,16 +736,18 @@ class Model(object):
 
     def _convert_free_variable_deriv(self, eqn, new_variable, cf):
         """
-        Create relevant variables/equations when converting a free variable.
+        Create relevant variables/equations when converting a free variable derivative.
         :param eqn: the derivative equation containing free variable
-        :param new_variable: the new variable representing the converted symbol
-        :param cf: conversion factor for unit conversion
+        :param new_variable: the new variable representing the converted symbol [new_units]
+        :param cf: conversion factor for unit conversion [new units/old units]
         """
-        derivative_variable = eqn.args[0].args[0]
-        # 1. create a new variable/equation for derivative
+        derivative_variable = eqn.args[0].args[0]  # units [x]
+        # 1. create a new variable/equation for original derivative
+        # will have units [x/old units]
         new_deriv_variable = self._create_new_deriv_variable_and_equation(eqn, derivative_variable)
 
-        # 3. create equation for derivative wrt new variable
+        # 2. create equation for derivative wrt new variable
+        # dx/dnewvar [x/new units] = new_deriv_var [x/old units] / cf [new units/old units]
         expression = sympy.Eq(sympy.Derivative(derivative_variable, new_variable), new_deriv_variable / cf)
         self.add_equation(expression)
         return {'variable': new_deriv_variable, 'expression': eqn.args[0]}
@@ -753,9 +755,9 @@ class Model(object):
     def _convert_state_variable_deriv(self, original_variable, new_variable, cf):
         """
         Create relevant variables/equations when converting a state variable.
-        :param original_variable: the variable to be converted
-        :param new_variable: the new variable representing the converted symbol
-        :param cf: conversion factor for unit conversion
+        :param original_variable: the variable to be converted [old units]
+        :param new_variable: the new variable representing the converted symbol [new units]
+        :param cf: conversion factor for unit conversion [new units/old units]
         :return: a dictionary containing the 'variable' and 'expression' for new derivative
         """
         # 1. find the derivative equation for this variable
@@ -768,23 +770,27 @@ class Model(object):
                     break
 
         # get free variable symbol
+        # units [x]
         wrt_variable = eqn.args[0].args[1]
 
-        # 2. create new variable for derivative
+        # 1. create a new variable/equation for original derivative
+        # will have units [old units/x]
         new_deriv_variable = self._create_new_deriv_variable_and_equation(eqn, original_variable)
 
-        # 3. add a new derivative equation
+        # 2. add a new derivative equation
+        # dnewvar/dx [new units/x] = new_deriv_var [old units/x] * cf [new units/old units]
         expression = sympy.Eq(sympy.Derivative(new_variable, wrt_variable), new_deriv_variable * cf)
         self.add_equation(expression)
         return {'variable': new_deriv_variable, 'expression': eqn.args[0]}
 
-    def _convert_variable_instance(self, original_variable, cf, units):
+    def _convert_variable_instance(self, original_variable, cf, units, is_output):
         """
         Internal function to create new variable and an equation for it.
-        :param original_variable: VariableDummy object to be converted
-        :param cf: conversion factor
+        :param original_variable: VariableDummy object to be converted [old units]
+        :param cf: conversion factor [new units/old units]
         :param units: Unit object for new units
-        :return: the new variable created
+        :param is_output: boolean are we adding input or output
+        :return: the new variable created [new units]
         """
         # 1. get unique name for new variable
         new_name = original_variable.name + '_converted'
@@ -804,17 +810,41 @@ class Model(object):
         original_variable.cmeta_id = ''
 
         # 4. check whether we had an eqn for original
-        # if so, remove it and replace with new_var = rhs * cf
+        # if so, remove it and replace with new_var [new units] = rhs [old units] * cf [new units/old units]
+        original_had_eqn = False
         for equation in self.equations:
             if equation.is_Equality and equation.args[0] == original_variable:
-                expression = sympy.Eq(new_variable, equation.args[1] * cf)
-                self.add_equation(expression)
-                self.remove_equation(equation)
+                if is_output:
+                    expression = sympy.Eq(new_variable, original_variable * cf)
+                    self.add_equation(expression)
+                else:
+                    expression = sympy.Eq(new_variable, equation.args[1] * cf)
+                    self.add_equation(expression)
+                    self.remove_equation(equation)
+                original_had_eqn = True
                 break
+        if is_output:
+            print(new_variable.name + ' output')
+        else:
+            print(new_variable.name + ' not output')
+        if original_had_eqn:
+            print(new_variable.name + ' eqn')
+        else:
+            print(new_variable.name + ' not eqn')
+        # 5. add an equation for original variable if there wasnt one
+        # oldvar [old units] = newvar [new units] / cf [new units/old units]
+        if not is_output:
+ #           if not original_had_eqn:
+            expression = sympy.Eq(original_variable, new_variable / cf)
+            self.add_equation(expression)
+        else:
+            if not original_had_eqn:
+                expression = sympy.Eq(new_variable, original_variable * cf)
+                self.add_equation(expression)
+ #           else:
+ #               expression = sympy.Eq(original_variable, new_variable / cf)
+ #               self.add_equation(expression)
 
-        # 5. add an equation for original variable
-        expression = sympy.Eq(original_variable, new_variable / cf)
-        self.add_equation(expression)
 
         return new_variable
 
