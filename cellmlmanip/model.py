@@ -658,8 +658,6 @@ class Model(object):
         if original_units == units:
             return
 
-        state_symbols = self.get_state_symbols()
-        free_symbol = self.get_free_variable_symbol()
         # conversion_factor for old units to new units
         cf = self.units.get_conversion_factor(from_unit=original_units, to_unit=units)
 
@@ -670,6 +668,8 @@ class Model(object):
         if is_output:
             return
 
+        state_symbols = self.get_state_symbols()
+        free_symbol = self.get_free_variable_symbol()
         new_derivatives = []
         # if state variable
         if original_variable in state_symbols:
