@@ -627,11 +627,50 @@ class Model(object):
 
     def convert_variable(self, variable, units, direction):
         """
+        Changes the units of variable argument to the units supplied applying the direction of the
+        variable from the direction argument.
 
-        :param variable:
-        :param units:
-        :param direction:
-        :return:
+        For example::
+
+            Original model
+                var{time} time: ms {pub: in};
+                var{sv11} sv1: mV {init: 2};
+
+                ode(sv1, time) = 1{mV_per_ms};
+
+        convert_variable(time, second, DataDirectionFlow.INPUT)
+
+        becomes
+                var time: ms;
+                var{time} time_converted: s;
+                var{sv11} sv1: mV {init: 2};
+                var sv1_orig_deriv mV_per_ms
+
+                time = 1000 * time_converted;
+                sv1_orig_deriv = 1{mV_per_ms}
+                ode(sv1, time_converted) = 1000 * sv1_orig_deriv
+
+
+        convert_variable(time, second, DataDirectionFlow.OUTPUT)
+
+            creates model
+                var{time} time: ms {pub: in};
+                var{sv11} sv1: mV {init: 2};
+                var{time} time_converted: s
+
+                ode(sv1, time) = 1{mV_per_ms};
+                time_converted = 0.001 * time
+
+
+        :param variable: the variable to be converted
+        :param units: units to convert variable to (note if variable is already in these units, model remains
+                      unchanged and the original variable is returned
+        :param direction: either DataDirectionFlow.INPUT; the variable to be changed is an input and all affected
+                          equations will be adjusted
+                          or DataDirectionFlow.OUTPUT; the variable to be changed is an output, equations
+                          are unaffected apart from converting the actual output
+        :return: the original variable but with new units (or original unchanged if conversion was not necessary
+                 or impossible
         """
         self._check_arguments(variable, units, direction)
         original_units = variable.units
@@ -676,8 +715,10 @@ class Model(object):
 
     def _check_arguments(self, variable, units, direction):
         """
-
-        :param variable:
+        Checks the arguments of the convert_variable functions
+        :param variable: variable must be a VariableDummy object present in the model
+                         or the string representation of an ontology term referring to
+                         a VariableDummy object present in the model
         :param units:
         :param direction:
         :return:
@@ -685,6 +726,8 @@ class Model(object):
         # variable should be a VariableDummy present in the model
         # or an ontology term that references a variable in the model
         assert isinstance(variable, VariableDummy)
+        assert variable.name in self._name_to_symbol
+
 
         # units should be a pint Unit object
         assert isinstance(units, self.units.ureg.Unit)
