@@ -1,6 +1,7 @@
 import pytest
 
 from cellmlmanip import units
+from cellmlmanip.model import DataDirectionFlow
 from . import shared
 
 
@@ -123,12 +124,6 @@ class TestUnitConversion:
             # cellml file states b (per_ms) = power(a (ms), 1 (second))
             bad_units_model.units.summarise_units(equation[1].rhs)
 
-    def test_add_input_invalid_args(self, local_model):
-        mV_unit = local_model.get_units('mV')
-        # name does not exist in model
-        with pytest.raises(KeyError):
-            local_model.add_input('nonsense_name', mV_unit)
-
     def test_add_input_state_variable(self, local_model):
         """ Tests the Model.add_input function that changes units.
         This particular test is when a state variable is being converted
@@ -170,14 +165,17 @@ class TestUnitConversion:
 
         mV_unit = local_model.get_units('mV')
         volt_unit = local_model.get_units('volt')
+        original_var = local_model.get_symbol_by_name('env_ode$sv1')
 
         assert test_original_state(local_model)
         # test no change in units
-        local_model.add_input('env_ode$sv1', mV_unit)
+        newvar = local_model.convert_variable(original_var, mV_unit, DataDirectionFlow.INPUT)
+        assert newvar == original_var
         assert test_original_state(local_model)
 
         # change mV to V
-        local_model.add_input('env_ode$sv1', volt_unit)
+        newvar = local_model.convert_variable(original_var, volt_unit, DataDirectionFlow.INPUT)
+        assert newvar != original_var
         assert len(local_model.variables()) == 5
         symbol_a = local_model.get_symbol_by_cmeta_id('sv11')
         assert local_model.get_initial_value(symbol_a) == 0.002
@@ -202,7 +200,7 @@ class TestUnitConversion:
         assert symbol_a in state_symbols
 
     def test_add_input_free_variable(self, local_model):
-        """ Tests the Model.add_input function that changes units.
+        """ Tests the Model.convert_variable function that changes units of given variable.
         This particular case tests changing a free variable
         For example::
 
@@ -238,14 +236,15 @@ class TestUnitConversion:
 
         ms_unit = local_model.get_units('ms')
         second_unit = local_model.get_units('second')
+        original_var = local_model.get_symbol_by_name('environment$time')
 
         assert test_original_state(local_model)
         # test no change in units
-        local_model.add_input('environment$time', ms_unit)
+        local_model.convert_variable(original_var, ms_unit, DataDirectionFlow.INPUT)
         assert test_original_state(local_model)
 
         # change ms to s
-        local_model.add_input('environment$time', second_unit)
+        local_model.convert_variable(original_var, second_unit, DataDirectionFlow.INPUT)
         assert len(local_model.variables()) == 5
         symbol_a = local_model.get_symbol_by_cmeta_id('sv11')
         assert local_model.get_initial_value(symbol_a) == 2.0
@@ -265,7 +264,7 @@ class TestUnitConversion:
                                                 '1000.0*_env_ode$sv1_orig_deriv)'
 
     def test_add_input_literal_variable(self, literals_model):
-        """ Tests the Model.add_input function that changes units.
+        """ Tests the Model.convert_variable function that changes units of given variable.
         This particular case tests changing a literal variable/constant
         For example::
 
@@ -317,14 +316,15 @@ class TestUnitConversion:
 
         pA_unit = literals_model.get_units('pA')
         nA_unit = literals_model.get_units('nA')
+        original_var = literals_model.get_symbol_by_name('env_ode$x')
 
         assert test_original_state(literals_model)
         # test no change in units
-        literals_model.add_input('env_ode$x', pA_unit)
+        literals_model.convert_variable(original_var, pA_unit, DataDirectionFlow.INPUT)
         assert test_original_state(literals_model)
 
         # change pA to nA
-        literals_model.add_input('env_ode$x', nA_unit)
+        literals_model.convert_variable(original_var, nA_unit, DataDirectionFlow.INPUT)
         assert len(literals_model.variables()) == 6
         symbol_a = literals_model.get_symbol_by_cmeta_id('sv11')
         symbol_t = literals_model.get_symbol_by_cmeta_id('time')
@@ -349,30 +349,33 @@ class TestUnitConversion:
         assert str(literals_model.equations[3]) == 'Eq(_env_ode$x, 1000.0*_env_ode$x_converted)'
 
     def test_add_input_free_variable_multiple(self, multiode_freevar_model):
-        """ Tests the Model.add_input function that changes units.
-        This particular case tests changing a free variable
-        e.g.
-            var{time} time: ms {pub: in};
-            var{sv11} sv1: mV {init: 2};
-            var y: mV {init: 3};
-            ode(sv1, time) = 1{mV_per_ms};
-            ode(y, time) = 2{mV_per_ms}
+        """ Tests the Model.convert_variable function that changes units of given variable.
+        This particular case tests changing a free variable where there are multiple ode instances.
+        For example::
+
+            Original model
+                var{time} time: ms {pub: in};
+                var{sv11} sv1: mV {init: 2};
+                var y: mV {init: 3};
+
+                ode(sv1, time) = 1{mV_per_ms};
+                ode(y, time) = 2{mV_per_ms}
 
         convert time from ms to s
 
-        becomes
-            var time: ms;
-            var{time} time_converted: s;
-            var{sv11} sv1: mV {init: 2};
-            var sv1_orig_deriv mV_per_ms
-            var y : mV
-            var y_orig_deriv mV_per_ms
+            becomes
+                var time: ms;
+                var{time} time_converted: s;
+                var{sv11} sv1: mV {init: 2};
+                var sv1_orig_deriv mV_per_ms
+                var y : mV
+                var y_orig_deriv mV_per_ms
 
-            time = 1000 * time_converted;
-            sv1_orig_deriv = 1{mV_per_ms}
-            ode(sv1, time_converted) = 1000 * sv1_orig_deriv
-            y_orig_deriv = 2{mV_per_ms}
-            ode(y, time_converted) = 1000 * y_orig_deriv
+                time = 1000 * time_converted;
+                sv1_orig_deriv = 1{mV_per_ms}
+                ode(sv1, time_converted) = 1000 * sv1_orig_deriv
+                y_orig_deriv = 2{mV_per_ms}
+                ode(y, time_converted) = 1000 * y_orig_deriv
         """
         # original state
         def test_original_state(multiode_freevar_model):
@@ -392,14 +395,15 @@ class TestUnitConversion:
 
         ms_unit = multiode_freevar_model.get_units('ms')
         second_unit = multiode_freevar_model.get_units('second')
+        original_var = multiode_freevar_model.get_symbol_by_name('environment$time')
 
         assert test_original_state(multiode_freevar_model)
         # test no change in units
-        multiode_freevar_model.add_input('environment$time', ms_unit)
+        multiode_freevar_model.convert_variable(original_var, ms_unit, DataDirectionFlow.INPUT)
         assert test_original_state(multiode_freevar_model)
 
         # change ms to s
-        multiode_freevar_model.add_input('environment$time', second_unit)
+        multiode_freevar_model.convert_variable(original_var, second_unit, DataDirectionFlow.INPUT)
         assert len(multiode_freevar_model.variables()) == 7
         symbol_a = multiode_freevar_model.get_symbol_by_cmeta_id('sv11')
         assert multiode_freevar_model.get_initial_value(symbol_a) == 2.0
@@ -427,35 +431,37 @@ class TestUnitConversion:
                                                            '1000.0*_env_ode$y_orig_deriv)'
 
     def test_multiple_odes(self, multiode_model):
-        """ Tests the Model.add_input function that changes units.
+        """ Tests the Model.convert_variable function that changes units of given variable.
         This tests that any other uses of the derivative on the rhs of other equations
         are replaced with the new variable representing the old derivative
-        e.g.
-            var time: ms {pub: in};
-            var{sv11} sv1: mV {init: 2};
-            var x: mV_per_ms;
-            var y: mV {init: 3};
+        For example::
 
-            ode(sv1, time) = 1{mV_per_ms};
-            x = ode(sv1, time) * 3{mV_per_ms};
-            ode(y, time) = 2{mV_per_ms};
+            Original model
+                var time: ms {pub: in};
+                var{sv11} sv1: mV {init: 2};
+                var x: mV_per_ms;
+                var y: mV {init: 3};
+
+                ode(sv1, time) = 1{mV_per_ms};
+                x = ode(sv1, time) * 3{mV_per_ms};
+                ode(y, time) = 2{mV_per_ms};
 
         change sv1 from mV to V
 
         becomes
-            var{time} time: ms {pub: in};
-            var{sv11} sv1_converted: V {init: 0.002};
-            var sv1 mV {init: 2}
-            var sv1_orig_deriv mV_per_ms
-            var x: mV_per_ms;
-            var y: mV {init: 3};
-            var y_orig_deriv
+                var{time} time: ms {pub: in};
+                var{sv11} sv1_converted: V {init: 0.002};
+                var sv1 mV {init: 2}
+                var sv1_orig_deriv mV_per_ms
+                var x: mV_per_ms;
+                var y: mV {init: 3};
+                var y_orig_deriv
 
-            ode(y, time) = 2{mv_per_ms};
-            sv1 = 100 * sv1_converted
-            sv1_orig_deriv = 1{mV_per_ms}
-            ode(sv1_converted, time) = 0.001 * sv1_orig_deriv
-            x = 3 * sv1_orig_deriv
+                ode(y, time) = 2{mv_per_ms};
+                sv1 = 1000 * sv1_converted
+                sv1_orig_deriv = 1{mV_per_ms}
+                ode(sv1_converted, time) = 0.001 * sv1_orig_deriv
+                x = 3 * sv1_orig_deriv
         """
         # original state
         def test_original_state(multiode_model):
@@ -474,14 +480,15 @@ class TestUnitConversion:
 
         mV_unit = multiode_model.get_units('mV')
         volt_unit = multiode_model.get_units('volt')
+        original_var = multiode_model.get_symbol_by_name('env_ode$sv1')
 
         assert test_original_state(multiode_model)
         # test no change in units
-        multiode_model.add_input('env_ode$sv1', mV_unit)
+        multiode_model.convert_variable(original_var, mV_unit, DataDirectionFlow.INPUT)
         assert test_original_state(multiode_model)
 
         # change mV to V
-        multiode_model.add_input('env_ode$sv1', volt_unit)
+        multiode_model.convert_variable(original_var, volt_unit, DataDirectionFlow.INPUT)
         assert len(multiode_model.equations) == 5
         assert str(multiode_model.equations[0]) == 'Eq(Derivative(_env_ode$y, _environment$time), _2.0)'
         assert str(multiode_model.equations[1]) == 'Eq(_env_ode$sv1, 1000.0*_env_ode$sv1_converted)'
@@ -491,35 +498,39 @@ class TestUnitConversion:
         assert str(multiode_model.equations[4]) == 'Eq(_env_ode$x, _3.0*_env_ode$sv1_orig_deriv)'
 
     def test_multiple_odes_1(self, multiode_model):
-        """ Tests the Model.add_input function that changes units.
+        """ Tests the Model.convert_variable function that changes units of given variable.
         This tests that any other uses of the derivative on the rhs of other equations
         are replaced with the new variable representing the old derivative
-        e.g.
-            var time: ms {pub: in};
-            var{sv11} sv1: mV {init: 2};
-            var x: mV_per_ms;
-            var y: mV {init: 3};
+        For example::
 
-            ode(sv1, time) = 1{mV_per_ms};
-            x = ode(sv1, time) * 3{mV_per_ms};
-            ode(y, time) = 2{mV_per_ms};
+            Original model
+                var time: ms {pub: in};
+                var{sv11} sv1: mV {init: 2};
+                var x: mV_per_ms;
+                var y: mV {init: 3};
+
+                ode(sv1, time) = 1{mV_per_ms};
+                x = ode(sv1, time) * 3{mV_per_ms};
+                ode(y, time) = 2{mV_per_ms};
+
 
         change time from ms to s
 
-        becomes
-            var time: ms;
-            var{time} time_converted: s;
-            var{sv11} sv1: mV {init: 2};
-            var sv1_orig_deriv mV_per_ms
-            var x: mV_per_ms;
-            var y: mV {init: 3};
-            var y_orig_deriv: {mv_per_ms}
+            becomes
+                var time: ms;
+                var{time} time_converted: s;
+                var{sv11} sv1: mV {init: 2};
+                var sv1_orig_deriv mV_per_ms
+                var x: mV_per_ms;
+                var y: mV {init: 3};
+                var y_orig_deriv: {mv_per_ms}
 
-            ode(y, time) = 2{mv_per_ms};
-            sv1 = 100 * sv1_converted
-            sv1_orig_deriv = 1{mV_per_ms}
-            ode(sv1_converted, time) = 0.001 * sv1_orig_deriv
-            x = 3 * sv1_orig_deriv
+                time_converted = 1000 * time
+                y_orig_deriv = 2{mV_per_ms}
+                ode(y, time_converted) = 1000 * y_orig_deriv;
+                sv1_orig_deriv = 1{mV_per_ms}
+                ode(sv1, time_converted) = 1000 * sv1_orig_deriv
+                x = 3 * sv1_orig_deriv
         """
         # original state
         def test_original_state(multiode_model):
@@ -538,14 +549,15 @@ class TestUnitConversion:
 
         ms_unit = multiode_model.get_units('ms')
         second_unit = multiode_model.get_units('second')
+        original_var = multiode_model.get_symbol_by_name('environment$time')
 
         assert test_original_state(multiode_model)
         # test no change in units
-        multiode_model.add_input('env_ode$time', ms_unit)
+        multiode_model.convert_variable(original_var, ms_unit, DataDirectionFlow.INPUT)
         assert test_original_state(multiode_model)
 
         # change ms to s
-        multiode_model.add_input('environment$time', second_unit)
+        multiode_model.convert_variable(original_var, second_unit, DataDirectionFlow.INPUT)
         assert len(multiode_model.equations) == 6
         assert str(multiode_model.equations[0]) == 'Eq(_environment$time, 1000.0*_environment$time_converted)'
         assert str(multiode_model.equations[1]) == 'Eq(_env_ode$sv1_orig_deriv, _1.0)'
@@ -612,14 +624,15 @@ class TestUnitConversion:
 
         pA_unit = literals_model.get_units('pA')
         nA_unit = literals_model.get_units('nA')
+        original_var = literals_model.get_symbol_by_name('env_ode$x')
 
         assert test_original_state(literals_model)
         # test no change in units
-        literals_model.add_output('env_ode$x', pA_unit)
+        literals_model.convert_variable(original_var, pA_unit, DataDirectionFlow.OUTPUT)
         assert test_original_state(literals_model)
 
         # change pA to nA
-        literals_model.add_output('env_ode$x', nA_unit)
+        literals_model.convert_variable(original_var, nA_unit, DataDirectionFlow.OUTPUT)
         assert len(literals_model.variables()) == 6
         symbol_a = literals_model.get_symbol_by_cmeta_id('sv11')
         symbol_t = literals_model.get_symbol_by_cmeta_id('time')
@@ -647,7 +660,7 @@ class TestUnitConversion:
         assert symbol_a in state_symbols
 
     def test_add_output_state_variable(self, local_model):
-        """ Tests the Model.add_input function that changes units.
+        """ Tests the Model.convert_variable function that changes units of given variable.
         This particular test is when a state variable is being converted as an output
 
         For example::
@@ -685,14 +698,15 @@ class TestUnitConversion:
 
         mV_unit = local_model.get_units('mV')
         volt_unit = local_model.get_units('volt')
+        original_var = local_model.get_symbol_by_name('env_ode$sv1')
 
         assert test_original_state(local_model)
         # test no change in units
-        local_model.add_output('env_ode$sv1', mV_unit)
+        local_model.convert_variable(original_var, mV_unit, DataDirectionFlow.OUTPUT)
         assert test_original_state(local_model)
 
         # change mV to V
-        local_model.add_output('env_ode$sv1', volt_unit)
+        local_model.convert_variable(original_var, volt_unit, DataDirectionFlow.OUTPUT)
         assert len(local_model.variables()) == 4
         symbol_a = local_model.get_symbol_by_cmeta_id('sv11')
         assert local_model.get_initial_value(symbol_a) == 0.002
@@ -711,7 +725,7 @@ class TestUnitConversion:
         assert symbol_orig in state_symbols
 
     def test_add_output_free_variable(self, local_model):
-        """ Tests the Model.add_input function that changes units.
+        """ Tests the Model.convert_variable function that changes units of given variable.
         This particular test is when a free variable is being converted as an output
 
         For example::
@@ -751,14 +765,15 @@ class TestUnitConversion:
 
         ms_unit = local_model.get_units('ms')
         second_unit = local_model.get_units('second')
+        original_var = local_model.get_symbol_by_name('environment$time')
 
         assert test_original_state(local_model)
         # test no change in units
-        local_model.add_output('environment$time', ms_unit)
+        local_model.convert_variable(original_var, ms_unit, DataDirectionFlow.OUTPUT)
         assert test_original_state(local_model)
 
         # change ms to s
-        local_model.add_output('environment$time', second_unit)
+        local_model.convert_variable(original_var, second_unit, DataDirectionFlow.OUTPUT)
         assert len(local_model.variables()) == 4
         symbol_a = local_model.get_symbol_by_cmeta_id('sv11')
         assert local_model.get_initial_value(symbol_a) == 2.0
@@ -776,6 +791,27 @@ class TestUnitConversion:
         assert len(state_symbols) == 1
         assert symbol_a in state_symbols
         assert local_model.get_free_variable_symbol() == symbol_orig
+
+    def test_convert_variable_invalid_arguments(self, local_model):
+        unit = local_model.get_units('second')
+        variable = local_model.get_free_variable_symbol()
+        direction = DataDirectionFlow.INPUT
+
+        with pytest.raises(AssertionError):
+                local_model.convert_variable('x', unit, direction)
+
+        with pytest.raises(AssertionError):
+            local_model.convert_variable(variable, 'x', direction)
+
+        with pytest.raises(AssertionError):
+            local_model.convert_variable(variable, unit, 'x')
+
+    def test_noconversion_necessary(self, local_model):
+        unit = local_model.get_units('ms')
+        variable = local_model.get_free_variable_symbol()
+        direction = DataDirectionFlow.INPUT
+
+        assert local_model.convert_variable(variable, unit, direction) == variable
 
     # def test_missing_units(self, model_missing_units, literals_model):
     #     """ Tests the Model.add_output function that changes units.
