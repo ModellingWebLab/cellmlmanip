@@ -10,6 +10,7 @@ import sympy
 from cellmlmanip.rdf import create_rdf_node
 from cellmlmanip.units import UnitStore
 
+
 logger = logging.getLogger(__name__)
 
 # Delimiter for variables name in Sympy expressions: <component><delimiter><name>
