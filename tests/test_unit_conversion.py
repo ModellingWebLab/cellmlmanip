@@ -1,4 +1,5 @@
 import pytest
+from pint import DimensionalityError
 
 from cellmlmanip import units
 from cellmlmanip.model import DataDirectionFlow
@@ -796,6 +797,7 @@ class TestUnitConversion:
         unit = local_model.get_units('second')
         variable = local_model.get_free_variable_symbol()
         direction = DataDirectionFlow.INPUT
+        bad_unit = local_model.get_units('mV')
 
         # arguments wrong types
         with pytest.raises(AssertionError):
@@ -816,6 +818,10 @@ class TestUnitConversion:
         # ontology term not present in model
         with pytest.raises(AssertionError):
             local_model.convert_variable('current', unit, direction)
+
+        # unit conversion is impossible
+        with pytest.raises(DimensionalityError):
+            local_model.convert_variable(variable, bad_unit, direction)
 
     def test_noconversion_necessary(self, local_model):
         unit = local_model.get_units('ms')

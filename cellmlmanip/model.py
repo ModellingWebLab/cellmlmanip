@@ -671,6 +671,9 @@ class Model(object):
                           are unaffected apart from converting the actual output
         :return: the original variable but with new units (or original unchanged if conversion was not necessary
                  or impossible
+        :throws: AssertionError if the arguments are of incorrect type
+                                   the variable does not exist in the model
+                DimensionalityError if the unit conversion is impossible
         """
         self._check_arguments(variable, units, direction)
         original_units = variable.units
@@ -679,11 +682,12 @@ class Model(object):
         if original_units == units:
             return variable
 
-        state_symbols = self.get_state_symbols()
-        free_symbol = self.get_free_variable_symbol()
-        # conversion_factor for old units to new units
+        # conversion_factor for old units to new
+        # throws DimensionalityError if not possible
         cf = self.units.get_conversion_factor(from_unit=original_units, to_unit=units)
 
+        state_symbols = self.get_state_symbols()
+        free_symbol = self.get_free_variable_symbol()
         # create new variable and relevant equations
         new_variable = self._convert_variable_instance(variable, cf, units, direction)
 
