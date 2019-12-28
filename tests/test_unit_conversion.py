@@ -797,14 +797,25 @@ class TestUnitConversion:
         variable = local_model.get_free_variable_symbol()
         direction = DataDirectionFlow.INPUT
 
+        # arguments wrong types
         with pytest.raises(AssertionError):
-                local_model.convert_variable('x', unit, direction)
+            local_model.convert_variable('x', unit, direction)
 
         with pytest.raises(AssertionError):
             local_model.convert_variable(variable, 'x', direction)
 
         with pytest.raises(AssertionError):
             local_model.convert_variable(variable, unit, 'x')
+
+        # variable not present in model
+        model = shared.load_model('literals_for_conversion_tests')
+        other_var = model.get_symbol_by_name('env_ode$x')
+        with pytest.raises(AssertionError):
+            local_model.convert_variable(other_var, unit, direction)
+
+        # ontology term not present in model
+        with pytest.raises(AssertionError):
+            local_model.convert_variable('current', unit, direction)
 
     def test_noconversion_necessary(self, local_model):
         unit = local_model.get_units('ms')

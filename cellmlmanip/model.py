@@ -719,15 +719,22 @@ class Model(object):
         :param variable: variable must be a VariableDummy object present in the model
                          or the string representation of an ontology term referring to
                          a VariableDummy object present in the model
-        :param units:
-        :param direction:
-        :return:
+        :param units: units must be a pint Unit object
+        :param direction: must be part of DataDirectionFlow enumn
+        :throws: assertion error
         """
-        # variable should be a VariableDummy present in the model
+        # variable should be a VariableDummy
         # or an ontology term that references a variable in the model
-        assert isinstance(variable, VariableDummy)
-        assert variable.name in self._name_to_symbol
-
+        if isinstance(variable, str):
+            try:
+                var = self.get_symbol_by_cmeta_id(variable)
+            except KeyError:
+                raise AssertionError
+            name = var.name
+        else:
+            assert isinstance(variable, VariableDummy)
+            name = variable.name
+        assert name in self._name_to_symbol
 
         # units should be a pint Unit object
         assert isinstance(units, self.units.ureg.Unit)
