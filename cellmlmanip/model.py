@@ -649,7 +649,7 @@ class Model(object):
         new_variable = self._convert_variable_instance(variable, cf, units, direction)
 
         # if is output do not need to do additional changes for state/free symbols
-        if  direction == DataDirectionFlow.OUTPUT:
+        if direction == DataDirectionFlow.OUTPUT:
             return new_variable
 
         new_derivatives = []
