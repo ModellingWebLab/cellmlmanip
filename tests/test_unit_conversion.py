@@ -131,7 +131,7 @@ class TestUnitConversion:
             bad_units_model.units.summarise_units(equation[1].rhs)
 
     def test_add_input_state_variable(self, local_model):
-        """ Tests the Model.add_input function that changes units.
+        """ Tests the Model.convert_variable function that changes units.
         This particular test is when a state variable is being converted
 
         For example::
@@ -206,7 +206,7 @@ class TestUnitConversion:
         assert symbol_a in state_symbols
 
     def test_add_input_state_variable_ontology_term(self, local_model):
-        """ Tests the Model.add_input function that changes units.
+        """ Tests the Model.convert_variable function that changes units.
         This particular test is when a state variable is being converted using ontology term as argument
 
         For example::
