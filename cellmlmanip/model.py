@@ -676,12 +676,12 @@ class Model(object):
                                    the variable does not exist in the model
                 DimensionalityError if the unit conversion is impossible
         """
-        self._check_arguments(variable, units, direction)
-        original_units = variable.units
+        original_variable = self._check_arguments(variable, units, direction)
+        original_units = original_variable.units
 
         # no conversion necessary
         if original_units == units:
-            return variable
+            return original_variable
 
         # conversion_factor for old units to new
         # throws DimensionalityError if not possible
@@ -690,7 +690,7 @@ class Model(object):
         state_symbols = self.get_state_symbols()
         free_symbol = self.get_free_variable_symbol()
         # create new variable and relevant equations
-        new_variable = self._convert_variable_instance(variable, cf, units, direction)
+        new_variable = self._convert_variable_instance(original_variable, cf, units, direction)
 
         # if is output do not need to do additional changes for state/free symbols
         if direction == DataDirectionFlow.OUTPUT:
@@ -698,16 +698,16 @@ class Model(object):
 
         new_derivatives = []
         # if state variable
-        if variable in state_symbols:
-            new_derivatives.append(self._convert_state_variable_deriv(variable, new_variable, cf))
+        if original_variable in state_symbols:
+            new_derivatives.append(self._convert_state_variable_deriv(original_variable, new_variable, cf))
 
         # if free variable
-        if variable == free_symbol:
+        if original_variable == free_symbol:
             # for each derivative wrt to free variable add necessary variables/equations
             current_equations = self.equations.copy()
             for equation in current_equations:
                 if equation.args[0].is_Derivative:
-                    if equation.args[0].args[1].args[0] == variable:
+                    if equation.args[0].args[1].args[0] == original_variable:
                         new_derivatives.append(self._convert_free_variable_deriv(equation, new_variable, cf))
 
         # replace any instances of derivative of rhs of other eqns with new derivative variable
@@ -725,20 +725,24 @@ class Model(object):
                          or the string representation of an ontology term referring to
                          a VariableDummy object present in the model
         :param units: units must be a pint Unit object
-        :param direction: must be part of DataDirectionFlow enumn
+        :param direction: must be part of DataDirectionFlow enum
+        :returns: VariableDummy object for variable
         :throws: assertion error
         """
         # variable should be a VariableDummy
         # or an ontology term that references a variable in the model
+        returned_variable = None
         if isinstance(variable, str):
             try:
                 var = self.get_symbol_by_cmeta_id(variable)
             except KeyError:
                 raise AssertionError
             name = var.name
+            returned_variable = var
         else:
             assert isinstance(variable, VariableDummy)
             name = variable.name
+            returned_variable = variable
         assert name in self._name_to_symbol
 
         # units should be a pint Unit object
@@ -746,6 +750,8 @@ class Model(object):
 
         # direction should be part of enum
         assert isinstance(direction, DataDirectionFlow)
+
+        return returned_variable
 
     def _replace_derivatives(self, new_derivative):
         """
