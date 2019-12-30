@@ -35,6 +35,11 @@ class TestUnitConversion:
         """ Fixture to load a local copy of  the basic_ode model that may get modified. """
         return shared.load_model('repeated_ode_freevar_for_conversion_tests')
 
+    @pytest.fixture
+    def silly_names(scope='function'):
+        """ Fixture to load a local copy of  the basic_ode model that may get modified. """
+        return shared.load_model('silly_names')
+
     def test_add_preferred_custom_unit_name(self, simple_ode_model):
         """ Tests Units.add_preferred_custom_unit_name() function. """
         time_var = simple_ode_model.get_symbol_by_ontology_term(shared.OXMETA, "time")
@@ -1147,6 +1152,52 @@ class TestUnitConversion:
         direction = DataDirectionFlow.INPUT
 
         assert local_model.convert_variable(variable, unit, direction) == variable
+
+    def test_unique_names(self, silly_names):
+        # original state
+        def test_original_state(silly_names):
+            assert len(silly_names.variables()) == 5
+            symbol_a = silly_names.get_symbol_by_cmeta_id('sv11')
+            symbol_t = silly_names.get_symbol_by_cmeta_id('time')
+            assert silly_names.get_initial_value(symbol_a) == 2.0
+            assert symbol_a.units == 'mV'
+            assert symbol_t.units == 'ms'
+            assert silly_names.get_symbol_by_name('env_ode$sv1_converted')
+            assert silly_names.get_symbol_by_name('env_ode$sv1_orig_deriv')
+            assert len(silly_names.equations) == 1
+            assert str(silly_names.equations[0]) == 'Eq(Derivative(_env_ode$sv1, _environment$time), _1.0)'
+            state_symbols = silly_names.get_state_symbols()
+            assert len(state_symbols) == 1
+            assert symbol_a in state_symbols
+            assert silly_names.get_free_variable_symbol() == symbol_t
+            return True
+
+        volt_unit = silly_names.get_units('volt')
+        original_var = silly_names.get_symbol_by_name('env_ode$sv1')
+
+        assert test_original_state(silly_names)
+        # change mV to V
+        silly_names.convert_variable(original_var, volt_unit, DataDirectionFlow.INPUT)
+        assert len(silly_names.variables()) == 7
+        symbol_a = silly_names.get_symbol_by_cmeta_id('sv11')
+        assert silly_names.get_initial_value(symbol_a) == 0.002
+        assert symbol_a.units == 'volt'
+        assert symbol_a.name == 'env_ode$sv1_converted_a'
+        symbol_t = silly_names.get_symbol_by_cmeta_id('time')
+        assert symbol_t.units == 'ms'
+        assert symbol_t.name == 'environment$time'
+        symbol_orig = silly_names.get_symbol_by_name('env_ode$sv1')
+        assert symbol_orig.units == 'mV'
+        assert silly_names.get_symbol_by_name('env_ode$sv1_converted')
+        assert silly_names.get_symbol_by_name('env_ode$sv1_orig_deriv')
+        symbol_derv = silly_names.get_symbol_by_name('env_ode$sv1_orig_deriv_a')
+        assert symbol_derv.units == 'mV / ms'
+        assert not silly_names.get_initial_value(symbol_derv)
+        assert len(silly_names.equations) == 3
+        assert str(silly_names.equations[0]) == 'Eq(_env_ode$sv1, 1000.0*_env_ode$sv1_converted_a)'
+        assert str(silly_names.equations[1]) == 'Eq(_env_ode$sv1_orig_deriv_a, _1.0)'
+        assert str(silly_names.equations[2]) == 'Eq(Derivative(_env_ode$sv1_converted_a, _environment$time), ' \
+                                                '0.001*_env_ode$sv1_orig_deriv_a)'
 
     # def test_missing_units(self, model_missing_units, literals_model):
     #     """ Tests the Model.add_output function that changes units.

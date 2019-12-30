@@ -775,9 +775,7 @@ class Model(object):
         :return: new variable for the derivative
         """
         # 1. create a new variable
-        deriv_name = derivative_variable.name + '_orig_deriv'
-        while deriv_name in self.variables():
-            deriv_name = deriv_name + '_a'
+        deriv_name = self._get_unique_name(derivative_variable.name + '_orig_deriv')
         deriv_units = self.units.calculator.traverse(eqn.args[0])
         new_deriv_variable = self.add_variable(name=deriv_name,
                                                units=deriv_units.units)
@@ -848,9 +846,7 @@ class Model(object):
         :return: the new variable created [new units]
         """
         # 1. get unique name for new variable
-        new_name = original_variable.name + '_converted'
-        while new_name in self.variables():
-            new_name = new_name + '_a'
+        new_name = self._get_unique_name(original_variable.name + '_converted')
 
         # 2. if original has initial_value calculate new initial value
         new_value = None
@@ -890,6 +886,13 @@ class Model(object):
                 self.add_equation(expression)
 
         return new_variable
+
+    def _get_unique_name(self, name):
+        for var in list(self.variables()):
+            if name == var.name:
+                name = self._get_unique_name(name + '_a')
+                break
+        return name
 
 
 class NumberDummy(sympy.Dummy):
