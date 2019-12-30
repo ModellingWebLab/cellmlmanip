@@ -670,8 +670,8 @@ class Model(object):
                           equations will be adjusted
                           or DataDirectionFlow.OUTPUT; the variable to be changed is an output, equations
                           are unaffected apart from converting the actual output
-        :return: the original variable but with new units (or original unchanged if conversion was not necessary
-                 or impossible
+        :return: the original variable with new units (or original unchanged if conversion was not necessary
+                 or impossible)
         :throws: AssertionError if the arguments are of incorrect type
                                    the variable does not exist in the model
                 DimensionalityError if the unit conversion is impossible
@@ -720,13 +720,14 @@ class Model(object):
 
     def _check_arguments(self, variable, units, direction):
         """
-        Checks the arguments of the convert_variable functions
+        Checks the arguments of the convert_variable functions.
         :param variable: variable must be a VariableDummy object present in the model
                          or the string representation of an ontology term referring to
                          a VariableDummy object present in the model
         :param units: units must be a pint Unit object
         :param direction: must be part of DataDirectionFlow enum
-        :returns: VariableDummy object for variable
+        :returns: VariableDummy object for variable (either
+                  variable passed as argument or variable looked up by ontology term
         :throws: assertion error
         """
         # variable should be a VariableDummy
@@ -842,7 +843,7 @@ class Model(object):
         :param original_variable: VariableDummy object to be converted [old units]
         :param cf: conversion factor [new units/old units]
         :param units: Unit object for new units
-        :param is_output: boolean are we adding input or output
+        :param direction: enumeration value specifying input or output
         :return: the new variable created [new units]
         """
         # 1. get unique name for new variable
@@ -888,6 +889,10 @@ class Model(object):
         return new_variable
 
     def _get_unique_name(self, name):
+        """ Function to create a unique name within the model.
+        :param name: String Suggested unique name
+        :return: String unique name
+        """
         for var in list(self.variables()):
             if name == var.name:
                 name = self._get_unique_name(name + '_a')
