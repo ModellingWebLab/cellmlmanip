@@ -732,7 +732,7 @@ class TestUnitConversion:
         with pytest.raises(DimensionalityError):
             local_model.convert_variable(variable, bad_unit, direction)
 
-   def test_unique_names(self, silly_names):
+    def test_unique_names(self, silly_names):
         # original state
         def test_original_state(silly_names):
             assert len(silly_names.variables()) == 5
