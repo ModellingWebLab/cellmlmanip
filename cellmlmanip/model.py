@@ -856,34 +856,32 @@ class Model(object):
                                          initial_value=new_value,
                                          cmeta_id=original_variable.cmeta_id)
         original_variable.cmeta_id = ''
-        # if diurection is input; original var will be replaced by equation so do not need to store initial value
+
+        # 4 add/remove/replace equations
         if direction == DataDirectionFlow.INPUT:
+            # if direction is input; original var will be replaced by equation so do not need to store initial value
             original_variable.initial_value = None
 
-        # 4. check whether we had an eqn for original
-        # if so, remove it and replace with new_var [new units] = rhs [old units] * cf [new units/old units]
-        original_had_eqn = False
-        for equation in self.equations:
-            if equation.is_Equality and equation.args[0] == original_variable:
-                if direction == DataDirectionFlow.OUTPUT:
-                    expression = sympy.Eq(new_variable, original_variable * cf)
-                    self.add_equation(expression)
-                else:
+            # find the equation for the original variable: orig_var = rhs
+            # remove equation from model
+            # add eqn for new variabale in terms of rhs of equation
+            #     new_var [new units] = rhs [old units] * cf [new units/old units]
+            for equation in self.equations:
+                if equation.is_Equality and equation.args[0] == original_variable:
                     expression = sympy.Eq(new_variable, equation.args[1] * cf)
                     self.add_equation(expression)
                     self.remove_equation(equation)
-                original_had_eqn = True
-                break
+                    break
 
-        # 5. add an equation for original variable if there wasnt one
-        # oldvar [old units] = newvar [new units] / cf [new units/old units]
-        if direction == DataDirectionFlow.INPUT:
+            # add eqn for original variable in terms of new variable
+            #     orig_var [old units] = new var [new units] / cf [new units/old units]
             expression = sympy.Eq(original_variable, new_variable / cf)
             self.add_equation(expression)
         else:
-            if not original_had_eqn:
-                expression = sympy.Eq(new_variable, original_variable * cf)
-                self.add_equation(expression)
+            # if direction is output add eqn for new variable in terms of original variable
+            #     new_var [new units] = orig_var [old units] * cf [new units/old units]
+            expression = sympy.Eq(new_variable, original_variable * cf)
+            self.add_equation(expression)
 
         return new_variable
 
