@@ -688,14 +688,14 @@ class Model(object):
         """
         # assertion errors will be thrown here if arguments are incorrect type
         self._check_arguments(original_variable, units, direction)
-        original_units = original_variable.units
 
+        original_units = original_variable.units
         # no conversion necessary
         if original_units == units:
             return original_variable
 
         # conversion_factor for old units to new
-        # throws DimensionalityError if not possible
+        # throws DimensionalityError if unit conversion is not possible
         cf = self.units.get_conversion_factor(from_unit=original_units, to_unit=units)
 
         state_symbols = self.get_state_symbols()
@@ -786,7 +786,7 @@ class Model(object):
 
     def _convert_free_variable_deriv(self, eqn, new_variable, cf):
         """
-        Create relevant variables/equations when converting a free variable derivative.
+        Create relevant variables/equations when converting a free variable  within a derivative.
         :param eqn: the derivative equation containing free variable
         :param new_variable: the new variable representing the converted symbol [new_units]
         :param cf: conversion factor for unit conversion [new units/old units]
