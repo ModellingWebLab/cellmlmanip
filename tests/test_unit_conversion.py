@@ -40,18 +40,6 @@ class TestUnitConversion:
         """ Fixture to load a local copy of  the basic_ode model that may get modified. """
         return shared.load_model('silly_names')
 
-    def test_add_preferred_custom_unit_name(self, simple_ode_model):
-        """ Tests Units.add_preferred_custom_unit_name() function. """
-        time_var = simple_ode_model.get_symbol_by_ontology_term(shared.OXMETA, "time")
-        assert str(simple_ode_model.units.summarise_units(time_var)) == "ms"
-        simple_ode_model.units.add_preferred_custom_unit_name('millisecond', [{'prefix': 'milli', 'units': 'second'}])
-        assert str(simple_ode_model.units.summarise_units(time_var)) == "millisecond"
-        # add_custom_unit does not allow adding already existing units but add_preferred_custom_unit_name does since we
-        # cannot know in advance if a model will already have the unit named this way. To test this we add the same unit
-        # again
-        simple_ode_model.units.add_preferred_custom_unit_name('millisecond', [{'prefix': 'milli', 'units': 'second'}])
-        assert str(simple_ode_model.units.summarise_units(time_var)) == "millisecond"
-
     def test_conversion_factor_original(self, simple_units_model):
         """ Tests Units.get_conversion_factor() function. """
         symbol_b1 = simple_units_model.get_symbol_by_cmeta_id("b_1")

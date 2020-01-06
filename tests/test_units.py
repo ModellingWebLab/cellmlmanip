@@ -165,6 +165,18 @@ class TestUnits(object):
         assert(quantity_store._make_pint_unit_definition('kg_mm_per_ms', unit_attributes) ==
                'kg_mm_per_ms=(meter * 1e-3)*(((second * 0.001))**-1)*(2 * kilogram)')
 
+    def test_add_preferred_custom_unit_name(self, simple_ode_model):
+        """ Tests Units.add_preferred_custom_unit_name() function. """
+        time_var = simple_ode_model.get_symbol_by_ontology_term(shared.OXMETA, "time")
+        assert str(simple_ode_model.units.summarise_units(time_var)) == "ms"
+        simple_ode_model.units.add_preferred_custom_unit_name('millisecond', [{'prefix': 'milli', 'units': 'second'}])
+        assert str(simple_ode_model.units.summarise_units(time_var)) == "millisecond"
+        # add_custom_unit does not allow adding already existing units but add_preferred_custom_unit_name does since we
+        # cannot know in advance if a model will already have the unit named this way. To test this we add the same unit
+        # again
+        simple_ode_model.units.add_preferred_custom_unit_name('millisecond', [{'prefix': 'milli', 'units': 'second'}])
+        assert str(simple_ode_model.units.summarise_units(time_var)) == "millisecond"
+
     # Test UnitCalculator class
 
     def test_unit_calculator(self, quantity_store):
