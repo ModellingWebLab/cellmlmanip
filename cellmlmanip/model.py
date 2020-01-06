@@ -687,7 +687,7 @@ class Model(object):
                 DimensionalityError if the unit conversion is impossible
         """
         # assertion errors will be thrown here if arguments are incorrect type
-        self._check_arguments(original_variable, units, direction)
+        self._check_arguments_for_convert_variables(original_variable, units, direction)
 
         original_units = original_variable.units
         # no conversion necessary
@@ -729,7 +729,7 @@ class Model(object):
 
         return new_variable
 
-    def _check_arguments(self, variable, units, direction):
+    def _check_arguments_for_convert_variables(self, variable, units, direction):
         """
         Checks the arguments of the convert_variable functions.
         :param variable: variable must be a VariableDummy object present in the model
