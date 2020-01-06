@@ -626,10 +626,21 @@ class Model(object):
         """ Returns an iterator over this model's variable symbols. """
         return self._name_to_symbol.values()
 
-    def convert_variable(self, variable, units, direction):
+    def convert_variable(self, original_variable, units, direction):
         """
-        Changes the units of variable argument to the units supplied applying the direction of the
-        variable from the direction argument.
+        Add a new linked version of the given variable in the desired units.
+
+        If the variable already has the requested units, no changes are made and the original variable is returned.
+        Otherwise ``direction`` specifies how information flows between the new variable and the original, and
+        hence what new equation(s) are added to the model to perform the conversion.
+        If ``INPUT`` then the original variable takes its value from the newly added variable;
+        if ``OUTPUT`` then the opposite happens.
+
+        Any ``cmeta:id`` attribute on the original variable is moved to the new one,
+        so ontology annotations will refer to the new variable.
+
+        Similarly if the direction is ``INPUT`` then any initial value will be moved to the new variable
+        (and converted appropriately).
 
         For example::
 
@@ -663,20 +674,20 @@ class Model(object):
                 time_converted = 0.001 * time
 
 
-        :param variable: the variable to be converted
-        :param units: units to convert variable to (note if variable is already in these units, model remains
-                      unchanged and the original variable is returned
+        :param original_variable: the VariableDummy object representing the variable in the model to be converted
+        :param units: a Pint unit object representing the units to convert variable to (note if variable is already
+                      in these units, model remains unchanged and the original variable is returned
         :param direction: either DataDirectionFlow.INPUT; the variable to be changed is an input and all affected
                           equations will be adjusted
                           or DataDirectionFlow.OUTPUT; the variable to be changed is an output, equations
                           are unaffected apart from converting the actual output
-        :return: the original variable with new units (or original unchanged if conversion was not necessary
-                 or impossible)
+        :return: new variable with desired units, or original unchanged if conversion was not necessary
         :throws: AssertionError if the arguments are of incorrect type
-                                   the variable does not exist in the model
+                                or the variable does not exist in the model
                 DimensionalityError if the unit conversion is impossible
         """
-        original_variable = self._check_arguments(variable, units, direction)
+        # assertion errors will be thrown here if arguments are incorrect type
+        self._check_arguments(original_variable, units, direction)
         original_units = original_variable.units
 
         # no conversion necessary
@@ -722,37 +733,22 @@ class Model(object):
         """
         Checks the arguments of the convert_variable functions.
         :param variable: variable must be a VariableDummy object present in the model
-                         or the string representation of an ontology term referring to
-                         a VariableDummy object present in the model
-        :param units: units must be a pint Unit object
+        :param units: units must be a pint Unit object in this model
         :param direction: must be part of DataDirectionFlow enum
-        :returns: VariableDummy object for variable (either
-                  variable passed as argument or variable looked up by ontology term
-        :throws: assertion error
-        """
+        :throws: AssertionError if the arguments are of incorrect type
+                                or the variable does not exist in the model
+       """
         # variable should be a VariableDummy
-        # or an ontology term that references a variable in the model
-        returned_variable = None
-        if isinstance(variable, str):
-            try:
-                var = self.get_symbol_by_cmeta_id(variable)
-            except KeyError:
-                raise AssertionError
-            name = var.name
-            returned_variable = var
-        else:
-            assert isinstance(variable, VariableDummy)
-            name = variable.name
-            returned_variable = variable
-        assert name in self._name_to_symbol
+        assert isinstance(variable, VariableDummy)
 
-        # units should be a pint Unit object
+        # variable must b in model
+        assert variable.name in self._name_to_symbol
+
+        # units should be a pint Unit object in the registry for this model
         assert isinstance(units, self.units.ureg.Unit)
 
         # direction should be part of enum
         assert isinstance(direction, DataDirectionFlow)
-
-        return returned_variable
 
     def _replace_derivatives(self, new_derivative):
         """
