@@ -856,6 +856,9 @@ class Model(object):
                                          initial_value=new_value,
                                          cmeta_id=original_variable.cmeta_id)
         original_variable.cmeta_id = ''
+        # if diurection is input; original var will be replaced by equation so do not need to store initial value
+        if direction == DataDirectionFlow.INPUT:
+            original_variable.initial_value = None
 
         # 4. check whether we had an eqn for original
         # if so, remove it and replace with new_var [new units] = rhs [old units] * cf [new units/old units]

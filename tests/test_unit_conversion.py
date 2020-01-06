@@ -135,7 +135,7 @@ class TestUnitConversion:
             creates model
                 var{time} time: ms {pub: in};
                 var{sv11} sv1_converted: V {init: 0.002};
-                var sv1 mV {init: 2}
+                var sv1 mV
                 var sv1_orig_deriv mV_per_ms
 
                 sv1 = 1000 * sv1_converted
@@ -179,7 +179,7 @@ class TestUnitConversion:
         assert symbol_t.units == 'ms'
         symbol_orig = local_model.get_symbol_by_name('env_ode$sv1')
         assert symbol_orig.units == 'mV'
-        assert local_model.get_initial_value(symbol_orig) == 2.0
+        assert not local_model.get_initial_value(symbol_orig)
         symbol_derv = local_model.get_symbol_by_name('env_ode$sv1_orig_deriv')
         assert symbol_derv.units == 'mV / ms'
         assert not local_model.get_initial_value(symbol_derv)
