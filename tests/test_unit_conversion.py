@@ -16,11 +16,6 @@ class TestUnitConversion:
         return shared.load_model('basic_ode')
 
     @pytest.fixture
-    def model_missing_units(scope='function'):
-        """ Fixture to load a local copy of  the basic_ode model that may get modified. """
-        return shared.load_model('missing_units_for_conversion_tests')
-
-    @pytest.fixture
     def literals_model(scope='function'):
         """ Fixture to load a local copy of  the basic_ode model that may get modified. """
         return shared.load_model('literals_for_conversion_tests')
@@ -873,38 +868,3 @@ class TestUnitConversion:
         assert str(silly_names.equations[1]) == 'Eq(_env_ode$sv1_orig_deriv_a, _1.0)'
         assert str(silly_names.equations[2]) == 'Eq(Derivative(_env_ode$sv1_converted_a, _environment$time), ' \
                                                 '0.001*_env_ode$sv1_orig_deriv_a)'
-
-    # def test_missing_units(self, model_missing_units, literals_model):
-    #     """ Tests the Model.add_output function that changes units.
-    #     In this case the model needs to add the unit it wants to change to.
-    #     e.g.
-    #         var time: ms {pub: in};
-    #         var{sv11} sv1: mV {init: 2};
-    #         var{current} x: pA;
-    #         var y: per_pA;
-    #
-    #         ode(sv1, time) = 1{mV_per_ms};
-    #         x = 1{pA};
-    #         y = 1{dimensionless}/x;
-    #
-    #     change x from pA to nA
-    #         var time: ms {pub: in};
-    #         var{sv11} sv1: mV {init: 2};
-    #         var x: pA;
-    #         var y: per_pA;
-    #         var{current} x_converted: nA
-    #
-    #         ode(sv1, time) = 1 :mV_per_ms;
-    #         x = 1000 * x_converted: pA;
-    #         y = 1{dimensionless}/x;
-    #         x_converted = 0.001 * 1 : nA
-    #     """
-    #     pA_unit = model_missing_units.get_units('pA')
-    #     nA_unit = literals_model.get_units('nA')
-    #
-    #     # check nA not in missing_units
-    #     with pytest.raises(KeyError):
-    #         model_missing_units.get_units('nA')
-    #
-    #     model_missing_units.add_input('env_ode$x', nA_unit)
-    #
