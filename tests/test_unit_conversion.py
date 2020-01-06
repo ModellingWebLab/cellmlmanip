@@ -376,7 +376,7 @@ class TestUnitConversion:
                 var{time} time_converted: s;
                 var{sv11} sv1: mV {init: 2};
                 var sv1_orig_deriv mV_per_ms
-                var y : mV
+                var y : mV {init: 3}
                 var y_orig_deriv mV_per_ms
 
                 time = 1000 * time_converted;
@@ -410,6 +410,7 @@ class TestUnitConversion:
         assert symbol_derv.units == 'mV / ms'
         symbol_orig_y = multiode_freevar_model.get_symbol_by_name('env_ode$y')
         assert symbol_orig_y.units == 'mV'
+        assert symbol_orig_y.initial_value == 3.0
         symbol_derv_y = multiode_freevar_model.get_symbol_by_name('env_ode$y_orig_deriv')
         assert symbol_derv_y.units == 'mV / ms'
         assert len(multiode_freevar_model.equations) == 5
@@ -731,16 +732,7 @@ class TestUnitConversion:
         with pytest.raises(DimensionalityError):
             local_model.convert_variable(variable, bad_unit, direction)
 
-    def test_noconversion_necessary(self, local_model):
-        """ Tests the Model.convert_variable() when no conversion is necessary.
-        """
-        unit = local_model.get_units('ms')
-        variable = local_model.get_free_variable_symbol()
-        direction = DataDirectionFlow.INPUT
-
-        assert local_model.convert_variable(variable, unit, direction) == variable
-
-    def test_unique_names(self, silly_names):
+   def test_unique_names(self, silly_names):
         # original state
         def test_original_state(silly_names):
             assert len(silly_names.variables()) == 5
