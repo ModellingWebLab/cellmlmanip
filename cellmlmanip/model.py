@@ -401,17 +401,15 @@ class Model(object):
         Will return a list of term names.
         """
         ontology_terms = []
-        cmeta_id = self.graph.nodes[symbol].get('cmeta_id', None)
-        if cmeta_id:
+        if symbol.cmeta_id:
             predicate = ('http://biomodels.net/biology-qualifiers/', 'is')
             predicate = create_rdf_node(predicate)
-            for delimeter in ('#', '/'):  # Look for terms using either possible namespace delimiter
-                subject = rdflib.term.URIRef(delimeter + cmeta_id)
-                for object in self.rdf.objects(subject, predicate):
-                    # We are only interested in annotation within the namespace
-                    if namespace_uri is None or str(object).startswith(namespace_uri):
-                        uri_parts = str(object).split(delimeter)
-                        ontology_terms.append(uri_parts[-1])
+            subject = rdflib.term.URIRef('#' + symbol.cmeta_id)
+            for object in self.rdf.objects(subject, predicate):
+                # We are only interested in annotation within the namespace
+                if namespace_uri is None or str(object).startswith(namespace_uri):
+                    uri_parts = str(object).split('#')
+                    ontology_terms.append(uri_parts[-1])
         return ontology_terms
 
     def get_units(self, name):

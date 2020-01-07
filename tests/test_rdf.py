@@ -114,6 +114,11 @@ def test_get_ontology_terms_by_symbol2(hh_model):
     assert len(annotation) == 1
     assert annotation[0] == "membrane_voltage"
 
+    # Get a symbol without cmeta_id and check that get_ontology_terms_by_symbol works
+    symbol = [s for s in hh_model.get_state_symbols() if not s.cmeta_id][0]
+    annotation = hh_model.get_ontology_terms_by_symbol(symbol)
+    assert len(annotation) == 0
+
 
 def test_has_ontology_term_by_symbol(bad_annotation_model):
     """ Tests Model.has_ontology_annotation() function when the annotation is not correct. """
