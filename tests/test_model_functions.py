@@ -206,9 +206,9 @@ class TestModelFunctions():
 
         # Simplified equations
         e_v1 = sp.Eq(v1, sp.Number(0))
-        e_v2 = sp.Eq(v2, sp.Add(v4, sp.Number(23)))
+        e_v2 = sp.Eq(v2, sp.Add(v4, sp.Number(23.)))
         e_v3 = sp.Eq(v3, sp.Number(2 / 3))
-        e_v4 = sp.Eq(v4, sp.Number(-23))
+        e_v4 = sp.Eq(v4, sp.Number(-23.))
         e_v5 = sp.Eq(v5, sp.Add(v3, v4))
         e_a1 = sp.Eq(a1, sp.Add(v1, v2, v5, t))
 
@@ -216,9 +216,9 @@ class TestModelFunctions():
         d_y2 = sp.Derivative(y2, t)
         d_y3 = sp.Derivative(y3, t)
 
-        e_y1 = sp.Eq(d_y1, sp.Number(1))
+        e_y1 = sp.Eq(d_y1, sp.Number(1.))
         e_y2 = sp.Eq(d_y2, v1)
-        e_y3 = sp.Eq(d_y3, sp.Mul(v2, sp.Add(sp.Number(2), d_y1)))
+        e_y3 = sp.Eq(d_y3, sp.Mul(v2, sp.Add(sp.Number(2.), d_y1)))
 
         # v1 with simplification: [v1=0] (simplified)
         eqs = m.get_equations_for([v1])

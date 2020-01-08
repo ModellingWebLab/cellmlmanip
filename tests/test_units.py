@@ -219,13 +219,13 @@ class TestUnits(object):
         assert unit_calculator.traverse(sp.Abs(-2 * y)).units == ureg.volt
         assert unit_calculator.traverse(sp.floor(x)).units == ureg.kilogram
         result = unit_calculator.traverse(sp.floor(12.5) * a)
-        assert result.units == ureg.meter and result.magnitude == 12.0 * a
+        assert result.units == ureg.meter and result.magnitude == 12 * a
         assert unit_calculator.traverse(sp.floor(_1)).units == ureg.kelvin
         result = unit_calculator.traverse(sp.floor(_25))
         assert result.units == ureg.dimensionless and result.magnitude == 2.0
         assert unit_calculator.traverse(sp.ceiling(x)).units == ureg.kilogram
         result = unit_calculator.traverse(sp.ceiling(12.6) * a)
-        assert result.units == ureg.meter and result.magnitude == 13.0 * a
+        assert result.units == ureg.meter and result.magnitude == 13 * a
         assert unit_calculator.traverse(sp.ceiling(_1)).units == ureg.kelvin
         result = unit_calculator.traverse(sp.ceiling(_25))
         assert result.units == ureg.dimensionless and result.magnitude == 3.0

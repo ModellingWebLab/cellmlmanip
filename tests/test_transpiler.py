@@ -179,7 +179,7 @@ class TestTranspiler(object):
                           '<piece><cn>30</cn><apply><gt/><ci>x</ci><cn>2</cn></apply></piece>'
                           '<otherwise><cn>0</cn></otherwise>'
                           '</piecewise>',
-                          [sympy.Piecewise((10, x > 0), (20, x > 1), (30, x > 2), (0, True))])
+                          [sympy.Piecewise((10, x > 0.), (20, x > 1.), (30, x > 2.), (0, True))])
 
     def test_multiple_relations(self):
         from sympy.abc import a, b, c, x, y, z
