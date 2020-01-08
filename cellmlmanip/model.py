@@ -1,5 +1,6 @@
 """Classes to represent a flattened CellML model and metadata about its variables."""
 import logging
+from enum import Enum
 from io import StringIO
 
 import networkx as nx
@@ -12,9 +13,14 @@ from cellmlmanip.units import UnitStore
 
 logger = logging.getLogger(__name__)
 
-
 # Delimiter for variables name in Sympy expressions: <component><delimiter><name>
 SYMPY_SYMBOL_DELIMITER = '$'
+
+
+class DataDirectionFlow(Enum):
+    """ Direction of data flow for converting units"""
+    INPUT = 1
+    OUTPUT = 2
 
 
 class Model(object):
@@ -34,6 +40,7 @@ class Model(object):
     :param name: the name of the model e.g. from ``<model name="">``.
     :param cmeta_id: An optional cmeta id, e.g. from ``<model cmeta:id="">``.
     """
+
     def __init__(self, name, cmeta_id=None):
 
         self.name = name
@@ -617,6 +624,276 @@ class Model(object):
         """ Returns an iterator over this model's variable symbols. """
         return self._name_to_symbol.values()
 
+    def convert_variable(self, original_variable, units, direction):
+        """
+        Add a new linked version of the given variable in the desired units.
+
+        If the variable already has the requested units, no changes are made and the original variable is returned.
+        Otherwise ``direction`` specifies how information flows between the new variable and the original, and
+        hence what new equation(s) are added to the model to perform the conversion.
+        If ``INPUT`` then the original variable takes its value from the newly added variable;
+        if ``OUTPUT`` then the opposite happens.
+
+        Any ``cmeta:id`` attribute on the original variable is moved to the new one,
+        so ontology annotations will refer to the new variable.
+
+        Similarly if the direction is ``INPUT`` then any initial value will be moved to the new variable
+        (and converted appropriately).
+
+        For example::
+
+            Original model
+                var{time} time: ms {pub: in};
+                var{sv11} sv1: mV {init: 2};
+
+                ode(sv1, time) = 1{mV_per_ms};
+
+        convert_variable(time, second, DataDirectionFlow.INPUT)
+
+        becomes
+                var time: ms;
+                var{time} time_converted: s;
+                var{sv11} sv1: mV {init: 2};
+                var sv1_orig_deriv mV_per_ms
+
+                time = 1000 * time_converted;
+                sv1_orig_deriv = 1{mV_per_ms}
+                ode(sv1, time_converted) = 1000 * sv1_orig_deriv
+
+
+        convert_variable(time, second, DataDirectionFlow.OUTPUT)
+
+            creates model
+                var{time} time: ms {pub: in};
+                var{sv11} sv1: mV {init: 2};
+                var{time} time_converted: s
+
+                ode(sv1, time) = 1{mV_per_ms};
+                time_converted = 0.001 * time
+
+
+        :param original_variable: the VariableDummy object representing the variable in the model to be converted
+        :param units: a Pint unit object representing the units to convert variable to (note if variable is already
+                      in these units, model remains unchanged and the original variable is returned
+        :param direction: either DataDirectionFlow.INPUT; the variable to be changed is an input and all affected
+                          equations will be adjusted
+                          or DataDirectionFlow.OUTPUT; the variable to be changed is an output, equations
+                          are unaffected apart from converting the actual output
+        :return: new variable with desired units, or original unchanged if conversion was not necessary
+        :throws: AssertionError if the arguments are of incorrect type
+                                or the variable does not exist in the model
+                DimensionalityError if the unit conversion is impossible
+        """
+        # assertion errors will be thrown here if arguments are incorrect type
+        self._check_arguments_for_convert_variables(original_variable, units, direction)
+
+        original_units = original_variable.units
+        # no conversion necessary
+        if original_units == units:
+            return original_variable
+
+        # conversion_factor for old units to new
+        # throws DimensionalityError if unit conversion is not possible
+        cf = self.units.get_conversion_factor(from_unit=original_units, to_unit=units)
+
+        state_symbols = self.get_state_symbols()
+        free_symbol = self.get_free_variable_symbol()
+        # create new variable and relevant equations
+        new_variable = self._convert_variable_instance(original_variable, cf, units, direction)
+
+        # if is output do not need to do additional changes for state/free symbols
+        if direction == DataDirectionFlow.OUTPUT:
+            return new_variable
+
+        new_derivatives = []
+        # if state variable
+        if original_variable in state_symbols:
+            new_derivatives.append(self._convert_state_variable_deriv(original_variable, new_variable, cf))
+
+        # if free variable
+        if original_variable == free_symbol:
+            # for each derivative wrt to free variable add necessary variables/equations
+            current_equations = self.equations.copy()
+            for equation in current_equations:
+                if equation.args[0].is_Derivative:
+                    if equation.args[0].args[1].args[0] == original_variable:
+                        new_derivatives.append(self._convert_free_variable_deriv(equation, new_variable, cf))
+
+        # replace any instances of derivative of rhs of other eqns with new derivative variable
+        for new_derivative in new_derivatives:
+            self._replace_derivatives(new_derivative)
+
+        self._invalidate_cache()
+
+        return new_variable
+
+    def _check_arguments_for_convert_variables(self, variable, units, direction):
+        """
+        Checks the arguments of the convert_variable function.
+        :param variable: variable must be a VariableDummy object present in the model
+        :param units: units must be a pint Unit object in this model
+        :param direction: must be part of DataDirectionFlow enum
+        :throws: AssertionError if the arguments are of incorrect type
+                                or the variable does not exist in the model
+       """
+        # variable should be a VariableDummy
+        assert isinstance(variable, VariableDummy)
+
+        # variable must be in model
+        assert variable.name in self._name_to_symbol
+
+        # units should be a pint Unit object in the registry for this model
+        assert isinstance(units, self.units.ureg.Unit)
+
+        # direction should be part of enum
+        assert isinstance(direction, DataDirectionFlow)
+
+    def _replace_derivatives(self, new_derivative):
+        """
+        Function to replace an instance of a derivative that occurs on the RHS of any equation
+        :param new_derivative: new variable representing the derivative
+        """
+        for equation in self.equations:
+            for argument in equation.rhs.args:
+                if new_derivative['expression'] == argument:
+                    # add new equation
+                    new_eqn = equation.subs(new_derivative['expression'], new_derivative['variable'])
+                    self.add_equation(new_eqn)
+                    self.remove_equation(equation)
+                    break
+
+    def _create_new_deriv_variable_and_equation(self, eqn, derivative_variable):
+        """
+        Create a new variable and equation for the derivative.
+        :param eqn: the original derivative eqn
+        :param derivative_variable: the dependent variable
+        :return: new variable for the derivative
+        """
+        # 1. create a new variable
+        deriv_name = self._get_unique_name(derivative_variable.name + '_orig_deriv')
+        deriv_units = self.units.calculator.traverse(eqn.args[0])
+        new_deriv_variable = self.add_variable(name=deriv_name,
+                                               units=deriv_units.units)
+
+        # 2. create new equation and remove original
+        expression = sympy.Eq(new_deriv_variable, eqn.args[1])
+        self.add_equation(expression)
+        self.remove_equation(eqn)
+
+        return new_deriv_variable
+
+    def _convert_free_variable_deriv(self, eqn, new_variable, cf):
+        """
+        Create relevant variables/equations when converting a free variable  within a derivative.
+        :param eqn: the derivative equation containing free variable
+        :param new_variable: the new variable representing the converted symbol [new_units]
+        :param cf: conversion factor for unit conversion [new units/old units]
+        """
+        derivative_variable = eqn.args[0].args[0]  # units [x]
+        # 1. create a new variable/equation for original derivative
+        # will have units [x/old units]
+        new_deriv_variable = self._create_new_deriv_variable_and_equation(eqn, derivative_variable)
+
+        # 2. create equation for derivative wrt new variable
+        # dx/dnewvar [x/new units] = new_deriv_var [x/old units] / cf [new units/old units]
+        expression = sympy.Eq(sympy.Derivative(derivative_variable, new_variable), new_deriv_variable / cf)
+        self.add_equation(expression)
+        return {'variable': new_deriv_variable, 'expression': eqn.args[0]}
+
+    def _convert_state_variable_deriv(self, original_variable, new_variable, cf):
+        """
+        Create relevant variables/equations when converting a state variable.
+        :param original_variable: the variable to be converted [old units]
+        :param new_variable: the new variable representing the converted symbol [new units]
+        :param cf: conversion factor for unit conversion [new units/old units]
+        :return: a dictionary containing the 'variable' and 'expression' for new derivative
+        """
+        # 1. find the derivative equation for this variable
+        # and get the free variable (wrt_variable)
+        eqn = None
+        for equation in self.equations:
+            if equation.args[0].is_Derivative:
+                if equation.args[0].args[0] == original_variable:
+                    eqn = equation
+                    break
+
+        # get free variable symbol
+        # units [x]
+        wrt_variable = eqn.args[0].args[1]
+
+        # 1. create a new variable/equation for original derivative
+        # will have units [old units/x]
+        new_deriv_variable = self._create_new_deriv_variable_and_equation(eqn, original_variable)
+
+        # 2. add a new derivative equation
+        # dnewvar/dx [new units/x] = new_deriv_var [old units/x] * cf [new units/old units]
+        expression = sympy.Eq(sympy.Derivative(new_variable, wrt_variable), new_deriv_variable * cf)
+        self.add_equation(expression)
+        return {'variable': new_deriv_variable, 'expression': eqn.args[0]}
+
+    def _convert_variable_instance(self, original_variable, cf, units, direction):
+        """
+        Internal function to create new variable and an equation for it.
+        :param original_variable: VariableDummy object to be converted [old units]
+        :param cf: conversion factor [new units/old units]
+        :param units: Unit object for new units
+        :param direction: enumeration value specifying input or output
+        :return: the new variable created [new units]
+        """
+        # 1. get unique name for new variable
+        new_name = self._get_unique_name(original_variable.name + '_converted')
+
+        # 2. if original has initial_value calculate new initial value (only needed for INPUT case)
+        new_value = None
+        if direction == DataDirectionFlow.INPUT and original_variable.initial_value:
+            new_value = original_variable.initial_value * cf
+
+        # 3. copy cmeta_id from original and remove from original
+        new_variable = self.add_variable(name=new_name,
+                                         units=units,
+                                         initial_value=new_value,
+                                         cmeta_id=original_variable.cmeta_id)
+        original_variable.cmeta_id = ''
+
+        # 4 add/remove/replace equations
+        if direction == DataDirectionFlow.INPUT:
+            # if direction is input; original var will be replaced by equation so do not need to store initial value
+            original_variable.initial_value = None
+
+            # find the equation for the original variable: orig_var = rhs
+            # remove equation from model
+            # add eqn for new variabale in terms of rhs of equation
+            #     new_var [new units] = rhs [old units] * cf [new units/old units]
+            for equation in self.equations:
+                if equation.is_Equality and equation.args[0] == original_variable:
+                    expression = sympy.Eq(new_variable, equation.args[1] * cf)
+                    self.add_equation(expression)
+                    self.remove_equation(equation)
+                    break
+
+            # add eqn for original variable in terms of new variable
+            #     orig_var [old units] = new var [new units] / cf [new units/old units]
+            expression = sympy.Eq(original_variable, new_variable / cf)
+            self.add_equation(expression)
+        else:
+            # if direction is output add eqn for new variable in terms of original variable
+            #     new_var [new units] = orig_var [old units] * cf [new units/old units]
+            expression = sympy.Eq(new_variable, original_variable * cf)
+            self.add_equation(expression)
+
+        return new_variable
+
+    def _get_unique_name(self, name):
+        """ Function to create a unique name within the model.
+        :param name: String Suggested unique name
+        :return: String unique name
+        """
+        for var in list(self.variables()):
+            if name == var.name:
+                name = self._get_unique_name(name + '_a')
+                break
+        return name
+
 
 class NumberDummy(sympy.Dummy):
     """
@@ -626,6 +903,7 @@ class NumberDummy(sympy.Dummy):
 
     Number dummies should never be created directly, but always via :meth:`Model.add_number()`.
     """
+
     # Sympy annoyingly overwrites __new__
     def __new__(cls, value, *args, **kwargs):
         return super().__new__(cls, str(value))
@@ -649,6 +927,7 @@ class VariableDummy(sympy.Dummy):
 
     For the constructor arguments, see :meth:`Model.add_variable()`.
     """
+
     # Sympy annoyingly overwrites __new__
     def __new__(cls, name, *args, **kwargs):
         return super().__new__(cls, name)
@@ -661,7 +940,6 @@ class VariableDummy(sympy.Dummy):
                  private_interface=None,
                  order_added=None,
                  cmeta_id=None):
-
         self.name = name
         self.units = units
         self.initial_value = None if initial_value is None else float(initial_value)
@@ -690,4 +968,3 @@ class VariableDummy(sympy.Dummy):
 
     def __str__(self):
         return self.name
-

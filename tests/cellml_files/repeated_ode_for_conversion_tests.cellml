@@ -1,0 +1,96 @@
+<?xml version='1.0'?>
+<model cmeta:id="test_basic_ode" name="test_basic_ode" xmlns="http://www.cellml.org/cellml/1.0#" xmlns:cellml="http://www.cellml.org/cellml/1.0#" xmlns:cmeta="http://www.cellml.org/metadata/1.0#">
+    <units name="ms">
+        <unit prefix="milli" units="second"/>
+    </units>
+    <units name="per_ms">
+        <unit exponent="-1" units="ms"/>
+    </units>
+    <units name="mV">
+        <unit prefix="milli" units="volt"/>
+    </units>
+    <units name="per_mV">
+        <unit exponent="-1" prefix="milli" units="volt"/>
+    </units>
+    <units name="mV_per_ms">
+        <unit exponent="1" units="mV"/>
+        <unit exponent="-1" units="ms"/>
+    </units>
+    <units name="pA">
+        <unit prefix="pico" units="ampere"/>
+    </units>
+    <units name="nA">
+        <unit prefix="nano" units="ampere"/>
+    </units>
+    <units name="per_pA">
+        <unit exponent="-1" units="pA"/>
+    </units>
+    <component name="environment">
+        <variable cmeta:id="time" name="time" public_interface="out" units="ms"/>
+    </component>
+    <component name="env_ode">
+        <!-- d(sv1)/d(time) = 1, sv1(0) = 2 -->
+        <variable name="time" public_interface="in" units="ms"/>
+        <variable cmeta:id="sv11" initial_value="2" name="sv1" units="mV"/>
+        <variable name="x" units="mV_per_ms"/>
+        <variable initial_value="3" name="y" units="mV"/>
+        <math xmlns="http://www.w3.org/1998/Math/MathML">
+            <apply>
+                <eq/>
+                <apply>
+                    <diff/>
+                    <bvar>
+                        <ci>time</ci>
+                    </bvar>
+                    <ci>sv1</ci>
+                </apply>
+                <cn cellml:units="mV_per_ms">1</cn>
+            </apply>
+            <apply>
+                <eq/>
+                <ci>x</ci>
+                <apply>
+                    <times/>
+                    <apply>
+                        <diff/>
+                        <bvar>
+                            <ci>time</ci>
+                        </bvar>
+                        <ci>sv1</ci>
+                    </apply>
+                    <cn cellml:units="mV_per_ms">3</cn>
+                </apply>
+            </apply>
+            <apply>
+                <eq/>
+                <apply>
+                    <diff/>
+                    <bvar>
+                        <ci>time</ci>
+                    </bvar>
+                    <ci>y</ci>
+                </apply>
+                <cn cellml:units="mV_per_ms">2</cn>
+            </apply>
+        </math>
+    </component>
+    <group>
+        <relationship_ref relationship="encapsulation"/>
+        <component_ref component="environment"/>
+        <component_ref component="env_ode"/>
+    </group>
+    <connection>
+        <map_components component_1="env_ode" component_2="environment"/>
+        <map_variables variable_1="time" variable_2="time"/>
+    </connection>
+    <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+        <rdf:Description xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" rdf:about="#time">
+            <bqbiol:is xmlns:bqbiol="http://biomodels.net/biology-qualifiers/" rdf:resource="https://chaste.comlab.ox.ac.uk/cellml/ns/oxford-metadata#time" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"/>
+        </rdf:Description>
+    </rdf:RDF>
+    <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+        <rdf:Description xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" rdf:about="#sv11">
+            <bqbiol:is xmlns:bqbiol="http://biomodels.net/biology-qualifiers/" rdf:resource="https://chaste.comlab.ox.ac.uk/cellml/ns/oxford-metadata#sodium_reversal_potential" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"/>
+        </rdf:Description>
+    </rdf:RDF>
+</model>
