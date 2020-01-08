@@ -731,7 +731,7 @@ class Model(object):
 
     def _check_arguments_for_convert_variables(self, variable, units, direction):
         """
-        Checks the arguments of the convert_variable functions.
+        Checks the arguments of the convert_variable function.
         :param variable: variable must be a VariableDummy object present in the model
         :param units: units must be a pint Unit object in this model
         :param direction: must be part of DataDirectionFlow enum
@@ -741,7 +741,7 @@ class Model(object):
         # variable should be a VariableDummy
         assert isinstance(variable, VariableDummy)
 
-        # variable must b in model
+        # variable must be in model
         assert variable.name in self._name_to_symbol
 
         # units should be a pint Unit object in the registry for this model
