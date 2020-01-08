@@ -614,7 +614,7 @@ class TestUnitConversion:
 
             creates model
                 var{time} time: ms {pub: in};
-                var{sv11} sv1_converted: V {init: 0.002};
+                var{sv11} sv1_converted: V;
                 var sv1 mV {init: 2}
 
                 ode(sv1, time) = 1{mV_per_ms};
@@ -633,7 +633,7 @@ class TestUnitConversion:
         local_model.convert_variable(original_var, volt_unit, DataDirectionFlow.OUTPUT)
         assert len(local_model.variables()) == 4
         symbol_a = local_model.get_symbol_by_cmeta_id('sv11')
-        assert local_model.get_initial_value(symbol_a) == 0.002
+        assert not local_model.get_initial_value(symbol_a)
         assert symbol_a.units == 'volt'
         assert symbol_a.name == 'env_ode$sv1_converted'
         symbol_t = local_model.get_symbol_by_cmeta_id('time')

@@ -845,9 +845,9 @@ class Model(object):
         # 1. get unique name for new variable
         new_name = self._get_unique_name(original_variable.name + '_converted')
 
-        # 2. if original has initial_value calculate new initial value
+        # 2. if original has initial_value calculate new initial value (only needed for INPUT case)
         new_value = None
-        if original_variable.initial_value:
+        if direction == DataDirectionFlow.INPUT and original_variable.initial_value:
             new_value = original_variable.initial_value * cf
 
         # 3. copy cmeta_id from original and remove from original
