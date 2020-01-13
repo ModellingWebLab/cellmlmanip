@@ -624,7 +624,7 @@ class Model(object):
         """ Returns an iterator over this model's variable symbols. """
         return self._name_to_symbol.values()
 
-    def convert_variable(self, original_variable, units, direction):
+    def convert_variable(self, original_variable, units, direction, raise_errors=True):
         """
         Add a new linked version of the given variable in the desired units.
 
@@ -679,17 +679,19 @@ class Model(object):
                           equations will be adjusted
                           or DataDirectionFlow.OUTPUT; the variable to be changed is an output, equations
                           are unaffected apart from converting the actual output
+        :param raise_errors: determines whether the method will throw an error if one of the checks fails
+                          if raise_errors==False and checks fail, the original variable is returned unchanged
         :return: new variable with desired units, or original unchanged if conversion was not necessary
         :throws: AssertionError if the arguments are of incorrect type
                                 or the variable does not exist in the model
                 DimensionalityError if the unit conversion is impossible
         """
         # assertion errors will be thrown here if arguments are incorrect type
-        self._check_arguments_for_convert_variables(original_variable, units, direction)
+        checks_passed = self._check_arguments_for_convert_variables(original_variable, units, direction)
 
         original_units = original_variable.units
-        # no conversion necessary
-        if original_units == units:
+        # no conversion possible (checks failed) or necessary (already in correct units)
+        if not checks_passed or self.units.get_conversion_factor(units, from_unit=original_units) == 1.0:
             return original_variable
 
         # conversion_factor for old units to new
@@ -727,26 +729,38 @@ class Model(object):
 
         return new_variable
 
-    def _check_arguments_for_convert_variables(self, variable, units, direction):
+    def _check_arguments_for_convert_variables(self, variable, units, direction, raise_errors=True):
         """
         Checks the arguments of the convert_variable function.
         :param variable: variable must be a VariableDummy object present in the model
         :param units: units must be a pint Unit object in this model
         :param direction: must be part of DataDirectionFlow enum
-        :throws: AssertionError if the arguments are of incorrect type
-                                or the variable does not exist in the model
+        :param raise_errors: determines whether the method will throw an error if one of the checks fails
+        :throws: AssertionError if raise_errors and (the arguments are of incorrect type
+                                or the variable does not exist in the model)
+        :return: returns whether all checks have passed successfully.
        """
+        arguments_ok = True
+
         # variable should be a VariableDummy
-        assert isinstance(variable, VariableDummy)
+        is_VariableDummy = isinstance(variable, VariableDummy)
 
         # variable must be in model
-        assert variable.name in self._name_to_symbol
+        is_in_model = variable.name in self._name_to_symbol
 
         # units should be a pint Unit object in the registry for this model
-        assert isinstance(units, self.units.ureg.Unit)
+        units_in_registry = isinstance(units, self.units.ureg.Unit)
 
         # direction should be part of enum
-        assert isinstance(direction, DataDirectionFlow)
+        direction_in_enum = isinstance(direction, DataDirectionFlow)
+
+        if raise_errors:
+            assert is_VariableDummy
+            assert is_in_model
+            assert units_in_registry
+            assert direction_in_enum
+        
+        return is_VariableDummy and is_in_model and units_in_registry and direction_in_enum
 
     def _replace_derivatives(self, new_derivative):
         """
