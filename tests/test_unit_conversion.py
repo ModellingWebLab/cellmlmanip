@@ -14,11 +14,11 @@ class TestUnitConversion:
     def local_model(scope='function'):
         """ Fixture to load a local copy of  the basic_ode model that may get modified. """
         return shared.load_model('basic_ode')
-        
+
     @pytest.fixture
     def br_model(scope='function'):
         """ Fixture to load a local copy of  the basic_ode model that may get modified. """
-        return shared.load_model('beeler_reuter_model_1977')        
+        return shared.load_model('beeler_reuter_model_1977')
 
     @pytest.fixture
     def literals_model(scope='function'):
@@ -740,8 +740,10 @@ class TestUnitConversion:
     def test_convert_same_unit_different_name(self, br_model):
         """ Tests the Model.convert_variable() function when conversion to current unit under a different name.
         """
-        br_model.units.add_custom_unit('millimolar', [{'units': 'mole', 'prefix': 'milli'}, {'units': 'litre', 'exponent': '-1'}])
-        unit = br_model.get_units('concentration_units') #  [{'units': 'mole', 'prefix': 'nano'}, {'units': 'litre', 'exponent': '-3', prefix: 'milli'}])       
+        br_model.units.add_custom_unit('millimolar', [{'units': 'mole', 'prefix': 'milli'},
+                                       {'units': 'litre', 'exponent': '-1'}])
+        # [{'units': 'mole', 'prefix': 'nano'}, {'units': 'litre', 'exponent': '-3', prefix: 'milli'}])
+        unit = br_model.get_units('concentration_units')
         variable = br_model.get_symbol_by_ontology_term(shared.OXMETA, "cytosolic_calcium_concentration")
         direction = DataDirectionFlow.INPUT
         assert br_model.convert_variable(variable, unit, direction) == variable
