@@ -744,7 +744,7 @@ class Model(object):
         is_VariableDummy = isinstance(variable, VariableDummy)
 
         # variable must be in model
-        is_in_model = variable.getattr('name', '') in self._name_to_symbol
+        is_in_model = getattr(variable, 'name', '') in self._name_to_symbol
 
         # units should be a pint Unit object in the registry for this model
         units_in_registry = isinstance(units, self.units.ureg.Unit)
