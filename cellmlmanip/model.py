@@ -687,11 +687,15 @@ class Model(object):
                 DimensionalityError if the unit conversion is impossible
         """
         # assertion errors will be thrown here if arguments are incorrect type
-        checks_passed = self._check_arguments_for_convert_variables(original_variable, units, direction)
+        checks_passed = self._check_arguments_for_convert_variables(original_variable, units, direction, raise_errors)
+
+        # no conversion possible (checks failed)
+        if not checks_passed:
+            return original_variable
 
         original_units = original_variable.units
-        # no conversion possible (checks failed) or necessary (already in correct units)
-        if not checks_passed or self.units.get_conversion_factor(units, from_unit=original_units) == 1.0:
+        # no conversion necessary
+        if self.units.get_conversion_factor(units, from_unit=original_units) == 1.0:
             return original_variable
 
         # conversion_factor for old units to new
@@ -749,6 +753,10 @@ class Model(object):
         # units should be a pint Unit object in the registry for this model
         units_in_registry = isinstance(units, self.units.ureg.Unit)
 
+        # Check unit dimensionality
+        demensionality_ok = \
+            units_in_registry and is_VariableDummy and variable.units.dimensionality == units.dimensionality
+
         # direction should be part of enum
         direction_in_enum = isinstance(direction, DataDirectionFlow)
 
@@ -756,9 +764,10 @@ class Model(object):
             assert is_VariableDummy
             assert is_in_model
             assert units_in_registry
+            assert demensionality_ok
             assert direction_in_enum
 
-        return is_VariableDummy and is_in_model and units_in_registry and direction_in_enum
+        return is_VariableDummy and is_in_model and units_in_registry and demensionality_ok and direction_in_enum
 
     def _replace_derivatives(self, new_derivative):
         """

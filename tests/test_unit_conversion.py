@@ -1,5 +1,4 @@
 import pytest
-from pint import DimensionalityError
 
 from cellmlmanip import units
 from cellmlmanip.model import DataDirectionFlow
@@ -720,7 +719,6 @@ class TestUnitConversion:
         with pytest.raises(AssertionError):
             local_model.convert_variable(variable, unit, 'x')
         local_model.convert_variable(variable, unit, 'x', raise_errors=False) == variable
-            
 
         # variable not present in model
         model = shared.load_model('literals_for_conversion_tests')
@@ -735,7 +733,7 @@ class TestUnitConversion:
         local_model.convert_variable('current', unit, direction, raise_errors=False) == 'current'
 
         # unit conversion is impossible
-        with pytest.raises(DimensionalityError):
+        with pytest.raises(AssertionError):
             local_model.convert_variable(variable, bad_unit, direction)
         local_model.convert_variable(variable, bad_unit, direction, raise_errors=False) == variable
 
