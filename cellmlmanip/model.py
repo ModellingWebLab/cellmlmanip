@@ -624,7 +624,7 @@ class Model(object):
         """ Returns an iterator over this model's variable symbols. """
         return self._name_to_symbol.values()
 
-    def convert_variable(self, original_variable, units, direction, raise_errors=True):
+    def convert_variable(self, original_variable, units, direction):
         """
         Add a new linked version of the given variable in the desired units.
 
@@ -679,19 +679,13 @@ class Model(object):
                           equations will be adjusted
                           or DataDirectionFlow.OUTPUT; the variable to be changed is an output, equations
                           are unaffected apart from converting the actual output
-        :param raise_errors: determines whether the method will throw an error if one of the checks fails
-                          if raise_errors==False and checks fail, the original variable is returned unchanged
         :return: new variable with desired units, or original unchanged if conversion was not necessary
         :throws: AssertionError if the arguments are of incorrect type
                                 or the variable does not exist in the model
                 DimensionalityError if the unit conversion is impossible
         """
         # assertion errors will be thrown here if arguments are incorrect type
-        checks_passed = self._check_arguments_for_convert_variables(original_variable, units, direction, raise_errors)
-
-        # no conversion possible (checks failed)
-        if not checks_passed:
-            return original_variable
+        self._check_arguments_for_convert_variables(original_variable, units, direction)
 
         original_units = original_variable.units
         # no conversion necessary
@@ -733,41 +727,26 @@ class Model(object):
 
         return new_variable
 
-    def _check_arguments_for_convert_variables(self, variable, units, direction, raise_errors=True):
+    def _check_arguments_for_convert_variables(self, variable, units, direction):
         """
         Checks the arguments of the convert_variable function.
         :param variable: variable must be a VariableDummy object present in the model
         :param units: units must be a pint Unit object in this model
         :param direction: must be part of DataDirectionFlow enum
-        :param raise_errors: determines whether the method will throw an error if one of the checks fails
-        :throws: AssertionError if raise_errors and (the arguments are of incorrect type
-                                or the variable does not exist in the model)
-        :return: returns whether all checks have passed successfully.
+        :throws: AssertionError if the arguments are of incorrect type
+                                or the variable does not exist in the model
        """
         # variable should be a VariableDummy
-        is_VariableDummy = isinstance(variable, VariableDummy)
+        assert isinstance(variable, VariableDummy)
 
         # variable must be in model
-        is_in_model = getattr(variable, 'name', '') in self._name_to_symbol
+        assert variable.name in self._name_to_symbol
 
         # units should be a pint Unit object in the registry for this model
-        units_in_registry = isinstance(units, self.units.ureg.Unit)
-
-        # Check unit dimensionality
-        demensionality_ok = \
-            units_in_registry and is_VariableDummy and variable.units.dimensionality == units.dimensionality
+        assert isinstance(units, self.units.ureg.Unit)
 
         # direction should be part of enum
-        direction_in_enum = isinstance(direction, DataDirectionFlow)
-
-        if raise_errors:
-            assert is_VariableDummy
-            assert is_in_model
-            assert units_in_registry
-            assert demensionality_ok
-            assert direction_in_enum
-
-        return is_VariableDummy and is_in_model and units_in_registry and demensionality_ok and direction_in_enum
+        assert isinstance(direction, DataDirectionFlow)
 
     def _replace_derivatives(self, new_derivative):
         """
