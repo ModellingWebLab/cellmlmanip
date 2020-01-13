@@ -740,8 +740,6 @@ class Model(object):
                                 or the variable does not exist in the model)
         :return: returns whether all checks have passed successfully.
        """
-        arguments_ok = True
-
         # variable should be a VariableDummy
         is_VariableDummy = isinstance(variable, VariableDummy)
 
@@ -759,7 +757,7 @@ class Model(object):
             assert is_in_model
             assert units_in_registry
             assert direction_in_enum
-        
+
         return is_VariableDummy and is_in_model and units_in_registry and direction_in_enum
 
     def _replace_derivatives(self, new_derivative):
