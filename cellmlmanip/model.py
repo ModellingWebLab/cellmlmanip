@@ -689,7 +689,7 @@ class Model(object):
 
         original_units = original_variable.units
         # no conversion necessary
-        if self.units.get_conversion_factor(units, from_unit=original_units) == 1.0:
+        if  1 * original_units == 1 * units:
             return original_variable
 
         # conversion_factor for old units to new
