@@ -711,26 +711,33 @@ class TestUnitConversion:
         # arguments wrong types
         with pytest.raises(AssertionError):
             local_model.convert_variable('x', unit, direction)
+        local_model.convert_variable('x', unit, direction, raise_errors=False) == 'x'
 
         with pytest.raises(AssertionError):
             local_model.convert_variable(variable, 'x', direction)
+        local_model.convert_variable(variable, 'x', direction, raise_errors=False) == variable
 
         with pytest.raises(AssertionError):
             local_model.convert_variable(variable, unit, 'x')
+        local_model.convert_variable(variable, unit, 'x', raise_errors=False) == variable
+            
 
         # variable not present in model
         model = shared.load_model('literals_for_conversion_tests')
         other_var = model.get_symbol_by_name('env_ode$x')
         with pytest.raises(AssertionError):
             local_model.convert_variable(other_var, unit, direction)
+        local_model.convert_variable(other_var, unit, direction, raise_errors=False) == other_var
 
         # ontology term not present in model
         with pytest.raises(AssertionError):
             local_model.convert_variable('current', unit, direction)
+        local_model.convert_variable('current', unit, direction, raise_errors=False) == 'current'
 
         # unit conversion is impossible
         with pytest.raises(DimensionalityError):
             local_model.convert_variable(variable, bad_unit, direction)
+        local_model.convert_variable(variable, bad_unit, direction, raise_errors=False) == variable
 
     def test_unique_names(self, silly_names):
         # original state

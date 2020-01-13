@@ -982,4 +982,3 @@ class VariableDummy(sympy.Dummy):
 
     def __str__(self):
         return self.name
-
