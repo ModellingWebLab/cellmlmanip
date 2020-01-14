@@ -50,15 +50,19 @@
                 <eq/>
                 <ci>x</ci>
                 <apply>
-                    <times/>
+                    <plus/>
+                    <cn cellml:units="mV_per_ms">1</cn>
                     <apply>
-                        <diff/>
-                        <bvar>
-                            <ci>time</ci>
-                        </bvar>
-                        <ci>sv1</ci>
+                        <times/>
+                        <apply>
+                            <diff/>
+                            <bvar>
+                                <ci>time</ci>
+                            </bvar>
+                            <ci>sv1</ci>
+                        </apply>
+                        <cn cellml:units="mV_per_ms">3</cn>
                     </apply>
-                    <cn cellml:units="mV_per_ms">3</cn>
                 </apply>
             </apply>
             <apply>

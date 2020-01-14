@@ -165,8 +165,8 @@ class TestUnitConversion:
         assert symbol_t.units == 'ms'
         assert len(multiode_model.equations) == 3
         assert str(multiode_model.equations[0]) == 'Eq(Derivative(_env_ode$sv1, _environment$time), _1.0)'
-        assert str(multiode_model.equations[1]) == 'Eq(_env_ode$x, ' \
-                                                   '_3.0*Derivative(_env_ode$sv1, _environment$time))'
+        assert str(multiode_model.equations[1]) == \
+            'Eq(_env_ode$x, _1.0 + _3.0*Derivative(_env_ode$sv1, _environment$time))'
         assert str(multiode_model.equations[2]) == 'Eq(Derivative(_env_ode$y, _environment$time), _2.0)'
         return True
 
@@ -441,7 +441,7 @@ class TestUnitConversion:
                 var y: mV {init: 3};
 
                 ode(sv1, time) = 1{mV_per_ms};
-                x = ode(sv1, time) * 3{mV_per_ms};
+                x = 1{mV_per_ms} + ode(sv1, time) * 3{mV_per_ms};
                 ode(y, time) = 2{mV_per_ms};
 
         convert_variable(sv1, volt, DataDirectionFlow.INPUT)
@@ -459,7 +459,7 @@ class TestUnitConversion:
                 sv1 = 1000 * sv1_converted
                 sv1_orig_deriv = 1{mV_per_ms}
                 ode(sv1_converted, time) = 0.001 * sv1_orig_deriv
-                x = 3 * sv1_orig_deriv
+                x = 1{mV_per_ms} + 3 * sv1_orig_deriv
         """
         mV_unit = multiode_model.get_units('mV')
         volt_unit = multiode_model.get_units('volt')
@@ -478,7 +478,7 @@ class TestUnitConversion:
         assert str(multiode_model.equations[2]) == 'Eq(_env_ode$sv1_orig_deriv, _1.0)'
         assert str(multiode_model.equations[3]) == 'Eq(Derivative(_env_ode$sv1_converted, _environment$time), ' \
                                                    '0.001*_env_ode$sv1_orig_deriv)'
-        assert str(multiode_model.equations[4]) == 'Eq(_env_ode$x, _3.0*_env_ode$sv1_orig_deriv)'
+        assert str(multiode_model.equations[4]) == 'Eq(_env_ode$x, _1.0 + _3.0*_env_ode$sv1_orig_deriv)'
 
     def test_multiple_odes_1(self, multiode_model):
         """ Tests the Model.convert_variable function that changes units of given variable.
@@ -493,7 +493,7 @@ class TestUnitConversion:
                 var y: mV {init: 3};
 
                 ode(sv1, time) = 1{mV_per_ms};
-                x = ode(sv1, time) * 3{mV_per_ms};
+                x = 1{mV_per_ms} + ode(sv1, time) * 3{mV_per_ms};
                 ode(y, time) = 2{mV_per_ms};
 
 
@@ -513,11 +513,14 @@ class TestUnitConversion:
                 ode(y, time_converted) = 1000 * y_orig_deriv;
                 sv1_orig_deriv = 1{mV_per_ms}
                 ode(sv1, time_converted) = 1000 * sv1_orig_deriv
-                x = 3 * sv1_orig_deriv
+                x = 1 + 3 * sv1_orig_deriv
         """
         ms_unit = multiode_model.get_units('ms')
         second_unit = multiode_model.get_units('second')
         original_var = multiode_model.get_symbol_by_name('environment$time')
+
+        old_state_symbols = multiode_model.get_state_symbols()
+        assert len(old_state_symbols) == 2
 
         assert self._original_state_multiode_model(multiode_model)
         # test no change in units
@@ -534,7 +537,12 @@ class TestUnitConversion:
         assert str(multiode_model.equations[3]) == 'Eq(_env_ode$y_orig_deriv, _2.0)'
         assert str(multiode_model.equations[4]) == 'Eq(Derivative(_env_ode$y, _environment$time_converted), ' \
                                                    '1000.0*_env_ode$y_orig_deriv)'
-        assert str(multiode_model.equations[5]) == 'Eq(_env_ode$x, _3.0*_env_ode$sv1_orig_deriv)'
+        assert str(multiode_model.equations[5]) == 'Eq(_env_ode$x, _1.0 + _3.0*_env_ode$sv1_orig_deriv)'
+
+        # test the graph forming and get_state_symbols still works
+        state_symbols = multiode_model.get_state_symbols()
+        assert len(state_symbols) == 2
+        assert old_state_symbols == state_symbols
 
     def test_add_output(self, literals_model):
         """ Tests the Model.convert_variable function that changes units of given variable.
@@ -746,25 +754,6 @@ class TestUnitConversion:
         variable = br_model.get_symbol_by_ontology_term(shared.OXMETA, "cytosolic_calcium_concentration")
         direction = DataDirectionFlow.INPUT
         assert br_model.convert_variable(variable, unit, direction) == variable
-
-    def test_convert_state_symbols(self, aslanidi_model):
-        """ Tests if get_state_symbols still works (and the graph is rebuilt properly)
-        after after conversion of the time (s to ms).
-
-        The aslanidi_model has derivatives on the rhs of equations that aren't at the top level being replaced.
-        """
-        model = aslanidi_model
-        old_state_symbols = model.get_state_symbols()
-        assert len(old_state_symbols) == 29
-
-        model.units.add_custom_unit('millisecond', [{'prefix': 'milli', 'units': 'second'}])
-        time_variable = model.get_free_variable_symbol()
-        desired_units = model.units.ureg.millisecond
-
-        model.convert_variable(time_variable, desired_units, DataDirectionFlow.INPUT)
-        state_symbols = model.get_state_symbols()
-        assert len(state_symbols) == 29
-        assert old_state_symbols == state_symbols
 
     def test_unique_names(self, silly_names):
         # original state
