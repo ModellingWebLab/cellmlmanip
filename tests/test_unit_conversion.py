@@ -738,8 +738,7 @@ class TestUnitConversion:
             local_model.convert_variable(variable, bad_unit, direction)
 
     def test_convert_same_unit_different_name(self, br_model):
-        """ Tests the Model.convert_variable() function when conversion to current unit under a different name.
-        """
+        """ Tests the Model.convert_variable() function when conversion to current unit under a different name."""
         br_model.units.add_custom_unit('millimolar', [{'units': 'mole', 'prefix': 'milli'},
                                        {'units': 'litre', 'exponent': '-1'}])
         # [{'units': 'mole', 'prefix': 'nano'}, {'units': 'litre', 'exponent': '-3', prefix: 'milli'}])
@@ -747,6 +746,25 @@ class TestUnitConversion:
         variable = br_model.get_symbol_by_ontology_term(shared.OXMETA, "cytosolic_calcium_concentration")
         direction = DataDirectionFlow.INPUT
         assert br_model.convert_variable(variable, unit, direction) == variable
+
+    def test_convert_state_symbols(self, aslanidi_model):
+        """ Tests if get_state_symbols still works (and the graph is rebuilt properly)
+        after after conversion of the time (s to ms).
+
+        The aslanidi_model has derivatives on the rhs of equations that aren't at the top level being replaced.
+        """
+        model = aslanidi_model
+        old_state_symbols = model.get_state_symbols()
+        assert len(old_state_symbols) == 29
+
+        model.units.add_custom_unit('millisecond', [{'prefix': 'milli', 'units': 'second'}])
+        time_variable = model.get_free_variable_symbol()
+        desired_units = model.units.ureg.millisecond
+
+        model.convert_variable(time_variable, desired_units, DataDirectionFlow.INPUT)
+        state_symbols = model.get_state_symbols()
+        assert len(state_symbols) == 29
+        assert old_state_symbols == state_symbols
 
     def test_unique_names(self, silly_names):
         # original state
