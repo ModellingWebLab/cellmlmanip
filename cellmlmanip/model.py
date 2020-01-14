@@ -754,7 +754,7 @@ class Model(object):
         :param new_derivative: new variable representing the derivative
         """
         for equation in self.equations:
-            for argument in equation.atoms(sympy.Derivative):
+            for argument in equation.rhs.atoms(sympy.Derivative):
                 if new_derivative['expression'] == argument:
                     # add new equation
                     new_eqn = equation.subs(new_derivative['expression'], new_derivative['variable'])
