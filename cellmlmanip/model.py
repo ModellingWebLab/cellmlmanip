@@ -681,7 +681,6 @@ class Model(object):
         :return: new variable with desired units, or original unchanged if conversion was not necessary
         :throws: AssertionError if the arguments are of incorrect type or the variable does not exist in the model
                 DimensionalityError if the unit conversion is impossible
-
         """
         # assertion errors will be thrown here if arguments are incorrect type
         self._check_arguments_for_convert_variables(original_variable, units, direction)
