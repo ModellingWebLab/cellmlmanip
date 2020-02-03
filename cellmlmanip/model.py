@@ -671,7 +671,6 @@ class Model(object):
                 ode(sv1, time) = 1{mV_per_ms};
                 time_converted = 0.001 * time
 
-
         :param original_variable: the VariableDummy object representing the variable in the model to be converted
         :param units: a Pint unit object representing the units to convert variable to (note if variable is already
                       in these units, model remains unchanged and the original variable is returned
@@ -680,9 +679,9 @@ class Model(object):
                           or DataDirectionFlow.OUTPUT; the variable to be changed is an output, equations
                           are unaffected apart from converting the actual output
         :return: new variable with desired units, or original unchanged if conversion was not necessary
-        :throws: AssertionError if the arguments are of incorrect type
-                                or the variable does not exist in the model
+        :throws: AssertionError if the arguments are of incorrect type or the variable does not exist in the model
                 DimensionalityError if the unit conversion is impossible
+
         """
         # assertion errors will be thrown here if arguments are incorrect type
         self._check_arguments_for_convert_variables(original_variable, units, direction)
