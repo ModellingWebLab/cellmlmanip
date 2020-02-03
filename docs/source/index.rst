@@ -22,4 +22,5 @@ Contents
 
     reading_cellml
     model_api
+    code_generation
 
