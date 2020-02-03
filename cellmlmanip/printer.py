@@ -40,7 +40,6 @@
 #
 import sympy
 import sympy.printing
-
 from sympy.printing.precedence import precedence
 
 
