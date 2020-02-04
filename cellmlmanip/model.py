@@ -553,14 +553,11 @@ class Model(object):
                 if state_symbol not in graph.nodes:
                     graph.add_node(state_symbol, equation=None, variable_type=state_symbol.type)
 
-        # Add more meta-data to the graph
+        # Store variable type in the graph too
         for variable in graph.nodes:
             if not variable.is_Derivative:
-                for key in ['cmeta_id', 'name', 'units']:
-                    if getattr(variable, key):
-                        graph.nodes[variable][key] = getattr(variable, key)
-                if variable.type is not None:
-                    graph.nodes[variable]['variable_type'] = variable.type
+                assert variable.type is not None
+                graph.nodes[variable]['variable_type'] = variable.type
 
         # Cache graph and return
         self._graph = graph
