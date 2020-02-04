@@ -231,9 +231,17 @@ class Model(object):
         if source.units == target.units:
             # Direct substitution is possible
             target.assigned_to = source.assigned_to
-            # everywhere the target variable is used, replace with source variable
+            # everywhere the target variable is used, replace with source variable,
+            # updating the definition maps accordingly
             for index, equation in enumerate(self.equations):
-                self.equations[index] = equation.xreplace({target: source.assigned_to})
+                self.equations[index] = new_eq = equation.xreplace({target: source.assigned_to})
+                if equation.lhs.is_Derivative:
+                    state_var = equation.lhs.free_symbols.pop()
+                    assert state_var in self._ode_definition_map
+                    self._ode_definition_map[state_var] = new_eq
+                else:
+                    assert equation.lhs in self._var_definition_map
+                    self._var_definition_map[equation.lhs] = new_eq
             if target in self._ode_definition_map:
                 self._ode_definition_map[source.assigned_to] = self._ode_definition_map[target]
                 del self._ode_definition_map[target]
@@ -247,7 +255,7 @@ class Model(object):
             factor_dummy = self.add_number(factor, target.units / source.units)
 
             # Add an equations making the connection with the required conversion
-            self.equations.append(sympy.Eq(target, source.assigned_to * factor_dummy))
+            self.add_equation(sympy.Eq(target, source.assigned_to * factor_dummy))
 
             logger.info('Connection req. unit conversion: %s', self.equations[-1])
 
@@ -761,11 +769,9 @@ class Model(object):
         # if free variable
         if original_variable == free_symbol:
             # for each derivative wrt to free variable add necessary variables/equations
-            current_equations = self.equations.copy()
-            for equation in current_equations:
-                if equation.args[0].is_Derivative:
-                    if equation.args[0].args[1].args[0] == original_variable:
-                        new_derivatives.append(self._convert_free_variable_deriv(equation, new_variable, cf))
+            for ode in list(self._ode_definition_map.values()):
+                if ode.args[0].args[1].args[0] == original_variable:
+                    new_derivatives.append(self._convert_free_variable_deriv(ode, new_variable, cf))
 
         # replace any instances of derivative of rhs of other eqns with new derivative variable
         for new_derivative in new_derivatives:
@@ -801,7 +807,7 @@ class Model(object):
         Function to replace an instance of a derivative that occurs on the RHS of any equation
         :param new_derivative: new variable representing the derivative
         """
-        for equation in self.equations:
+        for equation in self.equations.copy():
             for argument in equation.rhs.atoms(sympy.Derivative):
                 if new_derivative['expression'] == argument:
                     # add new equation
@@ -832,7 +838,7 @@ class Model(object):
 
     def _convert_free_variable_deriv(self, eqn, new_variable, cf):
         """
-        Create relevant variables/equations when converting a free variable  within a derivative.
+        Create relevant variables/equations when converting a free variable within a derivative.
         :param eqn: the derivative equation containing free variable
         :param new_variable: the new variable representing the converted symbol [new_units]
         :param cf: conversion factor for unit conversion [new units/old units]
@@ -857,13 +863,7 @@ class Model(object):
         :return: a dictionary containing the 'variable' and 'expression' for new derivative
         """
         # 1. find the derivative equation for this variable
-        # and get the free variable (wrt_variable)
-        eqn = None
-        for equation in self.equations:
-            if equation.args[0].is_Derivative:
-                if equation.args[0].args[0] == original_variable:
-                    eqn = equation
-                    break
+        eqn = self._ode_definition_map[original_variable]
 
         # get free variable symbol
         # units [x]
@@ -908,16 +908,15 @@ class Model(object):
             # if direction is input; original var will be replaced by equation so do not need to store initial value
             original_variable.initial_value = None
 
-            # find the equation for the original variable: orig_var = rhs
+            # find the equation for the original variable (if any): orig_var = rhs
             # remove equation from model
-            # add eqn for new variabale in terms of rhs of equation
+            # add eqn for new variable in terms of rhs of equation
             #     new_var [new units] = rhs [old units] * cf [new units/old units]
-            for equation in self.equations:
-                if equation.is_Equality and equation.args[0] == original_variable:
-                    expression = sympy.Eq(new_variable, equation.args[1] * cf)
-                    self.remove_equation(equation)
-                    self.add_equation(expression)
-                    break
+            original_equation = self._var_definition_map.get(original_variable)
+            if original_equation is not None:
+                new_equation = sympy.Eq(new_variable, original_equation.args[1] * cf)
+                self.remove_equation(original_equation)
+                self.add_equation(new_equation)
 
             # add eqn for original variable in terms of new variable
             #     orig_var [old units] = new var [new units] / cf [new units/old units]
@@ -932,14 +931,12 @@ class Model(object):
         return new_variable
 
     def _get_unique_name(self, name):
-        """ Function to create a unique name within the model.
-        :param name: String Suggested unique name
-        :return: String unique name
+        """Function to create a unique name within the model.
+        :param str name: Suggested unique name
+        :return str: guaranteed unique name
         """
-        for var in list(self.variables()):
-            if name == var.name:
-                name = self._get_unique_name(name + '_a')
-                break
+        if name in self._name_to_symbol:
+            name = self._get_unique_name(name + '_a')
         return name
 
 
