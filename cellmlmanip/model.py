@@ -54,7 +54,7 @@ class Model(object):
         self.equations = []
 
         # A pint UnitStore, mapping unit names to unit objects
-        self.units = UnitStore(model=self)
+        self.units = UnitStore()
 
         # Maps string variable names to sympy.Dummy objects
         self._name_to_symbol = dict()

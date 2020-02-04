@@ -162,23 +162,18 @@ class BooleanUnitsError(UnitError):
 
 
 class UnitStore(object):
-    """Wraps the underlying Pint UnitRegistry to provide unit handling for the model's Sympy expressions.
+    """Wraps an underlying Pint UnitRegistry to provide unit handling for the model's Sympy expressions.
 
     Getting and checking units is handled by this class.
     """
 
-    def __init__(self, model):
-        """Initialise a UnitStore instance; wraps the unit registry and handles addition of new
-        unit definitions"""
+    def __init__(self):
         cellml_unit_definition = os.path.join(
             os.path.dirname(__file__), 'data', 'cellml_units.txt')
         self.ureg = pint.UnitRegistry(cellml_unit_definition)
 
         # units that are defined and added to the unit registry, on top of default cellml units
         self.custom_defined = set()
-
-        # Keep reference to the underlying model
-        self.model = model
 
         # Unit calculator
         self.calculator = UnitCalculator(self.ureg)

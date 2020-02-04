@@ -43,7 +43,7 @@ class TestUnits(object):
     @pytest.fixture(scope="class")
     def quantity_store(self):
         """ QuantityStore to capture units used in tests. """
-        qs = UnitStore(model=None)
+        qs = UnitStore()
         for unit_name, unit_attributes in self.test_definitions.items():
             qs.add_custom_unit(unit_name, unit_attributes)
         return qs
@@ -103,7 +103,7 @@ class TestUnits(object):
 
     def test_add_custom_unit(self):
         """ Tests Units.add_custom_unit() function. """
-        unitstore = UnitStore(model=None)
+        unitstore = UnitStore()
         assert (unitstore._is_unit_defined('newunit') is False)
         # add a new unit called 'newunit' which consists of
         # (2 * second) - I know not realistic
@@ -113,7 +113,7 @@ class TestUnits(object):
 
     def test_add_custom_unit_1(self):
         """ Tests Units.add_custom_unit() function. """
-        unitstore = UnitStore(model=None)
+        unitstore = UnitStore()
         assert (unitstore._is_unit_defined('newunit') is False)
         # add a new unit called 'newunit' which consists of
         # (millimetres)
@@ -123,7 +123,7 @@ class TestUnits(object):
 
     def test_add_custom_unit_2(self):
         """ Tests Units.add_custom_unit() function. """
-        unitstore = UnitStore(model=None)
+        unitstore = UnitStore()
         assert (unitstore._is_unit_defined('newunit') is False)
         # add a new unit called 'newunit' which consists of
         # (milliVolts)
@@ -133,7 +133,7 @@ class TestUnits(object):
 
     def test_add_custom_unit_3(self):
         """ Tests Units.add_custom_unit() function. """
-        unitstore = UnitStore(model=None)
+        unitstore = UnitStore()
         assert (unitstore._is_unit_defined('newunit') is False)
         # add a new unit called 'newunit' which consists of
         # (metre per second)
@@ -144,7 +144,7 @@ class TestUnits(object):
     def test_add_custom_unit_existing(self):
         """ Tests exception for Units.add_custom_unit() function
         when unit already exists. """
-        unitstore = UnitStore(model=None)
+        unitstore = UnitStore()
         unit_attributes = [{'multiplier': 1, 'units': 'second'}]
         with pytest.raises(AssertionError):
             unitstore.add_custom_unit('second', unit_attributes)
