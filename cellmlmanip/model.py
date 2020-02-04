@@ -769,7 +769,8 @@ class Model(object):
         # if free variable
         if original_variable == free_symbol:
             # for each derivative wrt to free variable add necessary variables/equations
-            for ode in list(self._ode_definition_map.values()):
+            for ode in [eq for v, eq in sorted(self._ode_definition_map.items(),
+                                               key=lambda v_eq: v_eq[0].order_added)]:
                 if ode.args[0].args[1].args[0] == original_variable:
                     new_derivatives.append(self._convert_free_variable_deriv(ode, new_variable, cf))
 
