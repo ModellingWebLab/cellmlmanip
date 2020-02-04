@@ -110,13 +110,6 @@ class TestModelFunctions():
         free_variable_symbol = aslanidi_model.get_free_variable_symbol()
         assert free_variable_symbol.name == 'environment$time'
 
-    # also tested in test_aslanidi
-    def test_get_initial_value(self, aslanidi_model):
-        """ Tests Model.get_initial_value() works correctly. """
-
-        membrane_voltage = aslanidi_model.get_symbol_by_ontology_term(shared.OXMETA, "membrane_voltage")
-        assert(aslanidi_model.get_initial_value(membrane_voltage) == -80.0)
-
     def test_get_derivative_symbols(self, basic_model):
         """ Tests Model.get_derivative_symbols() works correctly. """
 

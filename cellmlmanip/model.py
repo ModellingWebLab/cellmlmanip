@@ -563,8 +563,6 @@ class Model(object):
                 for key in ['cmeta_id', 'name', 'units']:
                     if getattr(variable, key):
                         graph.nodes[variable][key] = getattr(variable, key)
-                if variable.type == 'state' and variable.initial_value is not None:
-                    graph.nodes[variable]['initial_value'] = sympy.Float(variable.initial_value)
                 if variable.type is not None:
                     graph.nodes[variable]['variable_type'] = variable.type
 
@@ -640,15 +638,6 @@ class Model(object):
     def get_value(self, symbol):
         """ Returns the evaluated value of the given symbol's RHS. """
         return float(self.graph.nodes[symbol]['equation'].rhs.evalf())
-
-    def get_initial_value(self, symbol):
-        """
-        Returns the initial value of the given symbol.
-
-        :param symbol: Sympy Dummy object of required symbol
-        :return: float of initial value
-        """
-        return symbol.initial_value
 
     def find_symbols_and_derivatives(self, expression):
         """ Returns a set containing all symbols and derivatives referenced in a list of expressions.
