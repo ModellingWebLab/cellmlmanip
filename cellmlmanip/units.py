@@ -97,7 +97,7 @@ class UnitsCannotBeCalculatedError(UnitError):
 
 
 class UnexpectedMathUnitsError(UnitError):
-    """ Invalid units error thrown when math encounterd in an expression is outside the subset of MathML expected.
+    """ Invalid units error thrown when math encountered in an expression is outside the subset of MathML expected.
 
     :param expression: input expression in which the error occurred
     """
