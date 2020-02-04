@@ -343,7 +343,7 @@ class Model(object):
         """Returns a list of state variables found in the given model graph.
         The list is ordered by appearance in the cellml document.
         """
-        state_symbols = [v.args[0] for v in self.get_derivative_symbols()]
+        state_symbols = [v for v in self._ode_definition_map.keys()]
         return sorted(state_symbols, key=lambda state_var: state_var.order_added)
 
     def get_free_variable_symbol(self):
@@ -495,7 +495,7 @@ class Model(object):
 
         equation_count = 0
 
-        # Add a node for every variable in the model, and set additional variable meta data
+        # Add a node for every variable in the model, and set variable types
         for equation in self.equations:
             equation_count += 1
 
@@ -519,7 +519,7 @@ class Model(object):
             elif equation.rhs.is_number:
                 lhs.type = 'parameter'
             else:
-                lhs.type = None
+                lhs.type = 'computed'
 
         # Sanity check: none of the lhs have the same hash
         assert len(graph.nodes) == equation_count
@@ -542,11 +542,7 @@ class Model(object):
                     graph.add_node(rhs, equation=None, variable_type=rhs.type)
                     graph.add_edge(rhs, lhs)
                 else:
-                    # this variable is a parameter - add to graph and connect to lhs
-                    rhs.type = 'parameter'
-                    dummy = self.add_number(rhs.initial_value, rhs.units)
-                    graph.add_node(rhs, equation=sympy.Eq(rhs, dummy), variable_type='parameter')
-                    graph.add_edge(rhs, lhs)
+                    assert False, 'Unexpected symbol {} on RHS'.format(rhs)
 
             # check that the free  and state variables are defined as a node
             if lhs.is_Derivative:
