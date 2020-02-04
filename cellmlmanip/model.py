@@ -120,10 +120,12 @@ class Model(object):
         :param var: the VariableDummy, either a state var or normal var
         :param equation: the new definition being added
         """
-        assert var not in self._ode_definition_map, 'The variable {} is defined twice ({} and {})'.format(
-            var, equation, self._ode_definition_map[var])
-        assert var not in self._var_definition_map, 'The variable {} is defined twice ({} and {})'.format(
-            var, equation, self._var_definition_map[var])
+        if var in self._ode_definition_map:
+            raise ValueError('The variable {} is defined twice ({} and {})'.format(
+                var, equation, self._ode_definition_map[var]))
+        if var in self._var_definition_map:
+            raise ValueError('The variable {} is defined twice ({} and {})'.format(
+                var, equation, self._var_definition_map[var]))
 
     def add_number(self, value, units):
         """
@@ -224,8 +226,9 @@ class Model(object):
             raise ValueError('Target already assigned to %s before assignment to %s' %
                              (target.assigned_to, source.assigned_to))
 
-        assert target not in self._var_definition_map, 'Multiple definitions for {} ({} and {})'.format(
-            target, source, self._var_definition_map[target])
+        if target in self._var_definition_map:
+            raise ValueError('Multiple definitions for {} ({} and {})'.format(
+                target, source, self._var_definition_map[target]))
 
         # If source/target variable is in the same unit
         if source.units == target.units:
@@ -351,7 +354,7 @@ class Model(object):
         """Returns a list of state variables found in the given model graph.
         The list is ordered by appearance in the cellml document.
         """
-        state_symbols = [v for v in self._ode_definition_map.keys()]
+        state_symbols = list(self._ode_definition_map.keys())
         return sorted(state_symbols, key=lambda state_var: state_var.order_added)
 
     def get_free_variable_symbol(self):
