@@ -179,6 +179,25 @@ class Model(object):
 
         return var
 
+    def transform_constants(self):
+        """
+        Called by CellML parser to standardise handling of 'constants'.
+
+        Once this has been called, the only variables with an initial_value attribute will be state variables,
+        and the initial value will do what it implies - hold the value the state variable should take at t=0.
+
+        Non state variables with an initial value are actually just constants. For consistent processing later
+        on we add equations defining them, and remove the initial_value attribute.
+        """
+        for var in self._name_to_symbol.values():
+            if var in self._ode_definition_map:
+                assert var.initial_value is not None, 'State variable {} has no initial_value set'.format(var)
+            elif var.initial_value is not None:
+                value = var.initial_value
+                eq = sympy.Eq(var, sympy.Float(value))
+                self.add_equation(eq)
+                var.initial_value = None
+
     def connect_variables(self, source_name: str, target_name: str):
         """Given the source and target component and variable, create a connection by assigning
         the symbol from the source to the target. If units are not the same, it will add an equation
@@ -497,6 +516,8 @@ class Model(object):
                 # Get the free symbol and update the variable information
                 free_symbol = lhs.variables[0]
                 free_symbol.type = 'free'
+            elif equation.rhs.is_number:
+                lhs.type = 'parameter'
             else:
                 lhs.type = None
 

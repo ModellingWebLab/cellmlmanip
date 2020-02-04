@@ -101,6 +101,9 @@ class Parser(object):
         self._add_relationships(model_xml)
         self._add_connection(model_xml)
 
+        # Canonicalise representation
+        self.model.transform_constants()
+
         return self.model
 
     @staticmethod

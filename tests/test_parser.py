@@ -44,8 +44,8 @@ class TestParser(object):
 
     def test_equations_count(self, simple_ode_model):
         """Tests correct number of equations read and then created where necessary by parser. """
-        # Include 19 equations from model + 2 equations added by parser for unit conversion
-        assert len(simple_ode_model.equations) == 21  # NOTE: determined by eye!
+        # Include 19 equations from model + 2 equations added by parser for unit conversion + 1 constant
+        assert len(simple_ode_model.equations) == 22  # NOTE: determined by eye!
 
     def test_rdf(self, simple_ode_model):
         """ Tests correct number of rdf statements parsed. """
