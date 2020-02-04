@@ -63,6 +63,12 @@ class Model(object):
         # An RDF graph containing further meta data
         self.rdf = rdflib.Graph()
 
+        # Map from VariableDummy to defining equation, where the variable is defined by a simple equation
+        self._var_definition_map = {}
+
+        # Map from VariableDummy to defining equation, where the variable is defined by an ODE
+        self._ode_definition_map = {}
+
     def add_unit(self, name, attributes=None, base_units=False):
         """
         Adds a unit of measurement to this model, with a given ``name`` and list of ``attributes``.
@@ -79,7 +85,7 @@ class Model(object):
         else:
             self.units.add_custom_unit(name, attributes)
 
-    def add_equation(self, equation):
+    def add_equation(self, equation, check_duplicates=True):
         """
         Adds an equation to this model.
 
@@ -89,10 +95,35 @@ class Model(object):
         :meth:`add_number()`, :meth:`add_variable()`, or :meth:`get_symbol_by_ontology_term()`.
 
         :param equation: A ``sympy.Eq`` object.
+        :param check_duplicates: whether to check that the equation's LHS is not already defined
         """
         assert isinstance(equation, sympy.Eq), 'The argument `equation` must be a sympy.Eq.'
         self.equations.append(equation)
+        lhs = equation.lhs
+        if lhs.is_Derivative:
+            state_var = lhs.free_symbols.pop()
+            if check_duplicates:
+                self._check_duplicate_definitions(state_var, equation)
+            self._ode_definition_map[state_var] = equation
+        elif isinstance(lhs, VariableDummy):
+            if check_duplicates:
+                self._check_duplicate_definitions(lhs, equation)
+            self._var_definition_map[lhs] = equation
+        else:
+            raise ValueError('Equation LHS should be a derivative or variable, not {}'.format(lhs))
         self._invalidate_cache()
+
+    def _check_duplicate_definitions(self, var, equation):
+        """
+        Assert that a variable doesn't have an existing definition.
+
+        :param var: the VariableDummy, either a state var or normal var
+        :param equation: the new definition being added
+        """
+        assert var not in self._ode_definition_map, 'The variable {} is defined twice ({} and {})'.format(
+            var, equation, self._ode_definition_map[var])
+        assert var not in self._var_definition_map, 'The variable {} is defined twice ({} and {})'.format(
+            var, equation, self._var_definition_map[var])
 
     def add_number(self, value, units):
         """
@@ -174,6 +205,9 @@ class Model(object):
             raise ValueError('Target already assigned to %s before assignment to %s' %
                              (target.assigned_to, source.assigned_to))
 
+        assert target not in self._var_definition_map, 'Multiple definitions for {} ({} and {})'.format(
+            target, source, self._var_definition_map[target])
+
         # If source/target variable is in the same unit
         if source.units == target.units:
             # Direct substitution is possible
@@ -181,6 +215,9 @@ class Model(object):
             # everywhere the target variable is used, replace with source variable
             for index, equation in enumerate(self.equations):
                 self.equations[index] = equation.xreplace({target: source.assigned_to})
+            if target in self._ode_definition_map:
+                self._ode_definition_map[source.assigned_to] = self._ode_definition_map[target]
+                del self._ode_definition_map[target]
 
         # Otherwise, this connection requires a conversion
         else:
@@ -617,6 +654,13 @@ class Model(object):
         except ValueError:
             raise KeyError('Equation not found in model ' + str(equation))
 
+        # Update dependency maps
+        lhs = equation.lhs
+        if lhs.is_Derivative:
+            del self._ode_definition_map[lhs.free_symbols.pop()]
+        else:
+            del self._var_definition_map[lhs]
+
         # Invalidate cached equation graphs
         self._invalidate_cache()
 
@@ -756,8 +800,8 @@ class Model(object):
                 if new_derivative['expression'] == argument:
                     # add new equation
                     new_eqn = equation.subs(new_derivative['expression'], new_derivative['variable'])
-                    self.add_equation(new_eqn)
                     self.remove_equation(equation)
+                    self.add_equation(new_eqn)
                     break
 
     def _create_new_deriv_variable_and_equation(self, eqn, derivative_variable):
@@ -775,8 +819,8 @@ class Model(object):
 
         # 2. create new equation and remove original
         expression = sympy.Eq(new_deriv_variable, eqn.args[1])
-        self.add_equation(expression)
         self.remove_equation(eqn)
+        self.add_equation(expression)
 
         return new_deriv_variable
 
@@ -865,14 +909,14 @@ class Model(object):
             for equation in self.equations:
                 if equation.is_Equality and equation.args[0] == original_variable:
                     expression = sympy.Eq(new_variable, equation.args[1] * cf)
-                    self.add_equation(expression)
                     self.remove_equation(equation)
+                    self.add_equation(expression)
                     break
 
             # add eqn for original variable in terms of new variable
             #     orig_var [old units] = new var [new units] / cf [new units/old units]
             expression = sympy.Eq(original_variable, new_variable / cf)
-            self.add_equation(expression)
+            self.add_equation(expression, check_duplicates=False)
         else:
             # if direction is output add eqn for new variable in terms of original variable
             #     new_var [new units] = orig_var [old units] * cf [new units/old units]

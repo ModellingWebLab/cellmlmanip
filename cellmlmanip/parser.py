@@ -342,10 +342,6 @@ class Parser(object):
         # those variables we know are source variables
         connections_to_process = deque(connect_from_to)
 
-        # For testing: shuffle the order of connections TODO: REMOVE!
-        from random import shuffle
-        shuffle(connections_to_process)
-
         # keep processing the list of connections until we've done them all
         unchanged_loop_count = 0
         while connections_to_process:

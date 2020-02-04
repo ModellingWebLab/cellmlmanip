@@ -50,14 +50,9 @@ class TestModelFunctions():
 
     def test_graph_for_dae(self):
         """ Checks if writing a DAE in a model raises an exceptions. """
-
-        # Parsing should be OK
         path = os.path.join(os.path.dirname(__file__), 'cellml_files', '4.algebraic_ode_model.cellml')
-        model = parser.Parser(path).parse()
-
-        # But equation graph will raise error (if accessed)
-        with pytest.raises(RuntimeError, match='DAEs are not supported'):
-            model.graph
+        with pytest.raises(ValueError, match='Equation LHS should be a derivative or variable'):
+            model = parser.Parser(path).parse()
 
     #######################################################################
     # this section contains tests for each get_XXX function on Model
