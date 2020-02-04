@@ -639,14 +639,17 @@ class Model(object):
         """ Returns the evaluated value of the given symbol's RHS. """
         return float(self.graph.nodes[symbol]['equation'].rhs.evalf())
 
-    def find_symbols_and_derivatives(self, expression):
+    def find_symbols_and_derivatives(self, expressions):
         """ Returns a set containing all symbols and derivatives referenced in a list of expressions.
 
-        :param expression: a list of expressions to get symbols for.
+        Note that we can't just use ``.atoms(VariableDummy, sympy.Derivative)`` for this, because it
+        will return the state and free variables from inside derivatives, which is not what we want.
+
+        :param expressions: an iterable of expressions to get symbols for.
         :return: a set of symbols and derivative objects.
         """
         symbols = set()
-        for expr in expression:
+        for expr in expressions:
             if expr.is_Derivative or isinstance(expr, VariableDummy):
                 symbols.add(expr)
             else:
