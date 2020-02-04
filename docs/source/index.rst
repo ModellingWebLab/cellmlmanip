@@ -22,5 +22,6 @@ Contents
 
     reading_cellml
     model_api
+    units
     code_generation
 

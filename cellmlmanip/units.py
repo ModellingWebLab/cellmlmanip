@@ -1,5 +1,4 @@
-"""Unit handling for CellML models, using the Pint unit library (replaces previous
-Sympy-units implementation
+"""Unit handling for CellML models, using the Pint unit library (replaces previous Sympy-units implementation).
 """
 import logging
 import math
@@ -30,7 +29,6 @@ CELLML_UNITS = {
     'becquerel', 'celsius', 'coulomb', 'farad', 'gray', 'henry', 'hertz', 'joule',
     'lumen', 'lux', 'newton', 'ohm', 'pascal', 'radian', 'siemens', 'sievert',
     'steradian', 'tesla', 'volt', 'watt', 'weber',
-
     'katal',
 
     # Convenience units
@@ -81,14 +79,15 @@ TRIG_FUNCTIONS = {
 
 
 class UnitError(Exception):
-    """ Base class for errors relating to calculating unit.
+    """ Base class for errors relating to calculating units.
     """
     pass
 
 
 class UnitsCannotBeCalculatedError(UnitError):
-    """ Generic invalid units error. This will be thrown if the expressions or symbols
-    involved in a calculation cannot be calculated.
+    """Generic invalid units error.
+
+    This will be thrown if the expressions or symbols involved in a calculation cannot be calculated.
     :param expression: input expression in which the error occurred
     """
 
@@ -98,8 +97,8 @@ class UnitsCannotBeCalculatedError(UnitError):
 
 
 class UnexpectedMathUnitsError(UnitError):
-    """ Invalid units error thrown when math encounterd in an expression
-    is outside the subset of MathML expected.
+    """ Invalid units error thrown when math encounterd in an expression is outside the subset of MathML expected.
+
     :param expression: input expression in which the error occurred
     """
 
@@ -110,6 +109,7 @@ class UnexpectedMathUnitsError(UnitError):
 
 class InputArgumentsInvalidUnitsError(UnitError):
     """ Invalid units error thrown when the arguments to a function have incorrect units.
+
     For example it is incorrect to add 1 [meter] to 2 [seconds].
     :param expression: input expression in which the error occurred
     """
@@ -120,8 +120,9 @@ class InputArgumentsInvalidUnitsError(UnitError):
 
 
 class InputArgumentsMustBeDimensionlessError(UnitError):
-    """ Invalid units error thrown when the arguments to a function have units when the
-    function expects the arguments to be dimensionless.
+    """ Invalid units error thrown when the arguments to a function have units when the function expects the arguments
+    to be dimensionless.
+
     For example it is incorrect to use a sine function on an argument with units.
     :param expression: input expression in which the error occurred
     """
@@ -136,6 +137,7 @@ class InputArgumentsMustBeDimensionlessError(UnitError):
 
 class InputArgumentMustBeNumberError(UnitError):
     """ Invalid unit error thrown when the input argument should be a number.
+
     For example root(x, y) is invalid unless y is a dimensionless number.
     :param expression: input expression in which the error occurred
     :param position: the position of the argument with error i.e. first/second
@@ -148,6 +150,7 @@ class InputArgumentMustBeNumberError(UnitError):
 
 class BooleanUnitsError(UnitError):
     """ Invalid units error when being asked for units of an expression that will return a boolean.
+
     For example it is incorrect to use the expression 1 [meter] > 0.5 [seconds].
     :param expression: input expression in which the error occurred
     """
@@ -159,8 +162,9 @@ class BooleanUnitsError(UnitError):
 
 
 class UnitStore(object):
-    """Wraps the underlying Pint UnitRegistry to provide unit handling for the model's Sympy
-    expressions. Getting and checking units is handled by this class.
+    """Wraps the underlying Pint UnitRegistry to provide unit handling for the model's Sympy expressions.
+
+    Getting and checking units is handled by this class.
     """
 
     def __init__(self, model):
@@ -181,10 +185,11 @@ class UnitStore(object):
 
     def add_custom_unit(self, units_name, unit_attributes):
         """Define a new Pint unit definition and adds it to the unit registry.
+
         :param units_name: name of unit to add - cannot be an existing CellML unit
         :param unit_attributes: dict object for unit
-            {'multiplier': float, 'units': string, 'exponent': integer, 'prefix': string/integer}
-            Not all fields necessary but 'units' must match a unit in Pint registry
+            ``{'multiplier': float, 'units': string, 'exponent': integer, 'prefix': string/integer}``
+            Not all fields necessary but ``units`` must match a unit in Pint registry
         """
         assert units_name not in CELLML_UNITS, 'Cannot redefine CellML unit <%s>' % units_name
 
@@ -206,6 +211,7 @@ class UnitStore(object):
 
     def add_base_unit(self, units_name):
         """Define a new base unit in the Pint registry.
+
         :param units_name: string name of unit to add
         """
         assert units_name not in CELLML_UNITS, 'Cannot redefine CellML unit <%s>' % units_name
@@ -214,8 +220,9 @@ class UnitStore(object):
 
     def _is_unit_defined(self, name):
         """ Check whether the unit already exists in Pint registry.
+
         :param name: string name of the unit
-        :return: True if exists, else False
+        :returns: True if exists, else False
         """
         try:
             getattr(self.ureg, name)
@@ -229,9 +236,10 @@ class UnitStore(object):
 
     def get_quantity(self, unit_name):
         """Returns a pint `Unit` with the given name from the UnitRegistry.
+
         :param unit_name: string name of the unit
-        :return: `Unit`
-        throws pint.UndefinedUnitError if the unit is not present in registry
+        :returns: `Unit`
+        :raises: ``pint.UndefinedUnitError`` if the unit is not present in registry.
         """
         try:
             return self.ureg.parse_expression(unit_name).units
@@ -285,9 +293,10 @@ class UnitStore(object):
     def is_unit_equal(self, unit1, unit2):
         """Compares whether two units are equivalent by converting them into base units and comparing the
         resulting units and multiplicative factors
+
         :param unit1: the first Unit object to compare
         :param unit2: the second Unit object to compare
-        :return True if units are equal, False otherwise
+        :returns: ``True`` if units are equal, ``False`` otherwise.
         """
         assert isinstance(unit1, self.ureg.Unit)
         assert isinstance(unit2, self.ureg.Unit)
@@ -298,10 +307,11 @@ class UnitStore(object):
         return is_equal
 
     def convert_to(self, quantity, unit):
-        """Returns a quantity that is the result of converting [one of] unit1 into unit2.
+        """Returns a quantity that is the result of converting [one of] ``unit1`` into ``unit2``.
+
         :param quantity: the Unit to be converted, multiplied by '1' to form a Quantity object
         :param unit: Unit object into which the first units should be converted
-        :return a quantity object with the converted unit and corresponding quantity
+        :returns: a quantity object with the converted unit and corresponding quantity
         """
         assert isinstance(quantity, self.ureg.Quantity)
         assert isinstance(unit, self.ureg.Unit)
@@ -310,16 +320,19 @@ class UnitStore(object):
     def summarise_units(self, expr):
         """
         Given a Sympy expression, will get the lambdified string to evaluate units.
-        Note the call to UnitCalculator:traverse will throw an error if units are bad or cannot be calculated.
+
+        Note the internal call to ``UnitCalculator:traverse`` will throw an error if units are bad or cannot be
+        calculated.
+
         :param expr: the Sympy expression on which to evaluate units
-        :return Unit object representing the units of the epression
-        :throws: KeyError - if variable not found in metadata
-                 UnitsCannotBeCalculatedError - if expression just cannot calculate
-                 UnexpectedMathUnitsError - if math is not supported
-                 BooleanUnitsError - if math returns booleans
-                 InputArgumentsMustBeDimensionlessError - if input arguments should be dimensionless
-                 InputArgumentsInvalidUnitsError - if input arguments should have same units
-                 InputArgumentMustBeNumberError - if one of input arguments should be a number
+        :returns: Unit object representing the units of the epression
+        :raises KeyError: if variable not found in metadata
+        :raises UnitsCannotBeCalculatedError: if expression just cannot calculate
+        :raises UnexpectedMathUnitsError: if math is not supported
+        :raises BooleanUnitsError: if math returns booleans
+        :raises InputArgumentsMustBeDimensionlessError: if input arguments should be dimensionless
+        :raises InputArgumentsInvalidUnitsError: if input arguments should have same units
+        :raises InputArgumentMustBeNumberError: if one of input arguments should be a number
        """
         found = self.calculator.traverse(expr)
 
@@ -333,17 +346,14 @@ class UnitStore(object):
                               expression=None):
         """Returns the magnitude multiplier required to convert a unit to the specified unit.
 
-        Note this will work on either a unit, a quantity or an expression, but requires only
-        one of these arguments.
+        Note this will work on either a unit, a quantity or an expression, but requires only one of these arguments.
 
         :param to_unit: Unit object into which the units should be converted
         :param from_unit: the Unit to be converted
         :param quantity: the Unit to be converted, multiplied by '1' to form a Quantity object
         :param expression: an expression from which the Unit is evaluated before conversion
-
-        :return: the magnitude of the resulting conversion factor
-
-        :throws: AssertionError if no target unit is specified or no source unit is specified
+        :returns: the magnitude of the resulting conversion factor
+        :raises AssertionError: if no target unit is specified or no source unit is specified
         """
         assert to_unit is not None, 'No unit given as target of conversion; to_unit argument is required'
         assert quantity is not None or from_unit is not None or expression is not None, \
@@ -367,11 +377,12 @@ class UnitStore(object):
             return conversion_factor
 
     def dimensionally_equivalent(self, symbol1, symbol2):
-        """Returns whether two expressions, symbol1 and symbol2,
-         are dimensionally_equivalent (same units ignoring a calling factor).
+        """Returns whether two expressions, symbol1 and symbol2, are dimensionally_equivalent (same units ignoring a
+        conversion factor).
+
         :param symbol1: the first expression to compare
         :param symbol2: the second expression to compare
-        :return True if units are equal (regardless of quantity), False otherwise
+        :returns: True if units are equal (regardless of quantity), False otherwise
         """
         try:
             self.get_conversion_factor(from_unit=self.summarise_units(symbol1),
@@ -388,7 +399,7 @@ class UnitCalculator(object):
     Note: only supports subset of Sympy math.
     """
     def __init__(self, unit_registry):
-        """ Initialises the UnitCalculator class
+        """ Initialises the UnitCalculator class.
         :param unit_registry: instance of Pint UnitRegistry
         """
         # A pint.UnitRegistry
@@ -397,7 +408,7 @@ class UnitCalculator(object):
     def _check_unit_of_quantities_equal(self, list_of_quantities):
         """Checks whether all units in a list are equivalent.
         :param list_of_quantities: a list of Pint quantities
-        :return: boolean indicating whether all units are equivalent
+        :returns: boolean indicating whether all units are equivalent
         """
         if len(list_of_quantities) == 1:
             return True
@@ -418,18 +429,19 @@ class UnitCalculator(object):
         return quantity.units.dimensionality == self.ureg.dimensionless.dimensionality
 
     def traverse(self, expr):
-        """Descends the Sympy expression and performs Pint unit arithmetic on sub-expressions
+        """Descends the Sympy expression and performs Pint unit arithmetic on sub-expressions.
+
+        NOTE: Sympy will raise exceptions if the expression is badly formed.
 
         :param expr: a Sympy expression
         :returns: the quantity (i.e. magnitude(expression) * unit) of the expression
-        :throws: KeyError - if variable not found in metadata
-                 UnitsCannotBeCalculatedError - if expression just cannot calculate
-                 UnexpectedMathUnitsError - if math is not supported
-                 BooleanUnitsError - if math returns booleans
-                 InputArgumentsMustBeDimensionlessError - if input arguments should be dimensionless
-                 InputArgumentsInvalidUnitsError - if input arguments should have same units
-                 InputArgumentMustBeNumberError - if one of input arguments should be a number
-        NOTE: Sympy will throw exceptions if the expression is badly formed
+        :raises KeyError: if variable not found in metadata
+        :raises UnitsCannotBeCalculatedError: if expression just cannot calculate
+        :raises UnexpectedMathUnitsError: if math is not supported
+        :raises BooleanUnitsError: if math returns booleans
+        :raises InputArgumentsMustBeDimensionlessError: if input arguments should be dimensionless
+        :raises InputArgumentsInvalidUnitsError: if input arguments should have same units
+        :raises InputArgumentMustBeNumberError: if one of input arguments should be a number
         """
         # collect the units for each argument of the expression (might be sub-expression)
         quantity_per_arg = []
