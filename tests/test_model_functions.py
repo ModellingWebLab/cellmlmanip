@@ -364,14 +364,21 @@ class TestModelFunctions():
         with pytest.raises(ValueError, match='The variable newvar is defined twice'):
             # Redefining normal var
             model.add_equation(sp.Eq(symbol, 3.0))
+
+        sv1 = model.get_symbol_by_cmeta_id('sv11')
         with pytest.raises(ValueError, match='The variable env_ode\\$sv1 is defined twice'):
             # Redefining state var
-            sv1 = model.get_symbol_by_cmeta_id('sv11')
             model.add_equation(sp.Eq(sv1, 2.0))
+
+        sv1_def = model._ode_definition_map[sv1]
+        with pytest.raises(ValueError, match='The variable env_ode\\$sv1 is defined twice'):
+            # Redefining with ODE
+            model.add_equation(sp.Eq(sv1_def.lhs, 1.0))
 
         # But if we don't check for duplicates these are 'OK'
         model.add_equation(sp.Eq(symbol, 3.0), check_duplicates=False)
         model.add_equation(sp.Eq(sv1, 2.0), check_duplicates=False)
+        model.add_equation(sp.Eq(sv1_def.lhs, 1.0), check_duplicates=False)
 
     def test_remove_equation(self, local_hh_model):
         """ Tests the Model.remove_equation method. """
