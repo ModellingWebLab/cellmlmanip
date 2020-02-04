@@ -510,12 +510,8 @@ class Model(object):
         for equation in self.equations:
             equation_count += 1
 
-            # Determine LHS.
-            lhs = equation.lhs
-            if not (lhs.is_Derivative or isinstance(lhs, VariableDummy)):
-                raise RuntimeError('DAEs are not supported. All equations must be of form `x = ...` or `dx/dt = ...')
-
             # Add the lhs symbol of the equation to the graph
+            lhs = equation.lhs
             graph.add_node(lhs, equation=equation)
 
             # Update variable meta data based on the variable's role in the model
@@ -553,7 +549,7 @@ class Model(object):
                     graph.add_node(rhs, equation=None, variable_type=rhs.type)
                     graph.add_edge(rhs, lhs)
                 else:
-                    assert False, 'Unexpected symbol {} on RHS'.format(rhs)
+                    assert False, 'Unexpected symbol {} on RHS'.format(rhs)  # pragma: no cover
 
             # check that the free  and state variables are defined as a node
             if lhs.is_Derivative:

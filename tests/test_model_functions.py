@@ -369,6 +369,10 @@ class TestModelFunctions():
             sv1 = model.get_symbol_by_cmeta_id('sv11')
             model.add_equation(sp.Eq(sv1, 2.0))
 
+        # But if we don't check for duplicates these are 'OK'
+        model.add_equation(sp.Eq(symbol, 3.0), check_duplicates=False)
+        model.add_equation(sp.Eq(sv1, 2.0), check_duplicates=False)
+
     def test_remove_equation(self, local_hh_model):
         """ Tests the Model.remove_equation method. """
 
