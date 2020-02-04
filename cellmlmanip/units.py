@@ -165,12 +165,16 @@ class UnitStore(object):
     """Wraps an underlying Pint UnitRegistry to provide unit handling for the model's Sympy expressions.
 
     Getting and checking units is handled by this class.
+
+    :param registry: Allows an existing ``pint.UnitRegistry`` to be passed in. If not given (default), a new registry
+                     will be created that contains the default CellML
     """
 
-    def __init__(self):
+    def __init__(self, registry=None):
         cellml_unit_definition = os.path.join(
             os.path.dirname(__file__), 'data', 'cellml_units.txt')
-        self.ureg = pint.UnitRegistry(cellml_unit_definition)
+
+        self.ureg = pint.UnitRegistry(cellml_unit_definition) if registry is None else registry
 
         # units that are defined and added to the unit registry, on top of default cellml units
         self.custom_defined = set()
@@ -191,7 +195,7 @@ class UnitStore(object):
         unit_definition = self._make_pint_unit_definition(units_name, unit_attributes)
 
         if unit_definition is not None:
-            assert not self._is_unit_defined(units_name), 'Unit <%s> already exists' % units_name
+            assert not self.is_unit_defined(units_name), 'Unit <%s> already exists' % units_name
 
             # check whether the definition is dimensionless (e.g. a dimensionless scaling factor)
             definition = self.ureg.parse_expression(unit_definition.split('=')[1])
@@ -210,10 +214,10 @@ class UnitStore(object):
         :param units_name: string name of unit to add
         """
         assert units_name not in CELLML_UNITS, 'Cannot redefine CellML unit <%s>' % units_name
-        assert not self._is_unit_defined(units_name), 'Unit <%s> already exists' % units_name
+        assert not self.is_unit_defined(units_name), 'Unit <%s> already exists' % units_name
         self._define_pint_unit(units_name, '{name}=[{name}]'.format_map({'name': units_name}))
 
-    def _is_unit_defined(self, name):
+    def is_unit_defined(self, name):
         """ Check whether the unit already exists in Pint registry.
 
         :param name: string name of the unit

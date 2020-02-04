@@ -104,42 +104,42 @@ class TestUnits(object):
     def test_add_custom_unit(self):
         """ Tests Units.add_custom_unit() function. """
         unitstore = UnitStore()
-        assert (unitstore._is_unit_defined('newunit') is False)
+        assert (unitstore.is_unit_defined('newunit') is False)
         # add a new unit called 'newunit' which consists of
         # (2 * second) - I know not realistic
         unit_attributes = [{'multiplier': 2, 'units': 'second'}]
         unitstore.add_custom_unit('newunit', unit_attributes)
-        assert (unitstore._is_unit_defined('newunit') is True)
+        assert (unitstore.is_unit_defined('newunit') is True)
 
     def test_add_custom_unit_1(self):
         """ Tests Units.add_custom_unit() function. """
         unitstore = UnitStore()
-        assert (unitstore._is_unit_defined('newunit') is False)
+        assert (unitstore.is_unit_defined('newunit') is False)
         # add a new unit called 'newunit' which consists of
         # (millimetres)
         unit_attributes = [{'prefix': 'milli', 'units': 'metre'}]
         unitstore.add_custom_unit('newunit', unit_attributes)
-        assert (unitstore._is_unit_defined('newunit') is True)
+        assert (unitstore.is_unit_defined('newunit') is True)
 
     def test_add_custom_unit_2(self):
         """ Tests Units.add_custom_unit() function. """
         unitstore = UnitStore()
-        assert (unitstore._is_unit_defined('newunit') is False)
+        assert (unitstore.is_unit_defined('newunit') is False)
         # add a new unit called 'newunit' which consists of
         # (milliVolts)
         unit_attributes = [{'prefix': -3, 'units': 'volt'}]
         unitstore.add_custom_unit('newunit', unit_attributes)
-        assert (unitstore._is_unit_defined('newunit') is True)
+        assert (unitstore.is_unit_defined('newunit') is True)
 
     def test_add_custom_unit_3(self):
         """ Tests Units.add_custom_unit() function. """
         unitstore = UnitStore()
-        assert (unitstore._is_unit_defined('newunit') is False)
+        assert (unitstore.is_unit_defined('newunit') is False)
         # add a new unit called 'newunit' which consists of
         # (metre per second)
         unit_attributes = [{'units': 'metre'}, {'units': 'second', 'exponent': -1}]
         unitstore.add_custom_unit('newunit', unit_attributes)
-        assert (unitstore._is_unit_defined('newunit') is True)
+        assert (unitstore.is_unit_defined('newunit') is True)
 
     def test_add_custom_unit_existing(self):
         """ Tests exception for Units.add_custom_unit() function
@@ -153,8 +153,8 @@ class TestUnits(object):
 
     def test_is_unit_defined(self, quantity_store):
         """ Tests Units._is_unit_defined() function. """
-        assert (quantity_store._is_unit_defined('ms') is True)
-        assert (quantity_store._is_unit_defined('not_a_unit') is False)
+        assert (quantity_store.is_unit_defined('ms') is True)
+        assert (quantity_store.is_unit_defined('not_a_unit') is False)
 
     def test_make_pint_unit_definition(self, quantity_store):
         """ Tests Units._make_pint_unit_definition() function. """
@@ -164,6 +164,37 @@ class TestUnits(object):
                            ]
         assert(quantity_store._make_pint_unit_definition('kg_mm_per_ms', unit_attributes) ==
                'kg_mm_per_ms=(meter * 1e-3)*(((second * 0.001))**-1)*(2 * kilogram)')
+
+    def test_shared_unit_registry(self):
+        """ Tests sharing a single unit registry between two UnitStores. """
+
+        # Without shared registry
+        store1 = UnitStore()
+        store2 = UnitStore()
+        assert not store1.is_unit_defined('mmm')
+        assert not store2.is_unit_defined('mmm')
+
+        # ...adding unit to store 1 doesn't affect store 2
+        unit_attributes = [{'prefix': 'milli', 'units': 'metre'}]
+        store1.add_custom_unit('mmm', unit_attributes)
+        assert store1.is_unit_defined('mmm')
+        assert not store2.is_unit_defined('mmm')
+        store2.add_custom_unit('mmm', unit_attributes)
+        assert store2.is_unit_defined('mmm')
+
+        # ...and the units do not count as equivalent, because they're from different registries (even thought they have
+        # the same basi SI unit expansion).
+        with pytest.raises(ValueError):
+            assert store1.ureg.mmm != store2.ureg.mmm
+
+        # ...but quantities are the same
+        assert store1.ureg.parse_expression('mmm') == store2.ureg.parse_expression('mmm')
+
+        # With a shared registry
+        store2 = UnitStore(store1.ureg)
+        assert store1.is_unit_defined('mmm')
+        assert not store2.is_unit_defined('mmm')
+
 
     # Test UnitCalculator class
 
