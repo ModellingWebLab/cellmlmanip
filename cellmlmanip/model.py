@@ -63,6 +63,12 @@ class Model(object):
         # An RDF graph containing further meta data
         self.rdf = rdflib.Graph()
 
+        # Map from VariableDummy to defining equation, where the variable is defined by a simple equation
+        self._var_definition_map = {}
+
+        # Map from VariableDummy to defining equation, where the variable is defined by an ODE
+        self._ode_definition_map = {}
+
     def add_unit(self, name, attributes=None, base_units=False):
         """
         Adds a unit of measurement to this model, with a given ``name`` and list of ``attributes``.
@@ -79,7 +85,7 @@ class Model(object):
         else:
             self.units.add_custom_unit(name, attributes)
 
-    def add_equation(self, equation):
+    def add_equation(self, equation, check_duplicates=True):
         """
         Adds an equation to this model.
 
@@ -89,10 +95,37 @@ class Model(object):
         :meth:`add_number()`, :meth:`add_variable()`, or :meth:`get_symbol_by_ontology_term()`.
 
         :param equation: A ``sympy.Eq`` object.
+        :param check_duplicates: whether to check that the equation's LHS is not already defined
         """
         assert isinstance(equation, sympy.Eq), 'The argument `equation` must be a sympy.Eq.'
         self.equations.append(equation)
+        lhs = equation.lhs
+        if lhs.is_Derivative:
+            state_var = lhs.free_symbols.pop()
+            if check_duplicates:
+                self._check_duplicate_definitions(state_var, equation)
+            self._ode_definition_map[state_var] = equation
+        elif isinstance(lhs, VariableDummy):
+            if check_duplicates:
+                self._check_duplicate_definitions(lhs, equation)
+            self._var_definition_map[lhs] = equation
+        else:
+            raise ValueError('Equation LHS should be a derivative or variable, not {}'.format(lhs))
         self._invalidate_cache()
+
+    def _check_duplicate_definitions(self, var, equation):
+        """
+        Assert that a variable doesn't have an existing definition.
+
+        :param var: the VariableDummy, either a state var or normal var
+        :param equation: the new definition being added
+        """
+        if var in self._ode_definition_map:
+            raise ValueError('The variable {} is defined twice ({} and {})'.format(
+                var, equation, self._ode_definition_map[var]))
+        if var in self._var_definition_map:
+            raise ValueError('The variable {} is defined twice ({} and {})'.format(
+                var, equation, self._var_definition_map[var]))
 
     def add_number(self, value, units):
         """
@@ -148,6 +181,25 @@ class Model(object):
 
         return var
 
+    def transform_constants(self):
+        """
+        Called by CellML parser to standardise handling of 'constants'.
+
+        Once this has been called, the only variables with an initial_value attribute will be state variables,
+        and the initial value will do what it implies - hold the value the state variable should take at t=0.
+
+        Non state variables with an initial value are actually just constants. For consistent processing later
+        on we add equations defining them, and remove the initial_value attribute.
+        """
+        for var in self._name_to_symbol.values():
+            if var in self._ode_definition_map:
+                assert var.initial_value is not None, 'State variable {} has no initial_value set'.format(var)
+            elif var.initial_value is not None:
+                value = var.initial_value
+                eq = sympy.Eq(var, sympy.Float(value))
+                self.add_equation(eq)
+                var.initial_value = None
+
     def connect_variables(self, source_name: str, target_name: str):
         """Given the source and target component and variable, create a connection by assigning
         the symbol from the source to the target. If units are not the same, it will add an equation
@@ -174,13 +226,28 @@ class Model(object):
             raise ValueError('Target already assigned to %s before assignment to %s' %
                              (target.assigned_to, source.assigned_to))
 
+        if target in self._var_definition_map:
+            raise ValueError('Multiple definitions for {} ({} and {})'.format(
+                target, source, self._var_definition_map[target]))
+
         # If source/target variable is in the same unit
         if source.units == target.units:
             # Direct substitution is possible
             target.assigned_to = source.assigned_to
-            # everywhere the target variable is used, replace with source variable
+            # everywhere the target variable is used, replace with source variable,
+            # updating the definition maps accordingly
             for index, equation in enumerate(self.equations):
-                self.equations[index] = equation.xreplace({target: source.assigned_to})
+                self.equations[index] = new_eq = equation.xreplace({target: source.assigned_to})
+                if equation.lhs.is_Derivative:
+                    state_var = equation.lhs.free_symbols.pop()
+                    assert state_var in self._ode_definition_map
+                    self._ode_definition_map[state_var] = new_eq
+                else:
+                    assert equation.lhs in self._var_definition_map
+                    self._var_definition_map[equation.lhs] = new_eq
+            if target in self._ode_definition_map:
+                self._ode_definition_map[source.assigned_to] = self._ode_definition_map[target]
+                del self._ode_definition_map[target]
 
         # Otherwise, this connection requires a conversion
         else:
@@ -191,7 +258,7 @@ class Model(object):
             factor_dummy = self.add_number(factor, target.units / source.units)
 
             # Add an equations making the connection with the required conversion
-            self.equations.append(sympy.Eq(target, source.assigned_to * factor_dummy))
+            self.add_equation(sympy.Eq(target, source.assigned_to * factor_dummy))
 
             logger.info('Connection req. unit conversion: %s', self.equations[-1])
 
@@ -287,7 +354,7 @@ class Model(object):
         """Returns a list of state variables found in the given model graph.
         The list is ordered by appearance in the cellml document.
         """
-        state_symbols = [v.args[0] for v in self.get_derivative_symbols()]
+        state_symbols = list(self._ode_definition_map.keys())
         return sorted(state_symbols, key=lambda state_var: state_var.order_added)
 
     def get_free_variable_symbol(self):
@@ -439,16 +506,12 @@ class Model(object):
 
         equation_count = 0
 
-        # Add a node for every variable in the model, and set additional variable meta data
+        # Add a node for every variable in the model, and set variable types
         for equation in self.equations:
             equation_count += 1
 
-            # Determine LHS.
-            lhs = equation.lhs
-            if not (lhs.is_Derivative or isinstance(lhs, VariableDummy)):
-                raise RuntimeError('DAEs are not supported. All equations must be of form `x = ...` or `dx/dt = ...')
-
             # Add the lhs symbol of the equation to the graph
+            lhs = equation.lhs
             graph.add_node(lhs, equation=equation)
 
             # Update variable meta data based on the variable's role in the model
@@ -460,8 +523,10 @@ class Model(object):
                 # Get the free symbol and update the variable information
                 free_symbol = lhs.variables[0]
                 free_symbol.type = 'free'
+            elif equation.rhs.is_number:
+                lhs.type = 'parameter'
             else:
-                lhs.type = None
+                lhs.type = 'computed'
 
         # Sanity check: none of the lhs have the same hash
         assert len(graph.nodes) == equation_count
@@ -484,11 +549,7 @@ class Model(object):
                     graph.add_node(rhs, equation=None, variable_type=rhs.type)
                     graph.add_edge(rhs, lhs)
                 else:
-                    # this variable is a parameter - add to graph and connect to lhs
-                    rhs.type = 'parameter'
-                    dummy = self.add_number(rhs.initial_value, rhs.units)
-                    graph.add_node(rhs, equation=sympy.Eq(rhs, dummy), variable_type='parameter')
-                    graph.add_edge(rhs, lhs)
+                    assert False, 'Unexpected symbol {} on RHS'.format(rhs)  # pragma: no cover
 
             # check that the free  and state variables are defined as a node
             if lhs.is_Derivative:
@@ -499,16 +560,11 @@ class Model(object):
                 if state_symbol not in graph.nodes:
                     graph.add_node(state_symbol, equation=None, variable_type=state_symbol.type)
 
-        # Add more meta-data to the graph
+        # Store variable type in the graph too
         for variable in graph.nodes:
             if not variable.is_Derivative:
-                for key in ['cmeta_id', 'name', 'units']:
-                    if getattr(variable, key):
-                        graph.nodes[variable][key] = getattr(variable, key)
-                if variable.type == 'state' and variable.initial_value is not None:
-                    graph.nodes[variable]['initial_value'] = sympy.Float(variable.initial_value)
-                if variable.type is not None:
-                    graph.nodes[variable]['variable_type'] = variable.type
+                assert variable.type is not None
+                graph.nodes[variable]['variable_type'] = variable.type
 
         # Cache graph and return
         self._graph = graph
@@ -583,23 +639,17 @@ class Model(object):
         """ Returns the evaluated value of the given symbol's RHS. """
         return float(self.graph.nodes[symbol]['equation'].rhs.evalf())
 
-    def get_initial_value(self, symbol):
-        """
-        Returns the initial value of the given symbol.
-
-        :param symbol: Sympy Dummy object of required symbol
-        :return: float of initial value
-        """
-        return symbol.initial_value
-
-    def find_symbols_and_derivatives(self, expression):
+    def find_symbols_and_derivatives(self, expressions):
         """ Returns a set containing all symbols and derivatives referenced in a list of expressions.
 
-        :param expression: a list of expressions to get symbols for.
+        Note that we can't just use ``.atoms(VariableDummy, sympy.Derivative)`` for this, because it
+        will return the state and free variables from inside derivatives, which is not what we want.
+
+        :param expressions: an iterable of expressions to get symbols for.
         :return: a set of symbols and derivative objects.
         """
         symbols = set()
-        for expr in expression:
+        for expr in expressions:
             if expr.is_Derivative or isinstance(expr, VariableDummy):
                 symbols.add(expr)
             else:
@@ -616,6 +666,13 @@ class Model(object):
             self.equations.remove(equation)
         except ValueError:
             raise KeyError('Equation not found in model ' + str(equation))
+
+        # Update dependency maps
+        lhs = equation.lhs
+        if lhs.is_Derivative:
+            del self._ode_definition_map[lhs.free_symbols.pop()]
+        else:
+            del self._var_definition_map[lhs]
 
         # Invalidate cached equation graphs
         self._invalidate_cache()
@@ -711,11 +768,10 @@ class Model(object):
         # if free variable
         if original_variable == free_symbol:
             # for each derivative wrt to free variable add necessary variables/equations
-            current_equations = self.equations.copy()
-            for equation in current_equations:
-                if equation.args[0].is_Derivative:
-                    if equation.args[0].args[1].args[0] == original_variable:
-                        new_derivatives.append(self._convert_free_variable_deriv(equation, new_variable, cf))
+            for ode in [eq for v, eq in sorted(self._ode_definition_map.items(),
+                                               key=lambda v_eq: v_eq[0].order_added)]:
+                if ode.args[0].args[1].args[0] == original_variable:
+                    new_derivatives.append(self._convert_free_variable_deriv(ode, new_variable, cf))
 
         # replace any instances of derivative of rhs of other eqns with new derivative variable
         for new_derivative in new_derivatives:
@@ -751,13 +807,13 @@ class Model(object):
         Function to replace an instance of a derivative that occurs on the RHS of any equation
         :param new_derivative: new variable representing the derivative
         """
-        for equation in self.equations:
+        for equation in self.equations.copy():
             for argument in equation.rhs.atoms(sympy.Derivative):
                 if new_derivative['expression'] == argument:
                     # add new equation
                     new_eqn = equation.subs(new_derivative['expression'], new_derivative['variable'])
-                    self.add_equation(new_eqn)
                     self.remove_equation(equation)
+                    self.add_equation(new_eqn)
                     break
 
     def _create_new_deriv_variable_and_equation(self, eqn, derivative_variable):
@@ -775,14 +831,14 @@ class Model(object):
 
         # 2. create new equation and remove original
         expression = sympy.Eq(new_deriv_variable, eqn.args[1])
-        self.add_equation(expression)
         self.remove_equation(eqn)
+        self.add_equation(expression)
 
         return new_deriv_variable
 
     def _convert_free_variable_deriv(self, eqn, new_variable, cf):
         """
-        Create relevant variables/equations when converting a free variable  within a derivative.
+        Create relevant variables/equations when converting a free variable within a derivative.
         :param eqn: the derivative equation containing free variable
         :param new_variable: the new variable representing the converted symbol [new_units]
         :param cf: conversion factor for unit conversion [new units/old units]
@@ -807,13 +863,7 @@ class Model(object):
         :return: a dictionary containing the 'variable' and 'expression' for new derivative
         """
         # 1. find the derivative equation for this variable
-        # and get the free variable (wrt_variable)
-        eqn = None
-        for equation in self.equations:
-            if equation.args[0].is_Derivative:
-                if equation.args[0].args[0] == original_variable:
-                    eqn = equation
-                    break
+        eqn = self._ode_definition_map[original_variable]
 
         # get free variable symbol
         # units [x]
@@ -858,21 +908,20 @@ class Model(object):
             # if direction is input; original var will be replaced by equation so do not need to store initial value
             original_variable.initial_value = None
 
-            # find the equation for the original variable: orig_var = rhs
+            # find the equation for the original variable (if any): orig_var = rhs
             # remove equation from model
-            # add eqn for new variabale in terms of rhs of equation
+            # add eqn for new variable in terms of rhs of equation
             #     new_var [new units] = rhs [old units] * cf [new units/old units]
-            for equation in self.equations:
-                if equation.is_Equality and equation.args[0] == original_variable:
-                    expression = sympy.Eq(new_variable, equation.args[1] * cf)
-                    self.add_equation(expression)
-                    self.remove_equation(equation)
-                    break
+            original_equation = self._var_definition_map.get(original_variable)
+            if original_equation is not None:
+                new_equation = sympy.Eq(new_variable, original_equation.args[1] * cf)
+                self.remove_equation(original_equation)
+                self.add_equation(new_equation)
 
             # add eqn for original variable in terms of new variable
             #     orig_var [old units] = new var [new units] / cf [new units/old units]
             expression = sympy.Eq(original_variable, new_variable / cf)
-            self.add_equation(expression)
+            self.add_equation(expression, check_duplicates=False)
         else:
             # if direction is output add eqn for new variable in terms of original variable
             #     new_var [new units] = orig_var [old units] * cf [new units/old units]
@@ -882,14 +931,12 @@ class Model(object):
         return new_variable
 
     def _get_unique_name(self, name):
-        """ Function to create a unique name within the model.
-        :param name: String Suggested unique name
-        :return: String unique name
+        """Function to create a unique name within the model.
+        :param str name: Suggested unique name
+        :return str: guaranteed unique name
         """
-        for var in list(self.variables()):
-            if name == var.name:
-                name = self._get_unique_name(name + '_a')
-                break
+        if name in self._name_to_symbol:
+            name = self._get_unique_name(name + '_a')
         return name
 
 

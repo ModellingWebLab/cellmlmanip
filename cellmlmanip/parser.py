@@ -101,6 +101,9 @@ class Parser(object):
         self._add_relationships(model_xml)
         self._add_connection(model_xml)
 
+        # Canonicalise representation
+        self.model.transform_constants()
+
         return self.model
 
     @staticmethod
@@ -341,10 +344,6 @@ class Parser(object):
         # we add the connection to the model by first connecting
         # those variables we know are source variables
         connections_to_process = deque(connect_from_to)
-
-        # For testing: shuffle the order of connections TODO: REMOVE!
-        from random import shuffle
-        shuffle(connections_to_process)
 
         # keep processing the list of connections until we've done them all
         unchanged_loop_count = 0

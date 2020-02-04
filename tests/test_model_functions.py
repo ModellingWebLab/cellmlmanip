@@ -50,14 +50,9 @@ class TestModelFunctions():
 
     def test_graph_for_dae(self):
         """ Checks if writing a DAE in a model raises an exceptions. """
-
-        # Parsing should be OK
         path = os.path.join(os.path.dirname(__file__), 'cellml_files', '4.algebraic_ode_model.cellml')
-        model = parser.Parser(path).parse()
-
-        # But equation graph will raise error (if accessed)
-        with pytest.raises(RuntimeError, match='DAEs are not supported'):
-            model.graph
+        with pytest.raises(ValueError, match='Equation LHS should be a derivative or variable'):
+            parser.Parser(path).parse()
 
     #######################################################################
     # this section contains tests for each get_XXX function on Model
@@ -114,13 +109,6 @@ class TestModelFunctions():
 
         free_variable_symbol = aslanidi_model.get_free_variable_symbol()
         assert free_variable_symbol.name == 'environment$time'
-
-    # also tested in test_aslanidi
-    def test_get_initial_value(self, aslanidi_model):
-        """ Tests Model.get_initial_value() works correctly. """
-
-        membrane_voltage = aslanidi_model.get_symbol_by_ontology_term(shared.OXMETA, "membrane_voltage")
-        assert(aslanidi_model.get_initial_value(membrane_voltage) == -80.0)
 
     def test_get_derivative_symbols(self, basic_model):
         """ Tests Model.get_derivative_symbols() works correctly. """
@@ -352,7 +340,7 @@ class TestModelFunctions():
         assert len(model.equations) == 1
         # so we are adding
         # newvar2 = newvar + newvar1
-        # but need to also add newvar1 = 2; newvar = 2 in order or the graph to resolve correctly
+        # but need to also add newvar1 = 2; newvar = 2 in order for the graph to resolve correctly
         model.add_variable(name='newvar', units='mV')
         symbol = model.get_symbol_by_name('newvar')
         model.add_variable(name='newvar1', units='mV')
@@ -371,6 +359,26 @@ class TestModelFunctions():
         assert eqn[1].rhs == 2.0
         assert eqn[2].lhs == symbol2
         assert eqn[2].rhs == sp.Add(symbol, symbol1)
+
+        # Now check some error cases
+        with pytest.raises(ValueError, match='The variable newvar is defined twice'):
+            # Redefining normal var
+            model.add_equation(sp.Eq(symbol, 3.0))
+
+        sv1 = model.get_symbol_by_cmeta_id('sv11')
+        with pytest.raises(ValueError, match='The variable env_ode\\$sv1 is defined twice'):
+            # Redefining state var
+            model.add_equation(sp.Eq(sv1, 2.0))
+
+        sv1_def = model._ode_definition_map[sv1]
+        with pytest.raises(ValueError, match='The variable env_ode\\$sv1 is defined twice'):
+            # Redefining with ODE
+            model.add_equation(sp.Eq(sv1_def.lhs, 1.0))
+
+        # But if we don't check for duplicates these are 'OK'
+        model.add_equation(sp.Eq(symbol, 3.0), check_duplicates=False)
+        model.add_equation(sp.Eq(sv1, 2.0), check_duplicates=False)
+        model.add_equation(sp.Eq(sv1_def.lhs, 1.0), check_duplicates=False)
 
     def test_remove_equation(self, local_hh_model):
         """ Tests the Model.remove_equation method. """
@@ -558,6 +566,12 @@ class TestModelFunctions():
         local_hh_model.connect_variables('sodium_channel_h_gate$h', 'newvar')
         assert new_target.assigned_to == source
         assert len(local_hh_model.equations) == num_eqns
+
+        # Can't connect a variable already defined by an equation to another source
+        newvar2 = local_hh_model.add_variable(name='newvar2', units='dimensionless', public_interface='in')
+        local_hh_model.add_equation(sp.Eq(newvar2, 1.0))
+        with pytest.raises(ValueError, match='Multiple definitions for newvar2'):
+            local_hh_model.connect_variables('sodium_channel$E_Na', 'newvar2')
 
     def test_connect_variable2(self, local_hh_model):
         """ Tests Model.connect_variables() function. """
