@@ -290,13 +290,11 @@ class Model(object):
         Checks whether the LHS and RHS in a ``sympy.Eq`` have the same units.
         :param equality: A ``sympy.Eq``.
         """
-        lhs_units = self.units.summarise_units(equality.lhs)
-        rhs_units = self.units.summarise_units(equality.rhs)
-
-        # TODO REWRITE WITHOUT USING PRIVATE PROPERTIES
-        assert self.units.is_unit_equal(rhs_units, lhs_units), 'Units %s %s != %s %s' % (
-            lhs_units, self.units._registry.get_base_units(lhs_units),
-            rhs_units, self.units._registry.get_base_units(rhs_units)
+        lhs_units = self.units.evaluate_units(equality.lhs)
+        rhs_units = self.units.evaluate_units(equality.rhs)
+        assert self.units.is_equal(rhs_units, lhs_units), 'Units %s %s != %s %s' % (
+            lhs_units, self.units.show_base_units(lhs_units),
+            rhs_units, self.units.show_base_units(rhs_units)
         )
 
     def get_equations_for(self, symbols, recurse=True, strip_units=True):
@@ -847,10 +845,8 @@ class Model(object):
         """
         # 1. create a new variable
         deriv_name = self._get_unique_name(derivative_variable.name + '_orig_deriv')
-        # TODO REWRITE THIS WITHOUT USING PRIVATE PROPERTIES
-        deriv_units = self.units._calculator.traverse(eqn.args[0])
-        new_deriv_variable = self.add_variable(name=deriv_name,
-                                               units=deriv_units.units)
+        deriv_units = self.units.evaluate_units(eqn.args[0])
+        new_deriv_variable = self.add_variable(name=deriv_name, units=deriv_units)
 
         # 2. create new equation and remove original
         expression = sympy.Eq(new_deriv_variable, eqn.args[1])

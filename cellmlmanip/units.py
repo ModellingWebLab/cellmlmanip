@@ -1,5 +1,4 @@
-"""Unit handling for CellML models, using the Pint unit library (replaces previous Sympy-units implementation).
-"""
+"""Unit handling for CellML models, using the Pint unit library."""
 import logging
 import math
 import numbers
@@ -171,7 +170,7 @@ class UnitStore(object):
     creates three unit stores, each with their own namespace, but with a single underlying registry for all three
     stores, allowing e.g. units from ``c`` to be converted to units from ``a``.
 
-    :param store: An existing ``UnitStore`` to share a unit registry with.
+    :param store: An existing :class:`UnitStore` to share a unit registry with.
     """
     _next_id = 0
 
@@ -213,7 +212,7 @@ class UnitStore(object):
         assert name not in CELLML_UNITS, 'Cannot redefine CellML unit <%s>' % name
         assert not self.is_unit_defined(name), 'Unit <%s> already exists' % name
 
-        # TODO ADD NAME PREFIX
+        # TODO ADD NAME PREFIX, RUN REGEX ON EXPRESSION
 
         # Dimensionless units can't be created using a string expression.
         # To test if this is a dimensionless unit, parse the string as a Quantity and check if it's dimensionless
@@ -247,7 +246,7 @@ class UnitStore(object):
         :param name: string name of the unit
         :returns: True if exists, else False
         """
-        # TODO ADD PREFIX
+        # TODO ONLY CHECK LOCALLY, DONT INVOLVE REGISTRY
 
         try:
             getattr(self._registry, name)
@@ -262,6 +261,8 @@ class UnitStore(object):
         :returns: A ``Unit`` object.
         :raises KeyError: If the unit is not defined in this unit store.
         """
+        # TODO LOOK UP IN UNIT MAPPING FIRST
+
         # TODO ADD PREFIX
 
         try:
@@ -271,21 +272,18 @@ class UnitStore(object):
         except pint.UndefinedUnitError:
             raise KeyError('Cannot find unit <%s> in unit registry.' % name)
 
-    def is_unit_equal(self, unit1, unit2):
-        """Compares whether two units are equivalent by converting them into base units and comparing the resulting
-        units and multiplicative factors.
+    def is_equal(self, unit1, unit2):
+        """Compares whether two units are equivalent.
 
-        :param unit1: the first Unit object to compare
-        :param unit2: the second Unit object to compare
-        :returns: ``True`` if units are equal, ``False`` otherwise.
+        :param unit1: The first ``Unit`` object to compare.
+        :param unit2: The second ``Unit`` object to compare.
+        :returns: ``True`` if both units are equivalent, ``False`` otherwise.
         """
-        # TODO CHECK IF THESE ARE REALLY UNITS OR QUANTITIES
-
-        assert isinstance(unit1, self._registry.Unit)
-        assert isinstance(unit2, self._registry.Unit)
+        assert isinstance(unit1, self.Unit)
+        assert isinstance(unit2, self.Unit)
         base1 = self._registry.get_base_units(unit1)
         base2 = self._registry.get_base_units(unit2)
-        is_equal = math.isclose(base1[0], base2[0]) and base1[1] == base2[1]
+        is_equal = base1[1] == base2[1] and math.isclose(base1[0], base2[0])
         logger.debug('is_unit_equal(%s, %s) ⟶ %s', unit1, unit2, is_equal)
         return is_equal
 
@@ -302,12 +300,9 @@ class UnitStore(object):
         assert isinstance(unit, self._registry.Unit)
         return quantity.to(unit)
 
-    def summarise_units(self, expr):
+    def evaluate_units(self, expr):
         """
-        Given a Sympy expression, will get the lambdified string to evaluate units.
-
-        Note the internal call to ``UnitCalculator:traverse`` will throw an error if units are bad or cannot be
-        calculated.
+        Evaluates and returns the ``Unit`` a Sympy expression is in.
 
         :param expr: the Sympy expression on which to evaluate units
         :returns: Unit object representing the units of the epression
@@ -321,10 +316,10 @@ class UnitStore(object):
         """
         # TODO FIX DOCSTRING. WHAT IS A LAMBDIFIED STIRNG????
 
-        found = self._calculator.traverse(expr)
+        found = self._calculator.traverse(expr).units
 
-        logger.debug('summarise_units(%s) ⟶ %s', expr, found.units)
-        return found.units
+        logger.debug('evaluate_units(%s) ⟶ %s', expr, found)
+        return found
 
     def get_conversion_factor(self, to_unit, from_unit=None, quantity=None, expression=None):
         """Returns the magnitude multiplier required to convert a unit to the specified unit.
@@ -354,7 +349,7 @@ class UnitStore(object):
             conversion_factor = self.convert_to(quantity, to_unit).magnitude
         else:
             assert isinstance(expression, sympy.Expr), 'expression must be of type Sympy expression'
-            conversion_factor = self.convert_to(1 * self.summarise_units(expression), to_unit).magnitude
+            conversion_factor = self.convert_to(1 * self.evaluate_units(expression), to_unit).magnitude
 
         if math.isclose(conversion_factor, 1.0):
             return 1.0
@@ -372,12 +367,19 @@ class UnitStore(object):
         # TODO IF THEY ARE EXPRESSIONS THE ARGS SHOULD NOT BE CALLED SYMBOL
 
         try:
-            self.get_conversion_factor(from_unit=self.summarise_units(symbol1),
-                                       to_unit=self.summarise_units(symbol2))
+            self.get_conversion_factor(
+                from_unit=self.evaluate_units(symbol1),
+                to_unit=self.evaluate_units(symbol2))
             return True
         except pint.errors.DimensionalityError:
             return False
 
+    def show_base_units(self, unit):
+        """
+        Returns a string show the base units of the given unit.
+        """
+        base = self._registry.get_base_units(unit)
+        return str(base[0]) + ' ' + str(base[1])
 
 class UnitCalculator(object):
     """

@@ -45,7 +45,7 @@ class TestUnitConversion:
         symbol_b1 = simple_units_model.get_symbol_by_cmeta_id("b_1")
         equation = simple_units_model.get_equations_for([symbol_b1])
         factor = simple_units_model.units.get_conversion_factor(
-            quantity=1 * simple_units_model.units.summarise_units(equation[0].lhs),
+            quantity=1 * simple_units_model.units.evaluate_units(equation[0].lhs),
             to_unit=simple_units_model.units.get_unit('us'))
         assert factor == 1000
 
@@ -56,7 +56,7 @@ class TestUnitConversion:
         equation = simple_units_model.get_equations_for([symbol_b1])
         expression = equation[0].lhs
         to_unit = simple_units_model.units.get_unit('us')
-        from_unit = simple_units_model.units.summarise_units(expression)
+        from_unit = simple_units_model.units.evaluate_units(expression)
         quantity = 1 * from_unit
         # no source unit
         with pytest.raises(AssertionError, match='^No unit given as source.*'):
@@ -92,7 +92,7 @@ class TestUnitConversion:
         equation = simple_units_model.get_equations_for([symbol_b])
         expression = equation[1].rhs
         to_unit = simple_units_model.units.get_unit('per_ms')
-        from_unit = simple_units_model.units.summarise_units(expression)
+        from_unit = simple_units_model.units.evaluate_units(expression)
         quantity = 1 * from_unit
         # quantity to unit
         assert simple_units_model.units.get_conversion_factor(to_unit=to_unit, quantity=quantity) == 1
@@ -108,15 +108,15 @@ class TestUnitConversion:
         equation = bad_units_model.get_equations_for([symbol_b], strip_units=False)
         assert len(equation) == 2
         assert equation[0].lhs == symbol_a
-        assert bad_units_model.units.summarise_units(equation[0].lhs) == 'ms'
+        assert bad_units_model.units.evaluate_units(equation[0].lhs) == 'ms'
         with pytest.raises(units.UnitError):
             # cellml file states a (ms) = 1 (ms) + 1 (second)
-            bad_units_model.units.summarise_units(equation[0].rhs)
+            bad_units_model.units.evaluate_units(equation[0].rhs)
 
         assert equation[1].lhs == symbol_b
         with pytest.raises(units.UnitError):
             # cellml file states b (per_ms) = power(a (ms), 1 (second))
-            bad_units_model.units.summarise_units(equation[1].rhs)
+            bad_units_model.units.evaluate_units(equation[1].rhs)
 
     # original state for local_model
     def _original_state_local_model(self, local_model):

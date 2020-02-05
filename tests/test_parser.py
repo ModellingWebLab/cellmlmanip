@@ -114,9 +114,9 @@ class TestParser(object):
         # Eq(Derivative(_single_independent_ode$sv1, _environment$time), _1.00000000000000)
         # mV/millisecond == mV_per_ms
         test_equation = simple_ode_model.equations[0]
-        lhs_units = simple_ode_model.units.summarise_units(test_equation.lhs)
-        rhs_units = simple_ode_model.units.summarise_units(test_equation.rhs)
-        assert simple_ode_model.units.is_unit_equal(rhs_units, lhs_units)
+        lhs_units = simple_ode_model.units.evaluate_units(test_equation.lhs)
+        rhs_units = simple_ode_model.units.evaluate_units(test_equation.rhs)
+        assert simple_ode_model.units.is_equal(rhs_units, lhs_units)
 
         # two connected variables required conversion:
         # 1. time_units_conversion1
@@ -133,9 +133,9 @@ class TestParser(object):
             if equation.lhs in require_conversion:
                 # the lhs and rhs units should be equal
                 invalid_rhs_lhs_count += 1
-                lhs_units = simple_ode_model.units.summarise_units(equation.lhs)
-                rhs_units = simple_ode_model.units.summarise_units(equation.rhs)
-                assert simple_ode_model.units.is_unit_equal(lhs_units, rhs_units)
+                lhs_units = simple_ode_model.units.evaluate_units(equation.lhs)
+                rhs_units = simple_ode_model.units.evaluate_units(equation.rhs)
+                assert simple_ode_model.units.is_equal(lhs_units, rhs_units)
         assert invalid_rhs_lhs_count == 2
 
     @pytest.mark.skipif('CMLM_TEST_PRINT' not in os.environ, reason="print eq on demand")
@@ -149,8 +149,8 @@ class TestParser(object):
             print('%3d. Eq(%s, %s)' % (index + 1,
                                        printer.doprint(equation.lhs),
                                        printer.doprint(equation.rhs)))
-            lhs_units = simple_ode_model.units.summarise_units(equation.lhs)
-            rhs_units = simple_ode_model.units.summarise_units(equation.rhs)
+            lhs_units = simple_ode_model.units.evaluate_units(equation.lhs)
+            rhs_units = simple_ode_model.units.evaluate_units(equation.rhs)
             print('     %s %s %s' %
                   (lhs_units,
                    '==' if simple_ode_model.units.is_unit_equal(rhs_units, lhs_units) else '!=',

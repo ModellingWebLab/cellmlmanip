@@ -65,27 +65,27 @@ class TestUnits(object):
 
 
 
-        assert unit_store.is_unit_equal(
+        assert unit_store.is_equal(
             1 * unit_store.get_unit('per_ms'),
             1 / (unit_store.get_unit('second') / 1000)
         )
 
-        assert unit_store.is_unit_equal(
+        assert unit_store.is_equal(
             unit_store.get_unit('mM_per_ms'),
             (unit_registry.milli_mole / unit_registry.liter) / unit_registry.ms
         )
 
-        assert unit_store.is_unit_equal(
+        assert unit_store.is_equal(
             unit_store.get_unit('mV_per_usec'),
             unit_registry.mV / unit_registry.usec
         )
 
-        assert unit_store.is_unit_equal(
+        assert unit_store.is_equal(
             unit_store.get_unit('ms_power_prefix'),
             unit_registry.millisecond
         )
 
-        assert unit_store.is_unit_equal(
+        assert unit_store.is_equal(
             unit_store.get_unit('ms_with_multiplier'),
             unit_registry.millisecond
         )
@@ -276,7 +276,7 @@ class TestUnits(object):
             unit_store.get_unit('meter') ** 2 / unit_store.get_unit('second'))
 
         # root and power
-        assert unit_calculator.traverse(a**_2).units == unit_store.get_unit('meter**2')
+        assert unit_calculator.traverse(a**_2).units == unit_store.get_unit('meter')**2
         assert unit_calculator.traverse(sp.sqrt(c ** 2)).units == unit_store.get_unit('gram')
         assert unit_calculator.traverse(sp.sqrt(a * d)).units == unit_store.get_unit('meter')
         # root and power fails

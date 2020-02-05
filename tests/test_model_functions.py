@@ -492,15 +492,15 @@ class TestModelFunctions():
         """ Tests units read and calculated from a model. """
         symbol_a = simple_units_model.get_symbol_by_cmeta_id("a")
         equation = simple_units_model.get_equations_for([symbol_a], strip_units=False)
-        assert simple_units_model.units.summarise_units(equation[0].lhs) == 'ms'
-        assert simple_units_model.units.summarise_units(equation[0].rhs) == 'ms'
+        assert simple_units_model.units.evaluate_units(equation[0].lhs) == 'ms'
+        assert simple_units_model.units.evaluate_units(equation[0].rhs) == 'ms'
 
         symbol_b = simple_units_model.get_symbol_by_cmeta_id("b")
         equation = simple_units_model.get_equations_for([symbol_b])
-        assert simple_units_model.units.summarise_units(equation[1].lhs) == 'per_ms'
-        assert simple_units_model.units.summarise_units(equation[1].rhs) == '1 / ms'
-        assert simple_units_model.units.is_unit_equal(simple_units_model.units.summarise_units(equation[1].lhs),
-                                                      simple_units_model.units.summarise_units(equation[1].rhs))
+        assert simple_units_model.units.evaluate_units(equation[1].lhs) == 'per_ms'
+        assert simple_units_model.units.evaluate_units(equation[1].rhs) == '1 / ms'
+        assert simple_units_model.units.is_equal(simple_units_model.units.evaluate_units(equation[1].lhs),
+                                                 simple_units_model.units.evaluate_units(equation[1].rhs))
 
     def test_bad_units(self, bad_units_model):
         """ Tests units read and calculated from an inconsistent model. """
@@ -509,15 +509,15 @@ class TestModelFunctions():
         equation = bad_units_model.get_equations_for([symbol_b], strip_units=False)
         assert len(equation) == 2
         assert equation[0].lhs == symbol_a
-        assert bad_units_model.units.summarise_units(equation[0].lhs) == 'ms'
+        assert bad_units_model.units.evaluate_units(equation[0].lhs) == 'ms'
         with pytest.raises(units.UnitError):
             # cellml file states a (ms) = 1 (ms) + 1 (second)
-            bad_units_model.units.summarise_units(equation[0].rhs)
+            bad_units_model.units.evaluate_units(equation[0].rhs)
 
         assert equation[1].lhs == symbol_b
         with pytest.raises(units.UnitError):
             # cellml file states b (per_ms) = power(a (ms), 1 (second))
-            bad_units_model.units.summarise_units(equation[1].rhs)
+            bad_units_model.units.evaluate_units(equation[1].rhs)
 
     ###################################################################
     # this section is for other functions
