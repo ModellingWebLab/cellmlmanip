@@ -188,8 +188,8 @@ class TestParser(object):
 
         assert match in str(dim_error.value)
 
-    def test_algebraic(self):
-        """ Tests units are correctly parsed for an algebraic model. """
+    def test_new_base_units(self):
+        """Tests unit checking in a model that defines a new base unit."""
         example_cellml = os.path.join(
             os.path.dirname(__file__), "cellml_files", "algebraic.cellml"
         )
