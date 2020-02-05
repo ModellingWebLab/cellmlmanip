@@ -212,14 +212,13 @@ class UnitStore(object):
         assert name not in CELLML_UNITS, 'Cannot redefine CellML unit <%s>' % name
         assert not self.is_unit_defined(name), 'Unit <%s> already exists' % name
 
-        #TODO ADD NAME PREFIX
+        # TODO ADD NAME PREFIX
 
         # Dimensionless units can't be created using a string expression.
         # To test if this is a dimensionless unit, parse the string as a Quantity and check if it's dimensionless
         quantity = self._registry.parse_expression(expression)
-
         if quantity.units == self._registry.dimensionless:
-            definition = UnitDefinition(name, '', (), ScaleConverter(definition.to(self._registry.dimensionless)))
+            definition = UnitDefinition(name, '', (), ScaleConverter(quantity.to(self._registry.dimensionless)))
         else:
             definition = expression
 
@@ -235,7 +234,7 @@ class UnitStore(object):
         assert name not in CELLML_UNITS, 'Cannot redefine CellML unit <%s>' % name
         assert not self.is_unit_defined(name), 'Unit <%s> already exists' % name
 
-        #TODO ADD NAME PREFIX
+        # TODO ADD NAME PREFIX
 
         # Add to registry and list of custom units
         self._registry.define(name + '=[' + name + ']')
@@ -247,7 +246,7 @@ class UnitStore(object):
         :param name: string name of the unit
         :returns: True if exists, else False
         """
-        #TODO ADD PREFIX
+        # TODO ADD PREFIX
 
         try:
             getattr(self._registry, name)
@@ -262,13 +261,12 @@ class UnitStore(object):
         :returns: `Unit`
         :raises: ``pint.UndefinedUnitError`` if the unit is not present in registry.
         """
-        #TODO CHANGE NAME TO GET UNIT, IF IT RETURNS A UNIT, ELSE UPDATE DOCSTRING
+        # TODO CHANGE NAME TO GET UNIT, IF IT RETURNS A UNIT, ELSE UPDATE DOCSTRING
 
         try:
             return self._registry.parse_expression(unit_name).units
         except pint.UndefinedUnitError:
             raise KeyError('Cannot find unit <%s> in unit registry' % unit_name)
-
 
     def is_unit_equal(self, unit1, unit2):
         """Compares whether two units are equivalent by converting them into base units and comparing the resulting
@@ -278,7 +276,7 @@ class UnitStore(object):
         :param unit2: the second Unit object to compare
         :returns: ``True`` if units are equal, ``False`` otherwise.
         """
-        #TODO CHECK IF THESE ARE REALLY UNITS OR QUANTITIES
+        # TODO CHECK IF THESE ARE REALLY UNITS OR QUANTITIES
 
         assert isinstance(unit1, self._registry.Unit)
         assert isinstance(unit2, self._registry.Unit)
@@ -295,7 +293,7 @@ class UnitStore(object):
         :param unit: Unit object into which the first units should be converted
         :returns: a quantity object with the converted unit and corresponding quantity
         """
-        #TODO CHECK IF THESE ARE QUANTITIES OR UNITS
+        # TODO CHECK IF THESE ARE QUANTITIES OR UNITS
 
         assert isinstance(quantity, self._registry.Quantity)
         assert isinstance(unit, self._registry.Unit)
@@ -318,7 +316,7 @@ class UnitStore(object):
         :raises InputArgumentsInvalidUnitsError: if input arguments should have same units
         :raises InputArgumentMustBeNumberError: if one of input arguments should be a number
         """
-        #TODO FIX DOCSTRING. WHAT IS A LAMBDIFIED STIRNG????
+        # TODO FIX DOCSTRING. WHAT IS A LAMBDIFIED STIRNG????
 
         found = self._calculator.traverse(expr)
 
@@ -337,7 +335,7 @@ class UnitStore(object):
         :returns: the magnitude of the resulting conversion factor
         :raises AssertionError: if no target unit is specified or no source unit is specified
         """
-        #TODO CHECK IF THESE ARE UNITS OR STRING OR WHAT
+        # TODO CHECK IF THESE ARE UNITS OR STRING OR WHAT
 
         assert to_unit is not None, 'No unit given as target of conversion; to_unit argument is required'
         assert quantity is not None or from_unit is not None or expression is not None, \
@@ -368,7 +366,7 @@ class UnitStore(object):
         :param symbol2: the second expression to compare
         :returns: True if units are equal (regardless of quantity), False otherwise
         """
-        #TODO IF THEY ARE EXPRESSIONS THE ARGS SHOULD NOT BE CALLED SYMBOL
+        # TODO IF THEY ARE EXPRESSIONS THE ARGS SHOULD NOT BE CALLED SYMBOL
 
         try:
             self.get_conversion_factor(from_unit=self.summarise_units(symbol1),
@@ -519,8 +517,8 @@ class UnitCalculator(object):
 
             # if base is dimensionless, return is dimensionless
             if base.units == self._registry.dimensionless:
-                return self._registry.Quantity(base.magnitude**exponent.magnitude,
-                                          self._registry.dimensionless)
+                return self._registry.Quantity(
+                    base.magnitude**exponent.magnitude, self._registry.dimensionless)
 
             # base is not dimensionless, raise quantity (magnitude and unit) to power
             return base ** exponent
@@ -600,8 +598,8 @@ class UnitCalculator(object):
                     # is the operand is a float
                     if isinstance(quantity_per_arg[0].magnitude, float):
                         # return the exponential of the float as dimensionless
-                        return self._registry.Quantity(math.exp(quantity_per_arg[0].magnitude),
-                                                  self._registry.dimensionless)
+                        return self._registry.Quantity(
+                            math.exp(quantity_per_arg[0].magnitude), self._registry.dimensionless)
 
                     # magnitude contains an unresolved symbol, we lose it here!
                     # we don't lose it - the unit will be dimensionless - we are just not able to

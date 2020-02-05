@@ -4,7 +4,6 @@ from enum import Enum
 from io import StringIO
 
 import networkx as nx
-import pint
 import rdflib
 import sympy
 
@@ -144,8 +143,8 @@ class Model(object):
 
         :return: A :class:`NumberDummy` object.
         """
-        #TODO: WHAT IS A PINT UNITS REPRESENTAITON IN THIS CASE?
-        #TODO: SEARCH FOR `pint` AND FIX DOCSTRING THROUGOUT
+        # TODO: WHAT IS A PINT UNITS REPRESENTAITON IN THIS CASE?
+        # TODO: SEARCH FOR `pint` AND FIX DOCSTRING THROUGOUT
 
         # Check units
         if not isinstance(units, self.units.Unit):
@@ -294,12 +293,10 @@ class Model(object):
         lhs_units = self.units.summarise_units(equality.lhs)
         rhs_units = self.units.summarise_units(equality.rhs)
 
-        #TODO REWRITE WITHOUT USING PRIVATE PROPERTIES
-        assert (self.units.is_unit_equal(rhs_units, lhs_units),
-            'Units %s %s != %s %s' % (
-                lhs_units, self.units._registry.get_base_units(lhs_units),
-                rhs_units, self.units._registry.get_base_units(rhs_units)
-            )
+        # TODO REWRITE WITHOUT USING PRIVATE PROPERTIES
+        assert self.units.is_unit_equal(rhs_units, lhs_units), 'Units %s %s != %s %s' % (
+            lhs_units, self.units._registry.get_base_units(lhs_units),
+            rhs_units, self.units._registry.get_base_units(rhs_units)
         )
 
     def get_equations_for(self, symbols, recurse=True, strip_units=True):
@@ -850,7 +847,7 @@ class Model(object):
         """
         # 1. create a new variable
         deriv_name = self._get_unique_name(derivative_variable.name + '_orig_deriv')
-        #TODO REWRITE THIS WITHOUT USING PRIVATE PROPERTIES
+        # TODO REWRITE THIS WITHOUT USING PRIVATE PROPERTIES
         deriv_units = self.units._calculator.traverse(eqn.args[0])
         new_deriv_variable = self.add_variable(name=deriv_name,
                                                units=deriv_units.units)

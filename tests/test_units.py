@@ -35,8 +35,6 @@ class TestUnits(object):
         'mV_per_s': 'mV / second',
         'mV_per_usec': 'mV / usec',
         'mM_per_ms': 'mM / ms',
-        #'ms_power_prefix': [{'prefix': '-3', 'units': 'second'}],
-        #'ms_with_multiplier': [{'multiplier': 0.001, 'units': 'second'}],
     })
 
     @pytest.fixture(scope="class")
@@ -95,8 +93,12 @@ class TestUnits(object):
 
     def test_conversion_factor(self, unit_store):
         """ Tests Units.get_conversion_factor() function. """
-        assert unit_store.get_conversion_factor(quantity=1 * unit_store.get_quantity('ms'), to_unit=unit_store.get_quantity('second')) == 0.001
-        assert unit_store.get_conversion_factor(quantity=1 * unit_store.get_quantity('volt'), to_unit=unit_store.get_quantity('mV')) == 1000.0
+        assert unit_store.get_conversion_factor(
+            quantity=1 * unit_store.get_quantity('ms'),
+            to_unit=unit_store.get_quantity('second')) == 0.001
+        assert unit_store.get_conversion_factor(
+            quantity=1 * unit_store.get_quantity('volt'),
+            to_unit=unit_store.get_quantity('mV')) == 1000.0
 
         assert unit_store.get_conversion_factor(
             quantity=1 * unit_store.get_quantity('milli_mole'),
@@ -270,7 +272,8 @@ class TestUnits(object):
             assert err.expression == 'Piecewise((_a, _x < 1), (_b, _x > 1), (_c, True))'
 
         # cases with any units allowed as arguments
-        assert unit_calculator.traverse((a * a) / b).units == unit_store.get_quantity('meter**2') / unit_store.get_quantity('second')
+        assert unit_calculator.traverse((a * a) / b).units == (
+            unit_store.get_quantity('meter') ** 2 / unit_store.get_quantity('second'))
 
         # root and power
         assert unit_calculator.traverse(a**_2).units == unit_store.get_quantity('meter**2')

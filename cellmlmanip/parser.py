@@ -241,7 +241,6 @@ class Parser(object):
         # Join together all the parts of the unit expression and return
         return '*'.join(full_unit_expr)
 
-
     def _add_components(self, model):
         """
         <model> <component> </model>
