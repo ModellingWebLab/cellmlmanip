@@ -190,7 +190,7 @@ class UnitStore(object):
             # Share a registry and calculator with the given unit store
             self._registry = store._registry
 
-        # User defined units
+        # Names of user defined units.
         self._custom_units = set()
 
         # Create a unit calculator
@@ -205,9 +205,10 @@ class UnitStore(object):
 
         For example::
 
-            TODO TODO TODO TODO TODO
+            add_unit('mm', 'meter / 1000')
 
-        :param units_name: A string name. Names must be unique and cannot overlap with CellML predefined units.
+        :param name: A string name. Names must be unique and cannot overlap with CellML predefined units.
+        :param expression: An expression to define the new unit.
         """
         assert name not in CELLML_UNITS, 'Cannot redefine CellML unit <%s>' % name
         assert not self.is_unit_defined(name), 'Unit <%s> already exists' % name
@@ -227,9 +228,9 @@ class UnitStore(object):
         self._custom_units.add(name)
 
     def add_base_unit(self, name):
-        """Define a new base unit in the Pint registry.
+        """Add a new base unit.
 
-        :param units_name: string name of unit to add
+        :param name: A string name.
         """
         assert name not in CELLML_UNITS, 'Cannot redefine CellML unit <%s>' % name
         assert not self.is_unit_defined(name), 'Unit <%s> already exists' % name
@@ -254,19 +255,21 @@ class UnitStore(object):
         except pint.UndefinedUnitError:
             return False
 
-    def get_quantity(self, unit_name):
-        """Returns a pint `Unit` with the given name from the UnitRegistry.
+    def get_unit(self, name):
+        """Retrieves the ``Unit`` object with the given name.
 
         :param unit_name: string name of the unit
-        :returns: `Unit`
-        :raises: ``pint.UndefinedUnitError`` if the unit is not present in registry.
+        :returns: A ``Unit`` object.
+        :raises KeyError: If the unit is not defined in this unit store.
         """
-        # TODO CHANGE NAME TO GET UNIT, IF IT RETURNS A UNIT, ELSE UPDATE DOCSTRING
+        # TODO ADD PREFIX
 
         try:
-            return self._registry.parse_expression(unit_name).units
+            # TODO: Look up in unit mapping, then obtain with getattr(). Don't use parse expression because that accepts
+            # anything
+            return self._registry.parse_expression(name).units
         except pint.UndefinedUnitError:
-            raise KeyError('Cannot find unit <%s> in unit registry' % unit_name)
+            raise KeyError('Cannot find unit <%s> in unit registry.' % name)
 
     def is_unit_equal(self, unit1, unit2):
         """Compares whether two units are equivalent by converting them into base units and comparing the resulting

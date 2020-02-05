@@ -37,6 +37,8 @@ class Model(object):
     Equations are stored as ``Sympy.Eq`` objects, but with the caveat that all variables and numbers must be specified
     using the ``Sympy.Dummy`` objects returned by :meth:`add_variable()` and :meth:`add_number()`.
 
+    Units are handled using the ``units`` property of a model, which is an instance of ``cellmlmanip.units.UnitStore``.
+
     Cellmlmanip does not support algebraic models: the left-hand side every equation in the model must be a variable or
     a derivative.
 
@@ -53,7 +55,7 @@ class Model(object):
         # A list of sympy.Eq equation objects
         self.equations = []
 
-        # A pint UnitStore, mapping unit names to unit objects
+        # A UnitStore object
         self.units = UnitStore()
 
         # Maps string variable names to sympy.Dummy objects
@@ -75,8 +77,6 @@ class Model(object):
     '''
     def add_unit(self, name, expression):
         """
-        Ass a
-
         Adds a unit of measurement to this model, with a given ``name`` and list of ``attributes``.
 
         :param name: A string name.
@@ -148,7 +148,7 @@ class Model(object):
 
         # Check units
         if not isinstance(units, self.units.Unit):
-            units = self.units.get_quantity(units)
+            units = self.units.get_unit(units)
 
         return NumberDummy(value, units)
 
@@ -158,7 +158,7 @@ class Model(object):
         Adds a variable to the model and returns a :class:`VariableDummy` to represent it in sympy expressions.
 
         :param name: A string name.
-        :param units: A `pint` units representation.
+        :param units: A string unit name or a ``Unit`` object.
         :param initial_value: An optional initial value.
         :param public_interface: An optional public interface specifier (only required when parsing CellML).
         :param private_interface: An optional private interface specifier (only required when parsing CellML).
@@ -172,7 +172,7 @@ class Model(object):
 
         # Check units
         if not isinstance(units, self.units.Unit):
-            units = self.units.get_quantity(units)
+            units = self.units.get_unit(units)
 
         # Add variable
         self._name_to_symbol[name] = var = VariableDummy(
@@ -500,7 +500,7 @@ class Model(object):
         """
         Looks up and returns a pint `Unit` object with the given name.
         """
-        return self.units.get_quantity(name)
+        return self.units.get_unit(name)
 
     def get_definition(self, symbol):
         """Get the equation (if any) defining the given variable.

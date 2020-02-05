@@ -213,7 +213,7 @@ class Parser(object):
         # For each of the <unit> elements for this unit definition
         for unit_element in unit_attributes:
             # Source the <unit units="XXX"> from our store
-            matched_unit = self.model.units.get_quantity(unit_element['units'])
+            matched_unit = self.model.units.get_unit(unit_element['units'])
 
             # Construct a string representing the expression for this <unit>
             expr = str(matched_unit)

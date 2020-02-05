@@ -56,8 +56,8 @@ class TestUnits(object):
         '''
         assert
 
-        a = 1 * unit_store.get_quantity('second')
-        b = 1 * unit_store.get_quantity('ms')
+        a = 1 * unit_store.get_unit('second')
+        b = 1 * unit_store.get_unit('ms')
 
         print(a.to_base_units())
         print(b.to_base_units())
@@ -66,27 +66,27 @@ class TestUnits(object):
 
 
         assert unit_store.is_unit_equal(
-            1 * unit_store.get_quantity('per_ms'),
-            1 / (unit_store.get_quantity('second') / 1000)
+            1 * unit_store.get_unit('per_ms'),
+            1 / (unit_store.get_unit('second') / 1000)
         )
 
         assert unit_store.is_unit_equal(
-            unit_store.get_quantity('mM_per_ms'),
+            unit_store.get_unit('mM_per_ms'),
             (unit_registry.milli_mole / unit_registry.liter) / unit_registry.ms
         )
 
         assert unit_store.is_unit_equal(
-            unit_store.get_quantity('mV_per_usec'),
+            unit_store.get_unit('mV_per_usec'),
             unit_registry.mV / unit_registry.usec
         )
 
         assert unit_store.is_unit_equal(
-            unit_store.get_quantity('ms_power_prefix'),
+            unit_store.get_unit('ms_power_prefix'),
             unit_registry.millisecond
         )
 
         assert unit_store.is_unit_equal(
-            unit_store.get_quantity('ms_with_multiplier'),
+            unit_store.get_unit('ms_with_multiplier'),
             unit_registry.millisecond
         )
         '''
@@ -94,15 +94,15 @@ class TestUnits(object):
     def test_conversion_factor(self, unit_store):
         """ Tests Units.get_conversion_factor() function. """
         assert unit_store.get_conversion_factor(
-            quantity=1 * unit_store.get_quantity('ms'),
-            to_unit=unit_store.get_quantity('second')) == 0.001
+            quantity=1 * unit_store.get_unit('ms'),
+            to_unit=unit_store.get_unit('second')) == 0.001
         assert unit_store.get_conversion_factor(
-            quantity=1 * unit_store.get_quantity('volt'),
-            to_unit=unit_store.get_quantity('mV')) == 1000.0
+            quantity=1 * unit_store.get_unit('volt'),
+            to_unit=unit_store.get_unit('mV')) == 1000.0
 
         assert unit_store.get_conversion_factor(
-            quantity=1 * unit_store.get_quantity('milli_mole'),
-            to_unit=unit_store.get_quantity('mole')
+            quantity=1 * unit_store.get_unit('milli_mole'),
+            to_unit=unit_store.get_unit('mole')
         ) == 0.001
 
     def test_add_unit_0(self):
@@ -190,51 +190,51 @@ class TestUnits(object):
     def test_unit_calculator(self, unit_store):
         """ Tests the units.UnitCalculator class. """
 
-        a = VariableDummy('a', unit_store.get_quantity('meter'))
-        b = VariableDummy('b', unit_store.get_quantity('second'))
-        c = VariableDummy('c', unit_store.get_quantity('gram'))
-        d = VariableDummy('d', unit_store.get_quantity('meter'))
-        x = VariableDummy('x', unit_store.get_quantity('kilogram'))
-        y = VariableDummy('y', unit_store.get_quantity('volt'))
-        n = VariableDummy('n', unit_store.get_quantity('dimensionless'))
-        _1 = NumberDummy(1, unit_store.get_quantity('kelvin'))
-        _2 = NumberDummy(2, unit_store.get_quantity('dimensionless'))
-        _25 = NumberDummy(2.5, unit_store.get_quantity('dimensionless'))
-        av = VariableDummy('av', unit_store.get_quantity('meter'), initial_value=2)
+        a = VariableDummy('a', unit_store.get_unit('meter'))
+        b = VariableDummy('b', unit_store.get_unit('second'))
+        c = VariableDummy('c', unit_store.get_unit('gram'))
+        d = VariableDummy('d', unit_store.get_unit('meter'))
+        x = VariableDummy('x', unit_store.get_unit('kilogram'))
+        y = VariableDummy('y', unit_store.get_unit('volt'))
+        n = VariableDummy('n', unit_store.get_unit('dimensionless'))
+        _1 = NumberDummy(1, unit_store.get_unit('kelvin'))
+        _2 = NumberDummy(2, unit_store.get_unit('dimensionless'))
+        _25 = NumberDummy(2.5, unit_store.get_unit('dimensionless'))
+        av = VariableDummy('av', unit_store.get_unit('meter'), initial_value=2)
 
         unit_calculator = UnitCalculator(unit_store)
 
         # units of numbers
-        assert unit_calculator.traverse(_1).units == unit_store.get_quantity('kelvin')
-        assert unit_calculator.traverse(sp.sympify("1.0")).units == unit_store.get_quantity('dimensionless')
-        assert unit_calculator.traverse(_2).units == unit_store.get_quantity('dimensionless')
-        assert unit_calculator.traverse(sp.sympify("2")).units == unit_store.get_quantity('dimensionless')
-        assert unit_calculator.traverse(_25).units == unit_store.get_quantity('dimensionless')
-        assert unit_calculator.traverse(sp.sympify("2.5")).units == unit_store.get_quantity('dimensionless')
-        assert unit_calculator.traverse(sp.sympify("12")).units == unit_store.get_quantity('dimensionless')
+        assert unit_calculator.traverse(_1).units == unit_store.get_unit('kelvin')
+        assert unit_calculator.traverse(sp.sympify("1.0")).units == unit_store.get_unit('dimensionless')
+        assert unit_calculator.traverse(_2).units == unit_store.get_unit('dimensionless')
+        assert unit_calculator.traverse(sp.sympify("2")).units == unit_store.get_unit('dimensionless')
+        assert unit_calculator.traverse(_25).units == unit_store.get_unit('dimensionless')
+        assert unit_calculator.traverse(sp.sympify("2.5")).units == unit_store.get_unit('dimensionless')
+        assert unit_calculator.traverse(sp.sympify("12")).units == unit_store.get_unit('dimensionless')
 
         # functions were all args should have same unit
         # and this is the unit that will be returned
         # pass cases
-        assert unit_calculator.traverse(-a).units == unit_store.get_quantity('meter')
-        assert unit_calculator.traverse(a + a + a + a).units == unit_store.get_quantity('meter')
-        assert unit_calculator.traverse(a + 2 * a + 3 * a + 4 * a).units == unit_store.get_quantity('meter')
-        assert unit_calculator.traverse(2 * a - a).units == unit_store.get_quantity('meter')
-        assert unit_calculator.traverse(a + d).units == unit_store.get_quantity('meter')
-        assert unit_calculator.traverse(a - d).units == unit_store.get_quantity('meter')
-        assert unit_calculator.traverse(sp.Abs(-2 * y)).units == unit_store.get_quantity('volt')
-        assert unit_calculator.traverse(sp.floor(x)).units == unit_store.get_quantity('kilogram')
+        assert unit_calculator.traverse(-a).units == unit_store.get_unit('meter')
+        assert unit_calculator.traverse(a + a + a + a).units == unit_store.get_unit('meter')
+        assert unit_calculator.traverse(a + 2 * a + 3 * a + 4 * a).units == unit_store.get_unit('meter')
+        assert unit_calculator.traverse(2 * a - a).units == unit_store.get_unit('meter')
+        assert unit_calculator.traverse(a + d).units == unit_store.get_unit('meter')
+        assert unit_calculator.traverse(a - d).units == unit_store.get_unit('meter')
+        assert unit_calculator.traverse(sp.Abs(-2 * y)).units == unit_store.get_unit('volt')
+        assert unit_calculator.traverse(sp.floor(x)).units == unit_store.get_unit('kilogram')
         result = unit_calculator.traverse(sp.floor(12.5) * a)
-        assert result.units == unit_store.get_quantity('meter') and result.magnitude == 12 * a
-        assert unit_calculator.traverse(sp.floor(_1)).units == unit_store.get_quantity('kelvin')
+        assert result.units == unit_store.get_unit('meter') and result.magnitude == 12 * a
+        assert unit_calculator.traverse(sp.floor(_1)).units == unit_store.get_unit('kelvin')
         result = unit_calculator.traverse(sp.floor(_25))
-        assert result.units == unit_store.get_quantity('dimensionless') and result.magnitude == 2.0
-        assert unit_calculator.traverse(sp.ceiling(x)).units == unit_store.get_quantity('kilogram')
+        assert result.units == unit_store.get_unit('dimensionless') and result.magnitude == 2.0
+        assert unit_calculator.traverse(sp.ceiling(x)).units == unit_store.get_unit('kilogram')
         result = unit_calculator.traverse(sp.ceiling(12.6) * a)
-        assert result.units == unit_store.get_quantity('meter') and result.magnitude == 13 * a
-        assert unit_calculator.traverse(sp.ceiling(_1)).units == unit_store.get_quantity('kelvin')
+        assert result.units == unit_store.get_unit('meter') and result.magnitude == 13 * a
+        assert unit_calculator.traverse(sp.ceiling(_1)).units == unit_store.get_unit('kelvin')
         result = unit_calculator.traverse(sp.ceiling(_25))
-        assert result.units == unit_store.get_quantity('dimensionless') and result.magnitude == 3.0
+        assert result.units == unit_store.get_unit('dimensionless') and result.magnitude == 3.0
 
         # functions were all args should have same unit
         # and this is the unit that will be returned
@@ -261,7 +261,7 @@ class TestUnits(object):
         # special case - piecewise
         assert unit_calculator.traverse(sp.Piecewise((a, x < 1),
                                                      (a + a, x > 1),
-                                                     (3 * a, True))).units == unit_store.get_quantity('meter')
+                                                     (3 * a, True))).units == unit_store.get_unit('meter')
         # fail special case -piecewise
         with pytest.raises(InputArgumentsInvalidUnitsError):
             unit_calculator.traverse(sp.Piecewise((a, x < 1), (b, x > 1), (c, True)))
@@ -273,12 +273,12 @@ class TestUnits(object):
 
         # cases with any units allowed as arguments
         assert unit_calculator.traverse((a * a) / b).units == (
-            unit_store.get_quantity('meter') ** 2 / unit_store.get_quantity('second'))
+            unit_store.get_unit('meter') ** 2 / unit_store.get_unit('second'))
 
         # root and power
-        assert unit_calculator.traverse(a**_2).units == unit_store.get_quantity('meter**2')
-        assert unit_calculator.traverse(sp.sqrt(c ** 2)).units == unit_store.get_quantity('gram')
-        assert unit_calculator.traverse(sp.sqrt(a * d)).units == unit_store.get_quantity('meter')
+        assert unit_calculator.traverse(a**_2).units == unit_store.get_unit('meter**2')
+        assert unit_calculator.traverse(sp.sqrt(c ** 2)).units == unit_store.get_unit('gram')
+        assert unit_calculator.traverse(sp.sqrt(a * d)).units == unit_store.get_unit('meter')
         # root and power fails
         expr = a ** _1
         with pytest.raises(InputArgumentsMustBeDimensionlessError):
@@ -300,10 +300,10 @@ class TestUnits(object):
         # bizarre cases
         expr = av ** _25
         result = unit_calculator.traverse(expr)
-        assert result.units == unit_store.get_quantity('meter')**2.5  # and result.magnitude == 5.6568
+        assert result.units == unit_store.get_unit('meter')**2.5  # and result.magnitude == 5.6568
         expr = sp.root(av, _25)
         result = unit_calculator.traverse(expr)
-        assert result.units == unit_store.get_quantity('meter')**0.4  # and result.magnitude == 1.319507
+        assert result.units == unit_store.get_unit('meter')**0.4  # and result.magnitude == 1.319507
 
         # relational operators throw an exception
         expr = a > _1
@@ -312,19 +312,19 @@ class TestUnits(object):
 
         # special case - derivative
         dadb = sp.diff(a * b, b)
-        assert unit_calculator.traverse(dadb).units == unit_store.get_quantity('meter')
+        assert unit_calculator.traverse(dadb).units == unit_store.get_unit('meter')
 
         dadb = sp.Derivative(a * b, b)
-        assert unit_calculator.traverse(dadb).units == unit_store.get_quantity('meter')
+        assert unit_calculator.traverse(dadb).units == unit_store.get_unit('meter')
 
         # log and exponent
-        assert unit_calculator.traverse(sp.log(_2)).units == unit_store.get_quantity('dimensionless')
-        assert unit_calculator.traverse(sp.log(n)).units == unit_store.get_quantity('dimensionless')
-        assert unit_calculator.traverse(sp.ln(_2)).units == unit_store.get_quantity('dimensionless')
-        assert unit_calculator.traverse(sp.log(n, _2)).units == unit_store.get_quantity('dimensionless')
-        assert unit_calculator.traverse(sp.log(_2, 3)).units == unit_store.get_quantity('dimensionless')
-        assert unit_calculator.traverse(sp.exp(_2)).units == unit_store.get_quantity('dimensionless')
-        assert unit_calculator.traverse(sp.exp(n)).units == unit_store.get_quantity('dimensionless')
+        assert unit_calculator.traverse(sp.log(_2)).units == unit_store.get_unit('dimensionless')
+        assert unit_calculator.traverse(sp.log(n)).units == unit_store.get_unit('dimensionless')
+        assert unit_calculator.traverse(sp.ln(_2)).units == unit_store.get_unit('dimensionless')
+        assert unit_calculator.traverse(sp.log(n, _2)).units == unit_store.get_unit('dimensionless')
+        assert unit_calculator.traverse(sp.log(_2, 3)).units == unit_store.get_unit('dimensionless')
+        assert unit_calculator.traverse(sp.exp(_2)).units == unit_store.get_unit('dimensionless')
+        assert unit_calculator.traverse(sp.exp(n)).units == unit_store.get_unit('dimensionless')
         # log and exponent - fails
         expr = sp.log(a)
         with pytest.raises(InputArgumentsMustBeDimensionlessError):
@@ -352,7 +352,7 @@ class TestUnits(object):
             assert err.expression == 'exp(_av)'
 
         # trig functions
-        assert unit_calculator.traverse(sp.sin(n)).units == unit_store.get_quantity('dimensionless')
+        assert unit_calculator.traverse(sp.sin(n)).units == unit_store.get_unit('dimensionless')
         # trig functions - fails
         expr = sp.cos(av)
         with pytest.raises(InputArgumentsMustBeDimensionlessError):
@@ -364,10 +364,10 @@ class TestUnits(object):
             assert err.expression == 'cos(_av)'
 
         # constants
-        assert unit_calculator.traverse(sp.pi).units == unit_store.get_quantity('dimensionless')
-        assert unit_calculator.traverse(sp.E).units == unit_store.get_quantity('dimensionless')
-        assert unit_calculator.traverse(sp.oo).units == unit_store.get_quantity('dimensionless')
-        assert unit_calculator.traverse(sp.nan).units == unit_store.get_quantity('dimensionless')
+        assert unit_calculator.traverse(sp.pi).units == unit_store.get_unit('dimensionless')
+        assert unit_calculator.traverse(sp.E).units == unit_store.get_unit('dimensionless')
+        assert unit_calculator.traverse(sp.oo).units == unit_store.get_unit('dimensionless')
+        assert unit_calculator.traverse(sp.nan).units == unit_store.get_unit('dimensionless')
 
         expr = sp.true
         with pytest.raises(BooleanUnitsError):
@@ -380,7 +380,7 @@ class TestUnits(object):
             assert err.expression == 'True'
 
         # factorial needs its own catch
-        assert unit_calculator.traverse(sp.factorial(n)).units == unit_store.get_quantity('dimensionless')
+        assert unit_calculator.traverse(sp.factorial(n)).units == unit_store.get_unit('dimensionless')
         expr = sp.factorial(av)
         with pytest.raises(InputArgumentsMustBeDimensionlessError):
             unit_calculator.traverse(expr)
@@ -409,7 +409,7 @@ class TestUnits(object):
 
         # this is a generic test of a function with one dimensionless argument
         # this uses a function that is not in cellml - just to check the logic
-        assert unit_calculator.traverse(sp.sign(n)).units == unit_store.get_quantity('dimensionless')
+        assert unit_calculator.traverse(sp.sign(n)).units == unit_store.get_unit('dimensionless')
 
         expr = sp.Matrix([[1, 0], [0, 1]])
         with pytest.raises(UnexpectedMathUnitsError):

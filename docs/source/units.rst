@@ -19,7 +19,7 @@ When a model is parsed, a `UnitStore` is created automatically.
 
 .. autoclass :: InputArgumentsMustBeDimensionlessError
 
-.. autoclass :: InputArgumentsMustBeNumberError
+.. autoclass :: InputArgumentMustBeNumberError
 
 .. autoclass :: BooleanUnitsError
 
