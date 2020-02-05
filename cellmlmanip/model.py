@@ -139,12 +139,10 @@ class Model(object):
         Creates and returns a :class:`NumberDummy` to represent a number with units in sympy expressions.
 
         :param number: A number (anything convertible to float).
-        :param units: A `pint` units representation
+        :param units: A string representation of a unit or a ``Unit`` object.
 
         :return: A :class:`NumberDummy` object.
         """
-        # TODO: WHAT IS A PINT UNITS REPRESENTAITON IN THIS CASE?
-        # TODO: SEARCH FOR `pint` AND FIX DOCSTRING THROUGOUT
 
         # Check units
         if not isinstance(units, self.units.Unit):

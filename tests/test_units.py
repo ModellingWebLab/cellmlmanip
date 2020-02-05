@@ -45,6 +45,35 @@ class TestUnits(object):
             s.add_unit(name, definition)
         return s
 
+    def test_add_unit(self):
+        """Tests UnitStore.add_unit()."""
+
+        # Add ordinary unit
+        unitstore = UnitStore()
+        assert (unitstore.is_unit_defined('u1') is False)
+        unitstore.add_unit('u1', 'second * 2')
+        assert (unitstore.is_unit_defined('u1') is True)
+
+        # Add dimensionless unit
+        assert (unitstore.is_unit_defined('u2') is False)
+        unitstore.add_unit('u2', 'dimensionless * 3')
+        assert (unitstore.is_unit_defined('u2') is True)
+
+        # Duplicate unit definition
+        with pytest.raises(ValueError):
+            unitstore.add_unit('u1', 'second * 2')
+
+        # CellML unit redefinition
+        with pytest.raises(ValueError):
+            unitstore.add_unit('second', 'second * 2')
+
+
+
+
+
+
+
+
     def test_quantity_translation(self, unit_store):
         """Tests that unit equality is correctly determined."""
 
@@ -104,40 +133,6 @@ class TestUnits(object):
             quantity=1 * unit_store.get_unit('milli_mole'),
             to_unit=unit_store.get_unit('mole')
         ) == 0.001
-
-    def test_add_unit_0(self):
-        """Tests Units.add_unit()."""
-        unitstore = UnitStore()
-        assert (unitstore.is_unit_defined('newunit') is False)
-
-        # Add a new unit called 'newunit' which is 2 * second
-        unitstore.add_unit('newunit', 'second * 2')
-        assert (unitstore.is_unit_defined('newunit') is True)
-
-    def test_add_unit_1(self):
-        """Tests Units.add_unit()."""
-        unitstore = UnitStore()
-        assert (unitstore.is_unit_defined('newunit') is False)
-
-        # Add a new unit called 'newunit' which is millimetres
-        unitstore.add_unit('newunit', 'metre / 1000')
-        assert (unitstore.is_unit_defined('newunit') is True)
-
-    def test_add_unit_3(self):
-        """ Tests Units.add_unit() function. """
-        unitstore = UnitStore()
-        assert (unitstore.is_unit_defined('newunit') is False)
-
-        # Add a new unit called 'newunit' which is metre per second
-        unitstore.add_unit('newunit', 'meter / second')
-        assert (unitstore.is_unit_defined('newunit') is True)
-
-    def test_add_unit_existing(self):
-        """ Tests exception for Units.add_unit() function when unit already exists. """
-        unitstore = UnitStore()
-        with pytest.raises(AssertionError):
-            unitstore.add_unit('second', 'second * 2')
-            pytest.fail('Cannot redefine CellML unit <second>')
 
     # def test_is_unit_defined(self, unit_store):
     #     """ Tests Units._is_unit_defined() function. """

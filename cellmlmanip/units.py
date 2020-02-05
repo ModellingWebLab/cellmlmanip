@@ -189,8 +189,9 @@ class UnitStore(object):
             # Share a registry and calculator with the given unit store
             self._registry = store._registry
 
-        # Names of user defined units.
-        self._custom_units = set()
+        # Names of units known to this unit store (including CellML predefined ones). Stored as the user sees them, so
+        # without the prefix to make them unique in the registry.
+        self._known_units = set(CELLML_UNITS)
 
         # Create a unit calculator
         self._calculator = UnitCalculator(self)
@@ -209,8 +210,10 @@ class UnitStore(object):
         :param name: A string name. Names must be unique and cannot overlap with CellML predefined units.
         :param expression: An expression to define the new unit.
         """
-        assert name not in CELLML_UNITS, 'Cannot redefine CellML unit <%s>' % name
-        assert not self.is_unit_defined(name), 'Unit <%s> already exists' % name
+        if name in CELLML_UNITS:
+            raise ValueError('Cannot redefine CellML unit <%s>.' % name)
+        if name in self._known_units:
+            raise ValueError('Cannot redefine unit <%s>.' % name)
 
         # TODO ADD NAME PREFIX, RUN REGEX ON EXPRESSION
 
@@ -220,39 +223,35 @@ class UnitStore(object):
         if quantity.units == self._registry.dimensionless:
             definition = UnitDefinition(name, '', (), ScaleConverter(quantity.to(self._registry.dimensionless)))
         else:
-            definition = expression
+            definition = name + '=' + expression
 
-        # Add to registry and list of custom units
-        self._registry.define(name + '=' + definition)
-        self._custom_units.add(name)
+        # Add to registry
+        self._registry.define(definition)
+
+        # Add original name to list of known units
+        self._known_units.add(name)
 
     def add_base_unit(self, name):
         """Add a new base unit.
 
         :param name: A string name.
         """
-        assert name not in CELLML_UNITS, 'Cannot redefine CellML unit <%s>' % name
-        assert not self.is_unit_defined(name), 'Unit <%s> already exists' % name
+        if name in CELLML_UNITS:
+            raise ValueError('Cannot redefine CellML unit <%s>.' % name)
+        if name in self._known_units:
+            raise ValueError('Cannot redefine unit <%s>.' % name)
 
         # TODO ADD NAME PREFIX
 
-        # Add to registry and list of custom units
+        # Add to registry
         self._registry.define(name + '=[' + name + ']')
-        self._custom_units.add(name)
+
+        # Add original name to list of known units
+        self._known_units.add(name)
 
     def is_unit_defined(self, name):
-        """Check if a unit with the given ``name`` exists.
-
-        :param name: string name of the unit
-        :returns: True if exists, else False
-        """
-        # TODO ONLY CHECK LOCALLY, DONT INVOLVE REGISTRY
-
-        try:
-            getattr(self._registry, name)
-            return True
-        except pint.UndefinedUnitError:
-            return False
+        """Check if a unit with the given ``name`` exists."""
+        return name in self._known_units
 
     def get_unit(self, name):
         """Retrieves the ``Unit`` object with the given name.
