@@ -4,6 +4,7 @@ from enum import Enum
 from io import StringIO
 
 import networkx as nx
+import pint
 import rdflib
 import sympy
 
@@ -72,8 +73,11 @@ class Model(object):
         # Map from VariableDummy to defining equation, where the variable is defined by an ODE
         self._ode_definition_map = {}
 
-    def add_unit(self, name, attributes=None, base_units=False):
+    '''
+    def add_unit(self, name, expression):
         """
+        Ass a
+
         Adds a unit of measurement to this model, with a given ``name`` and list of ``attributes``.
 
         :param name: A string name.
@@ -87,6 +91,7 @@ class Model(object):
             self.units.add_base_unit(name)
         else:
             self.units.add_custom_unit(name, attributes)
+    '''
 
     def add_equation(self, equation, check_duplicates=True):
         """
@@ -139,15 +144,17 @@ class Model(object):
 
         :return: A :class:`NumberDummy` object.
         """
+        #TODO: WHAT IS A PINT UNITS REPRESENTAITON IN THIS CASE?
+        #TODO: SEARCH FOR `pint` AND FIX DOCSTRING THROUGOUT
 
         # Check units
-        if not isinstance(units, self.units.ureg.Unit):
+        if not isinstance(units, self.units.Unit):
             units = self.units.get_quantity(units)
 
         return NumberDummy(value, units)
 
-    def add_variable(self, name, units, initial_value=None,
-                     public_interface=None, private_interface=None, cmeta_id=None):
+    def add_variable(self, name, units, initial_value=None, public_interface=None, private_interface=None,
+                     cmeta_id=None):
         """
         Adds a variable to the model and returns a :class:`VariableDummy` to represent it in sympy expressions.
 
@@ -165,7 +172,7 @@ class Model(object):
             raise ValueError('Variable %s already exists.' % name)
 
         # Check units
-        if not isinstance(units, self.units.ureg.Unit):
+        if not isinstance(units, self.units.Unit):
             units = self.units.get_quantity(units)
 
         # Add variable
@@ -287,9 +294,12 @@ class Model(object):
         lhs_units = self.units.summarise_units(equality.lhs)
         rhs_units = self.units.summarise_units(equality.rhs)
 
-        assert self.units.is_unit_equal(rhs_units, lhs_units), 'Units %s %s != %s %s' % (
-            lhs_units, self.units.ureg.get_base_units(lhs_units),
-            rhs_units, self.units.ureg.get_base_units(rhs_units)
+        #TODO REWRITE WITHOUT USING PRIVATE PROPERTIES
+        assert (self.units.is_unit_equal(rhs_units, lhs_units),
+            'Units %s %s != %s %s' % (
+                lhs_units, self.units._registry.get_base_units(lhs_units),
+                rhs_units, self.units._registry.get_base_units(rhs_units)
+            )
         )
 
     def get_equations_for(self, symbols, recurse=True, strip_units=True):
@@ -812,7 +822,7 @@ class Model(object):
         assert variable.name in self._name_to_symbol
 
         # units should be a pint Unit object in the registry for this model
-        assert isinstance(units, self.units.ureg.Unit)
+        assert isinstance(units, self.units.Unit)
 
         # direction should be part of enum
         assert isinstance(direction, DataDirectionFlow)
@@ -840,7 +850,8 @@ class Model(object):
         """
         # 1. create a new variable
         deriv_name = self._get_unique_name(derivative_variable.name + '_orig_deriv')
-        deriv_units = self.units.calculator.traverse(eqn.args[0])
+        #TODO REWRITE THIS WITHOUT USING PRIVATE PROPERTIES
+        deriv_units = self.units._calculator.traverse(eqn.args[0])
         new_deriv_variable = self.add_variable(name=deriv_name,
                                                units=deriv_units.units)
 

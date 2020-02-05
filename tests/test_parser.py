@@ -198,10 +198,6 @@ class TestParser(object):
         for e in model.equations:
             model.check_left_right_units_equal(e)
 
-        ureg = model.units.ureg
-        assert str(ureg.get_dimensionality(ureg.new_base)) == '[new_base]'
-        assert ureg.get_base_units(ureg.new_base / ureg.second) == ureg.get_base_units(ureg.derived)
-
     def test_undefined_variable(self):
         """ Tests parser exception for undefined variable. """
         example_cellml = os.path.join(

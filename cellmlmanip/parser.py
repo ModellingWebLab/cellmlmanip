@@ -13,6 +13,31 @@ from cellmlmanip.model import SYMPY_SYMBOL_DELIMITER, Model
 from cellmlmanip.transpiler import Transpiler
 
 
+_UNIT_PREFIXES = {
+    'yocto': 1e-24,
+    'zepto': 1e-21,
+    'atto': 1e-18,
+    'femto': 1e-15,
+    'pico': 1e-12,
+    'nano': 1e-9,
+    'micro': 1e-6,
+    'milli': 1e-3,
+    'centi': 1e-2,
+    'deci': 1e-1,
+    'deca': 1e+1,
+    'deka': 1e+1,
+    'hecto': 1e2,
+    'kilo': 1e3,
+    'mega': 1e6,
+    'giga': 1e9,
+    'tera': 1e12,
+    'peta': 1e15,
+    'exa': 1e18,
+    'zetta': 1e21,
+    'yotta': 1e24
+}
+
+
 class XmlNs(Enum):
     """Namespaces in CellML documents"""
     CELLML = 'http://www.cellml.org/cellml/1.0#'
@@ -136,7 +161,7 @@ class Parser(object):
             units_name = units_element.get('name')
             # if it's a defined base unit, we can be add immediately to the model
             if units_element.get('base_units'):
-                self.model.add_unit(units_name, attributes=None, base_units=True)
+                self.model.units.add_base_unit(units_name)
                 units_found.add(units_name)
             # all other units are collected (because they may depend on further user-defined units)
             else:
@@ -148,30 +173,74 @@ class Parser(object):
         while definitions_to_add:
             # get a definition from the top of the list
             unit_name, unit_elements = definitions_to_add.popitem()
+
             # check whether this unit is defined in terms of units that we know about
             add_now = True
             for unit in unit_elements:
                 # if defined in terms of units we don't know about
                 if unit['units'] not in units_found:
-                    # defer adding this units - add if back to the end of the list
+                    # defer adding this units - add it back to the end of the list
                     definitions_to_add[unit_name] = unit_elements
                     definitions_to_add.move_to_end(unit_name, last=False)
                     add_now = False
+                    break
 
             # unit is defined in terms of known units - ok to add to model
             if add_now:
-                self.model.add_unit(unit_name, attributes=unit_elements)
+                definition = self._make_pint_unit_definition(unit_name, unit_elements)
+                self.model.units.add_unit(unit_name, definition)
                 units_found.add(unit_name)
                 iteration = 0
-                continue
+            else:
+                # we did not add any units in this iteration - make note
+                iteration += 1
 
-            # we did not add any units in this iteration - make note
-            iteration += 1
+                # exit if we have not been able to add any units in the entire list of definitions
+                if iteration > len(definitions_to_add):
+                    raise ValueError('Cannot create units %s. Cycles or unknown units.' % definitions_to_add)
 
-            # exit if we have not been able to add any units in the entire list of definitions
-            if iteration > len(definitions_to_add):
-                raise ValueError('Cannot create units %s. '
-                                 'Cycles or unknown units.' % definitions_to_add)
+    def _make_pint_unit_definition(self, units_name, unit_attributes):
+        """
+        Construct and return a ``pint.UnitDefinition``.
+
+        :param units_name: The unit name
+        :param unit_attributes: A list of dicts, where each dict contains the fields
+            ``{'multiplier': float, 'units': string, 'exponent': integer, 'prefix': string/integer}``.
+            Not all fields are necessary but ``units`` must match a unit in Pint registry.
+        """
+        full_unit_expr = []
+
+        # For each of the <unit> elements for this unit definition
+        for unit_element in unit_attributes:
+            # Source the <unit units="XXX"> from our store
+            matched_unit = self.model.units.get_quantity(unit_element['units'])
+
+            # Construct a string representing the expression for this <unit>
+            expr = str(matched_unit)
+
+            # See https://www.cellml.org/specifications/cellml_1.1/#sec_units 5.2.2
+            # offset, prefix, exponent, and multiplier
+
+            if 'prefix' in unit_element:
+                try:
+                    power = _UNIT_PREFIXES[unit_element['prefix']]
+                except KeyError:
+                    # Assume that prefix is an integer.
+                    power = '1e%s' % unit_element['prefix']
+                expr = '(%s * %s)' % (expr, power)
+
+            if 'exponent' in unit_element:
+                expr = '((%s)**%s)' % (expr, unit_element['exponent'])
+
+            if 'multiplier' in unit_element:
+                expr = '(%s * %s)' % (unit_element['multiplier'], expr)
+
+            # Collect/add this particular <unit> definition
+            full_unit_expr.append(expr)
+
+        # Join together all the parts of the unit expression and return
+        return '*'.join(full_unit_expr)
+
 
     def _add_components(self, model):
         """

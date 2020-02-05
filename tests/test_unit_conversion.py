@@ -46,7 +46,7 @@ class TestUnitConversion:
         equation = simple_units_model.get_equations_for([symbol_b1])
         factor = simple_units_model.units.get_conversion_factor(
             quantity=1 * simple_units_model.units.summarise_units(equation[0].lhs),
-            to_unit=simple_units_model.units.ureg('us').units)
+            to_unit=simple_units_model.units.get_quantity('us'))
         assert factor == 1000
 
     def test_conversion_factor_bad_types(self, simple_units_model):
@@ -55,7 +55,7 @@ class TestUnitConversion:
         symbol_b1 = simple_units_model.get_symbol_by_cmeta_id("b_1")
         equation = simple_units_model.get_equations_for([symbol_b1])
         expression = equation[0].lhs
-        to_unit = simple_units_model.units.ureg('us').units
+        to_unit = simple_units_model.units.get_quantity('us')
         from_unit = simple_units_model.units.summarise_units(expression)
         quantity = 1 * from_unit
         # no source unit
@@ -91,7 +91,7 @@ class TestUnitConversion:
         symbol_b = simple_units_model.get_symbol_by_cmeta_id("b")
         equation = simple_units_model.get_equations_for([symbol_b])
         expression = equation[1].rhs
-        to_unit = simple_units_model.units.ureg('per_ms').units
+        to_unit = simple_units_model.units.get_quantity('per_ms')
         from_unit = simple_units_model.units.summarise_units(expression)
         quantity = 1 * from_unit
         # quantity to unit
@@ -747,9 +747,7 @@ class TestUnitConversion:
 
     def test_convert_same_unit_different_name(self, br_model):
         """ Tests the Model.convert_variable() function when conversion to current unit under a different name."""
-        br_model.units.add_custom_unit('millimolar', [{'units': 'mole', 'prefix': 'milli'},
-                                       {'units': 'litre', 'exponent': '-1'}])
-        # [{'units': 'mole', 'prefix': 'nano'}, {'units': 'litre', 'exponent': '-3', prefix: 'milli'}])
+        br_model.units.add_unit('millimolar', 'mole / 1000 / litre')
         unit = br_model.get_units('concentration_units')
         variable = br_model.get_symbol_by_ontology_term(shared.OXMETA, "cytosolic_calcium_concentration")
         direction = DataDirectionFlow.INPUT

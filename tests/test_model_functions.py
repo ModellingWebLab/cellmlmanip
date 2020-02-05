@@ -444,21 +444,15 @@ class TestModelFunctions():
         number2 = model.add_number(2.0, 'mV')
         assert number2.is_Dummy
 
+    '''
     def test_add_unit(self, local_model):
         """ Tests the Model.add_unit method. """
         model = local_model
-        assert len(model.units.custom_defined) == 5
 
-        assert 'uF' not in model.units.custom_defined
-        model.add_unit('uF', [{'units': 'farad', 'prefix': 'micro'}])
-        assert len(model.units.custom_defined) == 6
-        assert 'uF' in model.units.custom_defined
-
-        # repeated in TestModelAPI
-        # Base units can't have attributes
-        with pytest.raises(ValueError, match='can not be defined with unit attributes'):
-            model.add_unit('unlikely_unit_name', [{'units': 'millivolt'}], base_units=True)
-        assert len(model.units.custom_defined) == 6
+        assert not model.units.is_unit_defined('uF')
+        model.add_unit('uF', 'farad * 1e6')
+        assert model.units.is_unit_defined('uF')
+    '''
 
     def test_add_variable(self, local_model):
         """ Tests the Model.add_variable() method. """
