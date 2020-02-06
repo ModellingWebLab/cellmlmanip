@@ -486,12 +486,6 @@ class Model(object):
             defn = self._var_definition_map.get(symbol)
         return defn
 
-    def get_units(self, name):
-        """
-        Looks up and returns a pint `Unit` object with the given name.
-        """
-        return self.units.get_unit(name)
-
     @property
     def graph(self):
         """ A ``networkx.DiGraph`` containing the model equations. """
