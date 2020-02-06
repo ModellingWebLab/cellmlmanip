@@ -141,9 +141,11 @@ class TestEvaluateUnits(object):
         assert store.evaluate_units(a - d) == store.get_unit('meter')
         assert store.evaluate_units(sp.Abs(-2 * y)) == store.get_unit('volt')
         assert store.evaluate_units(sp.floor(x)) == store.get_unit('kilogram')
+        assert store.evaluate_units(sp.floor(_1)) == store.get_unit('kelvin')
         assert store.evaluate_units(sp.floor(12.5) * a) == store.get_unit('meter')
         assert store.evaluate_units(sp.ceiling(x)) == store.get_unit('kilogram')
         assert store.evaluate_units(sp.ceiling(12.6) * b) == store.get_unit('second')
+        assert store.evaluate_units(sp.ceiling(_1)) == store.get_unit('kelvin')
 
         # functions were all args should have same unit
         # and this is the unit that will be returned
