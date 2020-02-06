@@ -257,8 +257,6 @@ class UnitStore(object):
         :param unit: a ``Unit`` to convert it to.
         :returns: the converted ``Quantity``.
         """
-        # TODO CHECK IF THESE ARE QUANTITIES OR UNITS
-
         assert isinstance(quantity, self._registry.Quantity)
         assert isinstance(unit, self._registry.Unit)
         return quantity.to(unit)
