@@ -29,6 +29,13 @@ class TestUnits(object):
         unitstore.add_unit('u2', 'dimensionless * 3')
         assert unitstore.is_defined('u2')
 
+        # SI prefixes are allowed
+        unitstore.add_unit('ms', 'milliu1')
+
+        # Make sure 1e6 doesn't get a prefix in it
+        unitstore.add_unit('Ms', 'second * 1e6')
+        unitstore.add_unit('ks', 'second * 1.e3')
+
         # Duplicate unit definition
         with pytest.raises(ValueError):
             unitstore.add_unit('u1', 'second * 2')
@@ -69,7 +76,7 @@ class TestUnits(object):
 
         # Get CellML unit
         store = UnitStore()
-        assert str(store.get_unit('liter')) == 'liter'
+        assert str(store.get_unit('liter')).endswith('liter')
         assert isinstance(store.get_unit('ampere'), store.Unit)
 
         # Get user unit

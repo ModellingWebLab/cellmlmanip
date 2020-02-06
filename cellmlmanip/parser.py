@@ -152,8 +152,8 @@ class Parser(object):
         units_elements = model.findall(Parser.with_ns(XmlNs.CELLML, 'units'))
 
         # get list of built-in cellml units
-        from cellmlmanip.units import CELLML_UNITS
-        units_found = set(CELLML_UNITS)
+        from cellmlmanip.units import _CELLML_UNITS
+        units_found = set(_CELLML_UNITS)
 
         # get all the units defined in the cellml model
         definitions_to_add = OrderedDict()

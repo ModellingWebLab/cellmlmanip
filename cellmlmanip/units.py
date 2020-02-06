@@ -3,6 +3,7 @@ import logging
 import math
 import numbers
 import os
+import re
 from functools import reduce
 from operator import mul
 
@@ -19,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 # The full list of supported CellML units
 # Taken from https://www.cellml.org/specifications/cellml_1.1/#sec_units
-CELLML_UNITS = {
+_CELLML_UNITS = {
     # Base SI units
     'ampere', 'candela', 'kelvin', 'kilogram', 'meter', 'mole', 'second',
 
@@ -36,7 +37,7 @@ CELLML_UNITS = {
     'metre', 'litre',
 }
 
-TRIG_FUNCTIONS = {
+_TRIG_FUNCTIONS = {
     'arccos', 'arccosh',
     'arccot', 'arccoth',
     'arccsc', 'arccsch',
@@ -50,6 +51,16 @@ TRIG_FUNCTIONS = {
     'sin', 'sinh',
     'tan', 'tanh',
 }
+
+
+# Regex to find unit names in expressions
+# It says (1) not preceded by a number of period, (2) then at least one ascii letter, (3) then numbers or _ allowed too
+_WORD = re.compile('(?<![0-9.])[a-zA-Z_]+[a-zA-Z0-9_]*')
+
+# List of prefixes, initially in order of expected frequency of appearance
+_PREFIXES = [
+    'micro', 'milli', 'centi', 'nano', 'kilo', 'mega', 'giga', 'pico',
+    'deci', 'yocto', 'zepto', 'atto', 'femto', 'deca', 'deka', 'hecto', 'tera', 'peta', 'exa', 'zetta', 'yotta']
 
 
 class UnitError(Exception):
@@ -178,7 +189,8 @@ class UnitStore(object):
 
         # Assign this unit store a unique id, to keep its namespace separated from any other unit stores sharing the
         # same registry.
-        self._id = 'store' + str(UnitStore._next_id) + '_'
+        self._id = 'store' + str(UnitStore._next_id)
+        self._prefix = self._id + '_'
         UnitStore._next_id += 1
 
         # Get unit registry
@@ -191,7 +203,7 @@ class UnitStore(object):
 
         # Names of units known to this unit store (including CellML predefined ones). Stored as the user sees them, so
         # without the prefix to make them unique in the registry.
-        self._known_units = set(CELLML_UNITS)
+        self._known_units = set(_CELLML_UNITS)
 
         # Create a unit calculator
         self._calculator = UnitCalculator(self)
@@ -211,20 +223,24 @@ class UnitStore(object):
         :param name: A string name. Names must be unique and cannot overlap with CellML predefined units.
         :param expression: An expression to define the new unit.
         """
-        if name in CELLML_UNITS:
+        if name in _CELLML_UNITS:
             raise ValueError('Cannot redefine CellML unit <%s>.' % name)
         if name in self._known_units:
             raise ValueError('Cannot redefine unit <%s>.' % name)
 
-        # TODO ADD NAME PREFIX, RUN REGEX ON EXPRESSION
+        # Add prefix to name
+        qname = self._prefix_name(name)
+
+        # Add prefixes inside expression
+        expression = _WORD.sub(self._prefix_expression, expression)
 
         # Dimensionless units can't be created using a string expression.
         # To test if this is a dimensionless unit, parse the string as a Quantity and check if it's dimensionless
         quantity = self._registry.parse_expression(expression)
         if quantity.units == self._registry.dimensionless:
-            definition = UnitDefinition(name, '', (), ScaleConverter(quantity.to(self._registry.dimensionless)))
+            definition = UnitDefinition(qname, '', (), ScaleConverter(quantity.to(self._registry.dimensionless)))
         else:
-            definition = name + '=' + expression
+            definition = qname + '=' + expression
 
         # Add to registry
         self._registry.define(definition)
@@ -237,15 +253,16 @@ class UnitStore(object):
 
         :param name: A string name.
         """
-        if name in CELLML_UNITS:
+        if name in _CELLML_UNITS:
             raise ValueError('Cannot redefine CellML unit <%s>.' % name)
         if name in self._known_units:
             raise ValueError('Cannot redefine unit <%s>.' % name)
 
-        # TODO ADD NAME PREFIX
+        # Add prefix to name
+        qname = self._prefix_name(name)
 
         # Add to registry
-        self._registry.define(name + '=[' + name + ']')
+        self._registry.define(qname + '=[' + qname + ']')
 
         # Add original name to list of known units
         self._known_units.add(name)
@@ -271,9 +288,7 @@ class UnitStore(object):
         if name not in self._known_units:
             raise KeyError('Unknown unit ' + str(name) + '.')
 
-        # TODO ADD PREFIX
-
-        return getattr(self._registry, name)
+        return getattr(self._registry, self._prefix_name(name))
 
     def is_defined(self, name):
         """Check if a unit with the given ``name`` exists."""
@@ -317,12 +332,40 @@ class UnitStore(object):
         conversion_factor = self.convert(1 * from_unit, to_unit).magnitude
         return 1.0 if math.isclose(conversion_factor, 1.0) else conversion_factor
 
+    def _prefix_expression(self, match):
+        """Takes a regex Match object from _WORD, and adds a prefix (UnitStore id), taking SI prefixes into account."""
+        return self._prefix_name(match.group(0))
+
+    def _prefix_name(self, name):
+        """Adds a prefix to a unit name."""
+
+        # Note: CellML units don't get prefixes. This is OK because they're the same in any model.
+        # It's good because (1) it stops us having to redefine all cellml units, (2) it means 'dimensionless' is still
+        # treated in a special way (dimensionless * meter = meter, but special_dimensionless * meter isn't simplified).
+        if name in _CELLML_UNITS:
+            return name
+
+        # Don't prefix twice
+        if name.startswith(self._prefix):
+            return name
+
+        # Handle SI prefixes
+        for p in _PREFIXES:
+            if name.startswith(p):
+                a, b = name[:len(p)], name[len(p):]
+                if b.startswith(self._prefix):
+                    return name
+                return a + self._prefix + b
+
+        return self._prefix + name
+
     def show_base_units(self, unit):
         """
         Returns a string show the base units of the given unit.
         """
         base = self._registry.get_base_units(unit)
-        return str(base[0]) + ' ' + str(base[1])
+        text = str(base[0]) + ' ' + str(base[1])
+        return text.replace(self._prefix, '')
 
 
 class UnitCalculator(object):
@@ -334,6 +377,7 @@ class UnitCalculator(object):
     :param unit_store: A :class:`UnitStore`.
     """
     def __init__(self, unit_store):
+        self._store = unit_store
         self._registry = unit_store._registry
 
     def _check_unit_of_quantities_equal(self, list_of_quantities):
@@ -381,6 +425,7 @@ class UnitCalculator(object):
         # and so crashes rather than hit the catch at the end that should catch anything we dont support
         if expr.is_Matrix:
             raise UnexpectedMathUnitsError(expr)
+
         # need to work out units of each child atom of the expression
         # piecewise and derivatives are special cases
         if expr.is_Piecewise:
@@ -397,10 +442,8 @@ class UnitCalculator(object):
             for arg in expr.args:
                 quantity_per_arg.append(self.traverse(arg))
 
-        # if there was an error determining the quantity of an argument quit now
-        # we shouldn't ever get here as an exception should already be thrown
-        if None in quantity_per_arg:  # pragma: no cover
-            raise UnitsCannotBeCalculatedError(str(expr))
+        # Dimensionless is used a lot
+        dimensionless = self._store.get_unit('dimensionless')
 
         # Terminal atoms in expressions (Integers and Rationals are used by Sympy itself)
         # I have gone through any flag that sympy might use
@@ -420,16 +463,16 @@ class UnitCalculator(object):
                     # otherwise, keep the symbol
                     return self._registry.Quantity(expr, expr.units)
             else:   # pragma: no cover
-                # An unexpected type of symbol: print anyway for debugging
-                return str(expr)
+                raise RuntimeError('Unexpected symbol type: ' + str(expr))
+
         elif expr == sympy.oo:
-            return math.inf * self._registry.dimensionless
+            return math.inf * dimensionless
 
         elif expr == sympy.nan:
-            return math.nan * self._registry.dimensionless
+            return math.nan * dimensionless
 
         elif expr.is_Number:
-            units = self._registry.dimensionless
+            units = dimensionless
             if expr.is_Integer:
                 out = int(expr) * units
             elif expr.is_Rational:
@@ -454,7 +497,7 @@ class UnitCalculator(object):
             exponent = quantity_per_arg[1]
 
             # exponent must be dimensionless
-            if exponent.units != self._registry.dimensionless:
+            if exponent.units != dimensionless:
                 logger.critical('Exponent of Pow is not dimensionless %s', expr)
                 raise InputArgumentsMustBeDimensionlessError(str(expr), 'second')
 
@@ -465,9 +508,8 @@ class UnitCalculator(object):
                 raise InputArgumentMustBeNumberError(str(expr), 'second')
 
             # if base is dimensionless, return is dimensionless
-            if base.units == self._registry.dimensionless:
-                return self._registry.Quantity(
-                    base.magnitude**exponent.magnitude, self._registry.dimensionless)
+            if base.units == dimensionless:
+                return self._registry.Quantity(base.magnitude**exponent.magnitude, dimensionless)
 
             # base is not dimensionless, raise quantity (magnitude and unit) to power
             return base ** exponent
@@ -534,11 +576,11 @@ class UnitCalculator(object):
                 return math.ceil(quantity_per_arg[0].magnitude) * quantity_per_arg[0].units
             elif expr.func == sympy.log:
                 if self._is_dimensionless(quantity_per_arg[0]):
-                    return 1 * self._registry.dimensionless
+                    return 1 * dimensionless
                 raise InputArgumentsMustBeDimensionlessError(str(expr))
             elif expr.func == sympy.factorial:
                 if self._is_dimensionless(quantity_per_arg[0]):
-                    return 1 * self._registry.dimensionless
+                    return 1 * dimensionless
                 raise InputArgumentsMustBeDimensionlessError(str(expr))
             elif expr.func == sympy.exp:
                 # requires operands to have units of dimensionless.
@@ -547,26 +589,25 @@ class UnitCalculator(object):
                     # is the operand is a float
                     if isinstance(quantity_per_arg[0].magnitude, float):
                         # return the exponential of the float as dimensionless
-                        return self._registry.Quantity(
-                            math.exp(quantity_per_arg[0].magnitude), self._registry.dimensionless)
+                        return self._registry.Quantity(math.exp(quantity_per_arg[0].magnitude), dimensionless)
 
                     # magnitude contains an unresolved symbol, we lose it here!
                     # we don't lose it - the unit will be dimensionless - we are just not able to
                     # determine the magnitude of the result
-                    return 1 * self._registry.dimensionless
+                    return 1 * dimensionless
 
                 logger.critical('Exp operand is not dimensionless: %s', expr)
                 raise InputArgumentsMustBeDimensionlessError(str(expr))
             # trig. function on any dimensionless operand is dimensionless
-            elif str(expr.func) in TRIG_FUNCTIONS:
+            elif str(expr.func) in _TRIG_FUNCTIONS:
                 if self._is_dimensionless(quantity_per_arg[0]):
-                    return 1 * self._registry.dimensionless
+                    return 1 * dimensionless
                 raise InputArgumentsMustBeDimensionlessError(str(expr))
 
             # if the function has exactly one dimensionless argument
             if len(quantity_per_arg) == 1 and self._is_dimensionless(quantity_per_arg[0]):
                 # assume the result is dimensionless
-                return 1 * self._registry.dimensionless
+                return 1 * dimensionless
 
         elif expr.is_Derivative:
             out = quantity_per_arg[0] / quantity_per_arg[1]
@@ -574,9 +615,9 @@ class UnitCalculator(object):
 
         # constants in cellml that are all specified as dimensionless
         elif expr == sympy.pi:
-            return math.pi * self._registry.dimensionless
+            return math.pi * dimensionless
         elif expr == sympy.E:
-            return math.e * self._registry.dimensionless
+            return math.e * dimensionless
 
         raise UnexpectedMathUnitsError(str(expr))
 
