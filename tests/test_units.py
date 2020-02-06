@@ -50,14 +50,14 @@ class TestUnits(object):
 
         # Add ordinary unit
         unitstore = UnitStore()
-        assert (unitstore.is_unit_defined('u1') is False)
+        assert (unitstore.is_defined('u1') is False)
         unitstore.add_unit('u1', 'second * 2')
-        assert (unitstore.is_unit_defined('u1') is True)
+        assert (unitstore.is_defined('u1') is True)
 
         # Add dimensionless unit
-        assert (unitstore.is_unit_defined('u2') is False)
+        assert (unitstore.is_defined('u2') is False)
         unitstore.add_unit('u2', 'dimensionless * 3')
-        assert (unitstore.is_unit_defined('u2') is True)
+        assert (unitstore.is_defined('u2') is True)
 
         # Duplicate unit definition
         with pytest.raises(ValueError):
@@ -79,7 +79,7 @@ class TestUnits(object):
 
         # Units defined in the test CellML <model>:
         for name in TestUnits.test_definitions.keys():
-            assert unit_store.is_unit_defined(name)
+            assert unit_store.is_defined(name)
 
         # Custom units defined in CellML example
         '''

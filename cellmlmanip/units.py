@@ -249,10 +249,6 @@ class UnitStore(object):
         # Add original name to list of known units
         self._known_units.add(name)
 
-    def is_unit_defined(self, name):
-        """Check if a unit with the given ``name`` exists."""
-        return name in self._known_units
-
     def get_unit(self, name):
         """Retrieves the ``Unit`` object with the given name.
 
@@ -260,16 +256,18 @@ class UnitStore(object):
         :returns: A ``Unit`` object.
         :raises KeyError: If the unit is not defined in this unit store.
         """
-        # TODO LOOK UP IN UNIT MAPPING FIRST
+        print(name, self._known_units, name in self._known_units)
+
+        if name not in self._known_units:
+            raise KeyError('Unknown unit ' + str(name) + '.')
 
         # TODO ADD PREFIX
 
-        try:
-            # TODO: Look up in unit mapping, then obtain with getattr(). Don't use parse expression because that accepts
-            # anything
-            return self._registry.parse_expression(name).units
-        except pint.UndefinedUnitError:
-            raise KeyError('Cannot find unit <%s> in unit registry.' % name)
+        return getattr(self._registry, name)
+
+    def is_defined(self, name):
+        """Check if a unit with the given ``name`` exists."""
+        return name in self._known_units
 
     def is_equal(self, unit1, unit2):
         """Compares whether two units are equivalent.
@@ -283,7 +281,7 @@ class UnitStore(object):
         base1 = self._registry.get_base_units(unit1)
         base2 = self._registry.get_base_units(unit2)
         is_equal = base1[1] == base2[1] and math.isclose(base1[0], base2[0])
-        logger.debug('is_unit_equal(%s, %s) ⟶ %s', unit1, unit2, is_equal)
+        logger.debug('is_equal(%s, %s) ⟶ %s', unit1, unit2, is_equal)
         return is_equal
 
     def convert_to(self, quantity, unit):
@@ -304,7 +302,7 @@ class UnitStore(object):
         Evaluates and returns the ``Unit`` a Sympy expression is in.
 
         :param expr: the Sympy expression on which to evaluate units
-        :returns: Unit object representing the units of the epression
+        :returns: ``Unit`` object representing the units of the expression
         :raises KeyError: if variable not found in metadata
         :raises UnitsCannotBeCalculatedError: if expression just cannot calculate
         :raises UnexpectedMathUnitsError: if math is not supported
@@ -313,10 +311,8 @@ class UnitStore(object):
         :raises InputArgumentsInvalidUnitsError: if input arguments should have same units
         :raises InputArgumentMustBeNumberError: if one of input arguments should be a number
         """
-        # TODO FIX DOCSTRING. WHAT IS A LAMBDIFIED STIRNG????
 
         found = self._calculator.traverse(expr).units
-
         logger.debug('evaluate_units(%s) ⟶ %s', expr, found)
         return found
 

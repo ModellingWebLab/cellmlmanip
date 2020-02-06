@@ -485,7 +485,7 @@ class TestModelFunctions():
         m.get_units('volt')
 
         # Non-existent unit
-        with pytest.raises(KeyError, match='Cannot find unit'):
+        with pytest.raises(KeyError, match='Unknown unit'):
             m.get_units('towel')
 
     def test_units(self, simple_units_model):
