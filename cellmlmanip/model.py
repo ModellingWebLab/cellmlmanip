@@ -121,7 +121,7 @@ class Model(object):
         Creates and returns a :class:`NumberDummy` to represent a number with units in sympy expressions.
 
         :param number: A number (anything convertible to float).
-        :param units: A string representation of a unit or a ``Unit`` object.
+        :param units: A string unit name or a ``Unit`` object.
 
         :return: A :class:`NumberDummy` object.
         """
