@@ -74,24 +74,6 @@ class Model(object):
         # Map from VariableDummy to defining equation, where the variable is defined by an ODE
         self._ode_definition_map = {}
 
-    '''
-    def add_unit(self, name, expression):
-        """
-        Adds a unit of measurement to this model, with a given ``name`` and list of ``attributes``.
-
-        :param name: A string name.
-        :param attributes: An optional list of dictionaries containing unit attributes. See
-            :meth:`UnitStore.add_custom_unit()`.
-        :base_units: Set to ``True`` to define a new base unit.
-        """
-        if base_units:
-            if attributes:
-                raise ValueError('Base units can not be defined with unit attributes.')
-            self.units.add_base_unit(name)
-        else:
-            self.units.add_custom_unit(name, attributes)
-    '''
-
     def add_equation(self, equation, check_duplicates=True):
         """
         Adds an equation to this model.
