@@ -604,7 +604,7 @@ class Model(object):
             dummies = equation.rhs.atoms(sympy.Dummy)
 
             # Get any dummy symbols which are placeholders for numbers
-            subs_dict = {d: float(d) for d in dummies if isinstance(d, NumberDummy)}
+            subs_dict = {d: sympy.Float(d.value) for d in dummies if isinstance(d, NumberDummy)}
 
             # And replace the equation with one with the rhs subbed with sympy.Number objects
             if subs_dict:
