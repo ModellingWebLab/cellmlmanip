@@ -212,8 +212,6 @@ class TestModelFunctions():
         # v1 with simplification: [v1=0] (simplified)
         eqs = m.get_equations_for([v1])
         print(type(eqs[0].rhs))
-        print(type(e_v1.rhs))
-        print(type(sp.Float(0,17)))
         assert eqs[0] == e_v1
         assert len(eqs) == 1
 
