@@ -492,6 +492,18 @@ class Model(object):
         """
         return self.units.get_quantity(name)
 
+    def get_definition(self, symbol):
+        """Get the equation (if any) defining the given variable.
+
+        :param symbol: the variable to look up. If this appears as the LHS of a straight assignment,
+            or the state variable in an ODE, the corresponding equation will be returned.
+        :returns: a Sympy equation, or ``None`` if the variable is not defined by an equation.
+        """
+        defn = self._ode_definition_map.get(symbol)
+        if defn is None:
+            defn = self._var_definition_map.get(symbol)
+        return defn
+
     @property
     def graph(self):
         """ A ``networkx.DiGraph`` containing the model equations. """
