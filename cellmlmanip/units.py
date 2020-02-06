@@ -10,7 +10,6 @@ import pint
 import sympy
 from pint.converters import ScaleConverter
 from pint.definitions import UnitDefinition
-from sympy.printing.lambdarepr import LambdaPrinter
 
 from . import model
 
@@ -326,6 +325,7 @@ class UnitStore(object):
         """
         base = self._registry.get_base_units(unit)
         return str(base[0]) + ' ' + str(base[1])
+
 
 class UnitCalculator(object):
     """

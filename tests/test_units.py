@@ -1,5 +1,3 @@
-from collections import OrderedDict
-
 import pytest
 import sympy as sp
 
@@ -162,9 +160,8 @@ class TestEvaluateUnits(object):
             assert err.args[0] == 'floor takes exactly 1 argument (2 given)'
 
         # special case - piecewise
-        assert store.evaluate_units(sp.Piecewise((a, x < 1),
-                                                     (a + a, x > 1),
-                                                     (3 * a, True))) == store.get_unit('meter')
+        m = store.evaluate_units(sp.Piecewise((a, x < 1), (a + a, x > 1), (3 * a, True)))
+        assert m == store.get_unit('meter')
         # fail special case -piecewise
         with pytest.raises(InputArgumentsInvalidUnitsError):
             store.evaluate_units(sp.Piecewise((a, x < 1), (b, x > 1), (c, True)))

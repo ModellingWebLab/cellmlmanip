@@ -140,7 +140,8 @@ class TestParser(object):
 
     @pytest.mark.skipif('CMLM_TEST_PRINT' not in os.environ, reason="print eq on demand")
     def test_print_eq(self, simple_ode_model):
-        print()
+        """Prints a models equations to screen, including units."""
+        from sympy.printing.lambdarepr import LambdaPrinter
 
         class ExpressionWithUnitPrinter(LambdaPrinter):
             """Sympy expression printer to print expressions with unit information."""
@@ -159,6 +160,7 @@ class TestParser(object):
         printer = ExpressionWithUnitPrinter()
 
         # show equations
+        print()
         for index, equation in enumerate(simple_ode_model.equations):
             print('%3d. Eq(%s, %s)' % (index + 1,
                                        printer.doprint(equation.lhs),
