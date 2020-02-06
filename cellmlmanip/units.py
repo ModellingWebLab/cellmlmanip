@@ -256,8 +256,6 @@ class UnitStore(object):
         :returns: A ``Unit`` object.
         :raises KeyError: If the unit is not defined in this unit store.
         """
-        print(name, self._known_units, name in self._known_units)
-
         if name not in self._known_units:
             raise KeyError('Unknown unit ' + str(name) + '.')
 

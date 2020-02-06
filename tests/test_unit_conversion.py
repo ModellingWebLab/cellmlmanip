@@ -210,8 +210,8 @@ class TestUnitConversion:
                 sv1_orig_deriv = 1{mV_per_ms}
                 ode(sv1_converted, time) = 0.001 * sv1_orig_deriv
         """
-        mV_unit = local_model.get_units('mV')
-        volt_unit = local_model.get_units('volt')
+        mV_unit = local_model.units.get_unit('mV')
+        volt_unit = local_model.units.get_unit('volt')
         original_var = local_model.get_symbol_by_name('env_ode$sv1')
 
         assert self._original_state_local_model(local_model)
@@ -269,8 +269,8 @@ class TestUnitConversion:
                 sv1_orig_deriv = 1{mV_per_ms}
                 ode(sv1, time_converted) = 1000 * sv1_orig_deriv
         """
-        ms_unit = local_model.get_units('ms')
-        second_unit = local_model.get_units('second')
+        ms_unit = local_model.units.get_unit('ms')
+        second_unit = local_model.units.get_unit('second')
         original_var = local_model.get_symbol_by_name('environment$time')
 
         assert self._original_state_local_model(local_model)
@@ -327,8 +327,8 @@ class TestUnitConversion:
                 x = 1000* x_converted;
                 y = 1{dimensionless}/x;
         """
-        pA_unit = literals_model.get_units('pA')
-        nA_unit = literals_model.get_units('nA')
+        pA_unit = literals_model.units.get_unit('pA')
+        nA_unit = literals_model.units.get_unit('nA')
         original_var = literals_model.get_symbol_by_name('env_ode$x')
 
         assert self._original_state_literals_model(literals_model)
@@ -390,8 +390,8 @@ class TestUnitConversion:
                 y_orig_deriv = 2{mV_per_ms}
                 ode(y, time_converted) = 1000 * y_orig_deriv
         """
-        ms_unit = multiode_freevar_model.get_units('ms')
-        second_unit = multiode_freevar_model.get_units('second')
+        ms_unit = multiode_freevar_model.units.get_unit('ms')
+        second_unit = multiode_freevar_model.units.get_unit('second')
         original_var = multiode_freevar_model.get_symbol_by_name('environment$time')
 
         assert self._original_state_multiode_freevar(multiode_freevar_model)
@@ -461,8 +461,8 @@ class TestUnitConversion:
                 ode(sv1_converted, time) = 0.001 * sv1_orig_deriv
                 x = 1{mV_per_ms} + 3 * sv1_orig_deriv
         """
-        mV_unit = multiode_model.get_units('mV')
-        volt_unit = multiode_model.get_units('volt')
+        mV_unit = multiode_model.units.get_unit('mV')
+        volt_unit = multiode_model.units.get_unit('volt')
         original_var = multiode_model.get_symbol_by_name('env_ode$sv1')
 
         assert self._original_state_multiode_model(multiode_model)
@@ -515,8 +515,8 @@ class TestUnitConversion:
                 ode(sv1, time_converted) = 1000 * sv1_orig_deriv
                 x = 1 + 3 * sv1_orig_deriv
         """
-        ms_unit = multiode_model.get_units('ms')
-        second_unit = multiode_model.get_units('second')
+        ms_unit = multiode_model.units.get_unit('ms')
+        second_unit = multiode_model.units.get_unit('second')
         original_var = multiode_model.get_symbol_by_name('environment$time')
 
         old_state_symbols = multiode_model.get_state_symbols()
@@ -574,8 +574,8 @@ class TestUnitConversion:
                 y = 1{dimensionless}/x;
                 x_converted = 0.001 * x
         """
-        pA_unit = literals_model.get_units('pA')
-        nA_unit = literals_model.get_units('nA')
+        pA_unit = literals_model.units.get_unit('pA')
+        nA_unit = literals_model.units.get_unit('nA')
         original_var = literals_model.get_symbol_by_name('env_ode$x')
 
         assert self._original_state_literals_model(literals_model)
@@ -633,8 +633,8 @@ class TestUnitConversion:
                 ode(sv1, time) = 1{mV_per_ms};
                 sv1_converted = sv1 / 1000
         """
-        mV_unit = local_model.get_units('mV')
-        volt_unit = local_model.get_units('volt')
+        mV_unit = local_model.units.get_unit('mV')
+        volt_unit = local_model.units.get_unit('volt')
         original_var = local_model.get_symbol_by_name('env_ode$sv1')
 
         assert self._original_state_local_model(local_model)
@@ -684,8 +684,8 @@ class TestUnitConversion:
                 time_converted = 0.001 * time
         """
 
-        ms_unit = local_model.get_units('ms')
-        second_unit = local_model.get_units('second')
+        ms_unit = local_model.units.get_unit('ms')
+        second_unit = local_model.units.get_unit('second')
         original_var = local_model.get_symbol_by_name('environment$time')
 
         assert self._original_state_local_model(local_model)
@@ -716,10 +716,10 @@ class TestUnitConversion:
     def test_convert_variable_invalid_arguments(self, local_model):
         """ Tests the Model.convert_variable() function when involid arguments are passed.
         """
-        unit = local_model.get_units('second')
+        unit = local_model.units.get_unit('second')
         variable = local_model.get_free_variable_symbol()
         direction = DataDirectionFlow.INPUT
-        bad_unit = local_model.get_units('mV')
+        bad_unit = local_model.units.get_unit('mV')
 
         # arguments wrong types
         with pytest.raises(AssertionError):
@@ -748,7 +748,7 @@ class TestUnitConversion:
     def test_convert_same_unit_different_name(self, br_model):
         """ Tests the Model.convert_variable() function when conversion to current unit under a different name."""
         br_model.units.add_unit('millimolar', 'mole / 1000 / litre')
-        unit = br_model.get_units('concentration_units')
+        unit = br_model.units.get_unit('concentration_units')
         variable = br_model.get_symbol_by_ontology_term(shared.OXMETA, "cytosolic_calcium_concentration")
         direction = DataDirectionFlow.INPUT
         assert br_model.convert_variable(variable, unit, direction) == variable
@@ -772,7 +772,7 @@ class TestUnitConversion:
             assert silly_names.get_free_variable_symbol() == symbol_t
             return True
 
-        volt_unit = silly_names.get_units('volt')
+        volt_unit = silly_names.units.get_unit('volt')
         original_var = silly_names.get_symbol_by_name('env_ode$sv1')
 
         assert test_original_state(silly_names)

@@ -492,12 +492,6 @@ class Model(object):
                     ontology_terms.append(uri_parts[-1])
         return ontology_terms
 
-    def get_units(self, name):
-        """
-        Looks up and returns a pint `Unit` object with the given name.
-        """
-        return self.units.get_unit(name)
-
     def get_definition(self, symbol):
         """Get the equation (if any) defining the given variable.
 
@@ -509,6 +503,12 @@ class Model(object):
         if defn is None:
             defn = self._var_definition_map.get(symbol)
         return defn
+
+    def get_units(self, name):
+        """
+        Looks up and returns a pint `Unit` object with the given name.
+        """
+        return self.units.get_unit(name)
 
     @property
     def graph(self):

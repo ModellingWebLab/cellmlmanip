@@ -50,14 +50,15 @@ class TestUnits(object):
 
         # Add ordinary unit
         unitstore = UnitStore()
-        assert (unitstore.is_defined('u1') is False)
+        assert not unitstore.is_defined('u1')
         unitstore.add_unit('u1', 'second * 2')
-        assert (unitstore.is_defined('u1') is True)
+        assert unitstore.is_defined('u1')
+        assert unitstore.get_unit('u1') == unitstore.get_unit('second') * 2
 
         # Add dimensionless unit
-        assert (unitstore.is_defined('u2') is False)
+        assert not unitstore.is_defined('u2')
         unitstore.add_unit('u2', 'dimensionless * 3')
-        assert (unitstore.is_defined('u2') is True)
+        assert unitstore.is_defined('u2')
 
         # Duplicate unit definition
         with pytest.raises(ValueError):
@@ -67,6 +68,29 @@ class TestUnits(object):
         with pytest.raises(ValueError):
             unitstore.add_unit('second', 'second * 2')
 
+    def test_add_base_unit(self):
+        """Tests UnitStore.add_base_unit()."""
+
+        unitstore = UnitStore()
+        assert not unitstore.is_defined('uu')
+        unitstore.add_base_unit('uu')
+        assert unitstore.is_defined('uu')
+        assert unitstore.show_base_units(unitstore.get_unit('uu')) == '1.0 uu'
+
+    def test_get_unit(self):
+        """Tests UnitStore.get_unit()."""
+
+        # Get CellML unit
+        store = UnitStore()
+        assert str(store.get_unit('liter')) == 'liter'
+
+        # Get user unit
+        store.add_unit('x', 'meter / second')
+        assert str(store.get_unit('x') == 'x')
+
+        # Non-existent unit
+        with pytest.raises(KeyError, match='Unknown unit'):
+            store.get_unit('towel')
 
 
 

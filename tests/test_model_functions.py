@@ -162,7 +162,7 @@ class TestModelFunctions():
         """
 
         m = Model('simplification')
-        u = m.get_units('dimensionless')
+        u = m.units.get_unit('dimensionless')
         t = m.add_variable('t', u)
         y1 = m.add_variable('y1', u, initial_value=10)
         y2 = m.add_variable('y2', u, initial_value=20)
@@ -476,17 +476,6 @@ class TestModelFunctions():
 
     ###################################################################
     # Unit related functionality
-
-    def test_get_units(self):
-        """ Tests Model.get_units(). """
-
-        # Get predefined unit
-        m = Model('test')
-        m.get_units('volt')
-
-        # Non-existent unit
-        with pytest.raises(KeyError, match='Unknown unit'):
-            m.get_units('towel')
 
     def test_units(self, simple_units_model):
         """ Tests units read and calculated from a model. """
