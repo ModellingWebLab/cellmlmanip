@@ -29,8 +29,9 @@ class TestUnits(object):
         unitstore.add_unit('u2', 'dimensionless * 3')
         assert unitstore.is_defined('u2')
 
-        # SI prefixes are allowed
+        # SI prefixes are allowed on user and CellML units
         unitstore.add_unit('ms', 'milliu1')
+        unitstore.add_unit('mm', 'millimeter')
 
         # Make sure 1e6 doesn't get a prefix in it
         unitstore.add_unit('Ms', 'second * 1e6')
@@ -104,6 +105,24 @@ class TestUnits(object):
         store.add_unit('ms', 'second / 1000')
         assert store.get_conversion_factor(store.get_unit('second'), store.get_unit('ms')) == 0.001
         assert store.get_conversion_factor(store.get_unit('ms'), store.get_unit('second')) == 1000
+
+    def test_shared_registry(self):
+        """ Tests sharing a unit registry. """
+
+        a = UnitStore()
+        b = UnitStore(a)
+
+        a.add_unit('x', 'meter')
+        b.add_unit('y', 'millimeter')
+        with pytest.raises(KeyError):
+            a.get_unit('y')
+        with pytest.raises(KeyError):
+            b.get_unit('x')
+
+        x = a.get_unit('x')
+        y = b.get_unit('y')
+        assert a.get_conversion_factor(x, y) == 0.001
+        assert b.get_conversion_factor(x, y) == 0.001
 
 
 class TestEvaluateUnits(object):

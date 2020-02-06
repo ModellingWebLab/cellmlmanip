@@ -339,21 +339,21 @@ class UnitStore(object):
     def _prefix_name(self, name):
         """Adds a prefix to a unit name."""
 
+        # Don't prefix twice
+        if name.startswith(self._prefix):
+            return name
+
         # Note: CellML units don't get prefixes. This is OK because they're the same in any model.
         # It's good because (1) it stops us having to redefine all cellml units, (2) it means 'dimensionless' is still
         # treated in a special way (dimensionless * meter = meter, but special_dimensionless * meter isn't simplified).
         if name in _CELLML_UNITS:
             return name
 
-        # Don't prefix twice
-        if name.startswith(self._prefix):
-            return name
-
         # Handle SI prefixes
         for p in _PREFIXES:
             if name.startswith(p):
                 a, b = name[:len(p)], name[len(p):]
-                if b.startswith(self._prefix):
+                if b.startswith(self._prefix) or b in _CELLML_UNITS:
                     return name
                 return a + self._prefix + b
 
