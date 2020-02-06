@@ -53,6 +53,7 @@ class TestUnits(object):
         # CellML unit redefinition
         with pytest.raises(ValueError):
             unitstore.add_base_unit('second')
+
     def test_convert(self):
         """Tests UnitStore.convert()."""
 
