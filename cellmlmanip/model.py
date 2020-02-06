@@ -16,6 +16,9 @@ logger = logging.getLogger(__name__)
 # Delimiter for variables name in Sympy expressions: <component><delimiter><name>
 SYMPY_SYMBOL_DELIMITER = '$'
 
+# Float precision to use when creating sympy.Float objects
+FLOAT_PRECISION = 17
+
 
 class DataDirectionFlow(Enum):
     """ Direction of data flow for converting units"""
@@ -592,7 +595,7 @@ class Model(object):
             dummies = equation.rhs.atoms(sympy.Dummy)
 
             # Get any dummy symbols which are placeholders for numbers
-            subs_dict = {d: sympy.Float(d.value) for d in dummies if isinstance(d, NumberDummy)}
+            subs_dict = {d: sympy.Float(d.value, FLOAT_PRECISION) for d in dummies if isinstance(d, NumberDummy)}
 
             # And replace the equation with one with the rhs subbed with sympy.Number objects
             if subs_dict:
