@@ -30,7 +30,6 @@ class TestModelFunctions():
     ##########################################################
     # check equation graph property
 
-    # also tested in test_hodgkin
     def test_graph_property(self, basic_model):
         """ Tests that the graph property for Model has been constructed correctly. """
 
@@ -465,7 +464,7 @@ class TestModelFunctions():
         assert len(model.variables()) == 4
         assert model.get_symbol_by_name('newvar')
 
-        # Repeatd in TestModelAPI
+        # Repeated in TestModelAPI
         # Variable can't be added twice
         unit = 'mV'
         model.add_variable(name='varvar1', units=unit)
@@ -488,8 +487,9 @@ class TestModelFunctions():
         equation = simple_units_model.get_equations_for([symbol_b])
         assert simple_units_model.units.evaluate_units(equation[1].lhs) == 'per_ms'
         assert simple_units_model.units.evaluate_units(equation[1].rhs) == '1 / ms'
-        assert simple_units_model.units.is_equal(simple_units_model.units.evaluate_units(equation[1].lhs),
-                                                 simple_units_model.units.evaluate_units(equation[1].rhs))
+        assert simple_units_model.units.is_equivalent(
+            simple_units_model.units.evaluate_units(equation[1].lhs),
+            simple_units_model.units.evaluate_units(equation[1].rhs))
 
     def test_bad_units(self, bad_units_model):
         """ Tests units read and calculated from an inconsistent model. """

@@ -116,7 +116,7 @@ class TestParser(object):
         test_equation = simple_ode_model.equations[0]
         lhs_units = simple_ode_model.units.evaluate_units(test_equation.lhs)
         rhs_units = simple_ode_model.units.evaluate_units(test_equation.rhs)
-        assert simple_ode_model.units.is_equal(rhs_units, lhs_units)
+        assert simple_ode_model.units.is_equivalent(rhs_units, lhs_units)
 
         # two connected variables required conversion:
         # 1. time_units_conversion1
@@ -135,13 +135,27 @@ class TestParser(object):
                 invalid_rhs_lhs_count += 1
                 lhs_units = simple_ode_model.units.evaluate_units(equation.lhs)
                 rhs_units = simple_ode_model.units.evaluate_units(equation.rhs)
-                assert simple_ode_model.units.is_equal(lhs_units, rhs_units)
+                assert simple_ode_model.units.is_equivalent(lhs_units, rhs_units)
         assert invalid_rhs_lhs_count == 2
 
     @pytest.mark.skipif('CMLM_TEST_PRINT' not in os.environ, reason="print eq on demand")
     def test_print_eq(self, simple_ode_model):
         print()
-        from cellmlmanip.units import ExpressionWithUnitPrinter
+
+        class ExpressionWithUnitPrinter(LambdaPrinter):
+            """Sympy expression printer to print expressions with unit information."""
+
+            def _print_NumberDummy(self, expr):
+                return '%f[%s]' % (float(expr), str(expr.units))
+
+            def _print_VariableDummy(self, expr):
+                return '%s[%s]' % (expr.name, str(expr.units))
+
+            def _print_Derivative(self, expr):
+                state = expr.free_symbols.pop()
+                freev = expr.variables[0]
+                return 'Derivative(%s[%s], %s[%s])' % (state, state.units, freev, freev.units)
+
         printer = ExpressionWithUnitPrinter()
 
         # show equations

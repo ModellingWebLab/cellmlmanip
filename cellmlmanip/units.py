@@ -54,8 +54,7 @@ TRIG_FUNCTIONS = {
 
 
 class UnitError(Exception):
-    """Base class for errors relating to calculating units.
-    """
+    """Base class for errors relating to calculating units."""
     pass
 
 
@@ -143,15 +142,17 @@ class BooleanUnitsError(UnitError):
 
 class UnitStore(object):
     """
-    Maps string names to ``pint.Unit`` and ``pint.Quantity`` objects (providing a unit namespace), and provides unit
-    checking and conversion.
+    Creates and stores units, and has functions for unit conversion.
 
-    Each ``UnitStore`` object contains the units defined in the CellML specification, and more units can be added by the
-    user.
+    Within a UnitStore ``store``, units are represented as ``store.Unit`` objects, while numbers with units are
+    represented as ``store.Quantity`` objects. Both classes are inherited from the ``pint`` package.
 
-    By default, each ``UnitStore`` maintains its own internal ``pint.UnitRegistry``, so that units from different stores
-    cannot be compared or interact with each other. To allow comparison and conversion between unit stores, an existing
-    ``UnitStore`` can be passed in at construction time, so that the underlying registry will be shared.
+    Each UnitStore has its own unique namespace for storing units.
+
+    By default, each ``UnitStore`` maintains an internal ``pint.UnitRegistry`` and units from different stores cannot be
+    compared or interact with each other. To allow comparison and conversion between unit stores, an existing
+    ``UnitStore`` can be passed in at construction time, so that the underlying registry will be shared. (This will
+    allow units from different stores to interact, but the unit stores will maintain independent namespaces).
 
     For example::
 
@@ -196,9 +197,10 @@ class UnitStore(object):
         # Create a unit calculator
         self._calculator = UnitCalculator(self)
 
-        # Expose the Unit class
+        # Expose the Unit and Quantity classes
         # TODO Might not be needed in 0.10 anymore
         self.Unit = self._registry.Unit
+        self.Quantity = self._registry.Quantity
 
     def add_unit(self, name, expression):
         """Adds a unit called ``name`` to the unit store, as defined by the string ``expression``.
@@ -249,6 +251,19 @@ class UnitStore(object):
         # Add original name to list of known units
         self._known_units.add(name)
 
+    def convert(self, quantity, unit):
+        """Converts the given ``quantity`` to be in the given ``unit``.
+
+        :param quantity: a ``Quantity`` to convert.
+        :param unit: a ``Unit`` to convert it to.
+        :returns: the converted ``Quantity``.
+        """
+        # TODO CHECK IF THESE ARE QUANTITIES OR UNITS
+
+        assert isinstance(quantity, self._registry.Quantity)
+        assert isinstance(unit, self._registry.Unit)
+        return quantity.to(unit)
+
     def get_unit(self, name):
         """Retrieves the ``Unit`` object with the given name.
 
@@ -267,8 +282,8 @@ class UnitStore(object):
         """Check if a unit with the given ``name`` exists."""
         return name in self._known_units
 
-    def is_equal(self, unit1, unit2):
-        """Compares whether two units are equivalent.
+    def is_equivalent(self, unit1, unit2):
+        """Tests whether two units are equivalent.
 
         :param unit1: The first ``Unit`` object to compare.
         :param unit2: The second ``Unit`` object to compare.
@@ -282,90 +297,28 @@ class UnitStore(object):
         logger.debug('is_equal(%s, %s) ⟶ %s', unit1, unit2, is_equal)
         return is_equal
 
-    def convert_to(self, quantity, unit):
-        """Returns a quantity that is the result of converting [one of] ``unit1`` into ``unit2``.
-
-        :param quantity: the Unit to be converted, multiplied by '1' to form a Quantity object
-        :param unit: Unit object into which the first units should be converted
-        :returns: a quantity object with the converted unit and corresponding quantity
-        """
-        # TODO CHECK IF THESE ARE QUANTITIES OR UNITS
-
-        assert isinstance(quantity, self._registry.Quantity)
-        assert isinstance(unit, self._registry.Unit)
-        return quantity.to(unit)
-
     def evaluate_units(self, expr):
         """
         Evaluates and returns the ``Unit`` a Sympy expression is in.
 
-        :param expr: the Sympy expression on which to evaluate units
-        :returns: ``Unit`` object representing the units of the expression
-        :raises KeyError: if variable not found in metadata
-        :raises UnitsCannotBeCalculatedError: if expression just cannot calculate
-        :raises UnexpectedMathUnitsError: if math is not supported
-        :raises BooleanUnitsError: if math returns booleans
-        :raises InputArgumentsMustBeDimensionlessError: if input arguments should be dimensionless
-        :raises InputArgumentsInvalidUnitsError: if input arguments should have same units
-        :raises InputArgumentMustBeNumberError: if one of input arguments should be a number
+        :param expr: the Sympy expression whose units to evaluate.
+        :returns: The calculated ``Unit`` object.
+        :raises UnitError: if there are unit errors when evaluating the expression's units.
         """
-
         found = self._calculator.traverse(expr).units
         logger.debug('evaluate_units(%s) ⟶ %s', expr, found)
         return found
 
-    def get_conversion_factor(self, to_unit, from_unit=None, quantity=None, expression=None):
+    def get_conversion_factor(self, to_unit, from_unit):
         """Returns the magnitude multiplier required to convert a unit to the specified unit.
-
-        Note this will work on either a unit, a quantity or an expression, but requires only one of these arguments.
 
         :param to_unit: Unit object into which the units should be converted
         :param from_unit: the Unit to be converted
-        :param quantity: the Unit to be converted, multiplied by '1' to form a Quantity object
-        :param expression: an expression from which the Unit is evaluated before conversion
         :returns: the magnitude of the resulting conversion factor
-        :raises AssertionError: if no target unit is specified or no source unit is specified
         """
-        # TODO CHECK IF THESE ARE UNITS OR STRING OR WHAT
-
-        assert to_unit is not None, 'No unit given as target of conversion; to_unit argument is required'
-        assert quantity is not None or from_unit is not None or expression is not None, \
-            'No unit given as source of conversion; please use one of from_unit, quantity or expression'
-        assert [from_unit, quantity, expression].count(None) == 2, \
-            'Multiple target specified; please use only one of from_unit, quantity or expression'
-
-        if from_unit is not None:
-            assert isinstance(from_unit, self._registry.Unit), 'from_unit must be of type pint:Unit'
-            conversion_factor = self.convert_to(1 * from_unit, to_unit).magnitude
-        elif quantity is not None:
-            assert isinstance(quantity, self._registry.Quantity), 'quantity must be of type pint:Quantity'
-            conversion_factor = self.convert_to(quantity, to_unit).magnitude
-        else:
-            assert isinstance(expression, sympy.Expr), 'expression must be of type Sympy expression'
-            conversion_factor = self.convert_to(1 * self.evaluate_units(expression), to_unit).magnitude
-
-        if math.isclose(conversion_factor, 1.0):
-            return 1.0
-        else:
-            return conversion_factor
-
-    def dimensionally_equivalent(self, symbol1, symbol2):
-        """Returns whether two expressions, symbol1 and symbol2, are dimensionally_equivalent (same units ignoring a
-        conversion factor).
-
-        :param symbol1: the first expression to compare
-        :param symbol2: the second expression to compare
-        :returns: True if units are equal (regardless of quantity), False otherwise
-        """
-        # TODO IF THEY ARE EXPRESSIONS THE ARGS SHOULD NOT BE CALLED SYMBOL
-
-        try:
-            self.get_conversion_factor(
-                from_unit=self.evaluate_units(symbol1),
-                to_unit=self.evaluate_units(symbol2))
-            return True
-        except pint.errors.DimensionalityError:
-            return False
+        assert isinstance(from_unit, self._registry.Unit), 'from_unit must be a unit'
+        conversion_factor = self.convert(1 * from_unit, to_unit).magnitude
+        return 1.0 if math.isclose(conversion_factor, 1.0) else conversion_factor
 
     def show_base_units(self, unit):
         """
@@ -628,19 +581,4 @@ class UnitCalculator(object):
             return math.e * self._registry.dimensionless
 
         raise UnexpectedMathUnitsError(str(expr))
-
-
-class ExpressionWithUnitPrinter(LambdaPrinter):
-    """Sympy expression printer to print expressions with unit information."""
-
-    def _print_NumberDummy(self, expr):
-        return '%f[%s]' % (float(expr), str(expr.units))
-
-    def _print_VariableDummy(self, expr):
-        return '%s[%s]' % (expr.name, str(expr.units))
-
-    def _print_Derivative(self, expr):
-        state = expr.free_symbols.pop()
-        freev = expr.variables[0]
-        return 'Derivative(%s[%s], %s[%s])' % (state, state.units, freev, freev.units)
 

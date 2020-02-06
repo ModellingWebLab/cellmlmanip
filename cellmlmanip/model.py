@@ -259,7 +259,7 @@ class Model(object):
         # Otherwise, this connection requires a conversion
         else:
             # Get the scaling factor required to convert source units to target units
-            factor = self.units.convert_to(1 * source.units, target.units).magnitude
+            factor = self.units.convert(1 * source.units, target.units).magnitude
 
             # Dummy to represent this factor in equations, having units for conversion
             factor_dummy = self.add_number(factor, target.units / source.units)
@@ -290,7 +290,7 @@ class Model(object):
         """
         lhs_units = self.units.evaluate_units(equality.lhs)
         rhs_units = self.units.evaluate_units(equality.rhs)
-        assert self.units.is_equal(rhs_units, lhs_units), 'Units %s %s != %s %s' % (
+        assert self.units.is_equivalent(rhs_units, lhs_units), 'Units %s %s != %s %s' % (
             lhs_units, self.units.show_base_units(lhs_units),
             rhs_units, self.units.show_base_units(rhs_units)
         )
