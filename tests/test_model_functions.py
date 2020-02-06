@@ -5,6 +5,7 @@ import sympy as sp
 
 from cellmlmanip import parser, units
 from cellmlmanip.model import Model, VariableDummy
+from cellmlmanip.model import FLOAT_PRECISION
 
 from . import shared
 
@@ -194,9 +195,9 @@ class TestModelFunctions():
 
         # Simplified equations
         e_v1 = sp.Eq(v1, sp.Number(0))
-        e_v2 = sp.Eq(v2, sp.Add(v4, sp.Number(23.)))
-        e_v3 = sp.Eq(v3, sp.Number(2 / 3))
-        e_v4 = sp.Eq(v4, sp.Number(-23.))
+        e_v2 = sp.Eq(v2, sp.Add(v4, sp.Float(23., FLOAT_PRECISION)))
+        e_v3 = sp.Eq(v3, sp.Float(2, FLOAT_PRECISION) / sp.Float(3, FLOAT_PRECISION))
+        e_v4 = sp.Eq(v4, sp.Float(-23., FLOAT_PRECISION))
         e_v5 = sp.Eq(v5, sp.Add(v3, v4))
         e_a1 = sp.Eq(a1, sp.Add(v1, v2, v5, t))
 
@@ -204,9 +205,9 @@ class TestModelFunctions():
         d_y2 = sp.Derivative(y2, t)
         d_y3 = sp.Derivative(y3, t)
 
-        e_y1 = sp.Eq(d_y1, sp.Number(1.))
+        e_y1 = sp.Eq(d_y1, sp.Float(1., FLOAT_PRECISION))
         e_y2 = sp.Eq(d_y2, v1)
-        e_y3 = sp.Eq(d_y3, sp.Mul(v2, sp.Add(sp.Number(2.), d_y1)))
+        e_y3 = sp.Eq(d_y3, sp.Mul(v2, sp.Add(sp.Float(2., FLOAT_PRECISION), d_y1)))
 
         # v1 with simplification: [v1=0] (simplified)
         eqs = m.get_equations_for([v1])
@@ -551,14 +552,14 @@ class TestModelFunctions():
         assert sp.Derivative(v, t) in syms
 
         # Test on longer expressions
-        x = sp.Float(1) + t * sp.sqrt(dvdt) - t
+        x = sp.Float(1, FLOAT_PRECISION) + t * sp.sqrt(dvdt) - t
         syms = hh_model.find_symbols_and_derivatives([x])
         assert len(syms) == 2
         assert t in syms
         assert sp.Derivative(v, t) in syms
 
         # Test on multiple expressions
-        y = sp.Float(2) + v
+        y = sp.Float(2, FLOAT_PRECISION) + v
         syms = hh_model.find_symbols_and_derivatives([x, y])
         assert len(syms) == 3
         assert v in syms
