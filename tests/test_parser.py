@@ -206,13 +206,19 @@ class TestParser(object):
 
     def test_new_base_units(self):
         """Tests unit checking in a model that defines a new base unit."""
-        example_cellml = os.path.join(
-            os.path.dirname(__file__), "cellml_files", "algebraic.cellml"
-        )
-        p = parser.Parser(example_cellml)
+        cellml = os.path.join(os.path.dirname(__file__), "cellml_files", "algebraic.cellml")
+        p = parser.Parser(cellml)
         model = p.parse()
         for e in model.equations:
             model.check_left_right_units_equal(e)
+
+    def test_units_with_multiplier(self):
+        """Tests parsing a unit with a multiplier."""
+        cellml = os.path.join(os.path.dirname(__file__), 'cellml_files', 'imperial_units.cellml')
+        p = parser.Parser(cellml)
+        m = p.parse()
+        i = m.units.get_unit('inch')
+        assert m.units.show_base_units(i) == '0.0254 meter'
 
     def test_undefined_variable(self):
         """ Tests parser exception for undefined variable. """

@@ -46,6 +46,13 @@ class TestUnits(object):
         assert unitstore.is_defined('uu')
         assert unitstore.show_base_units(unitstore.get_unit('uu')) == '1.0 uu'
 
+        # Duplicate unit definition
+        with pytest.raises(ValueError):
+            unitstore.add_base_unit('uu')
+
+        # CellML unit redefinition
+        with pytest.raises(ValueError):
+            unitstore.add_base_unit('second')
     def test_convert(self):
         """Tests UnitStore.convert()."""
 
