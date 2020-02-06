@@ -194,7 +194,7 @@ class TestModelFunctions():
         m.add_equation(sp.Eq(a1, sp.Add(v5, v2, v1, t)))
 
         # Simplified equations
-        e_v1 = sp.Eq(v1, sp.Float(0, FLOAT_PRECISION))
+        e_v1 = sp.Eq(v1, sp.Float(0.0, FLOAT_PRECISION))
         e_v2 = sp.Eq(v2, sp.Add(v4, sp.Float(23., FLOAT_PRECISION)))
         e_v3 = sp.Eq(v3, sp.Float(2, FLOAT_PRECISION) / sp.Float(3, FLOAT_PRECISION))
         e_v4 = sp.Eq(v4, sp.Float(-23., FLOAT_PRECISION))
