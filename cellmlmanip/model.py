@@ -37,6 +37,8 @@ class Model(object):
     Equations are stored as ``Sympy.Eq`` objects, but with the caveat that all variables and numbers must be specified
     using the ``Sympy.Dummy`` objects returned by :meth:`add_variable()` and :meth:`add_number()`.
 
+    Units are handled using the ``units`` property of a model, which is an instance of ``cellmlmanip.units.UnitStore``.
+
     Cellmlmanip does not support algebraic models: the left-hand side every equation in the model must be a variable or
     a derivative.
 
@@ -53,8 +55,8 @@ class Model(object):
         # A list of sympy.Eq equation objects
         self.equations = []
 
-        # A pint UnitStore, mapping unit names to unit objects
-        self.units = UnitStore(model=self)
+        # A UnitStore object
+        self.units = UnitStore()
 
         # Maps string variable names to sympy.Dummy objects
         self._name_to_symbol = dict()
@@ -71,22 +73,6 @@ class Model(object):
 
         # Map from VariableDummy to defining equation, where the variable is defined by an ODE
         self._ode_definition_map = {}
-
-    def add_unit(self, name, attributes=None, base_units=False):
-        """
-        Adds a unit of measurement to this model, with a given ``name`` and list of ``attributes``.
-
-        :param name: A string name.
-        :param attributes: An optional list of dictionaries containing unit attributes. See
-            :meth:`UnitStore.add_custom_unit()`.
-        :base_units: Set to ``True`` to define a new base unit.
-        """
-        if base_units:
-            if attributes:
-                raise ValueError('Base units can not be defined with unit attributes.')
-            self.units.add_base_unit(name)
-        else:
-            self.units.add_custom_unit(name, attributes)
 
     def add_equation(self, equation, check_duplicates=True):
         """
@@ -135,24 +121,24 @@ class Model(object):
         Creates and returns a :class:`NumberDummy` to represent a number with units in sympy expressions.
 
         :param number: A number (anything convertible to float).
-        :param units: A `pint` units representation
+        :param units: A string unit name or a ``Unit`` object.
 
         :return: A :class:`NumberDummy` object.
         """
 
         # Check units
-        if not isinstance(units, self.units.ureg.Unit):
-            units = self.units.get_quantity(units)
+        if not isinstance(units, self.units.Unit):
+            units = self.units.get_unit(units)
 
         return NumberDummy(value, units)
 
-    def add_variable(self, name, units, initial_value=None,
-                     public_interface=None, private_interface=None, cmeta_id=None):
+    def add_variable(self, name, units, initial_value=None, public_interface=None, private_interface=None,
+                     cmeta_id=None):
         """
         Adds a variable to the model and returns a :class:`VariableDummy` to represent it in sympy expressions.
 
         :param name: A string name.
-        :param units: A `pint` units representation.
+        :param units: A string unit name or a ``Unit`` object.
         :param initial_value: An optional initial value.
         :param public_interface: An optional public interface specifier (only required when parsing CellML).
         :param private_interface: An optional private interface specifier (only required when parsing CellML).
@@ -165,8 +151,8 @@ class Model(object):
             raise ValueError('Variable %s already exists.' % name)
 
         # Check units
-        if not isinstance(units, self.units.ureg.Unit):
-            units = self.units.get_quantity(units)
+        if not isinstance(units, self.units.Unit):
+            units = self.units.get_unit(units)
 
         # Add variable
         self._name_to_symbol[name] = var = VariableDummy(
@@ -255,7 +241,7 @@ class Model(object):
         # Otherwise, this connection requires a conversion
         else:
             # Get the scaling factor required to convert source units to target units
-            factor = self.units.convert_to(1 * source.units, target.units).magnitude
+            factor = self.units.convert(1 * source.units, target.units).magnitude
 
             # Dummy to represent this factor in equations, having units for conversion
             factor_dummy = self.add_number(factor, target.units / source.units)
@@ -284,12 +270,11 @@ class Model(object):
         Checks whether the LHS and RHS in a ``sympy.Eq`` have the same units.
         :param equality: A ``sympy.Eq``.
         """
-        lhs_units = self.units.summarise_units(equality.lhs)
-        rhs_units = self.units.summarise_units(equality.rhs)
-
-        assert self.units.is_unit_equal(rhs_units, lhs_units), 'Units %s %s != %s %s' % (
-            lhs_units, self.units.ureg.get_base_units(lhs_units),
-            rhs_units, self.units.ureg.get_base_units(rhs_units)
+        lhs_units = self.units.evaluate_units(equality.lhs)
+        rhs_units = self.units.evaluate_units(equality.rhs)
+        assert self.units.is_equivalent(rhs_units, lhs_units), 'Units %s %s != %s %s' % (
+            lhs_units, self.units.show_base_units(lhs_units),
+            rhs_units, self.units.show_base_units(rhs_units)
         )
 
     def get_equations_for(self, symbols, recurse=True, strip_units=True):
@@ -488,12 +473,6 @@ class Model(object):
                     uri_parts = str(object).split('#')
                     ontology_terms.append(uri_parts[-1])
         return ontology_terms
-
-    def get_units(self, name):
-        """
-        Looks up and returns a pint `Unit` object with the given name.
-        """
-        return self.units.get_quantity(name)
 
     def get_definition(self, symbol):
         """Get the equation (if any) defining the given variable.
@@ -812,7 +791,7 @@ class Model(object):
         assert variable.name in self._name_to_symbol
 
         # units should be a pint Unit object in the registry for this model
-        assert isinstance(units, self.units.ureg.Unit)
+        assert isinstance(units, self.units.Unit)
 
         # direction should be part of enum
         assert isinstance(direction, DataDirectionFlow)
@@ -840,9 +819,8 @@ class Model(object):
         """
         # 1. create a new variable
         deriv_name = self._get_unique_name(derivative_variable.name + '_orig_deriv')
-        deriv_units = self.units.calculator.traverse(eqn.args[0])
-        new_deriv_variable = self.add_variable(name=deriv_name,
-                                               units=deriv_units.units)
+        deriv_units = self.units.evaluate_units(eqn.args[0])
+        new_deriv_variable = self.add_variable(name=deriv_name, units=deriv_units)
 
         # 2. create new equation and remove original
         expression = sympy.Eq(new_deriv_variable, eqn.args[1])

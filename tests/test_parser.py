@@ -114,9 +114,9 @@ class TestParser(object):
         # Eq(Derivative(_single_independent_ode$sv1, _environment$time), _1.00000000000000)
         # mV/millisecond == mV_per_ms
         test_equation = simple_ode_model.equations[0]
-        lhs_units = simple_ode_model.units.summarise_units(test_equation.lhs)
-        rhs_units = simple_ode_model.units.summarise_units(test_equation.rhs)
-        assert simple_ode_model.units.is_unit_equal(rhs_units, lhs_units)
+        lhs_units = simple_ode_model.units.evaluate_units(test_equation.lhs)
+        rhs_units = simple_ode_model.units.evaluate_units(test_equation.rhs)
+        assert simple_ode_model.units.is_equivalent(rhs_units, lhs_units)
 
         # two connected variables required conversion:
         # 1. time_units_conversion1
@@ -133,24 +133,40 @@ class TestParser(object):
             if equation.lhs in require_conversion:
                 # the lhs and rhs units should be equal
                 invalid_rhs_lhs_count += 1
-                lhs_units = simple_ode_model.units.summarise_units(equation.lhs)
-                rhs_units = simple_ode_model.units.summarise_units(equation.rhs)
-                assert simple_ode_model.units.is_unit_equal(lhs_units, rhs_units)
+                lhs_units = simple_ode_model.units.evaluate_units(equation.lhs)
+                rhs_units = simple_ode_model.units.evaluate_units(equation.rhs)
+                assert simple_ode_model.units.is_equivalent(lhs_units, rhs_units)
         assert invalid_rhs_lhs_count == 2
 
     @pytest.mark.skipif('CMLM_TEST_PRINT' not in os.environ, reason="print eq on demand")
     def test_print_eq(self, simple_ode_model):
-        print()
-        from cellmlmanip.units import ExpressionWithUnitPrinter
+        """Prints a models equations to screen, including units."""
+        from sympy.printing.lambdarepr import LambdaPrinter
+
+        class ExpressionWithUnitPrinter(LambdaPrinter):
+            """Sympy expression printer to print expressions with unit information."""
+
+            def _print_NumberDummy(self, expr):
+                return '%f[%s]' % (float(expr), str(expr.units))
+
+            def _print_VariableDummy(self, expr):
+                return '%s[%s]' % (expr.name, str(expr.units))
+
+            def _print_Derivative(self, expr):
+                state = expr.free_symbols.pop()
+                freev = expr.variables[0]
+                return 'Derivative(%s[%s], %s[%s])' % (state, state.units, freev, freev.units)
+
         printer = ExpressionWithUnitPrinter()
 
         # show equations
+        print()
         for index, equation in enumerate(simple_ode_model.equations):
             print('%3d. Eq(%s, %s)' % (index + 1,
                                        printer.doprint(equation.lhs),
                                        printer.doprint(equation.rhs)))
-            lhs_units = simple_ode_model.units.summarise_units(equation.lhs)
-            rhs_units = simple_ode_model.units.summarise_units(equation.rhs)
+            lhs_units = simple_ode_model.units.evaluate_units(equation.lhs)
+            rhs_units = simple_ode_model.units.evaluate_units(equation.rhs)
             print('     %s %s %s' %
                   (lhs_units,
                    '==' if simple_ode_model.units.is_unit_equal(rhs_units, lhs_units) else '!=',
@@ -188,19 +204,21 @@ class TestParser(object):
 
         assert match in str(dim_error.value)
 
-    def test_algebraic(self):
-        """ Tests units are correctly parsed for an algebraic model. """
-        example_cellml = os.path.join(
-            os.path.dirname(__file__), "cellml_files", "algebraic.cellml"
-        )
-        p = parser.Parser(example_cellml)
+    def test_new_base_units(self):
+        """Tests unit checking in a model that defines a new base unit."""
+        cellml = os.path.join(os.path.dirname(__file__), "cellml_files", "algebraic.cellml")
+        p = parser.Parser(cellml)
         model = p.parse()
         for e in model.equations:
             model.check_left_right_units_equal(e)
 
-        ureg = model.units.ureg
-        assert str(ureg.get_dimensionality(ureg.new_base)) == '[new_base]'
-        assert ureg.get_base_units(ureg.new_base / ureg.second) == ureg.get_base_units(ureg.derived)
+    def test_units_with_multiplier(self):
+        """Tests parsing a unit with a multiplier."""
+        cellml = os.path.join(os.path.dirname(__file__), 'cellml_files', 'imperial_units.cellml')
+        p = parser.Parser(cellml)
+        m = p.parse()
+        i = m.units.get_unit('inch')
+        assert m.units.show_base_units(i) == '0.0254 meter'
 
     def test_undefined_variable(self):
         """ Tests parser exception for undefined variable. """

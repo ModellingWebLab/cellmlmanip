@@ -40,67 +40,6 @@ class TestUnitConversion:
         """ Fixture to load a local copy of  the basic_ode model that may get modified. """
         return shared.load_model('silly_names')
 
-    def test_conversion_factor_original(self, simple_units_model):
-        """ Tests Units.get_conversion_factor() function. """
-        symbol_b1 = simple_units_model.get_symbol_by_cmeta_id("b_1")
-        equation = simple_units_model.get_equations_for([symbol_b1])
-        factor = simple_units_model.units.get_conversion_factor(
-            quantity=1 * simple_units_model.units.summarise_units(equation[0].lhs),
-            to_unit=simple_units_model.units.ureg('us').units)
-        assert factor == 1000
-
-    def test_conversion_factor_bad_types(self, simple_units_model):
-        """ Tests Units.get_conversion_factor() function for
-         cases when arguments are missing or incorrectly typed."""
-        symbol_b1 = simple_units_model.get_symbol_by_cmeta_id("b_1")
-        equation = simple_units_model.get_equations_for([symbol_b1])
-        expression = equation[0].lhs
-        to_unit = simple_units_model.units.ureg('us').units
-        from_unit = simple_units_model.units.summarise_units(expression)
-        quantity = 1 * from_unit
-        # no source unit
-        with pytest.raises(AssertionError, match='^No unit given as source.*'):
-            simple_units_model.units.get_conversion_factor(to_unit=to_unit)
-        with pytest.raises(AssertionError, match='^No unit given as source.*'):
-            simple_units_model.units.get_conversion_factor(to_unit)
-
-        # no target unit
-        with pytest.raises(TypeError):
-            simple_units_model.units.get_conversion_factor(from_unit=from_unit)
-        # multiple sources
-        with pytest.raises(AssertionError, match='^Multiple target.*'):
-            simple_units_model.units.get_conversion_factor(to_unit, from_unit=from_unit, quantity=quantity)
-        # incorrect types
-        with pytest.raises(AssertionError, match='^from_unit must be of type pint:Unit$'):
-            simple_units_model.units.get_conversion_factor(to_unit, from_unit=quantity)
-        with pytest.raises(AssertionError, match='^quantity must be of type pint:Quantity$'):
-            simple_units_model.units.get_conversion_factor(to_unit, quantity=from_unit)
-        with pytest.raises(AssertionError, match='^expression must be of type Sympy expression$'):
-            simple_units_model.units.get_conversion_factor(to_unit, expression=quantity)
-
-        # unit to unit
-        assert simple_units_model.units.get_conversion_factor(to_unit=to_unit, from_unit=from_unit) == 1000
-        # quantity to unit
-        assert simple_units_model.units.get_conversion_factor(to_unit=to_unit, quantity=quantity) == 1000
-        # expression to unit
-        assert simple_units_model.units.get_conversion_factor(to_unit=to_unit, expression=expression) == 1000
-
-    def test_conversion_factor_same_units(self, simple_units_model):
-        """ Tests Units.get_conversion_factor() function when units are same
-        and conversion factor should be '1'. """
-        symbol_b = simple_units_model.get_symbol_by_cmeta_id("b")
-        equation = simple_units_model.get_equations_for([symbol_b])
-        expression = equation[1].rhs
-        to_unit = simple_units_model.units.ureg('per_ms').units
-        from_unit = simple_units_model.units.summarise_units(expression)
-        quantity = 1 * from_unit
-        # quantity to unit
-        assert simple_units_model.units.get_conversion_factor(to_unit=to_unit, quantity=quantity) == 1
-        # unit to unit
-        assert simple_units_model.units.get_conversion_factor(to_unit=to_unit, from_unit=from_unit) == 1
-        # expression to unit
-        assert simple_units_model.units.get_conversion_factor(to_unit=to_unit, expression=expression) == 1
-
     def test_bad_units(self, bad_units_model):
         """ Tests units read and calculated from an inconsistent model. """
         symbol_a = bad_units_model.get_symbol_by_cmeta_id("a")
@@ -108,15 +47,15 @@ class TestUnitConversion:
         equation = bad_units_model.get_equations_for([symbol_b], strip_units=False)
         assert len(equation) == 2
         assert equation[0].lhs == symbol_a
-        assert bad_units_model.units.summarise_units(equation[0].lhs) == 'ms'
+        assert bad_units_model.units.evaluate_units(equation[0].lhs) == 'ms'
         with pytest.raises(units.UnitError):
             # cellml file states a (ms) = 1 (ms) + 1 (second)
-            bad_units_model.units.summarise_units(equation[0].rhs)
+            bad_units_model.units.evaluate_units(equation[0].rhs)
 
         assert equation[1].lhs == symbol_b
         with pytest.raises(units.UnitError):
             # cellml file states b (per_ms) = power(a (ms), 1 (second))
-            bad_units_model.units.summarise_units(equation[1].rhs)
+            bad_units_model.units.evaluate_units(equation[1].rhs)
 
     # original state for local_model
     def _original_state_local_model(self, local_model):
@@ -210,8 +149,8 @@ class TestUnitConversion:
                 sv1_orig_deriv = 1{mV_per_ms}
                 ode(sv1_converted, time) = 0.001 * sv1_orig_deriv
         """
-        mV_unit = local_model.get_units('mV')
-        volt_unit = local_model.get_units('volt')
+        mV_unit = local_model.units.get_unit('mV')
+        volt_unit = local_model.units.get_unit('volt')
         original_var = local_model.get_symbol_by_name('env_ode$sv1')
 
         assert self._original_state_local_model(local_model)
@@ -269,8 +208,8 @@ class TestUnitConversion:
                 sv1_orig_deriv = 1{mV_per_ms}
                 ode(sv1, time_converted) = 1000 * sv1_orig_deriv
         """
-        ms_unit = local_model.get_units('ms')
-        second_unit = local_model.get_units('second')
+        ms_unit = local_model.units.get_unit('ms')
+        second_unit = local_model.units.get_unit('second')
         original_var = local_model.get_symbol_by_name('environment$time')
 
         assert self._original_state_local_model(local_model)
@@ -327,8 +266,8 @@ class TestUnitConversion:
                 x = 1000* x_converted;
                 y = 1{dimensionless}/x;
         """
-        pA_unit = literals_model.get_units('pA')
-        nA_unit = literals_model.get_units('nA')
+        pA_unit = literals_model.units.get_unit('pA')
+        nA_unit = literals_model.units.get_unit('nA')
         original_var = literals_model.get_symbol_by_name('env_ode$x')
 
         assert self._original_state_literals_model(literals_model)
@@ -390,8 +329,8 @@ class TestUnitConversion:
                 y_orig_deriv = 2{mV_per_ms}
                 ode(y, time_converted) = 1000 * y_orig_deriv
         """
-        ms_unit = multiode_freevar_model.get_units('ms')
-        second_unit = multiode_freevar_model.get_units('second')
+        ms_unit = multiode_freevar_model.units.get_unit('ms')
+        second_unit = multiode_freevar_model.units.get_unit('second')
         original_var = multiode_freevar_model.get_symbol_by_name('environment$time')
 
         assert self._original_state_multiode_freevar(multiode_freevar_model)
@@ -461,8 +400,8 @@ class TestUnitConversion:
                 ode(sv1_converted, time) = 0.001 * sv1_orig_deriv
                 x = 1{mV_per_ms} + 3 * sv1_orig_deriv
         """
-        mV_unit = multiode_model.get_units('mV')
-        volt_unit = multiode_model.get_units('volt')
+        mV_unit = multiode_model.units.get_unit('mV')
+        volt_unit = multiode_model.units.get_unit('volt')
         original_var = multiode_model.get_symbol_by_name('env_ode$sv1')
 
         assert self._original_state_multiode_model(multiode_model)
@@ -515,8 +454,8 @@ class TestUnitConversion:
                 ode(sv1, time_converted) = 1000 * sv1_orig_deriv
                 x = 1 + 3 * sv1_orig_deriv
         """
-        ms_unit = multiode_model.get_units('ms')
-        second_unit = multiode_model.get_units('second')
+        ms_unit = multiode_model.units.get_unit('ms')
+        second_unit = multiode_model.units.get_unit('second')
         original_var = multiode_model.get_symbol_by_name('environment$time')
 
         old_state_symbols = multiode_model.get_state_symbols()
@@ -574,8 +513,8 @@ class TestUnitConversion:
                 y = 1{dimensionless}/x;
                 x_converted = 0.001 * x
         """
-        pA_unit = literals_model.get_units('pA')
-        nA_unit = literals_model.get_units('nA')
+        pA_unit = literals_model.units.get_unit('pA')
+        nA_unit = literals_model.units.get_unit('nA')
         original_var = literals_model.get_symbol_by_name('env_ode$x')
 
         assert self._original_state_literals_model(literals_model)
@@ -633,8 +572,8 @@ class TestUnitConversion:
                 ode(sv1, time) = 1{mV_per_ms};
                 sv1_converted = sv1 / 1000
         """
-        mV_unit = local_model.get_units('mV')
-        volt_unit = local_model.get_units('volt')
+        mV_unit = local_model.units.get_unit('mV')
+        volt_unit = local_model.units.get_unit('volt')
         original_var = local_model.get_symbol_by_name('env_ode$sv1')
 
         assert self._original_state_local_model(local_model)
@@ -684,8 +623,8 @@ class TestUnitConversion:
                 time_converted = 0.001 * time
         """
 
-        ms_unit = local_model.get_units('ms')
-        second_unit = local_model.get_units('second')
+        ms_unit = local_model.units.get_unit('ms')
+        second_unit = local_model.units.get_unit('second')
         original_var = local_model.get_symbol_by_name('environment$time')
 
         assert self._original_state_local_model(local_model)
@@ -716,10 +655,10 @@ class TestUnitConversion:
     def test_convert_variable_invalid_arguments(self, local_model):
         """ Tests the Model.convert_variable() function when involid arguments are passed.
         """
-        unit = local_model.get_units('second')
+        unit = local_model.units.get_unit('second')
         variable = local_model.get_free_variable_symbol()
         direction = DataDirectionFlow.INPUT
-        bad_unit = local_model.get_units('mV')
+        bad_unit = local_model.units.get_unit('mV')
 
         # arguments wrong types
         with pytest.raises(AssertionError):
@@ -747,10 +686,8 @@ class TestUnitConversion:
 
     def test_convert_same_unit_different_name(self, br_model):
         """ Tests the Model.convert_variable() function when conversion to current unit under a different name."""
-        br_model.units.add_custom_unit('millimolar', [{'units': 'mole', 'prefix': 'milli'},
-                                       {'units': 'litre', 'exponent': '-1'}])
-        # [{'units': 'mole', 'prefix': 'nano'}, {'units': 'litre', 'exponent': '-3', prefix: 'milli'}])
-        unit = br_model.get_units('concentration_units')
+        br_model.units.add_unit('millimolar', 'mole / 1000 / litre')
+        unit = br_model.units.get_unit('concentration_units')
         variable = br_model.get_symbol_by_ontology_term(shared.OXMETA, "cytosolic_calcium_concentration")
         direction = DataDirectionFlow.INPUT
         assert br_model.convert_variable(variable, unit, direction) == variable
@@ -774,7 +711,7 @@ class TestUnitConversion:
             assert silly_names.get_free_variable_symbol() == symbol_t
             return True
 
-        volt_unit = silly_names.get_units('volt')
+        volt_unit = silly_names.units.get_unit('volt')
         original_var = silly_names.get_symbol_by_name('env_ode$sv1')
 
         assert test_original_state(silly_names)

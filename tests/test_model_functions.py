@@ -30,7 +30,6 @@ class TestModelFunctions():
     ##########################################################
     # check equation graph property
 
-    # also tested in test_hodgkin
     def test_graph_property(self, basic_model):
         """ Tests that the graph property for Model has been constructed correctly. """
 
@@ -162,7 +161,7 @@ class TestModelFunctions():
         """
 
         m = Model('simplification')
-        u = m.get_units('dimensionless')
+        u = m.units.get_unit('dimensionless')
         t = m.add_variable('t', u)
         y1 = m.add_variable('y1', u, initial_value=10)
         y2 = m.add_variable('y2', u, initial_value=20)
@@ -444,22 +443,6 @@ class TestModelFunctions():
         number2 = model.add_number(2.0, 'mV')
         assert number2.is_Dummy
 
-    def test_add_unit(self, local_model):
-        """ Tests the Model.add_unit method. """
-        model = local_model
-        assert len(model.units.custom_defined) == 5
-
-        assert 'uF' not in model.units.custom_defined
-        model.add_unit('uF', [{'units': 'farad', 'prefix': 'micro'}])
-        assert len(model.units.custom_defined) == 6
-        assert 'uF' in model.units.custom_defined
-
-        # repeated in TestModelAPI
-        # Base units can't have attributes
-        with pytest.raises(ValueError, match='can not be defined with unit attributes'):
-            model.add_unit('unlikely_unit_name', [{'units': 'millivolt'}], base_units=True)
-        assert len(model.units.custom_defined) == 6
-
     def test_add_variable(self, local_model):
         """ Tests the Model.add_variable() method. """
         model = local_model
@@ -471,7 +454,7 @@ class TestModelFunctions():
         assert len(model.variables()) == 4
         assert model.get_symbol_by_name('newvar')
 
-        # Repeatd in TestModelAPI
+        # Repeated in TestModelAPI
         # Variable can't be added twice
         unit = 'mV'
         model.add_variable(name='varvar1', units=unit)
@@ -483,30 +466,20 @@ class TestModelFunctions():
     ###################################################################
     # Unit related functionality
 
-    def test_get_units(self):
-        """ Tests Model.get_units(). """
-
-        # Get predefined unit
-        m = Model('test')
-        m.get_units('volt')
-
-        # Non-existent unit
-        with pytest.raises(KeyError, match='Cannot find unit'):
-            m.get_units('towel')
-
     def test_units(self, simple_units_model):
         """ Tests units read and calculated from a model. """
         symbol_a = simple_units_model.get_symbol_by_cmeta_id("a")
         equation = simple_units_model.get_equations_for([symbol_a], strip_units=False)
-        assert simple_units_model.units.summarise_units(equation[0].lhs) == 'ms'
-        assert simple_units_model.units.summarise_units(equation[0].rhs) == 'ms'
+        assert simple_units_model.units.evaluate_units(equation[0].lhs) == 'ms'
+        assert simple_units_model.units.evaluate_units(equation[0].rhs) == 'ms'
 
         symbol_b = simple_units_model.get_symbol_by_cmeta_id("b")
         equation = simple_units_model.get_equations_for([symbol_b])
-        assert simple_units_model.units.summarise_units(equation[1].lhs) == 'per_ms'
-        assert simple_units_model.units.summarise_units(equation[1].rhs) == '1 / ms'
-        assert simple_units_model.units.is_unit_equal(simple_units_model.units.summarise_units(equation[1].lhs),
-                                                      simple_units_model.units.summarise_units(equation[1].rhs))
+        assert simple_units_model.units.evaluate_units(equation[1].lhs) == 'per_ms'
+        assert simple_units_model.units.evaluate_units(equation[1].rhs) == '1 / ms'
+        assert simple_units_model.units.is_equivalent(
+            simple_units_model.units.evaluate_units(equation[1].lhs),
+            simple_units_model.units.evaluate_units(equation[1].rhs))
 
     def test_bad_units(self, bad_units_model):
         """ Tests units read and calculated from an inconsistent model. """
@@ -515,15 +488,15 @@ class TestModelFunctions():
         equation = bad_units_model.get_equations_for([symbol_b], strip_units=False)
         assert len(equation) == 2
         assert equation[0].lhs == symbol_a
-        assert bad_units_model.units.summarise_units(equation[0].lhs) == 'ms'
+        assert bad_units_model.units.evaluate_units(equation[0].lhs) == 'ms'
         with pytest.raises(units.UnitError):
             # cellml file states a (ms) = 1 (ms) + 1 (second)
-            bad_units_model.units.summarise_units(equation[0].rhs)
+            bad_units_model.units.evaluate_units(equation[0].rhs)
 
         assert equation[1].lhs == symbol_b
         with pytest.raises(units.UnitError):
             # cellml file states b (per_ms) = power(a (ms), 1 (second))
-            bad_units_model.units.summarise_units(equation[1].rhs)
+            bad_units_model.units.evaluate_units(equation[1].rhs)
 
     ###################################################################
     # this section is for other functions

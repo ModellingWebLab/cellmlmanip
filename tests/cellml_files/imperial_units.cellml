@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<model name="imperial_units"
+       xmlns="http://www.cellml.org/cellml/1.0#">
+  <units name="inch">
+    <unit units="meter" multiplier="0.0254" />
+  </units>
+</model>
