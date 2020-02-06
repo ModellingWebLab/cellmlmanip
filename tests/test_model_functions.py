@@ -443,16 +443,6 @@ class TestModelFunctions():
         number2 = model.add_number(2.0, 'mV')
         assert number2.is_Dummy
 
-    '''
-    def test_add_unit(self, local_model):
-        """ Tests the Model.add_unit method. """
-        model = local_model
-
-        assert not model.units.is_unit_defined('uF')
-        model.add_unit('uF', 'farad * 1e6')
-        assert model.units.is_unit_defined('uF')
-    '''
-
     def test_add_variable(self, local_model):
         """ Tests the Model.add_variable() method. """
         model = local_model
