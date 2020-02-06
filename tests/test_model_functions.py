@@ -194,7 +194,7 @@ class TestModelFunctions():
         m.add_equation(sp.Eq(a1, sp.Add(v5, v2, v1, t)))
 
         # Simplified equations
-        e_v1 = sp.Eq(v1, sp.Float(0.0, FLOAT_PRECISION))
+        e_v1 = sp.Eq(v1, sp.Number(0))
         e_v2 = sp.Eq(v2, sp.Add(v4, sp.Float(23., FLOAT_PRECISION)))
         e_v3 = sp.Eq(v3, sp.Float(2, FLOAT_PRECISION) / sp.Float(3, FLOAT_PRECISION))
         e_v4 = sp.Eq(v4, sp.Float(-23., FLOAT_PRECISION))
@@ -211,6 +211,9 @@ class TestModelFunctions():
 
         # v1 with simplification: [v1=0] (simplified)
         eqs = m.get_equations_for([v1])
+        print(type(eqs[0].rhs))
+        print(type(e_v1.rhs))
+        print(type(sp.Float(0,17)))
         assert eqs[0] == e_v1
         assert len(eqs) == 1
 
