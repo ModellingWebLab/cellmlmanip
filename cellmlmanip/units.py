@@ -57,11 +57,6 @@ _TRIG_FUNCTIONS = {
 # It says (1) not preceded by a number or period, (2) then at least one ascii letter, (3) then numbers or _ allowed too
 _WORD = re.compile('(?<![0-9.])[a-zA-Z_]+[a-zA-Z0-9_]*')
 
-# List of prefixes, initially in order of expected frequency of appearance
-_PREFIXES = [
-    'micro', 'milli', 'centi', 'nano', 'kilo', 'mega', 'giga', 'pico',
-    'deci', 'yocto', 'zepto', 'atto', 'femto', 'deca', 'deka', 'hecto', 'tera', 'peta', 'exa', 'zetta', 'yotta']
-
 
 class UnitError(Exception):
     """Base class for errors relating to calculating units."""
@@ -233,7 +228,9 @@ class UnitStore(object):
         qname = self._prefix_name(name)
 
         # Add prefixes inside expression
+        print('in: ' + name + ' = ' + expression)
         expression = _WORD.sub(self._prefix_expression, expression)
+        print('out: ' + qname + ' = ' + expression)
 
         # Dimensionless units can't be created using a string expression.
         # To test if this is a dimensionless unit, parse the string as a Quantity and check if it's dimensionless
@@ -346,23 +343,11 @@ class UnitStore(object):
     def _prefix_name(self, name):
         """Adds a prefix to a unit name."""
 
-        # Don't prefix twice
-        if name.startswith(self._prefix):
-            return name
-
         # Note: CellML units don't get prefixes. This is OK because they're the same in any model.
         # It's good because (1) it stops us having to redefine all cellml units, (2) it means 'dimensionless' is still
         # treated in a special way (dimensionless * meter = meter, but special_dimensionless * meter isn't simplified).
         if name in _CELLML_UNITS:
             return name
-
-        # Handle SI prefixes
-        for p in _PREFIXES:
-            if name.startswith(p):
-                a, b = name[:len(p)], name[len(p):]
-                if b.startswith(self._prefix) or b in _CELLML_UNITS:
-                    return name
-                return a + self._prefix + b
 
         return self._prefix + name
 

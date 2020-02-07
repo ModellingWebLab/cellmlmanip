@@ -1,3 +1,4 @@
+import pint
 import pytest
 import sympy as sp
 
@@ -30,12 +31,6 @@ class TestUnits(object):
         assert unitstore.is_defined('u2')
         assert str(u2.dimensionality) == 'dimensionless'
 
-        # SI prefixes are allowed on user and CellML units
-        ms = unitstore.add_unit('ms', 'milliu1')
-        assert ms == u1 * 1e-3
-        mm = unitstore.add_unit('mm', 'micrometer')
-        assert mm == unitstore.get_unit('meter') * 1e-6
-
         # Make sure 1e6 doesn't get a prefix in it
         Ms = unitstore.add_unit('Ms', 'second * 1e6')
         ks = unitstore.add_unit('ks', 'second * 1.e3')
@@ -47,6 +42,14 @@ class TestUnits(object):
         # CellML unit redefinition
         with pytest.raises(ValueError):
             unitstore.add_unit('second', 'second * 2')
+
+        # SI prefixes are not recognised
+        with pytest.raises(pint.errors.UndefinedUnitError):
+            unitstore.add_unit('um', 'micrometer')
+
+        # Pluralising is not switched on
+        with pytest.raises(pint.errors.UndefinedUnitError):
+            unitstore.add_unit('ms', 'meters')
 
     def test_add_base_unit(self):
         """Tests UnitStore.add_base_unit()."""
@@ -100,7 +103,7 @@ class TestUnits(object):
         assert store.is_equivalent(a, b)
 
     def test_get_conversion_factor(self):
-        """ Tests Units.get_conversion_factor() function. """
+        """Tests Units.get_conversion_factor() function."""
 
         store = UnitStore()
         s = store.get_unit('second')
@@ -108,14 +111,52 @@ class TestUnits(object):
         assert store.get_conversion_factor(s, ms) == 0.001
         assert store.get_conversion_factor(ms, s) == 1000
 
+    def test_prefixing(self):
+        """Tests edge cases for the internal prefixing."""
+
+        store = UnitStore()
+        x = store.add_unit('x', 'meter')
+
+        # Use str(x) as a new unit name: this will have any prefix/postfix the unit store adds so could leave to
+        # confusion.
+        y = store.add_unit(str(x), 'second')
+        z = store.add_unit(str(y), 'ampere')
+
+        # Test use in get_unit()
+        assert store.get_unit('x') == x
+        assert store.get_unit(str(x)) == y
+        assert store.get_unit(str(y)) == z
+        assert store.get_unit('x') != store.get_unit(str(x))
+        assert store.get_unit('x') != store.get_unit(str(y))
+        assert store.get_unit(str(x)) != store.get_unit(str(y))
+        assert not store.is_equivalent(store.get_unit('x'), store.get_unit(str(x)))
+        assert not store.is_equivalent(store.get_unit('x'), store.get_unit(str(y)))
+        assert not store.is_equivalent(store.get_unit(str(x)), store.get_unit(str(y)))
+
+        # Test use in add_unit() expression
+        a = store.add_unit('a', str(x))
+        b = store.add_unit('b', str(y))
+        assert store.is_equivalent(a, y)
+        assert store.is_equivalent(b, z)
+
+        # Check that similar names are handled ok
+        store = UnitStore()
+        a = store.add_unit('my_unit', 'second')
+        b = store.add_unit('also_my_unit', 'volt')
+        c = store.add_unit('my_unit_2', 'ampere')
+        assert store.is_equivalent(a, store.get_unit('my_unit'))
+        assert not store.is_equivalent(a, store.get_unit('also_my_unit'))
+        assert not store.is_equivalent(a, store.get_unit('my_unit_2'))
+        assert not store.is_equivalent(store.get_unit('also_my_unit'), store.get_unit('my_unit_2'))
+
     def test_shared_registry(self):
-        """ Tests sharing a unit registry. """
+        """Tests sharing a unit registry."""
 
         a = UnitStore()
         b = UnitStore(a)
 
         x = a.add_unit('x', 'meter')
-        y = b.add_unit('y', 'millimeter')
+        y = b.add_unit('y', 'meter * 1e-3')
         with pytest.raises(KeyError):
             a.get_unit('y')
         with pytest.raises(KeyError):
