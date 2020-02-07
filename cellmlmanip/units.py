@@ -228,9 +228,7 @@ class UnitStore(object):
         qname = self._prefix_name(name)
 
         # Add prefixes inside expression
-        print('in: ' + name + ' = ' + expression)
         expression = _WORD.sub(self._prefix_expression, expression)
-        print('out: ' + qname + ' = ' + expression)
 
         # Dimensionless units can't be created using a string expression.
         # To test if this is a dimensionless unit, parse the string as a Quantity and check if it's dimensionless
