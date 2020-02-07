@@ -54,7 +54,7 @@ _TRIG_FUNCTIONS = {
 
 
 # Regex to find unit names in expressions
-# It says (1) not preceded by a number of period, (2) then at least one ascii letter, (3) then numbers or _ allowed too
+# It says (1) not preceded by a number or period, (2) then at least one ascii letter, (3) then numbers or _ allowed too
 _WORD = re.compile('(?<![0-9.])[a-zA-Z_]+[a-zA-Z0-9_]*')
 
 # List of prefixes, initially in order of expected frequency of appearance
