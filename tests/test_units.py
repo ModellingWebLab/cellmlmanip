@@ -20,22 +20,25 @@ class TestUnits(object):
         # Add ordinary unit
         unitstore = UnitStore()
         assert not unitstore.is_defined('u1')
-        unitstore.add_unit('u1', 'second * 2')
+        u1 = unitstore.add_unit('u1', 'second * 2')
         assert unitstore.is_defined('u1')
-        assert unitstore.get_unit('u1') == unitstore.get_unit('second') * 2
+        assert u1 == unitstore.get_unit('second') * 2
 
         # Add dimensionless unit
         assert not unitstore.is_defined('u2')
-        unitstore.add_unit('u2', 'dimensionless * 3')
+        u2 = unitstore.add_unit('u2', 'dimensionless * 3')
         assert unitstore.is_defined('u2')
+        assert str(u2.dimensionality) == 'dimensionless'
 
         # SI prefixes are allowed on user and CellML units
-        unitstore.add_unit('ms', 'milliu1')
-        unitstore.add_unit('mm', 'millimeter')
+        ms = unitstore.add_unit('ms', 'milliu1')
+        assert ms == u1 * 1e-3
+        mm = unitstore.add_unit('mm', 'micrometer')
+        assert mm == unitstore.get_unit('meter') * 1e-6
 
         # Make sure 1e6 doesn't get a prefix in it
-        unitstore.add_unit('Ms', 'second * 1e6')
-        unitstore.add_unit('ks', 'second * 1.e3')
+        Ms = unitstore.add_unit('Ms', 'second * 1e6')
+        ks = unitstore.add_unit('ks', 'second * 1.e3')
 
         # Duplicate unit definition
         with pytest.raises(ValueError):
@@ -66,8 +69,7 @@ class TestUnits(object):
         """Tests UnitStore.convert()."""
 
         store = UnitStore()
-        store.add_unit('mm', 'meter / 1000')
-        mm = store.get_unit('mm')
+        mm = store.add_unit('mm', 'meter / 1000')
         x = 5 * store.get_unit('meter')
         y = store.convert(x, mm)
         assert y == 5000 * mm
@@ -77,12 +79,12 @@ class TestUnits(object):
 
         # Get CellML unit
         store = UnitStore()
-        assert str(store.get_unit('liter')).endswith('liter')
+        assert str(store.get_unit('liter')) == 'liter'
         assert isinstance(store.get_unit('ampere'), store.Unit)
 
         # Get user unit
-        store.add_unit('x', 'meter / second')
-        assert str(store.get_unit('x') == 'x')
+        x = store.add_unit('x', 'meter / second')
+        assert str(x == 'x')
 
         # Non-existent unit
         with pytest.raises(KeyError, match='Unknown unit'):
@@ -93,8 +95,7 @@ class TestUnits(object):
 
         store = UnitStore()
         a = store.get_unit('meter')
-        store.add_unit('b', 'meter')
-        b = store.get_unit('b')
+        b = store.add_unit('b', 'meter')
         assert a != b
         assert store.is_equivalent(a, b)
 
@@ -102,9 +103,10 @@ class TestUnits(object):
         """ Tests Units.get_conversion_factor() function. """
 
         store = UnitStore()
-        store.add_unit('ms', 'second / 1000')
-        assert store.get_conversion_factor(store.get_unit('second'), store.get_unit('ms')) == 0.001
-        assert store.get_conversion_factor(store.get_unit('ms'), store.get_unit('second')) == 1000
+        s = store.get_unit('second')
+        ms = store.add_unit('ms', 'second / 1000')
+        assert store.get_conversion_factor(s, ms) == 0.001
+        assert store.get_conversion_factor(ms, s) == 1000
 
     def test_shared_registry(self):
         """ Tests sharing a unit registry. """
@@ -112,15 +114,13 @@ class TestUnits(object):
         a = UnitStore()
         b = UnitStore(a)
 
-        a.add_unit('x', 'meter')
-        b.add_unit('y', 'millimeter')
+        x = a.add_unit('x', 'meter')
+        y = b.add_unit('y', 'millimeter')
         with pytest.raises(KeyError):
             a.get_unit('y')
         with pytest.raises(KeyError):
             b.get_unit('x')
 
-        x = a.get_unit('x')
-        y = b.get_unit('y')
         assert a.get_conversion_factor(x, y) == 0.001
         assert b.get_conversion_factor(x, y) == 0.001
 

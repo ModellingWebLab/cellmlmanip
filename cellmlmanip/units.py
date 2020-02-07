@@ -222,6 +222,7 @@ class UnitStore(object):
 
         :param name: A string name. Names must be unique and cannot overlap with CellML predefined units.
         :param expression: An expression to define the new unit.
+        :returns: The newly created ``Unit`` object.
         """
         if name in _CELLML_UNITS:
             raise ValueError('Cannot redefine CellML unit <%s>.' % name)
@@ -248,6 +249,9 @@ class UnitStore(object):
         # Add original name to list of known units
         self._known_units.add(name)
 
+        # Return new unit
+        return getattr(self._registry, qname)
+
     def add_base_unit(self, name):
         """Add a new base unit.
 
@@ -266,6 +270,9 @@ class UnitStore(object):
 
         # Add original name to list of known units
         self._known_units.add(name)
+
+        # Return new unit
+        return getattr(self._registry, qname)
 
     def convert(self, quantity, unit):
         """Converts the given ``quantity`` to be in the given ``unit``.
