@@ -40,6 +40,9 @@ class TestUnitConversion:
         """ Fixture to load a local copy of  the basic_ode model that may get modified. """
         return shared.load_model('silly_names')
 
+    ###############################################################
+    # Basic tests
+
     def test_bad_units(self, bad_units_model):
         """ Tests units read and calculated from an inconsistent model. """
         symbol_a = bad_units_model.get_symbol_by_cmeta_id("a")
@@ -56,6 +59,28 @@ class TestUnitConversion:
         with pytest.raises(units.UnitError):
             # cellml file states b (per_ms) = power(a (ms), 1 (second))
             bad_units_model.units.evaluate_units(equation[1].rhs)
+
+    def test_providing_unit_store(self):
+        """Tests that we can provide an existing UnitStore to a model."""
+        store = units.UnitStore()
+        model = shared.load_model('basic_ode', unit_store=store)
+        original_var = model.get_symbol_by_name('env_ode$sv1')
+
+        # test no change in units
+        store.add_unit('my_mV', 'millivolt')
+        my_mV = store.get_unit('my_mV')
+        new_var = model.convert_variable(original_var, my_mV, DataDirectionFlow.INPUT)
+        assert new_var == original_var
+
+        # test conversion
+        store.add_unit('my_nV', '1e-9 * volt')
+        my_nV = store.get_unit('my_nV')
+        new_var = model.convert_variable(original_var, my_nV, DataDirectionFlow.OUTPUT)
+        assert new_var != original_var
+        assert str(model.get_definition(new_var)) == 'Eq(_env_ode$sv1_converted, 1000000.0*_env_ode$sv1)'
+
+    ###############################################################
+    # Helper functions for later tests
 
     # original state for local_model
     def _original_state_local_model(self, local_model):
@@ -124,6 +149,9 @@ class TestUnitConversion:
         assert str(multiode_freevar_model.equations[0]) == 'Eq(Derivative(_env_ode$sv1, _environment$time), _1.0)'
         assert str(multiode_freevar_model.equations[1]) == 'Eq(Derivative(_env_ode$y, _environment$time), _2.0)'
         return True
+
+    ###############################################################
+    # Main conversion tests
 
     def test_add_input_state_variable(self, local_model):
         """ Tests the Model.convert_variable function that changes units.
