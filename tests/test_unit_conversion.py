@@ -67,7 +67,7 @@ class TestUnitConversion:
         original_var = model.get_symbol_by_name('env_ode$sv1')
 
         # test no change in units
-        store.add_unit('my_mV', 'millivolt')
+        store.add_unit('my_mV', '1e-3 * volt')
         my_mV = store.get_unit('my_mV')
         new_var = model.convert_variable(original_var, my_mV, DataDirectionFlow.INPUT)
         assert new_var == original_var
