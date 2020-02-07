@@ -57,9 +57,9 @@ class TestUnits(object):
 
         unitstore = UnitStore()
         assert not unitstore.is_defined('uu')
-        unitstore.add_base_unit('uu')
+        uu = unitstore.add_base_unit('uu')
         assert unitstore.is_defined('uu')
-        assert unitstore.show_base_units(unitstore.get_unit('uu')) == '1.0 uu'
+        assert unitstore.format(uu, True) == '1.0 uu'
 
         # Duplicate unit definition
         with pytest.raises(ValueError):
@@ -77,6 +77,25 @@ class TestUnits(object):
         x = 5 * store.get_unit('meter')
         y = store.convert(x, mm)
         assert y == 5000 * mm
+
+    def test_format(self):
+        """Tests formatting of units."""
+
+        # Test basic formatting and base unit expansion
+        store = UnitStore()
+        store.add_unit('x', 'second')
+        y = store.add_base_unit('y')
+        z = store.add_unit('z', 'y * meter / x ** 2')
+        assert store.format(z) == 'z'
+        assert store.format(z, True) == '1.0 meter * y / second ** 2'
+
+        # Test if internal name manipulation can mess things up
+        a = store.add_base_unit(str(y))
+        b = store.add_unit(str(z), '2 * z /' + str(y))
+        assert store.format(a) == str(y)
+        assert store.format(b) == str(z)
+        assert store.format(a, True) == '1.0 ' + str(y)
+        assert store.format(b, True) == '2.0 meter * y / second ** 2 / ' + str(y)
 
     def test_get_unit(self):
         """Tests UnitStore.get_unit()."""

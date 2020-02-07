@@ -278,8 +278,8 @@ class Model(object):
         lhs_units = self.units.evaluate_units(equality.lhs)
         rhs_units = self.units.evaluate_units(equality.rhs)
         assert self.units.is_equivalent(rhs_units, lhs_units), 'Units %s %s != %s %s' % (
-            lhs_units, self.units.show_base_units(lhs_units),
-            rhs_units, self.units.show_base_units(rhs_units)
+            self.units.format(lhs_units), self.units.format(lhs_units, True),
+            self.units.format(rhs_units), self.units.format(rhs_units, True),
         )
 
     def get_equations_for(self, symbols, recurse=True, strip_units=True):

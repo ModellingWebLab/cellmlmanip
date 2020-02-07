@@ -57,6 +57,9 @@ _TRIG_FUNCTIONS = {
 # It says (1) not preceded by a number or period, (2) then at least one ascii letter, (3) then numbers or _ allowed too
 _WORD = re.compile('(?<![0-9.])[a-zA-Z_]+[a-zA-Z0-9_]*')
 
+# Regex to remove UnitStore prefixes
+_STORE_PREFIX = re.compile('(?<![a-zA-Z0-9_])store[0-9]+_')
+
 
 class UnitError(Exception):
     """Base class for errors relating to calculating units."""
@@ -186,7 +189,7 @@ class UnitStore(object):
         # same registry.
         self._id = UnitStore._next_id
         UnitStore._next_id += 1
-        self._prefix = 's' + str(self._id) + '_'
+        self._prefix = 'store' + str(self._id) + '_'
 
         # Get unit registry
         if store is None:
@@ -280,6 +283,22 @@ class UnitStore(object):
         assert isinstance(unit, self._registry.Unit)
         return quantity.to(unit)
 
+    def format(self, unit, base_units=False):
+        """
+        Returns a string representation of a unit.
+
+        :param unit: The ``Unit`` object to format.
+        :param base_units: If this optional argument is set to ``True`` the string will show the base units expansion of
+            the given unit.
+        """
+        if base_units:
+            base = self._registry.get_base_units(unit)
+            text = str(base[0]) + ' ' + str(base[1])
+            # Remove unit store prefixes from any unit store
+            return _STORE_PREFIX.sub('', text)
+        else:
+            return _STORE_PREFIX.sub('', str(unit))
+
     def get_unit(self, name):
         """Retrieves the ``Unit`` object with the given name.
 
@@ -348,14 +367,6 @@ class UnitStore(object):
             return name
 
         return self._prefix + name
-
-    def show_base_units(self, unit):
-        """
-        Returns a string show the base units of the given unit.
-        """
-        base = self._registry.get_base_units(unit)
-        text = str(base[0]) + ' ' + str(base[1])
-        return text.replace(self._prefix, '')
 
 
 class UnitCalculator(object):

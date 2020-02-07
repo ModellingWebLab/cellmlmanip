@@ -218,7 +218,7 @@ class TestParser(object):
         p = parser.Parser(cellml)
         m = p.parse()
         i = m.units.get_unit('inch')
-        assert m.units.show_base_units(i) == '0.0254 meter'
+        assert m.units.format(i, True) == '0.0254 meter'
 
     def test_undefined_variable(self):
         """ Tests parser exception for undefined variable. """
