@@ -97,11 +97,13 @@ class Parser(object):
         # A dictionary mapping component names to _Component objects
         self.components = OrderedDict()
 
-    def parse(self):
+    def parse(self, unit_store=None):
         """
         The main method that reads the XML file and extracts the relevant parts of the CellML model
         definition.
 
+        :param unit_store: Optional :class:`cellmlmanip.units.UnitStore` instance; if given the model will share the
+            underlying registry so that conversions between model units and those from the provided store work.
         :return: a :class:`Model` holding CellML model definition, reading for manipulation.
         """
 
@@ -116,7 +118,9 @@ class Parser(object):
 
         # <model> root node - initialise the model object
         model_xml = tree.getroot()
-        self.model = Model(model_xml.get('name'), model_xml.get(Parser.with_ns(XmlNs.CMETA, 'id')))
+        self.model = Model(model_xml.get('name'),
+                           model_xml.get(Parser.with_ns(XmlNs.CMETA, 'id')),
+                           unit_store=unit_store)
 
         # handle the child elements of <model>
         self._add_units(model_xml)
