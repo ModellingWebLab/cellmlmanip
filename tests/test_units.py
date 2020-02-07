@@ -23,6 +23,7 @@ class TestUnits(object):
         assert not unitstore.is_defined('u1')
         u1 = unitstore.add_unit('u1', 'second * 2')
         assert unitstore.is_defined('u1')
+        assert u1 == unitstore.get_unit('u1')
         assert u1 == unitstore.get_unit('second') * 2
 
         # Add dimensionless unit
@@ -117,7 +118,7 @@ class TestUnits(object):
         store = UnitStore()
         x = store.add_unit('x', 'meter')
 
-        # Use str(x) as a new unit name: this will have any prefix/postfix the unit store adds so could leave to
+        # Use str(x) as a new unit name: this will have any prefix/postfix the unit store adds so could lead to
         # confusion.
         y = store.add_unit(str(x), 'second')
         z = store.add_unit(str(y), 'ampere')
