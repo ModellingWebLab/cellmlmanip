@@ -13,7 +13,7 @@ from cellmlmanip.model import SYMPY_SYMBOL_DELIMITER, Model
 from cellmlmanip.transpiler import Transpiler
 
 
-_UNIT_PREFIXES = {
+UNIT_PREFIXES = {
     'yocto': 1e-24,
     'zepto': 1e-21,
     'atto': 1e-18,
@@ -156,8 +156,8 @@ class Parser(object):
         units_elements = model.findall(Parser.with_ns(XmlNs.CELLML, 'units'))
 
         # get list of built-in cellml units
-        from cellmlmanip.units import CELLML_UNITS
-        units_found = set(CELLML_UNITS)
+        from cellmlmanip.units import _CELLML_UNITS
+        units_found = set(_CELLML_UNITS)
 
         # get all the units defined in the cellml model
         definitions_to_add = OrderedDict()
@@ -216,18 +216,16 @@ class Parser(object):
 
         # For each of the <unit> elements for this unit definition
         for unit_element in unit_attributes:
-            # Source the <unit units="XXX"> from our store
-            matched_unit = self.model.units.get_unit(unit_element['units'])
 
-            # Construct a string representing the expression for this <unit>
-            expr = str(matched_unit)
+            # Start from the unit name
+            expr = unit_element['units']
 
             # See https://www.cellml.org/specifications/cellml_1.1/#sec_units 5.2.2
             # offset, prefix, exponent, and multiplier
 
             if 'prefix' in unit_element:
                 try:
-                    power = _UNIT_PREFIXES[unit_element['prefix']]
+                    power = UNIT_PREFIXES[unit_element['prefix']]
                 except KeyError:
                     # Assume that prefix is an integer.
                     power = '1e%s' % unit_element['prefix']

@@ -303,27 +303,27 @@ class TestModelFunctions():
 
         sv11 = basic_model.get_symbol_by_cmeta_id('sv11')
         assert sv11.name == 'env_ode$sv1'
-        assert sv11.units == 'mV'
+        assert sv11.units == basic_model.units.get_unit('mV')
 
     def test_get_symbol_by_cmeta_id_2(self, aslanidi_model):
         """ Tests Model.get_symbol_by_cmeta_id() works correctly. """
 
         variable = aslanidi_model.get_symbol_by_cmeta_id('testcmeta')
         assert variable.name == 'intracellular_ion_concentrations$Na_i'
-        assert variable.units == 'millimolar'
+        assert variable.units == aslanidi_model.units.get_unit('millimolar')
 
     def test_get_symbol_by_name(self, basic_model):
         """ Tests Model.get_symbol_by_name() works correctly. """
 
         sv11 = basic_model.get_symbol_by_name('env_ode$sv1')
-        assert sv11.units == 'mV'
+        assert sv11.units == basic_model.units.get_unit('mV')
 
     def test_get_symbol_by_ontology_term(self, aslanidi_model):
         """ Tests Model.get_symbol_by_ontology_term() works correctly. """
 
         symbol_a = aslanidi_model.get_symbol_by_ontology_term(shared.OXMETA, 'membrane_capacitance')
         assert symbol_a.name == 'membrane$Cm'
-        assert symbol_a.units == 'nanoF'
+        assert symbol_a.units == aslanidi_model.units.get_unit('nanoF')
 
     def test_get_symbols_by_rdf(self, aslanidi_model):
         """ Tests Model.get_symbols_by_rdf() works correctly. """
@@ -332,7 +332,7 @@ class TestModelFunctions():
                                                      (shared.OXMETA, 'membrane_voltage'))
         assert len(symbol_a) == 1
         assert symbol_a[0].name == 'membrane$V'
-        assert symbol_a[0].units == 'millivolt'
+        assert symbol_a[0].units == aslanidi_model.units.get_unit('millivolt')
 
     ######################################################################
     # The functions listed for ontology/rdf are tested in test_rdf.py
@@ -470,13 +470,13 @@ class TestModelFunctions():
         """ Tests units read and calculated from a model. """
         symbol_a = simple_units_model.get_symbol_by_cmeta_id("a")
         equation = simple_units_model.get_equations_for([symbol_a], strip_units=False)
-        assert simple_units_model.units.evaluate_units(equation[0].lhs) == 'ms'
-        assert simple_units_model.units.evaluate_units(equation[0].rhs) == 'ms'
+        assert simple_units_model.units.evaluate_units(equation[0].lhs) == simple_units_model.units.get_unit('ms')
+        assert simple_units_model.units.evaluate_units(equation[0].rhs) == simple_units_model.units.get_unit('ms')
 
         symbol_b = simple_units_model.get_symbol_by_cmeta_id("b")
         equation = simple_units_model.get_equations_for([symbol_b])
-        assert simple_units_model.units.evaluate_units(equation[1].lhs) == 'per_ms'
-        assert simple_units_model.units.evaluate_units(equation[1].rhs) == '1 / ms'
+        assert simple_units_model.units.evaluate_units(equation[1].lhs) == simple_units_model.units.get_unit('per_ms')
+        assert simple_units_model.units.evaluate_units(equation[1].rhs) == 1 / simple_units_model.units.get_unit('ms')
         assert simple_units_model.units.is_equivalent(
             simple_units_model.units.evaluate_units(equation[1].lhs),
             simple_units_model.units.evaluate_units(equation[1].rhs))
@@ -488,7 +488,7 @@ class TestModelFunctions():
         equation = bad_units_model.get_equations_for([symbol_b], strip_units=False)
         assert len(equation) == 2
         assert equation[0].lhs == symbol_a
-        assert bad_units_model.units.evaluate_units(equation[0].lhs) == 'ms'
+        assert bad_units_model.units.evaluate_units(equation[0].lhs) == bad_units_model.units.get_unit('ms')
         with pytest.raises(units.UnitError):
             # cellml file states a (ms) = 1 (ms) + 1 (second)
             bad_units_model.units.evaluate_units(equation[0].rhs)

@@ -50,7 +50,7 @@ class TestUnitConversion:
         equation = bad_units_model.get_equations_for([symbol_b], strip_units=False)
         assert len(equation) == 2
         assert equation[0].lhs == symbol_a
-        assert bad_units_model.units.evaluate_units(equation[0].lhs) == 'ms'
+        assert bad_units_model.units.evaluate_units(equation[0].lhs) == bad_units_model.units.get_unit('ms')
         with pytest.raises(units.UnitError):
             # cellml file states a (ms) = 1 (ms) + 1 (second)
             bad_units_model.units.evaluate_units(equation[0].rhs)
@@ -67,7 +67,7 @@ class TestUnitConversion:
         original_var = model.get_symbol_by_name('env_ode$sv1')
 
         # test no change in units
-        store.add_unit('my_mV', 'millivolt')
+        store.add_unit('my_mV', '1e-3 * volt')
         my_mV = store.get_unit('my_mV')
         new_var = model.convert_variable(original_var, my_mV, DataDirectionFlow.INPUT)
         assert new_var == original_var
@@ -88,8 +88,8 @@ class TestUnitConversion:
         symbol_a = local_model.get_symbol_by_cmeta_id('sv11')
         symbol_t = local_model.get_symbol_by_cmeta_id('time')
         assert symbol_a.initial_value == 2.0
-        assert symbol_a.units == 'mV'
-        assert symbol_t.units == 'ms'
+        assert symbol_a.units == local_model.units.get_unit('mV')
+        assert symbol_t.units == local_model.units.get_unit('ms')
         assert len(local_model.equations) == 1
         assert str(local_model.equations[0]) == 'Eq(Derivative(_env_ode$sv1, _environment$time), _1.0)'
         state_symbols = local_model.get_state_symbols()
@@ -109,10 +109,10 @@ class TestUnitConversion:
         assert symbol_t.initial_value is None
         assert symbol_x.initial_value is None
         assert symbol_y.initial_value is None
-        assert symbol_a.units == 'mV'
-        assert symbol_t.units == 'ms'
-        assert symbol_x.units == 'pA'
-        assert symbol_y.units == 'per_pA'
+        assert symbol_a.units == literals_model.units.get_unit('mV')
+        assert symbol_t.units == literals_model.units.get_unit('ms')
+        assert symbol_x.units == literals_model.units.get_unit('pA')
+        assert symbol_y.units == literals_model.units.get_unit('per_pA')
         assert len(literals_model.equations) == 3
         assert str(literals_model.equations[0]) == 'Eq(Derivative(_env_ode$sv1, _environment$time), _1.0)'
         assert str(literals_model.equations[1]) == 'Eq(_env_ode$x, _1.0)'
@@ -125,8 +125,8 @@ class TestUnitConversion:
         symbol_a = multiode_model.get_symbol_by_cmeta_id('sv11')
         symbol_t = multiode_model.get_symbol_by_cmeta_id('time')
         assert symbol_a.initial_value == 2.0
-        assert symbol_a.units == 'mV'
-        assert symbol_t.units == 'ms'
+        assert symbol_a.units == multiode_model.units.get_unit('mV')
+        assert symbol_t.units == multiode_model.units.get_unit('ms')
         assert len(multiode_model.equations) == 3
         assert str(multiode_model.equations[0]) == 'Eq(Derivative(_env_ode$sv1, _environment$time), _1.0)'
         assert str(multiode_model.equations[1]) == \
@@ -142,9 +142,9 @@ class TestUnitConversion:
         symbol_y = multiode_freevar_model.get_symbol_by_name('env_ode$y')
         assert symbol_a.initial_value == 2.0
         assert symbol_y.initial_value == 3.0
-        assert symbol_a.units == 'mV'
-        assert symbol_t.units == 'ms'
-        assert symbol_y.units == 'mV'
+        assert symbol_a.units == multiode_freevar_model.units.get_unit('mV')
+        assert symbol_t.units == multiode_freevar_model.units.get_unit('ms')
+        assert symbol_y.units == multiode_freevar_model.units.get_unit('mV')
         assert len(multiode_freevar_model.equations) == 2
         assert str(multiode_freevar_model.equations[0]) == 'Eq(Derivative(_env_ode$sv1, _environment$time), _1.0)'
         assert str(multiode_freevar_model.equations[1]) == 'Eq(Derivative(_env_ode$y, _environment$time), _2.0)'
@@ -193,15 +193,15 @@ class TestUnitConversion:
         assert len(local_model.variables()) == 5
         symbol_a = local_model.get_symbol_by_cmeta_id('sv11')
         assert symbol_a.initial_value == 0.002
-        assert symbol_a.units == 'volt'
+        assert symbol_a.units == local_model.units.get_unit('volt')
         assert symbol_a.name == 'env_ode$sv1_converted'
         symbol_t = local_model.get_symbol_by_cmeta_id('time')
-        assert symbol_t.units == 'ms'
+        assert symbol_t.units == local_model.units.get_unit('ms')
         symbol_orig = local_model.get_symbol_by_name('env_ode$sv1')
-        assert symbol_orig.units == 'mV'
+        assert symbol_orig.units == local_model.units.get_unit('mV')
         assert symbol_orig.initial_value is None
         symbol_derv = local_model.get_symbol_by_name('env_ode$sv1_orig_deriv')
-        assert symbol_derv.units == 'mV / ms'
+        assert symbol_derv.units == local_model.units.get_unit('mV') / local_model.units.get_unit('ms')
         assert symbol_derv.initial_value is None
         assert len(local_model.equations) == 3
         assert str(local_model.equations[0]) == 'Eq(_env_ode$sv1, 1000.0*_env_ode$sv1_converted)'
@@ -250,15 +250,15 @@ class TestUnitConversion:
         assert len(local_model.variables()) == 5
         symbol_a = local_model.get_symbol_by_cmeta_id('sv11')
         assert symbol_a.initial_value == 2.0
-        assert symbol_a.units == 'mV'
+        assert symbol_a.units == local_model.units.get_unit('mV')
         assert symbol_a.name == 'env_ode$sv1'
         symbol_t = local_model.get_symbol_by_cmeta_id('time')
-        assert symbol_t.units == 'second'
+        assert symbol_t.units == local_model.units.get_unit('second')
         assert symbol_t.name == 'environment$time_converted'
         symbol_orig = local_model.get_symbol_by_name('env_ode$sv1')
-        assert symbol_orig.units == 'mV'
+        assert symbol_orig.units == local_model.units.get_unit('mV')
         symbol_derv = local_model.get_symbol_by_name('env_ode$sv1_orig_deriv')
-        assert symbol_derv.units == 'mV / ms'
+        assert symbol_derv.units == local_model.units.get_unit('mV') / local_model.units.get_unit('ms')
         assert len(local_model.equations) == 3
         assert str(local_model.equations[0]) == 'Eq(_environment$time, 1000.0*_environment$time_converted)'
         assert str(local_model.equations[1]) == 'Eq(_env_ode$sv1_orig_deriv, _1.0)'
@@ -317,11 +317,11 @@ class TestUnitConversion:
         assert symbol_x.initial_value is None
         assert symbol_y.initial_value is None
         assert symbol_x_orig.initial_value is None
-        assert symbol_a.units == 'mV'
-        assert symbol_t.units == 'ms'
-        assert symbol_x.units == 'nA'
-        assert symbol_y.units == 'per_pA'
-        assert symbol_x_orig.units == 'pA'
+        assert symbol_a.units == literals_model.units.get_unit('mV')
+        assert symbol_t.units == literals_model.units.get_unit('ms')
+        assert symbol_x.units == literals_model.units.get_unit('nA')
+        assert symbol_y.units == literals_model.units.get_unit('per_pA')
+        assert symbol_x_orig.units == literals_model.units.get_unit('pA')
         assert len(literals_model.equations) == 4
         assert str(literals_model.equations[0]) == 'Eq(Derivative(_env_ode$sv1, _environment$time), _1.0)'
         assert str(literals_model.equations[1]) == 'Eq(_env_ode$y, _1.0/_env_ode$x)'
@@ -371,20 +371,22 @@ class TestUnitConversion:
         assert len(multiode_freevar_model.variables()) == 7
         symbol_a = multiode_freevar_model.get_symbol_by_cmeta_id('sv11')
         assert symbol_a.initial_value == 2.0
-        assert symbol_a.units == 'mV'
+        assert symbol_a.units == multiode_freevar_model.units.get_unit('mV')
         assert symbol_a.name == 'env_ode$sv1'
         symbol_t = multiode_freevar_model.get_symbol_by_cmeta_id('time')
         assert symbol_t.units == 'second'
         assert symbol_t.name == 'environment$time_converted'
         symbol_orig = multiode_freevar_model.get_symbol_by_name('env_ode$sv1')
-        assert symbol_orig.units == 'mV'
+        mV = multiode_freevar_model.units.get_unit('mV')
+        ms = multiode_freevar_model.units.get_unit('ms')
+        assert symbol_orig.units == mV
         symbol_derv = multiode_freevar_model.get_symbol_by_name('env_ode$sv1_orig_deriv')
-        assert symbol_derv.units == 'mV / ms'
+        assert symbol_derv.units == mV / ms
         symbol_orig_y = multiode_freevar_model.get_symbol_by_name('env_ode$y')
-        assert symbol_orig_y.units == 'mV'
+        assert symbol_orig_y.units == mV
         assert symbol_orig_y.initial_value == 3.0
         symbol_derv_y = multiode_freevar_model.get_symbol_by_name('env_ode$y_orig_deriv')
-        assert symbol_derv_y.units == 'mV / ms'
+        assert symbol_derv_y.units == mV / ms
         assert len(multiode_freevar_model.equations) == 5
         assert str(multiode_freevar_model.equations[0]) == 'Eq(_environment$time, 1000.0*_environment$time_converted)'
         assert str(multiode_freevar_model.equations[1]) == 'Eq(_env_ode$sv1_orig_deriv, _1.0)'
@@ -564,11 +566,11 @@ class TestUnitConversion:
         assert symbol_x.initial_value is None
         assert symbol_y.initial_value is None
         assert symbol_x_orig.initial_value is None
-        assert symbol_a.units == 'mV'
-        assert symbol_t.units == 'ms'
-        assert symbol_x.units == 'nA'
-        assert symbol_y.units == 'per_pA'
-        assert symbol_x_orig.units == 'pA'
+        assert symbol_a.units == literals_model.units.get_unit('mV')
+        assert symbol_t.units == literals_model.units.get_unit('ms')
+        assert symbol_x.units == literals_model.units.get_unit('nA')
+        assert symbol_y.units == literals_model.units.get_unit('per_pA')
+        assert symbol_x_orig.units == literals_model.units.get_unit('pA')
         assert len(literals_model.equations) == 4
         assert str(literals_model.equations[0]) == 'Eq(Derivative(_env_ode$sv1, _environment$time), _1.0)'
         assert str(literals_model.equations[1]) == 'Eq(_env_ode$x, _1.0)'
@@ -614,12 +616,12 @@ class TestUnitConversion:
         assert len(local_model.variables()) == 4
         symbol_a = local_model.get_symbol_by_cmeta_id('sv11')
         assert symbol_a.initial_value is None
-        assert symbol_a.units == 'volt'
+        assert symbol_a.units == local_model.units.get_unit('volt')
         assert symbol_a.name == 'env_ode$sv1_converted'
         symbol_t = local_model.get_symbol_by_cmeta_id('time')
-        assert symbol_t.units == 'ms'
+        assert symbol_t.units == local_model.units.get_unit('ms')
         symbol_orig = local_model.get_symbol_by_name('env_ode$sv1')
-        assert symbol_orig.units == 'mV'
+        assert symbol_orig.units == local_model.units.get_unit('mV')
         assert symbol_orig.initial_value == 2.0
         assert len(local_model.equations) == 2
         assert str(local_model.equations[0]) == 'Eq(Derivative(_env_ode$sv1, _environment$time), _1.0)'
@@ -665,13 +667,13 @@ class TestUnitConversion:
         assert len(local_model.variables()) == 4
         symbol_a = local_model.get_symbol_by_cmeta_id('sv11')
         assert symbol_a.initial_value == 2.0
-        assert symbol_a.units == 'mV'
+        assert symbol_a.units == local_model.units.get_unit('mV')
         assert symbol_a.name == 'env_ode$sv1'
         symbol_t = local_model.get_symbol_by_cmeta_id('time')
-        assert symbol_t.units == 'second'
+        assert symbol_t.units == local_model.units.get_unit('second')
         assert symbol_t.name == 'environment$time_converted'
         symbol_orig = local_model.get_symbol_by_name('environment$time')
-        assert symbol_orig.units == 'ms'
+        assert symbol_orig.units == local_model.units.get_unit('ms')
         assert len(local_model.equations) == 2
         assert str(local_model.equations[0]) == 'Eq(Derivative(_env_ode$sv1, _environment$time), _1.0)'
         assert str(local_model.equations[1]) == 'Eq(_environment$time_converted, 0.001*_environment$time)'
@@ -727,8 +729,8 @@ class TestUnitConversion:
             symbol_a = silly_names.get_symbol_by_cmeta_id('sv11')
             symbol_t = silly_names.get_symbol_by_cmeta_id('time')
             assert symbol_a.initial_value == 2.0
-            assert symbol_a.units == 'mV'
-            assert symbol_t.units == 'ms'
+            assert symbol_a.units == silly_names.units.get_unit('mV')
+            assert symbol_t.units == silly_names.units.get_unit('ms')
             assert silly_names.get_symbol_by_name('env_ode$sv1_converted')
             assert silly_names.get_symbol_by_name('env_ode$sv1_orig_deriv')
             assert len(silly_names.equations) == 1
@@ -748,17 +750,17 @@ class TestUnitConversion:
         assert len(silly_names.variables()) == 7
         symbol_a = silly_names.get_symbol_by_cmeta_id('sv11')
         assert symbol_a.initial_value == 0.002
-        assert symbol_a.units == 'volt'
+        assert symbol_a.units == silly_names.units.get_unit('volt')
         assert symbol_a.name == 'env_ode$sv1_converted_a'
         symbol_t = silly_names.get_symbol_by_cmeta_id('time')
-        assert symbol_t.units == 'ms'
+        assert symbol_t.units == silly_names.units.get_unit('ms')
         assert symbol_t.name == 'environment$time'
         symbol_orig = silly_names.get_symbol_by_name('env_ode$sv1')
-        assert symbol_orig.units == 'mV'
+        assert symbol_orig.units == silly_names.units.get_unit('mV')
         assert silly_names.get_symbol_by_name('env_ode$sv1_converted')
         assert silly_names.get_symbol_by_name('env_ode$sv1_orig_deriv')
         symbol_derv = silly_names.get_symbol_by_name('env_ode$sv1_orig_deriv_a')
-        assert symbol_derv.units == 'mV / ms'
+        assert symbol_derv.units == silly_names.units.get_unit('mV') / silly_names.units.get_unit('ms')
         assert symbol_derv.initial_value is None
         assert len(silly_names.equations) == 3
         assert str(silly_names.equations[0]) == 'Eq(_env_ode$sv1, 1000.0*_env_ode$sv1_converted_a)'
