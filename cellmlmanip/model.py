@@ -332,7 +332,7 @@ class Model(object):
         The list is ordered by appearance in the cellml document.
         """
         derivative_symbols = [v for v in self.graph if isinstance(v, sympy.Derivative)]
-        return sorted(derivative_symbols, key=lambda state_var: state_var.args[0].order_added)
+        return sorted(derivative_symbols, key=lambda deriv: deriv.args[0].order_added)
 
     def get_derived_quantities(self):
         """Returns a list of derived quantities found in the given model graph.
