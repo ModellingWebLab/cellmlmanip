@@ -44,9 +44,11 @@ class Model(object):
 
     :param name: the name of the model e.g. from ``<model name="">``.
     :param cmeta_id: An optional cmeta id, e.g. from ``<model cmeta:id="">``.
+    :param unit_store: Optional :class:`cellmlmanip.units.UnitStore` instance; if given the model will share the
+        underlying registry so that conversions between model units and those from the provided store work.
     """
 
-    def __init__(self, name, cmeta_id=None):
+    def __init__(self, name, cmeta_id=None, unit_store=None):
 
         self.name = name
         self.cmeta_id = cmeta_id
@@ -56,7 +58,10 @@ class Model(object):
         self.equations = []
 
         # A UnitStore object
-        self.units = UnitStore()
+        if unit_store:
+            self.units = UnitStore(unit_store)
+        else:
+            self.units = UnitStore()
 
         # Maps string variable names to sympy.Dummy objects
         self._name_to_symbol = dict()
