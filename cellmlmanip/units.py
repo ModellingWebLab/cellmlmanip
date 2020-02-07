@@ -186,7 +186,7 @@ class UnitStore(object):
         # same registry.
         self._id = UnitStore._next_id
         UnitStore._next_id += 1
-        self._prefix =  's' + str(self._id) + '_'
+        self._prefix = 's' + str(self._id) + '_'
 
         # Get unit registry
         if store is None:
