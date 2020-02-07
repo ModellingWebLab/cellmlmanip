@@ -32,8 +32,8 @@ class TestUnits(object):
         assert str(u2.dimensionality) == 'dimensionless'
 
         # Make sure 1e6 doesn't get a prefix in it
-        Ms = unitstore.add_unit('Ms', 'second * 1e6')
-        ks = unitstore.add_unit('ks', 'second * 1.e3')
+        unitstore.add_unit('Ms', 'second * 1e6')
+        unitstore.add_unit('ks', 'second * 1.e3')
 
         # Duplicate unit definition
         with pytest.raises(ValueError):
@@ -142,8 +142,8 @@ class TestUnits(object):
         # Check that similar names are handled ok
         store = UnitStore()
         a = store.add_unit('my_unit', 'second')
-        b = store.add_unit('also_my_unit', 'volt')
-        c = store.add_unit('my_unit_2', 'ampere')
+        store.add_unit('also_my_unit', 'volt')
+        store.add_unit('my_unit_2', 'ampere')
         assert store.is_equivalent(a, store.get_unit('my_unit'))
         assert not store.is_equivalent(a, store.get_unit('also_my_unit'))
         assert not store.is_equivalent(a, store.get_unit('my_unit_2'))
