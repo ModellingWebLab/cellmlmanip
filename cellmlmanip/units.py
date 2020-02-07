@@ -184,9 +184,9 @@ class UnitStore(object):
 
         # Assign this unit store a unique id, to keep its namespace separated from any other unit stores sharing the
         # same registry.
-        self._id = 'store' + str(UnitStore._next_id)
-        self._prefix = self._id + '_'
+        self._id = UnitStore._next_id
         UnitStore._next_id += 1
+        self._prefix =  's' + str(self._id) + '_'
 
         # Get unit registry
         if store is None:
