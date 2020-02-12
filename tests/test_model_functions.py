@@ -494,7 +494,6 @@ class TestModelFunctions():
         assert len(list(model.get_rdf_annotations(v.rdf_identity))) == 0
         assert v_rdf[0] not in model.rdf
 
-
     ###################################################################
     # Unit related functionality
 
