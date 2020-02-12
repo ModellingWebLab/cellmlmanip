@@ -211,4 +211,6 @@ def test_add_rdf(local_model):
     assert named_attributes[0]['value'] == '2.5' or named_attributes[1]['value'] == '2.5'
 
 
-
+def test_get_unique_cmeta_id(simple_ode_model):
+    assert simple_ode_model.get_unique_cmeta_id('already_unique_id') == 'already_unique_id'
+    assert simple_ode_model.get_unique_cmeta_id('time') == 'time_'

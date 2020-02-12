@@ -937,6 +937,15 @@ class Model(object):
             name = self._get_unique_name(name + '_a')
         return name
 
+    def get_unique_cmeta_id(self, cmeta_id):
+        """Get a cmeta:id that's guaranteed to be unique, based on the given suggestion.
+
+        :param str cmeta_id: Suggested cmeta:id
+        """
+        while next(self.rdf[create_rdf_node('#' + cmeta_id)], None) is not None:
+            cmeta_id += '_'
+        return cmeta_id
+
 
 class NumberDummy(sympy.Dummy):
     """
