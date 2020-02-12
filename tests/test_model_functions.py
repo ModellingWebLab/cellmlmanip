@@ -459,6 +459,42 @@ class TestModelFunctions():
         with pytest.raises(ValueError, match='already exists'):
             model.add_variable(name='varvar1', units=unit)
 
+    def test_remove_variable(self, local_hh_model):
+        """Test the Model.remove_variable() method."""
+        model = local_hh_model
+        # Removing a 'normal' variable
+        i_stim = model.get_symbol_by_cmeta_id('membrane_stimulus_current')
+        i_stim_defn = model.get_definition(i_stim)
+        assert i_stim_defn is not None
+        i_stim_rdf = list(model.get_rdf_annotations(i_stim.rdf_identity))
+        assert len(i_stim_rdf) == 1
+
+        model.remove_variable(i_stim)
+
+        with pytest.raises(KeyError):
+            model.get_symbol_by_name(i_stim.name)
+        assert model.get_definition(i_stim) is None
+        assert i_stim_defn not in model.equations
+        assert len(list(model.get_rdf_annotations(i_stim.rdf_identity))) == 0
+        assert i_stim_rdf[0] not in model.rdf
+
+        # Removing a state variable
+        v = model.get_symbol_by_cmeta_id('membrane_voltage')
+        v_defn = model.get_definition(v)
+        assert v_defn is not None
+        v_rdf = list(model.get_rdf_annotations(v.rdf_identity))
+        assert len(v_rdf) == 1
+
+        model.remove_variable(v)
+
+        with pytest.raises(KeyError):
+            model.get_symbol_by_name(v.name)
+        assert model.get_definition(v) is None
+        assert v_defn not in model.equations
+        assert len(list(model.get_rdf_annotations(v.rdf_identity))) == 0
+        assert v_rdf[0] not in model.rdf
+
+
     ###################################################################
     # Unit related functionality
 

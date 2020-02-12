@@ -676,6 +676,24 @@ class Model(object):
         # Invalidate cached equation graphs
         self._invalidate_cache()
 
+    def remove_variable(self, symbol):
+        """Remove a variable and its defining equation from the model.
+
+        This will remove the equation either that defines ``symbol`` directly, or if it is
+        a state variable the corresponding ODE. All annotations about this variable are also
+        removed from the RDF graph.
+
+        :param VariableDummy symbol: the variable to remove
+        """
+        defn = self.get_definition(symbol)
+        if defn is not None:
+            self.remove_equation(defn)
+        if symbol.cmeta_id:
+            for triple in self.rdf.triples((symbol.rdf_identity, None, None)):
+                self.rdf.remove(triple)
+        del self._name_to_symbol[symbol.name]
+        self._invalidate_cache()
+
     def variables(self):
         """ Returns an iterator over this model's variable symbols. """
         return self._name_to_symbol.values()
