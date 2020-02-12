@@ -496,6 +496,22 @@ class TestModelFunctions():
         assert len(list(model.get_rdf_annotations(v.rdf_identity))) == 0
         assert v_rdf[0] not in model.rdf
 
+        # Remove a variable with no definition
+        t = model.get_symbol_by_cmeta_id('time')
+        assert model.get_definition(t) is None
+
+        model.remove_variable(t)
+
+        with pytest.raises(KeyError):
+            model.get_symbol_by_name(t.name)
+
+        # Remove a variable with no cmeta_id
+        var = model.get_symbol_by_name('membrane$E_R')
+        model.remove_variable(var)
+
+        with pytest.raises(KeyError):
+            model.get_symbol_by_name(var.name)
+
     ###################################################################
     # Unit related functionality
 
