@@ -416,29 +416,29 @@ class Model(object):
         """ Returns the symbol for the variable with the given ``name``. """
         return self._name_to_symbol[name]
 
-    def get_symbol_by_ontology_term(self, namespace_uri, local_name):
-        """Searches the RDF graph for a variable annotated with the given
-        ``{namespace_uri}local_name`` and returns its symbol.
+    def get_symbol_by_ontology_term(self, term):
+        """Searches the RDF graph for a variable annotated with the given ``term`` and returns its symbol.
 
         Specifically, this method searches for a unique variable annotated with
         predicate ``http://biomodels.net/biology-qualifiers/is`` and the object
-        specified by ``{namespace_uri}local_name``.
+        specified by ``term``.
 
         Will raise a ``KeyError`` if no variable with the given annotation is
         found, and a ``ValueError`` if more than one variable with the given
         annotation is found.
+
+        :param term: anything suitable as an input to :meth:`create_rdf_node`; typically either an RDF
+            node already, or a tuple ``(namespace_uri, local_name)``.
         """
         symbols = self.get_symbols_by_rdf(
             ('http://biomodels.net/biology-qualifiers/', 'is'),
-            (namespace_uri, local_name))
+            term)
         if len(symbols) == 1:
             return symbols[0]
         elif not symbols:
-            raise KeyError('No variable annotated with {%s}%s found.' %
-                           (namespace_uri, local_name))
+            raise KeyError('No variable annotated with {} found.'.format(term))
         else:
-            raise ValueError('Multiple variables annotated with {%s}%s' %
-                             (namespace_uri, local_name))
+            raise ValueError('Multiple variables annotated with {}'.format(term))
 
     def get_symbols_by_rdf(self, predicate, object_=None):
         """Searches the RDF graph for variables annotated with the given predicate and object (e.g. "is oxmeta:time")

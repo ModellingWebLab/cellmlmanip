@@ -718,7 +718,7 @@ class TestUnitConversion:
         """ Tests the Model.convert_variable() function when conversion to current unit under a different name."""
         br_model.units.add_unit('millimolar', 'mole / 1000 / litre')
         unit = br_model.units.get_unit('concentration_units')
-        variable = br_model.get_symbol_by_ontology_term(shared.OXMETA, "cytosolic_calcium_concentration")
+        variable = br_model.get_symbol_by_ontology_term((shared.OXMETA, "cytosolic_calcium_concentration"))
         direction = DataDirectionFlow.INPUT
         assert br_model.convert_variable(variable, unit, direction) == variable
 
