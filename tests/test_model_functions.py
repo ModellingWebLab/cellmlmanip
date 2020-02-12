@@ -305,13 +305,6 @@ class TestModelFunctions():
         assert sv11.name == 'env_ode$sv1'
         assert sv11.units == basic_model.units.get_unit('mV')
 
-    def test_get_symbol_by_cmeta_id_2(self, aslanidi_model):
-        """ Tests Model.get_symbol_by_cmeta_id() works correctly. """
-
-        variable = aslanidi_model.get_symbol_by_cmeta_id('testcmeta')
-        assert variable.name == 'intracellular_ion_concentrations$Na_i'
-        assert variable.units == aslanidi_model.units.get_unit('millimolar')
-
     def test_get_symbol_by_name(self, basic_model):
         """ Tests Model.get_symbol_by_name() works correctly. """
 
