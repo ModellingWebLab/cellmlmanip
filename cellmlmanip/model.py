@@ -52,7 +52,7 @@ class Model(object):
 
         self.name = name
         self.cmeta_id = cmeta_id
-        self.rdf_identity = rdflib.URIRef('#' + cmeta_id) if cmeta_id else None
+        self.rdf_identity = create_rdf_node('#' + cmeta_id) if cmeta_id else None
 
         # A list of sympy.Eq equation objects
         self.equations = []
@@ -1019,4 +1019,4 @@ class VariableDummy(sympy.Dummy):
     @property
     def rdf_identity(self):
         """The RDF identity for this variable, or ``None`` if no cmeta id."""
-        return rdflib.URIRef('#' + self.cmeta_id) if self.cmeta_id else None
+        return create_rdf_node('#' + self.cmeta_id) if self.cmeta_id else None
