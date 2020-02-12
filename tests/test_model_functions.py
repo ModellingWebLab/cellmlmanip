@@ -302,6 +302,8 @@ class TestModelFunctions():
         """ Tests Model.get_symbol_by_cmeta_id() works correctly. """
 
         sv11 = basic_model.get_symbol_by_cmeta_id('sv11')
+        assert sv11.cmeta_id == 'sv11'
+        assert str(sv11.rdf_identity) == '#sv11'
         assert sv11.name == 'env_ode$sv1'
         assert sv11.units == basic_model.units.get_unit('mV')
 

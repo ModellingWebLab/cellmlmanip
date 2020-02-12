@@ -471,7 +471,7 @@ class Model(object):
         if symbol.cmeta_id:
             predicate = ('http://biomodels.net/biology-qualifiers/', 'is')
             predicate = create_rdf_node(predicate)
-            subject = rdflib.term.URIRef('#' + symbol.cmeta_id)
+            subject = symbol.rdf_identity
             for object in self.rdf.objects(subject, predicate):
                 # We are only interested in annotation within the namespace
                 if namespace_uri is None or str(object).startswith(namespace_uri):
@@ -1015,3 +1015,8 @@ class VariableDummy(sympy.Dummy):
 
     def __str__(self):
         return self.name
+
+    @property
+    def rdf_identity(self):
+        """The RDF identity for this variable, or ``None`` if no cmeta id."""
+        return rdflib.URIRef('#' + self.cmeta_id) if self.cmeta_id else None
