@@ -945,11 +945,13 @@ class NumberDummy(sympy.Dummy):
     Unlike sympy expressions, this number type will never be removed in simplify operations etc.
 
     Number dummies should never be created directly, but always via :meth:`Model.add_number()`.
+    
+    Assumes the value is real.
     """
 
     # Sympy annoyingly overwrites __new__
     def __new__(cls, value, *args, **kwargs):
-        return super().__new__(cls, str(value))
+        return super().__new__(cls, str(value), real=True)
 
     def __init__(self, value, units):
         self.value = float(value)
@@ -969,11 +971,13 @@ class VariableDummy(sympy.Dummy):
     Variable dummies should never be created directly, but always via :meth:`Model.add_variable()`.
 
     For the constructor arguments, see :meth:`Model.add_variable()`.
+    
+    Assumes the value is real.
     """
 
     # Sympy annoyingly overwrites __new__
     def __new__(cls, name, *args, **kwargs):
-        return super().__new__(cls, name)
+        return super().__new__(cls, name, real=True)
 
     def __init__(self,
                  name,
