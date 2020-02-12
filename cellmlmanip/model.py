@@ -944,8 +944,8 @@ class NumberDummy(sympy.Dummy):
 
     Unlike sympy expressions, this number type will never be removed in simplify operations etc.
 
-    Number dummies should never be created directly, but always via :meth:`Model.add_number()`.
-    
+    Number dummies should never be created directly, but always via :meth:`Model.add_number()`
+
     Assumes the value is real.
     """
 
@@ -971,7 +971,7 @@ class VariableDummy(sympy.Dummy):
     Variable dummies should never be created directly, but always via :meth:`Model.add_variable()`.
 
     For the constructor arguments, see :meth:`Model.add_variable()`.
-    
+
     Assumes the value is real.
     """
 
