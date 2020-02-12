@@ -450,7 +450,8 @@ class TestModelFunctions():
         with pytest.raises(KeyError):
             model.get_symbol_by_name('newvar') is None
 
-        model.add_variable(name='newvar', units='mV')
+        newvar = model.add_variable(name='newvar', units='mV')
+        assert newvar.is_real
         assert len(model.variables()) == 4
         assert model.get_symbol_by_name('newvar')
 
