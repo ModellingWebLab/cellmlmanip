@@ -292,7 +292,7 @@ class TestModelFunctions():
     def test_get_value(self, aslanidi_model):
         """ Tests Model.get_value() works correctly. """
 
-        symbol_a = aslanidi_model.get_symbol_by_ontology_term(shared.OXMETA, "membrane_capacitance")
+        symbol_a = aslanidi_model.get_symbol_by_ontology_term((shared.OXMETA, "membrane_capacitance"))
         assert aslanidi_model.get_value(symbol_a) == 5e-5
 
     #################################################################
@@ -318,7 +318,7 @@ class TestModelFunctions():
     def test_get_symbol_by_ontology_term(self, aslanidi_model):
         """ Tests Model.get_symbol_by_ontology_term() works correctly. """
 
-        symbol_a = aslanidi_model.get_symbol_by_ontology_term(shared.OXMETA, 'membrane_capacitance')
+        symbol_a = aslanidi_model.get_symbol_by_ontology_term((shared.OXMETA, 'membrane_capacitance'))
         assert symbol_a.name == 'membrane$Cm'
         assert symbol_a.units == aslanidi_model.units.get_unit('nanoF')
 
@@ -398,7 +398,7 @@ class TestModelFunctions():
 
         model = local_hh_model
         # Get model, assert that V is a state variable
-        v = model.get_symbol_by_ontology_term(shared.OXMETA, 'membrane_voltage')
+        v = model.get_symbol_by_ontology_term((shared.OXMETA, 'membrane_voltage'))
         # the issue here is that retrieving the variable uses the internal structure
         # which does not give the variable a type
         # to check type you need to use the graph
@@ -407,14 +407,14 @@ class TestModelFunctions():
         assert v in state_var
 
         # Now clamp it to -80mV
-        t = model.get_symbol_by_ontology_term(shared.OXMETA, 'time')
+        t = model.get_symbol_by_ontology_term((shared.OXMETA, 'time'))
         equation = model.graph.nodes[sp.Derivative(v, t)]['equation']
         model.remove_equation(equation)
         equation = sp.Eq(v, model.add_number(-80, v.units))
         model.add_equation(equation)
 
         # Check that V is no longer a state
-        v = model.get_symbol_by_ontology_term(shared.OXMETA, 'membrane_voltage')
+        v = model.get_symbol_by_ontology_term((shared.OXMETA, 'membrane_voltage'))
         state_var = model.get_state_symbols()
         assert v not in state_var
 
@@ -425,7 +425,7 @@ class TestModelFunctions():
         model.add_equation(equation)
 
         # Check that V is a state again
-        v = model.get_symbol_by_ontology_term(shared.OXMETA, 'membrane_voltage')
+        v = model.get_symbol_by_ontology_term((shared.OXMETA, 'membrane_voltage'))
         state_var = model.get_state_symbols()
         assert v in state_var
 
@@ -551,7 +551,7 @@ class TestModelFunctions():
         assert len(syms) == 1
         assert t in syms
 
-        v = hh_model.get_symbol_by_ontology_term(shared.OXMETA, "membrane_voltage")
+        v = hh_model.get_symbol_by_ontology_term((shared.OXMETA, "membrane_voltage"))
         dvdt = sp.Derivative(v, t)
         syms = hh_model.find_symbols_and_derivatives([dvdt])
         assert len(syms) == 1
