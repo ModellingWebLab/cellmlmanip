@@ -300,12 +300,14 @@ class TestModelFunctions():
 
     def test_get_symbol_by_cmeta_id(self, basic_model):
         """ Tests Model.get_symbol_by_cmeta_id() works correctly. """
-
         sv11 = basic_model.get_symbol_by_cmeta_id('sv11')
         assert sv11.cmeta_id == 'sv11'
         assert str(sv11.rdf_identity) == '#sv11'
         assert sv11.name == 'env_ode$sv1'
         assert sv11.units == basic_model.units.get_unit('mV')
+
+        term = sv11.rdf_identity
+        assert basic_model.get_symbol_by_cmeta_id(term) is sv11
 
     def test_get_symbol_by_name(self, basic_model):
         """ Tests Model.get_symbol_by_name() works correctly. """

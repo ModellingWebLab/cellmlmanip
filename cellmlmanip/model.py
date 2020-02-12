@@ -394,8 +394,18 @@ class Model(object):
         Searches the model and returns the symbol for the variable with the given cmeta id.
 
         To get symbols from e.g. an oxmeta ontology term, use :meth:`get_symbol_by_ontology_term()`.
-        """
 
+        :param cmeta_id: either a string id or :class:`rdflib.URIRef` instance.
+        """
+        if isinstance(cmeta_id, rdflib.term.Node):
+            assert isinstance(cmeta_id, rdflib.URIRef), 'Non-resource {} annotated.'.format(cmeta_id)
+            cmeta_id = str(cmeta_id)
+            if cmeta_id[0] != '#':
+                # TODO This should eventually be implemented?
+                raise NotImplementedError(
+                    'Non-local annotations are not supported.')
+            cmeta_id = cmeta_id[1:]
+        assert isinstance(cmeta_id, str)
         for var in self._name_to_symbol.values():
             if var.cmeta_id == cmeta_id:
                 return var
@@ -442,15 +452,7 @@ class Model(object):
         # Find symbols
         symbols = []
         for result in self.rdf.subjects(predicate, object_):
-            assert isinstance(result, rdflib.URIRef), 'Non-resource annotated.'
-
-            # Get cmeta id from result uri
-            uri = str(result)
-            if uri[0] != '#':
-                # TODO This should eventually be implemented
-                raise NotImplementedError(
-                    'Non-local annotations are not supported.')
-            symbols.append(self.get_symbol_by_cmeta_id(uri[1:]))
+            symbols.append(self.get_symbol_by_cmeta_id(result))
 
         return sorted(symbols, key=lambda sym: sym.order_added)
 
