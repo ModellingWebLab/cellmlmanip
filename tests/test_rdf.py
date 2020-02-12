@@ -52,38 +52,38 @@ def test_get_symbol_by_ontology_term(simple_ode_model, bad_annotation_model):
     """ Tests Model.get_symbol_by_ontology_term() function. """
     # Test getting the time variable
     model = simple_ode_model
-    var = model.get_symbol_by_ontology_term(shared.OXMETA, 'time')
+    var = model.get_symbol_by_ontology_term((shared.OXMETA, 'time'))
     assert isinstance(var, sympy.Symbol)
     assert var.name == 'environment$time'
 
     # Test getting a non-existent variable
     with pytest.raises(KeyError):
-        model.get_symbol_by_ontology_term(shared.OXMETA, 'bert')
+        model.get_symbol_by_ontology_term((shared.OXMETA, 'bert'))
     with pytest.raises(KeyError):
-        model.get_symbol_by_ontology_term('http://example.com#', 'time')
+        model.get_symbol_by_ontology_term(('http://example.com#', 'time'))
 
     # Test bad annotations
     model = bad_annotation_model
 
     # Two variables with the same ID
     with pytest.raises(ValueError, match='Multiple variables annotated with'):
-        model.get_symbol_by_ontology_term(shared.OXMETA, 'time')
+        model.get_symbol_by_ontology_term((shared.OXMETA, 'time'))
 
     # Annotation with a cmeta id that doesn't exist
     with pytest.raises(KeyError, match='No variable with cmeta id'):
-        model.get_symbol_by_ontology_term(shared.OXMETA, 'membrane_potential')
+        model.get_symbol_by_ontology_term((shared.OXMETA, 'membrane_potential'))
 
     # Annotation of something that isn't a variable
     with pytest.raises(KeyError, match='No variable with cmeta id'):
         model.get_symbol_by_ontology_term(
-            shared.OXMETA, 'membrane_fast_sodium_current')
+            (shared.OXMETA, 'membrane_fast_sodium_current'))
 
     # Non-local annotation
     # TODO: Add support to allow non-local (but valid, i.e. referring to the
     #       current model) references.
     with pytest.raises(NotImplementedError, match='Non-local annotations'):
         model.get_symbol_by_ontology_term(
-            shared.OXMETA, 'membrane_persistent_sodium_current')
+            (shared.OXMETA, 'membrane_persistent_sodium_current'))
 
 
 def test_get_ontology_terms_by_symbol(bad_annotation_model):
@@ -100,7 +100,7 @@ def test_get_ontology_terms_by_symbol(bad_annotation_model):
 
 def test_get_ontology_terms_by_symbol2(hh_model):
     """ Tests Model.get_symbol_by_ontology_term() function when the annotation is not correct. """
-    membrane_voltage_var = hh_model.get_symbol_by_ontology_term(shared.OXMETA, "membrane_voltage")
+    membrane_voltage_var = hh_model.get_symbol_by_ontology_term((shared.OXMETA, "membrane_voltage"))
     annotation = hh_model.get_ontology_terms_by_symbol(membrane_voltage_var, shared.OXMETA)
     assert len(annotation) == 1
     assert annotation[0] == "membrane_voltage"
@@ -133,7 +133,7 @@ def test_has_ontology_term_by_symbol(bad_annotation_model):
 
 def test_has_ontology_annotation(hh_model):
     """ Tests Model.has_ontology_annotation() function. """
-    membrane_voltage_var = hh_model.get_symbol_by_ontology_term(shared.OXMETA, "membrane_voltage")
+    membrane_voltage_var = hh_model.get_symbol_by_ontology_term((shared.OXMETA, "membrane_voltage"))
     assert hh_model.has_ontology_annotation(membrane_voltage_var, shared.OXMETA)
 
     # Repeat test with wrong namespace
@@ -211,4 +211,6 @@ def test_add_rdf(local_model):
     assert named_attributes[0]['value'] == '2.5' or named_attributes[1]['value'] == '2.5'
 
 
-
+def test_get_unique_cmeta_id(simple_ode_model):
+    assert simple_ode_model.get_unique_cmeta_id('already_unique_id') == 'already_unique_id'
+    assert simple_ode_model.get_unique_cmeta_id('time') == 'time_'

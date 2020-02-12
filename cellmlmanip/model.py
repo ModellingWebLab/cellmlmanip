@@ -52,7 +52,7 @@ class Model(object):
 
         self.name = name
         self.cmeta_id = cmeta_id
-        self.rdf_identity = rdflib.URIRef('#' + cmeta_id) if cmeta_id else None
+        self.rdf_identity = create_rdf_node('#' + cmeta_id) if cmeta_id else None
 
         # A list of sympy.Eq equation objects
         self.equations = []
@@ -394,8 +394,18 @@ class Model(object):
         Searches the model and returns the symbol for the variable with the given cmeta id.
 
         To get symbols from e.g. an oxmeta ontology term, use :meth:`get_symbol_by_ontology_term()`.
-        """
 
+        :param cmeta_id: either a string id or :class:`rdflib.URIRef` instance.
+        """
+        if isinstance(cmeta_id, rdflib.term.Node):
+            assert isinstance(cmeta_id, rdflib.URIRef), 'Non-resource {} annotated.'.format(cmeta_id)
+            cmeta_id = str(cmeta_id)
+            if cmeta_id[0] != '#':
+                # TODO This should eventually be implemented?
+                raise NotImplementedError(
+                    'Non-local annotations are not supported.')
+            cmeta_id = cmeta_id[1:]
+        assert isinstance(cmeta_id, str)
         for var in self._name_to_symbol.values():
             if var.cmeta_id == cmeta_id:
                 return var
@@ -406,29 +416,29 @@ class Model(object):
         """ Returns the symbol for the variable with the given ``name``. """
         return self._name_to_symbol[name]
 
-    def get_symbol_by_ontology_term(self, namespace_uri, local_name):
-        """Searches the RDF graph for a variable annotated with the given
-        ``{namespace_uri}local_name`` and returns its symbol.
+    def get_symbol_by_ontology_term(self, term):
+        """Searches the RDF graph for a variable annotated with the given ``term`` and returns its symbol.
 
         Specifically, this method searches for a unique variable annotated with
         predicate ``http://biomodels.net/biology-qualifiers/is`` and the object
-        specified by ``{namespace_uri}local_name``.
+        specified by ``term``.
 
         Will raise a ``KeyError`` if no variable with the given annotation is
         found, and a ``ValueError`` if more than one variable with the given
         annotation is found.
+
+        :param term: anything suitable as an input to :meth:`create_rdf_node`; typically either an RDF
+            node already, or a tuple ``(namespace_uri, local_name)``.
         """
         symbols = self.get_symbols_by_rdf(
             ('http://biomodels.net/biology-qualifiers/', 'is'),
-            (namespace_uri, local_name))
+            term)
         if len(symbols) == 1:
             return symbols[0]
         elif not symbols:
-            raise KeyError('No variable annotated with {%s}%s found.' %
-                           (namespace_uri, local_name))
+            raise KeyError('No variable annotated with {} found.'.format(term))
         else:
-            raise ValueError('Multiple variables annotated with {%s}%s' %
-                             (namespace_uri, local_name))
+            raise ValueError('Multiple variables annotated with {}'.format(term))
 
     def get_symbols_by_rdf(self, predicate, object_=None):
         """Searches the RDF graph for variables annotated with the given predicate and object (e.g. "is oxmeta:time")
@@ -442,15 +452,7 @@ class Model(object):
         # Find symbols
         symbols = []
         for result in self.rdf.subjects(predicate, object_):
-            assert isinstance(result, rdflib.URIRef), 'Non-resource annotated.'
-
-            # Get cmeta id from result uri
-            uri = str(result)
-            if uri[0] != '#':
-                # TODO This should eventually be implemented
-                raise NotImplementedError(
-                    'Non-local annotations are not supported.')
-            symbols.append(self.get_symbol_by_cmeta_id(uri[1:]))
+            symbols.append(self.get_symbol_by_cmeta_id(result))
 
         return sorted(symbols, key=lambda sym: sym.order_added)
 
@@ -471,7 +473,7 @@ class Model(object):
         if symbol.cmeta_id:
             predicate = ('http://biomodels.net/biology-qualifiers/', 'is')
             predicate = create_rdf_node(predicate)
-            subject = rdflib.term.URIRef('#' + symbol.cmeta_id)
+            subject = symbol.rdf_identity
             for object in self.rdf.objects(subject, predicate):
                 # We are only interested in annotation within the namespace
                 if namespace_uri is None or str(object).startswith(namespace_uri):
@@ -674,6 +676,24 @@ class Model(object):
             del self._var_definition_map[lhs]
 
         # Invalidate cached equation graphs
+        self._invalidate_cache()
+
+    def remove_variable(self, symbol):
+        """Remove a variable and its defining equation from the model.
+
+        This will remove the equation either that defines ``symbol`` directly, or if it is
+        a state variable the corresponding ODE. All annotations about this variable are also
+        removed from the RDF graph.
+
+        :param VariableDummy symbol: the variable to remove
+        """
+        defn = self.get_definition(symbol)
+        if defn is not None:
+            self.remove_equation(defn)
+        if symbol.cmeta_id:
+            for triple in self.rdf.triples((symbol.rdf_identity, None, None)):
+                self.rdf.remove(triple)
+        del self._name_to_symbol[symbol.name]
         self._invalidate_cache()
 
     def variables(self):
@@ -937,6 +957,15 @@ class Model(object):
             name = self._get_unique_name(name + '_a')
         return name
 
+    def get_unique_cmeta_id(self, cmeta_id):
+        """Get a cmeta:id that's guaranteed to be unique, based on the given suggestion.
+
+        :param str cmeta_id: Suggested cmeta:id
+        """
+        while next(self.rdf[create_rdf_node('#' + cmeta_id)], None) is not None:
+            cmeta_id += '_'
+        return cmeta_id
+
 
 class NumberDummy(sympy.Dummy):
     """
@@ -1015,3 +1044,8 @@ class VariableDummy(sympy.Dummy):
 
     def __str__(self):
         return self.name
+
+    @property
+    def rdf_identity(self):
+        """The RDF identity for this variable, or ``None`` if no cmeta id."""
+        return create_rdf_node('#' + self.cmeta_id) if self.cmeta_id else None

@@ -292,7 +292,7 @@ class TestModelFunctions():
     def test_get_value(self, aslanidi_model):
         """ Tests Model.get_value() works correctly. """
 
-        symbol_a = aslanidi_model.get_symbol_by_ontology_term(shared.OXMETA, "membrane_capacitance")
+        symbol_a = aslanidi_model.get_symbol_by_ontology_term((shared.OXMETA, "membrane_capacitance"))
         assert aslanidi_model.get_value(symbol_a) == 5e-5
 
     #################################################################
@@ -300,17 +300,14 @@ class TestModelFunctions():
 
     def test_get_symbol_by_cmeta_id(self, basic_model):
         """ Tests Model.get_symbol_by_cmeta_id() works correctly. """
-
         sv11 = basic_model.get_symbol_by_cmeta_id('sv11')
+        assert sv11.cmeta_id == 'sv11'
+        assert str(sv11.rdf_identity) == '#sv11'
         assert sv11.name == 'env_ode$sv1'
         assert sv11.units == basic_model.units.get_unit('mV')
 
-    def test_get_symbol_by_cmeta_id_2(self, aslanidi_model):
-        """ Tests Model.get_symbol_by_cmeta_id() works correctly. """
-
-        variable = aslanidi_model.get_symbol_by_cmeta_id('testcmeta')
-        assert variable.name == 'intracellular_ion_concentrations$Na_i'
-        assert variable.units == aslanidi_model.units.get_unit('millimolar')
+        term = sv11.rdf_identity
+        assert basic_model.get_symbol_by_cmeta_id(term) is sv11
 
     def test_get_symbol_by_name(self, basic_model):
         """ Tests Model.get_symbol_by_name() works correctly. """
@@ -321,7 +318,7 @@ class TestModelFunctions():
     def test_get_symbol_by_ontology_term(self, aslanidi_model):
         """ Tests Model.get_symbol_by_ontology_term() works correctly. """
 
-        symbol_a = aslanidi_model.get_symbol_by_ontology_term(shared.OXMETA, 'membrane_capacitance')
+        symbol_a = aslanidi_model.get_symbol_by_ontology_term((shared.OXMETA, 'membrane_capacitance'))
         assert symbol_a.name == 'membrane$Cm'
         assert symbol_a.units == aslanidi_model.units.get_unit('nanoF')
 
@@ -401,7 +398,7 @@ class TestModelFunctions():
 
         model = local_hh_model
         # Get model, assert that V is a state variable
-        v = model.get_symbol_by_ontology_term(shared.OXMETA, 'membrane_voltage')
+        v = model.get_symbol_by_ontology_term((shared.OXMETA, 'membrane_voltage'))
         # the issue here is that retrieving the variable uses the internal structure
         # which does not give the variable a type
         # to check type you need to use the graph
@@ -410,14 +407,14 @@ class TestModelFunctions():
         assert v in state_var
 
         # Now clamp it to -80mV
-        t = model.get_symbol_by_ontology_term(shared.OXMETA, 'time')
+        t = model.get_symbol_by_ontology_term((shared.OXMETA, 'time'))
         equation = model.graph.nodes[sp.Derivative(v, t)]['equation']
         model.remove_equation(equation)
         equation = sp.Eq(v, model.add_number(-80, v.units))
         model.add_equation(equation)
 
         # Check that V is no longer a state
-        v = model.get_symbol_by_ontology_term(shared.OXMETA, 'membrane_voltage')
+        v = model.get_symbol_by_ontology_term((shared.OXMETA, 'membrane_voltage'))
         state_var = model.get_state_symbols()
         assert v not in state_var
 
@@ -428,7 +425,7 @@ class TestModelFunctions():
         model.add_equation(equation)
 
         # Check that V is a state again
-        v = model.get_symbol_by_ontology_term(shared.OXMETA, 'membrane_voltage')
+        v = model.get_symbol_by_ontology_term((shared.OXMETA, 'membrane_voltage'))
         state_var = model.get_state_symbols()
         assert v in state_var
 
@@ -463,6 +460,57 @@ class TestModelFunctions():
         assert len(model.variables()) == 6
         with pytest.raises(ValueError, match='already exists'):
             model.add_variable(name='varvar1', units=unit)
+
+    def test_remove_variable(self, local_hh_model):
+        """Test the Model.remove_variable() method."""
+        model = local_hh_model
+        # Removing a 'normal' variable
+        i_stim = model.get_symbol_by_cmeta_id('membrane_stimulus_current')
+        i_stim_defn = model.get_definition(i_stim)
+        assert i_stim_defn is not None
+        i_stim_rdf = list(model.get_rdf_annotations(i_stim.rdf_identity))
+        assert len(i_stim_rdf) == 1
+
+        model.remove_variable(i_stim)
+
+        with pytest.raises(KeyError):
+            model.get_symbol_by_name(i_stim.name)
+        assert model.get_definition(i_stim) is None
+        assert i_stim_defn not in model.equations
+        assert len(list(model.get_rdf_annotations(i_stim.rdf_identity))) == 0
+        assert i_stim_rdf[0] not in model.rdf
+
+        # Removing a state variable
+        v = model.get_symbol_by_cmeta_id('membrane_voltage')
+        v_defn = model.get_definition(v)
+        assert v_defn is not None
+        v_rdf = list(model.get_rdf_annotations(v.rdf_identity))
+        assert len(v_rdf) == 1
+
+        model.remove_variable(v)
+
+        with pytest.raises(KeyError):
+            model.get_symbol_by_name(v.name)
+        assert model.get_definition(v) is None
+        assert v_defn not in model.equations
+        assert len(list(model.get_rdf_annotations(v.rdf_identity))) == 0
+        assert v_rdf[0] not in model.rdf
+
+        # Remove a variable with no definition
+        t = model.get_symbol_by_cmeta_id('time')
+        assert model.get_definition(t) is None
+
+        model.remove_variable(t)
+
+        with pytest.raises(KeyError):
+            model.get_symbol_by_name(t.name)
+
+        # Remove a variable with no cmeta_id
+        var = model.get_symbol_by_name('membrane$E_R')
+        model.remove_variable(var)
+
+        with pytest.raises(KeyError):
+            model.get_symbol_by_name(var.name)
 
     ###################################################################
     # Unit related functionality
@@ -519,7 +567,7 @@ class TestModelFunctions():
         assert len(syms) == 1
         assert t in syms
 
-        v = hh_model.get_symbol_by_ontology_term(shared.OXMETA, "membrane_voltage")
+        v = hh_model.get_symbol_by_ontology_term((shared.OXMETA, "membrane_voltage"))
         dvdt = sp.Derivative(v, t)
         syms = hh_model.find_symbols_and_derivatives([dvdt])
         assert len(syms) == 1
