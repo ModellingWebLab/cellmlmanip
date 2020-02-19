@@ -560,8 +560,12 @@ class TestModelFunctions():
     def test_has_cmeta_id(self, basic_model):
         """Tests Model.has_cmeta_id(). """
 
+        # Test with variable ids
         assert basic_model.has_cmeta_id('time')
         assert not basic_model.has_cmeta_id('pepper')
+
+        # Test with model id
+        assert basic_model.has_cmeta_id('test_basic_ode')
 
     ###################################################################
     # this section is for other functions
