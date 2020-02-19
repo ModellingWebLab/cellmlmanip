@@ -63,8 +63,11 @@ class Model(object):
         else:
             self.units = UnitStore()
 
-        # Maps string variable names to sympy.Dummy objects
-        self._name_to_symbol = dict()
+        # Maps string variable names to VariableDummy objects
+        self._name_to_symbol = {}
+
+        # Maps cmeta ids to VariableDummy objects
+        self._cmeta_id_to_symbol = {}
 
         # Cached nx.DiGraph of this model's equations, with number dummies or with sympy.Number objects
         self._graph = None
@@ -93,7 +96,8 @@ class Model(object):
         # Create new cmeta id
         variable._cmeta_id = self.get_unique_cmeta_id(str(variable))
 
-        # TODO: Update mapping
+        # Store mapping from id to dummy
+        self._cmeta_id_to_symbol[variable._cmeta_id] = variable
 
     def add_equation(self, equation, check_duplicates=True):
         """
@@ -164,14 +168,18 @@ class Model(object):
         :param public_interface: An optional public interface specifier (only required when parsing CellML).
         :param private_interface: An optional private interface specifier (only required when parsing CellML).
         :param cmeta_id: An optional string specifying a cmeta:id
-
+        :raises ValueError: If a variable with that name already exists, or the given cmeta_id is already taken.
         :return: A :class:`VariableDummy` object.
         """
         # Check for clashes
         if name in self._name_to_symbol:
             raise ValueError('Variable %s already exists.' % name)
 
-        # TODO: Check uniqueness of cmeta id (against RDF graph)
+        # Check uniqueness of cmeta id (against RDF graph)
+        # if cmeta_id is not None:
+        #    cmeta_id = str(cmeta_id)
+        #    if next(self.rdf[create_rdf_node('#' + cmeta_id)], None) is not None:
+        #        raise ValueError('The cmeta_id "%s" is already in use.' % cmeta_id)
 
         # Check units
         if not isinstance(units, self.units.Unit):
@@ -188,7 +196,9 @@ class Model(object):
             cmeta_id=cmeta_id,
         )
 
-        # TODO: Add cmeta id
+        # Add cmeta id to var mapping
+        if cmeta_id is not None:
+            self._cmeta_id_to_symbol[cmeta_id] = var
 
         # Invalidate cached graphs
         self._invalidate_cache()
@@ -427,11 +437,10 @@ class Model(object):
             cmeta_id = cmeta_id[1:]
         assert isinstance(cmeta_id, str)
 
-        for var in self._name_to_symbol.values():
-            if var._cmeta_id == cmeta_id:
-                return var
-
-        raise KeyError('No variable with cmeta id "%s" found.' % str(cmeta_id))
+        try:
+            return self._cmeta_id_to_symbol[cmeta_id]
+        except KeyError:
+            raise KeyError('No variable with cmeta id "%s" found.' % str(cmeta_id))
 
     def get_symbol_by_name(self, name):
         """ Returns the symbol for the variable with the given ``name``. """
@@ -715,7 +724,10 @@ class Model(object):
             for triple in self.rdf.triples((symbol.rdf_identity, None, None)):
                 self.rdf.remove(triple)
 
+        # Remove references to variable and invalidate cache
         del self._name_to_symbol[symbol.name]
+        if symbol._cmeta_id is not None:
+            del self._cmeta_id_to_symbol[symbol._cmeta_id]
         self._invalidate_cache()
 
     def transfer_cmeta_id(self, source, target):
@@ -731,7 +743,8 @@ class Model(object):
         target._cmeta_id = source._cmeta_id
         source._cmeta_id = None
 
-        # TODO: Update mapping
+        # Update mapping
+        self._cmeta_id_to_symbol[target._cmeta_id] = target
 
     def variables(self):
         """ Returns an iterator over this model's variable symbols. """
@@ -940,21 +953,21 @@ class Model(object):
         :param direction: enumeration value specifying input or output
         :return: the new variable created [new units]
         """
-        # 1. get unique name for new variable
+        # Get unique name for new variable
         new_name = self._get_unique_name(original_variable.name + '_converted')
 
-        # 2. if original has initial_value calculate new initial value (only needed for INPUT case)
+        # If original has initial_value calculate new initial value (only needed for INPUT case)
         new_value = None
         if direction == DataDirectionFlow.INPUT and original_variable.initial_value:
             new_value = original_variable.initial_value * cf
 
-        # 3. Create new variable
+        # Create new variable
         new_variable = self.add_variable(name=new_name, units=units, initial_value=new_value)
 
         # Transfer cmeta id from original to new variable
         self.transfer_cmeta_id(original_variable, new_variable)
 
-        # 4 add/remove/replace equations
+        # Add/remove/replace equations
         if direction == DataDirectionFlow.INPUT:
             # if direction is input; original var will be replaced by equation so do not need to store initial value
             original_variable.initial_value = None
@@ -995,6 +1008,7 @@ class Model(object):
 
         :param str cmeta_id: Suggested cmeta:id
         """
+        # Note: Cmeta id is checked against the graph, not just the list of VariableDummies.
         while next(self.rdf[create_rdf_node('#' + cmeta_id)], None) is not None:
             cmeta_id += '_'
         return cmeta_id
@@ -1070,6 +1084,7 @@ class VariableDummy(sympy.Dummy):
 
         # Optional cmeta id: This is managed by the Model class, so shouldn't be changed directly.
         self._cmeta_id = cmeta_id
+        self._rdf_identity = None
 
         # This variable's type
         # TODO: Define allowed types via enum
@@ -1081,4 +1096,9 @@ class VariableDummy(sympy.Dummy):
     @property
     def rdf_identity(self):
         """The RDF identity for this variable, or ``None`` if no cmeta id."""
-        return create_rdf_node('#' + self._cmeta_id) if self._cmeta_id else None
+        if self._cmeta_id is None:
+            return None
+        if self._rdf_identity is None:
+            self._rdf_identity = create_rdf_node('#' + self._cmeta_id)
+        return self._rdf_identity
+
