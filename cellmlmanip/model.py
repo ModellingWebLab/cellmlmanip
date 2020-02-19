@@ -79,6 +79,22 @@ class Model(object):
         # Map from VariableDummy to defining equation, where the variable is defined by an ODE
         self._ode_definition_map = {}
 
+    def add_cmeta_id(self, variable):
+        """
+        Adds a (unique) cmeta id to the given variable.
+
+        If the variable already has a cmeta id no action is performed.
+
+        :param variable: A :class:`VariableDummy`.
+        """
+        if variable._cmeta_id is not None:
+            return
+
+        # Create new cmeta id
+        variable._cmeta_id = self.get_unique_cmeta_id(str(variable))
+
+        # TODO: Update mapping
+
     def add_equation(self, equation, check_duplicates=True):
         """
         Adds an equation to this model.
@@ -155,6 +171,8 @@ class Model(object):
         if name in self._name_to_symbol:
             raise ValueError('Variable %s already exists.' % name)
 
+        # TODO: Check uniqueness of cmeta id (against RDF graph)
+
         # Check units
         if not isinstance(units, self.units.Unit):
             units = self.units.get_unit(units)
@@ -169,6 +187,8 @@ class Model(object):
             order_added=len(self._name_to_symbol),
             cmeta_id=cmeta_id,
         )
+
+        # TODO: Add cmeta id
 
         # Invalidate cached graphs
         self._invalidate_cache()
@@ -711,7 +731,7 @@ class Model(object):
         target._cmeta_id = source._cmeta_id
         source._cmeta_id = None
 
-        #TODO: Update mapping
+        # TODO: Update mapping
 
     def variables(self):
         """ Returns an iterator over this model's variable symbols. """
@@ -772,8 +792,7 @@ class Model(object):
                           or DataDirectionFlow.OUTPUT; the variable to be changed is an output, equations
                           are unaffected apart from converting the actual output
         :return: new variable with desired units, or original unchanged if conversion was not necessary
-        :throws: AssertionError if the arguments are of incorrect type or the variable does not exist in the model
-                DimensionalityError if the unit conversion is impossible
+        :raises DimensionalityError: if the unit conversion is impossible
         """
         # assertion errors will be thrown here if arguments are incorrect type
         self._check_arguments_for_convert_variables(original_variable, units, direction)
@@ -823,8 +842,6 @@ class Model(object):
         :param variable: variable must be a VariableDummy object present in the model
         :param units: units must be a pint Unit object in this model
         :param direction: must be part of DataDirectionFlow enum
-        :throws: AssertionError if the arguments are of incorrect type
-                                or the variable does not exist in the model
        """
         # variable should be a VariableDummy
         assert isinstance(variable, VariableDummy)
