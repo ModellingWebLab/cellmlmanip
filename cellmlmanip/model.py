@@ -51,7 +51,7 @@ class Model(object):
     def __init__(self, name, cmeta_id=None, unit_store=None):
 
         self.name = name
-        self.cmeta_id = cmeta_id
+        self._cmeta_id = cmeta_id
         self.rdf_identity = create_rdf_node('#' + cmeta_id) if cmeta_id else None
 
         # A list of sympy.Eq equation objects
@@ -406,8 +406,9 @@ class Model(object):
                     'Non-local annotations are not supported.')
             cmeta_id = cmeta_id[1:]
         assert isinstance(cmeta_id, str)
+
         for var in self._name_to_symbol.values():
-            if var.cmeta_id == cmeta_id:
+            if var._cmeta_id == cmeta_id:
                 return var
 
         raise KeyError('No variable with cmeta id "%s" found.' % str(cmeta_id))
@@ -457,20 +458,17 @@ class Model(object):
         return sorted(symbols, key=lambda sym: sym.order_added)
 
     def get_ontology_terms_by_symbol(self, symbol, namespace_uri=None):
-        """Searches the RDF graph for the annotation ``{namespace_uri}annotation_name``
-        for the given symbol and returns ``annotation_name`` and optionally restricted
-        to a specific ``{namespace_uri}annotation_name``
+        """
+        Returns all ontology terms linked to the variable ``symbol`` via the
+        ``http://biomodels.net/biology-qualifiers/is`` predicate.
 
-        Specifically, this method searches for a ``annotation_name`` for
-        subject symbol
-        predicate ``http://biomodels.net/biology-qualifiers/is`` and the object
-        specified by ``{namespace_uri}annotation_name``
-        for a specific ``{namespace_uri}`` if set, otherwise for any namespace_uri
-
-        Will return a list of term names.
+        :param symbol: The symbol to search for.
+        :param namespace_uri: An optional namespace URI. If given, only terms within the given namespace will be
+            returned.
+        :returns: A list of term names.
         """
         ontology_terms = []
-        if symbol.cmeta_id:
+        if symbol.rdf_identity:
             predicate = ('http://biomodels.net/biology-qualifiers/', 'is')
             predicate = create_rdf_node(predicate)
             subject = symbol.rdf_identity
@@ -687,14 +685,33 @@ class Model(object):
 
         :param VariableDummy symbol: the variable to remove
         """
+        # Remove defining equation
         defn = self.get_definition(symbol)
         if defn is not None:
             self.remove_equation(defn)
-        if symbol.cmeta_id:
+
+        # Remove any annotations
+        if symbol.rdf_identity:
             for triple in self.rdf.triples((symbol.rdf_identity, None, None)):
                 self.rdf.remove(triple)
+
         del self._name_to_symbol[symbol.name]
         self._invalidate_cache()
+
+    def transfer_cmeta_id(self, source, target):
+        """
+        Removes the ``cmeta_id`` from the variable ``source`` and adds it to ``target``.
+
+        Raises a ``ValueError`` if ``target`` already has a cmeta id.
+        """
+        if target._cmeta_id is not None:
+            raise ValueError('Cannot transfer cmeta id: target variable already has a cmeta id.')
+
+        # Transfer id
+        target._cmeta_id = source._cmeta_id
+        source._cmeta_id = None
+
+        #TODO: Update mapping
 
     def variables(self):
         """ Returns an iterator over this model's variable symbols. """
@@ -710,8 +727,8 @@ class Model(object):
         If ``INPUT`` then the original variable takes its value from the newly added variable;
         if ``OUTPUT`` then the opposite happens.
 
-        Any ``cmeta:id`` attribute on the original variable is moved to the new one,
-        so ontology annotations will refer to the new variable.
+        Any ``cmeta:id`` attribute on the original variable is moved to the new one, so ontology annotations will refer
+        to the new variable.
 
         Similarly if the direction is ``INPUT`` then any initial value will be moved to the new variable
         (and converted appropriately).
@@ -914,12 +931,11 @@ class Model(object):
         if direction == DataDirectionFlow.INPUT and original_variable.initial_value:
             new_value = original_variable.initial_value * cf
 
-        # 3. copy cmeta_id from original and remove from original
-        new_variable = self.add_variable(name=new_name,
-                                         units=units,
-                                         initial_value=new_value,
-                                         cmeta_id=original_variable.cmeta_id)
-        original_variable.cmeta_id = ''
+        # 3. Create new variable
+        new_variable = self.add_variable(name=new_name, units=units, initial_value=new_value)
+
+        # Transfer cmeta id from original to new variable
+        self.transfer_cmeta_id(original_variable, new_variable)
 
         # 4 add/remove/replace equations
         if direction == DataDirectionFlow.INPUT:
@@ -1035,8 +1051,8 @@ class VariableDummy(sympy.Dummy):
         # Optional order added, used for sorting sometimes.
         self.order_added = order_added
 
-        # Optional cmeta id
-        self.cmeta_id = cmeta_id
+        # Optional cmeta id: This is managed by the Model class, so shouldn't be changed directly.
+        self._cmeta_id = cmeta_id
 
         # This variable's type
         # TODO: Define allowed types via enum
@@ -1048,4 +1064,4 @@ class VariableDummy(sympy.Dummy):
     @property
     def rdf_identity(self):
         """The RDF identity for this variable, or ``None`` if no cmeta id."""
-        return create_rdf_node('#' + self.cmeta_id) if self.cmeta_id else None
+        return create_rdf_node('#' + self._cmeta_id) if self._cmeta_id else None
