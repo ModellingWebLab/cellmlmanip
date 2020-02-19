@@ -39,6 +39,9 @@ class Model(object):
 
     Units are handled using the ``units`` property of a model, which is an instance of ``cellmlmanip.units.UnitStore``.
 
+    RDF meta data can be attached to either the model itself or to model variables, via the CellML ``cmeta:id``
+    attribute. Cmeta ids set on any other parts of CellML models are ignored.
+
     Cellmlmanip does not support algebraic models: the left-hand side every equation in the model must be a variable or
     a derivative.
 
@@ -94,10 +97,13 @@ class Model(object):
             return
 
         # Create new cmeta id
-        variable._cmeta_id = self.get_unique_cmeta_id(str(variable))
+        cmeta_id = str(variable)
+        while self.has_cmeta_id(cmeta_id):
+            cmeta_id += '_'
 
-        # Store mapping from id to dummy
-        self._cmeta_id_to_symbol[variable._cmeta_id] = variable
+        # Add to variable and store in mapping
+        variable._cmeta_id = cmeta_id
+        self._cmeta_id_to_symbol[cmeta_id] = variable
 
     def add_equation(self, equation, check_duplicates=True):
         """
@@ -175,11 +181,9 @@ class Model(object):
         if name in self._name_to_symbol:
             raise ValueError('Variable %s already exists.' % name)
 
-        # Check uniqueness of cmeta id (against RDF graph)
-        # if cmeta_id is not None:
-        #    cmeta_id = str(cmeta_id)
-        #    if next(self.rdf[create_rdf_node('#' + cmeta_id)], None) is not None:
-        #        raise ValueError('The cmeta_id "%s" is already in use.' % cmeta_id)
+        # Check uniqueness of cmeta id
+        if cmeta_id is not None and self.has_cmeta_id(cmeta_id):
+            raise ValueError('The cmeta_id "%s" is already in use.' % cmeta_id)
 
         # Check units
         if not isinstance(units, self.units.Unit):
@@ -427,6 +431,8 @@ class Model(object):
 
         :param cmeta_id: either a string id or :class:`rdflib.URIRef` instance.
         """
+
+        # Get cmeta_id from URIRef
         if isinstance(cmeta_id, rdflib.term.Node):
             assert isinstance(cmeta_id, rdflib.URIRef), 'Non-resource {} annotated.'.format(cmeta_id)
             cmeta_id = str(cmeta_id)
@@ -435,8 +441,9 @@ class Model(object):
                 raise NotImplementedError(
                     'Non-local annotations are not supported.')
             cmeta_id = cmeta_id[1:]
-        assert isinstance(cmeta_id, str)
 
+        # Get symbol by cmeta id string
+        assert isinstance(cmeta_id, str)
         try:
             return self._cmeta_id_to_symbol[cmeta_id]
         except KeyError:
@@ -642,6 +649,19 @@ class Model(object):
         # Cache graph and return
         self._graph_with_sympy_numbers = graph
         return graph
+
+    def has_cmeta_id(self, cmeta_id):
+        """
+        Returns ``True`` only if the given ``cmeta_id`` exists in this model.
+
+        Note that only cmeta ids on variables or the model itself are checked and supported.
+        """
+        # Check if it's the model id
+        if cmeta_id == self._cmeta_id and cmeta_id is not None:
+            return True
+
+        # Check if it's a variable id. All other cmeta_ids in the original CellML are ignored.
+        return cmeta_id in self._cmeta_id_to_symbol
 
     def has_ontology_annotation(self, symbol, namespace_uri=None):
         """Searches the RDF graph for the annotation ``{namespace_uri}annotation_name``
@@ -1002,16 +1022,6 @@ class Model(object):
         if name in self._name_to_symbol:
             name = self._get_unique_name(name + '_a')
         return name
-
-    def get_unique_cmeta_id(self, cmeta_id):
-        """Get a cmeta:id that's guaranteed to be unique, based on the given suggestion.
-
-        :param str cmeta_id: Suggested cmeta:id
-        """
-        # Note: Cmeta id is checked against the graph, not just the list of VariableDummies.
-        while next(self.rdf[create_rdf_node('#' + cmeta_id)], None) is not None:
-            cmeta_id += '_'
-        return cmeta_id
 
 
 class NumberDummy(sympy.Dummy):
