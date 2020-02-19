@@ -183,7 +183,7 @@ class Model(object):
 
         # Check uniqueness of cmeta id
         if cmeta_id is not None and self.has_cmeta_id(cmeta_id):
-            raise ValueError('The cmeta_id "%s" is already in use.' % cmeta_id)
+            raise ValueError('The cmeta id "%s" is already in use.' % cmeta_id)
 
         # Check units
         if not isinstance(units, self.units.Unit):

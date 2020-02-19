@@ -451,19 +451,22 @@ class TestModelFunctions():
         with pytest.raises(KeyError):
             model.get_symbol_by_name('newvar') is None
 
-        newvar = model.add_variable(name='newvar', units='mV')
+        newvar = model.add_variable('newvar', 'mV')
         assert newvar.is_real
         assert len(model.variables()) == 4
         assert model.get_symbol_by_name('newvar')
 
-        # Repeated in TestModelAPI
         # Variable can't be added twice
-        unit = 'mV'
-        model.add_variable(name='varvar1', units=unit)
-        model.add_variable(name='varvar2', units=unit)
+        model.add_variable('varvar1', 'mV')
+        model.add_variable('varvar2', 'mV')
         assert len(model.variables()) == 6
         with pytest.raises(ValueError, match='already exists'):
-            model.add_variable(name='varvar1', units=unit)
+            model.add_variable('varvar1', 'mV')
+
+        # Same cmeta id can't be used twice
+        model.add_variable('v1', 'mV', cmeta_id='v1')
+        with pytest.raises(ValueError, match='cmeta id'):
+            model.add_variable('v2', 'mV', cmeta_id='v1')
 
     def test_remove_variable(self, local_hh_model):
         """Test the Model.remove_variable() method."""
@@ -550,6 +553,15 @@ class TestModelFunctions():
         with pytest.raises(units.UnitError):
             # cellml file states b (per_ms) = power(a (ms), 1 (second))
             bad_units_model.units.evaluate_units(equation[1].rhs)
+
+    ###################################################################
+    # rdf related methods
+
+    def test_has_cmeta_id(self, basic_model):
+        """Tests Model.has_cmeta_id(). """
+
+        assert basic_model.has_cmeta_id('time')
+        assert not basic_model.has_cmeta_id('pepper')
 
     ###################################################################
     # this section is for other functions
