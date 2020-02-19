@@ -212,5 +212,24 @@ def test_add_rdf(local_model):
 
 
 def test_get_unique_cmeta_id(simple_ode_model):
+    """ Tests Model.get_unique_cmeta_id(). """
     assert simple_ode_model.get_unique_cmeta_id('already_unique_id') == 'already_unique_id'
     assert simple_ode_model.get_unique_cmeta_id('time') == 'time_'
+
+
+def test_add_cmeta_id(simple_ode_model):
+    """ Tests Model.add_cmeta_id(). """
+
+    # Test on variable without a cmeta id
+    v = simple_ode_model.get_symbol_by_name('circle_x$x')
+    assert v.rdf_identity is None
+    simple_ode_model.add_cmeta_id(v)
+    assert v.rdf_identity is not None
+
+    # Test on variable with a cmeta id
+    v = simple_ode_model.get_symbol_by_ontology_term((shared.OXMETA, 'time'))
+    rid = v.rdf_identity
+    assert rid is not None
+    simple_ode_model.add_cmeta_id(v)
+    assert v.rdf_identity == rid
+

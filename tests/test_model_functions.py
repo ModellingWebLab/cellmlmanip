@@ -11,7 +11,12 @@ from . import shared
 
 
 class TestModelFunctions():
-    """ Tests for all methods on Model class """
+    """
+    Tests for most methods in Model.
+
+    RDF-related methods are tested in test_rdf.py
+    Unit-related methods in test_unit_conversion.py
+    """
 
     ###############################################################
     # fixtures
