@@ -39,6 +39,9 @@ class Model(object):
 
     Units are handled using the ``units`` property of a model, which is an instance of ``cellmlmanip.units.UnitStore``.
 
+    RDF meta data can be attached to either the model itself or to model variables, via the CellML ``cmeta:id``
+    attribute. Cmeta ids set on any other parts of CellML models are ignored.
+
     Cellmlmanip does not support algebraic models: the left-hand side every equation in the model must be a variable or
     a derivative.
 
@@ -51,7 +54,7 @@ class Model(object):
     def __init__(self, name, cmeta_id=None, unit_store=None):
 
         self.name = name
-        self.cmeta_id = cmeta_id
+        self._cmeta_id = cmeta_id
         self.rdf_identity = create_rdf_node('#' + cmeta_id) if cmeta_id else None
 
         # A list of sympy.Eq equation objects
@@ -63,8 +66,11 @@ class Model(object):
         else:
             self.units = UnitStore()
 
-        # Maps string variable names to sympy.Dummy objects
-        self._name_to_symbol = dict()
+        # Maps string variable names to VariableDummy objects
+        self._name_to_symbol = {}
+
+        # Maps cmeta ids to VariableDummy objects
+        self._cmeta_id_to_symbol = {}
 
         # Cached nx.DiGraph of this model's equations, with number dummies or with sympy.Number objects
         self._graph = None
@@ -78,6 +84,26 @@ class Model(object):
 
         # Map from VariableDummy to defining equation, where the variable is defined by an ODE
         self._ode_definition_map = {}
+
+    def add_cmeta_id(self, variable):
+        """
+        Adds a (unique) cmeta id to the given variable.
+
+        If the variable already has a cmeta id no action is performed.
+
+        :param variable: A :class:`VariableDummy`.
+        """
+        if variable._cmeta_id is not None:
+            return
+
+        # Create new cmeta id
+        cmeta_id = str(variable)
+        while self.has_cmeta_id(cmeta_id):
+            cmeta_id += '_'
+
+        # Add to variable and store in mapping
+        variable._set_cmeta_id(cmeta_id)
+        self._cmeta_id_to_symbol[cmeta_id] = variable
 
     def add_equation(self, equation, check_duplicates=True):
         """
@@ -148,12 +174,16 @@ class Model(object):
         :param public_interface: An optional public interface specifier (only required when parsing CellML).
         :param private_interface: An optional private interface specifier (only required when parsing CellML).
         :param cmeta_id: An optional string specifying a cmeta:id
-
+        :raises ValueError: If a variable with that name already exists, or the given cmeta_id is already taken.
         :return: A :class:`VariableDummy` object.
         """
         # Check for clashes
         if name in self._name_to_symbol:
             raise ValueError('Variable %s already exists.' % name)
+
+        # Check uniqueness of cmeta id
+        if cmeta_id is not None and self.has_cmeta_id(cmeta_id):
+            raise ValueError('The cmeta id "%s" is already in use.' % cmeta_id)
 
         # Check units
         if not isinstance(units, self.units.Unit):
@@ -169,6 +199,10 @@ class Model(object):
             order_added=len(self._name_to_symbol),
             cmeta_id=cmeta_id,
         )
+
+        # Add cmeta id to var mapping
+        if cmeta_id is not None:
+            self._cmeta_id_to_symbol[cmeta_id] = var
 
         # Invalidate cached graphs
         self._invalidate_cache()
@@ -397,6 +431,8 @@ class Model(object):
 
         :param cmeta_id: either a string id or :class:`rdflib.URIRef` instance.
         """
+
+        # Get cmeta_id from URIRef
         if isinstance(cmeta_id, rdflib.term.Node):
             assert isinstance(cmeta_id, rdflib.URIRef), 'Non-resource {} annotated.'.format(cmeta_id)
             cmeta_id = str(cmeta_id)
@@ -405,12 +441,13 @@ class Model(object):
                 raise NotImplementedError(
                     'Non-local annotations are not supported.')
             cmeta_id = cmeta_id[1:]
-        assert isinstance(cmeta_id, str)
-        for var in self._name_to_symbol.values():
-            if var.cmeta_id == cmeta_id:
-                return var
 
-        raise KeyError('No variable with cmeta id "%s" found.' % str(cmeta_id))
+        # Get symbol by cmeta id string
+        assert isinstance(cmeta_id, str)
+        try:
+            return self._cmeta_id_to_symbol[cmeta_id]
+        except KeyError:
+            raise KeyError('No variable with cmeta id "%s" found.' % str(cmeta_id))
 
     def get_symbol_by_name(self, name):
         """ Returns the symbol for the variable with the given ``name``. """
@@ -457,20 +494,17 @@ class Model(object):
         return sorted(symbols, key=lambda sym: sym.order_added)
 
     def get_ontology_terms_by_symbol(self, symbol, namespace_uri=None):
-        """Searches the RDF graph for the annotation ``{namespace_uri}annotation_name``
-        for the given symbol and returns ``annotation_name`` and optionally restricted
-        to a specific ``{namespace_uri}annotation_name``
+        """
+        Returns all ontology terms linked to the variable ``symbol`` via the
+        ``http://biomodels.net/biology-qualifiers/is`` predicate.
 
-        Specifically, this method searches for a ``annotation_name`` for
-        subject symbol
-        predicate ``http://biomodels.net/biology-qualifiers/is`` and the object
-        specified by ``{namespace_uri}annotation_name``
-        for a specific ``{namespace_uri}`` if set, otherwise for any namespace_uri
-
-        Will return a list of term names.
+        :param symbol: The symbol to search for.
+        :param namespace_uri: An optional namespace URI. If given, only terms within the given namespace will be
+            returned.
+        :returns: A list of term names.
         """
         ontology_terms = []
-        if symbol.cmeta_id:
+        if symbol.rdf_identity:
             predicate = ('http://biomodels.net/biology-qualifiers/', 'is')
             predicate = create_rdf_node(predicate)
             subject = symbol.rdf_identity
@@ -616,6 +650,19 @@ class Model(object):
         self._graph_with_sympy_numbers = graph
         return graph
 
+    def has_cmeta_id(self, cmeta_id):
+        """
+        Returns ``True`` only if the given ``cmeta_id`` exists in this model.
+
+        Note that only cmeta ids on variables or the model itself are checked and supported.
+        """
+        # Check if it's the model id
+        if cmeta_id == self._cmeta_id and cmeta_id is not None:
+            return True
+
+        # Check if it's a variable id. All other cmeta_ids in the original CellML are ignored.
+        return cmeta_id in self._cmeta_id_to_symbol
+
     def has_ontology_annotation(self, symbol, namespace_uri=None):
         """Searches the RDF graph for the annotation ``{namespace_uri}annotation_name``
         for the given symbol and returns whether it has annotation, optionally restricted
@@ -687,14 +734,39 @@ class Model(object):
 
         :param VariableDummy symbol: the variable to remove
         """
+        # Remove defining equation
         defn = self.get_definition(symbol)
         if defn is not None:
             self.remove_equation(defn)
-        if symbol.cmeta_id:
+
+        # Remove any annotations
+        if symbol.rdf_identity:
             for triple in self.rdf.triples((symbol.rdf_identity, None, None)):
                 self.rdf.remove(triple)
+
+        # Remove references to variable and invalidate cache
         del self._name_to_symbol[symbol.name]
+        if symbol._cmeta_id is not None:
+            del self._cmeta_id_to_symbol[symbol._cmeta_id]
         self._invalidate_cache()
+
+    def transfer_cmeta_id(self, source, target):
+        """
+        Removes the ``cmeta_id`` from the variable ``source`` and adds it to ``target``.
+
+        Raises a ``ValueError`` if ``source`` doesn't have a cmeta id, or if ``target`` already has a cmeta id.
+        """
+        if source._cmeta_id is None:
+            raise ValueError('Cannot transfer cmeta id: source variable has no cmeta id.')
+        if target._cmeta_id is not None:
+            raise ValueError('Cannot transfer cmeta id: target variable already has a cmeta id.')
+
+        # Transfer id
+        target._set_cmeta_id(source._cmeta_id)
+        source._set_cmeta_id(None)
+
+        # Update mapping
+        self._cmeta_id_to_symbol[target._cmeta_id] = target
 
     def variables(self):
         """ Returns an iterator over this model's variable symbols. """
@@ -710,8 +782,8 @@ class Model(object):
         If ``INPUT`` then the original variable takes its value from the newly added variable;
         if ``OUTPUT`` then the opposite happens.
 
-        Any ``cmeta:id`` attribute on the original variable is moved to the new one,
-        so ontology annotations will refer to the new variable.
+        Any ``cmeta:id`` attribute on the original variable is moved to the new one, so ontology annotations will refer
+        to the new variable.
 
         Similarly if the direction is ``INPUT`` then any initial value will be moved to the new variable
         (and converted appropriately).
@@ -755,8 +827,7 @@ class Model(object):
                           or DataDirectionFlow.OUTPUT; the variable to be changed is an output, equations
                           are unaffected apart from converting the actual output
         :return: new variable with desired units, or original unchanged if conversion was not necessary
-        :throws: AssertionError if the arguments are of incorrect type or the variable does not exist in the model
-                DimensionalityError if the unit conversion is impossible
+        :raises DimensionalityError: if the unit conversion is impossible
         """
         # assertion errors will be thrown here if arguments are incorrect type
         self._check_arguments_for_convert_variables(original_variable, units, direction)
@@ -806,8 +877,6 @@ class Model(object):
         :param variable: variable must be a VariableDummy object present in the model
         :param units: units must be a pint Unit object in this model
         :param direction: must be part of DataDirectionFlow enum
-        :throws: AssertionError if the arguments are of incorrect type
-                                or the variable does not exist in the model
        """
         # variable should be a VariableDummy
         assert isinstance(variable, VariableDummy)
@@ -906,22 +975,21 @@ class Model(object):
         :param direction: enumeration value specifying input or output
         :return: the new variable created [new units]
         """
-        # 1. get unique name for new variable
+        # Get unique name for new variable
         new_name = self._get_unique_name(original_variable.name + '_converted')
 
-        # 2. if original has initial_value calculate new initial value (only needed for INPUT case)
+        # If original has initial_value calculate new initial value (only needed for INPUT case)
         new_value = None
         if direction == DataDirectionFlow.INPUT and original_variable.initial_value:
             new_value = original_variable.initial_value * cf
 
-        # 3. copy cmeta_id from original and remove from original
-        new_variable = self.add_variable(name=new_name,
-                                         units=units,
-                                         initial_value=new_value,
-                                         cmeta_id=original_variable.cmeta_id)
-        original_variable.cmeta_id = ''
+        # Create new variable
+        new_variable = self.add_variable(name=new_name, units=units, initial_value=new_value)
 
-        # 4 add/remove/replace equations
+        # Transfer cmeta id from original to new variable
+        self.transfer_cmeta_id(original_variable, new_variable)
+
+        # Add/remove/replace equations
         if direction == DataDirectionFlow.INPUT:
             # if direction is input; original var will be replaced by equation so do not need to store initial value
             original_variable.initial_value = None
@@ -956,15 +1024,6 @@ class Model(object):
         if name in self._name_to_symbol:
             name = self._get_unique_name(name + '_a')
         return name
-
-    def get_unique_cmeta_id(self, cmeta_id):
-        """Get a cmeta:id that's guaranteed to be unique, based on the given suggestion.
-
-        :param str cmeta_id: Suggested cmeta:id
-        """
-        while next(self.rdf[create_rdf_node('#' + cmeta_id)], None) is not None:
-            cmeta_id += '_'
-        return cmeta_id
 
 
 class NumberDummy(sympy.Dummy):
@@ -1036,7 +1095,8 @@ class VariableDummy(sympy.Dummy):
         self.order_added = order_added
 
         # Optional cmeta id
-        self.cmeta_id = cmeta_id
+        self._cmeta_id = self._rdf_identity = None
+        self._set_cmeta_id(cmeta_id)
 
         # This variable's type
         # TODO: Define allowed types via enum
@@ -1045,7 +1105,16 @@ class VariableDummy(sympy.Dummy):
     def __str__(self):
         return self.name
 
+    def _set_cmeta_id(self, cmeta_id):
+        """ Sets this variable's cmeta id. Should only be called by Model, which can verify cmeta id uniqueness. """
+        self._cmeta_id = cmeta_id
+        if cmeta_id is None:
+            self._rdf_identity = None
+        else:
+            self._rdf_identity = create_rdf_node('#' + self._cmeta_id)
+
     @property
     def rdf_identity(self):
-        """The RDF identity for this variable, or ``None`` if no cmeta id."""
-        return create_rdf_node('#' + self.cmeta_id) if self.cmeta_id else None
+        """The RDF identity for this variable (will be ``None`` unless the variable has a cmeta id)."""
+        return self._rdf_identity
+

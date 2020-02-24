@@ -1,3 +1,4 @@
+import logging
 import os
 
 import pytest
@@ -5,7 +6,46 @@ import sympy
 
 from cellmlmanip import load_model, parser
 
-from . import shared
+
+logger = logging.getLogger(__name__)
+
+
+def check_rdf_identities(model):
+    """Checks that every variable in a model with an ``rdf_identity`` is a source variable."""
+    is_okay = True
+    for variable in model.graph:
+        if variable.is_Derivative:
+            variable = variable.free_symbols.pop()
+        if variable.rdf_identity is not None:
+            if variable != variable.assigned_to:
+                is_okay = False
+                logger.critical('%s has cmeta id but is assigned to %s',
+                                variable.dummy, variable.assigned_to)
+    return is_okay
+
+
+def check_dummy_assignment(model):
+    """Every variable in the model should be assigned to itself or another variabe.
+    The source variable must be assigned to itself."""
+    is_okay = True
+    for variable in model.graph:
+        if variable.is_Derivative:
+            variable = variable.free_symbols.pop()
+        # either the variable is assigned to itself
+        if variable == variable.assigned_to:
+            continue
+
+        # or the variable is assigned to a source variable
+        source = variable.assigned_to
+
+        # the source dummy must be assigned to itself
+        if source.assigned_to != source:
+            is_okay = False
+            logger.critical('%s is assigned to %s, which is assigned to %s',
+                            variable,
+                            source,
+                            source.assigned_to)
+    return is_okay
 
 
 class TestParser(object):
@@ -172,8 +212,8 @@ class TestParser(object):
                    '==' if simple_ode_model.units.is_unit_equal(rhs_units, lhs_units) else '!=',
                    rhs_units))
 
-        assert shared.check_cmeta_ids(simple_ode_model)
-        assert shared.check_dummy_assignment(simple_ode_model)
+        assert check_rdf_identities(simple_ode_model)
+        assert check_dummy_assignment(simple_ode_model)
 
     def test_connect_to_hidden_component(self):
         """ Tests parser throws exception when cannot connect components. """

@@ -115,9 +115,20 @@ def test_get_ontology_terms_by_symbol2(hh_model):
     assert annotation[0] == "membrane_voltage"
 
     # Get a symbol without cmeta_id and check that get_ontology_terms_by_symbol works
-    symbol = [s for s in hh_model.get_state_symbols() if not s.cmeta_id][0]
+    symbol = [s for s in hh_model.get_state_symbols() if not s.rdf_identity][0]
     annotation = hh_model.get_ontology_terms_by_symbol(symbol)
     assert len(annotation) == 0
+
+
+def test_has_cmeta_id(basic_model):
+    """Tests Model.has_cmeta_id(). """
+
+    # Test with variable ids
+    assert basic_model.has_cmeta_id('time')
+    assert not basic_model.has_cmeta_id('pepper')
+
+    # Test with model id
+    assert basic_model.has_cmeta_id('test_basic_ode')
 
 
 def test_has_ontology_term_by_symbol(bad_annotation_model):
@@ -211,6 +222,58 @@ def test_add_rdf(local_model):
     assert named_attributes[0]['value'] == '2.5' or named_attributes[1]['value'] == '2.5'
 
 
-def test_get_unique_cmeta_id(simple_ode_model):
-    assert simple_ode_model.get_unique_cmeta_id('already_unique_id') == 'already_unique_id'
-    assert simple_ode_model.get_unique_cmeta_id('time') == 'time_'
+def test_add_cmeta_id():
+    """ Tests Model.add_cmeta_id(). """
+
+    model = shared.load_model('test_simple_odes')
+
+    # Test on variable without a cmeta id
+    v = model.get_symbol_by_name('circle_x$x')
+    assert v.rdf_identity is None
+    model.add_cmeta_id(v)
+    assert v.rdf_identity is not None
+
+    # Test on variable with a cmeta id
+    v = model.get_symbol_by_ontology_term((shared.OXMETA, 'time'))
+    rid = v.rdf_identity
+    assert rid is not None
+    model.add_cmeta_id(v)
+    assert v.rdf_identity == rid
+
+    # Test on variable with a name that's already in use as a cmeta id
+    assert model.has_cmeta_id('time')
+    w = model.get_symbol_by_cmeta_id('time')
+    v = model.add_variable('time', 'second')
+    model.add_cmeta_id(v)
+    assert v.rdf_identity is not None
+    assert v.rdf_identity != w.rdf_identity
+
+
+def test_transfer_cmeta_id():
+    """ Tests Model.transfer_cmeta_id(). """
+
+    model = shared.load_model('test_simple_odes')
+
+    # Legal move: from variable with a cmeta id to one without
+    v1 = model.get_symbol_by_ontology_term((shared.OXMETA, 'time'))
+    v2 = model.get_symbol_by_name('circle_x$x')
+    assert v1.rdf_identity is not None
+    assert v2.rdf_identity is None
+    model.transfer_cmeta_id(v1, v2)
+    assert v1.rdf_identity is None
+    assert v2.rdf_identity is not None
+
+    # Illegal move: from a variable without a cmeta id
+    v3 = model.get_symbol_by_name('circle_x$y')
+    assert v1.rdf_identity is None
+    assert v3.rdf_identity is None
+    with pytest.raises(ValueError):
+        model.transfer_cmeta_id(v1, v3)
+
+    # Illegal move: to a variable with a cmeta id
+    v4 = model.get_symbol_by_ontology_term((shared.OXMETA, 'cytosolic_calcium_concentration'))
+    assert v2.rdf_identity is not None
+    assert v4.rdf_identity is not None
+    with pytest.raises(ValueError):
+        model.transfer_cmeta_id(v2, v4)
+
