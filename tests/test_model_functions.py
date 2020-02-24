@@ -557,39 +557,39 @@ class TestModelFunctions():
     ###################################################################
     # this section is for other functions
 
-    def test_find_symbols_and_derivatives(self, basic_model):
-        """ Tests Model.find_symbols_and_derivatives() on a simple model. """
+    def test_find_variables_and_derivatives(self, basic_model):
+        """ Tests Model.find_variables_and_derivatives() on a simple model. """
         a = VariableDummy('a', 'second')
         b = VariableDummy('b', 'second')
         ex = sp.Add(a, b)
-        syms = basic_model.find_symbols_and_derivatives([ex])
+        syms = basic_model.find_variables_and_derivatives([ex])
         assert len(syms) == 2
 
-    def test_find_symbols_and_derivatives_2(self, hh_model):
-        """ Tests Model.find_symbols_and_derivatives() on a more complicated model. """
+    def test_find_variables_and_derivatives_2(self, hh_model):
+        """ Tests Model.find_variables_and_derivatives() on a more complicated model. """
 
         # Test on single variable expressions
         t = hh_model.get_free_variable()
-        syms = hh_model.find_symbols_and_derivatives([t])
+        syms = hh_model.find_variables_and_derivatives([t])
         assert len(syms) == 1
         assert t in syms
 
         v = hh_model.get_variable_by_ontology_term((shared.OXMETA, "membrane_voltage"))
         dvdt = sp.Derivative(v, t)
-        syms = hh_model.find_symbols_and_derivatives([dvdt])
+        syms = hh_model.find_variables_and_derivatives([dvdt])
         assert len(syms) == 1
         assert sp.Derivative(v, t) in syms
 
         # Test on longer expressions
         x = sp.Float(1, FLOAT_PRECISION) + t * sp.sqrt(dvdt) - t
-        syms = hh_model.find_symbols_and_derivatives([x])
+        syms = hh_model.find_variables_and_derivatives([x])
         assert len(syms) == 2
         assert t in syms
         assert sp.Derivative(v, t) in syms
 
         # Test on multiple expressions
         y = sp.Float(2, FLOAT_PRECISION) + v
-        syms = hh_model.find_symbols_and_derivatives([x, y])
+        syms = hh_model.find_variables_and_derivatives([x, y])
         assert len(syms) == 3
         assert v in syms
         assert t in syms

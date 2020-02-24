@@ -572,7 +572,7 @@ class Model(object):
             lhs = equation.lhs
 
             # for each of the symbols or derivatives on the rhs of the equation
-            for rhs in self.find_symbols_and_derivatives([equation.rhs]):
+            for rhs in self.find_variables_and_derivatives([equation.rhs]):
 
                 if rhs in graph.nodes:
                     # If the symbol maps to a node in the graph just add the dependency edge
@@ -634,7 +634,7 @@ class Model(object):
 
                 # Check if simplification removed dependencies on other variables, and if so remove the corresponding
                 # edges.
-                refs = self.find_symbols_and_derivatives([rhs])
+                refs = self.find_variables_and_derivatives([rhs])
                 edges = list(graph.in_edges(equation.lhs))
                 for edge in edges:
                     ref = edge[0]
@@ -685,7 +685,7 @@ class Model(object):
         """ Returns the evaluated value of the given symbol's RHS. """
         return float(self.graph.nodes[symbol]['equation'].rhs.evalf())
 
-    def find_symbols_and_derivatives(self, expressions):
+    def find_variables_and_derivatives(self, expressions):
         """ Returns a set containing all symbols and derivatives referenced in a list of expressions.
 
         Note that we can't just use ``.atoms(VariableDummy, sympy.Derivative)`` for this, because it
@@ -699,7 +699,7 @@ class Model(object):
             if expr.is_Derivative or isinstance(expr, VariableDummy):
                 symbols.add(expr)
             else:
-                symbols |= self.find_symbols_and_derivatives(expr.args)
+                symbols |= self.find_variables_and_derivatives(expr.args)
         return symbols
 
     def remove_equation(self, equation):
