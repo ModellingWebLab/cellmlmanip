@@ -1115,6 +1115,6 @@ class VariableDummy(sympy.Dummy):
 
     @property
     def rdf_identity(self):
-        """The RDF identity for this variable, or ``None`` if no cmeta id."""
+        """The RDF identity for this variable (will be ``None`` unless the variable has a cmeta id)."""
         return self._rdf_identity
 
