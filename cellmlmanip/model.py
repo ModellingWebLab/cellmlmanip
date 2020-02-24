@@ -102,7 +102,7 @@ class Model(object):
             cmeta_id += '_'
 
         # Add to variable and store in mapping
-        variable._cmeta_id = cmeta_id
+        variable._set_cmeta_id(cmeta_id)
         self._cmeta_id_to_symbol[cmeta_id] = variable
 
     def add_equation(self, equation, check_duplicates=True):
@@ -762,8 +762,8 @@ class Model(object):
             raise ValueError('Cannot transfer cmeta id: target variable already has a cmeta id.')
 
         # Transfer id
-        target._cmeta_id = source._cmeta_id
-        source._cmeta_id = None
+        target._set_cmeta_id(source._cmeta_id)
+        source._set_cmeta_id(None)
 
         # Update mapping
         self._cmeta_id_to_symbol[target._cmeta_id] = target
@@ -1094,9 +1094,9 @@ class VariableDummy(sympy.Dummy):
         # Optional order added, used for sorting sometimes.
         self.order_added = order_added
 
-        # Optional cmeta id: This is managed by the Model class, so shouldn't be changed directly.
-        self._cmeta_id = cmeta_id
-        self._rdf_identity = None
+        # Optional cmeta id
+        self._cmeta_id = self._rdf_identity = None
+        self._set_cmeta_id(cmeta_id)
 
         # This variable's type
         # TODO: Define allowed types via enum
@@ -1105,12 +1105,16 @@ class VariableDummy(sympy.Dummy):
     def __str__(self):
         return self.name
 
+    def _set_cmeta_id(self, cmeta_id):
+        """ Sets this variable's cmeta id. Should only be called by Model, which can verify cmeta id uniqueness. """
+        self._cmeta_id = cmeta_id
+        if cmeta_id is None:
+            self._rdf_identity = None
+        else:
+            self._rdf_identity = create_rdf_node('#' + self._cmeta_id)
+
     @property
     def rdf_identity(self):
         """The RDF identity for this variable, or ``None`` if no cmeta id."""
-        if self._cmeta_id is None:
-            return None
-        if self._rdf_identity is None:
-            self._rdf_identity = create_rdf_node('#' + self._cmeta_id)
         return self._rdf_identity
 
