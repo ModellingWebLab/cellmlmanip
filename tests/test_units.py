@@ -59,7 +59,7 @@ class TestUnits(object):
         assert not unitstore.is_defined('uu')
         uu = unitstore.add_base_unit('uu')
         assert unitstore.is_defined('uu')
-        assert unitstore.format(uu, True) == '1.0 uu'
+        assert unitstore.format(uu, True) in ('1 uu', '1.0 uu')
 
         # Duplicate unit definition
         with pytest.raises(ValueError):
@@ -94,7 +94,7 @@ class TestUnits(object):
         b = store.add_unit(str(z), '2 * z /' + str(y))
         assert store.format(a) == str(y)
         assert store.format(b) == str(z)
-        assert store.format(a, True) == '1.0 ' + str(y)
+        assert store.format(a, True) in ('1.0 ' + str(y), '1 ' + str(y))
         assert store.format(b, True) == '2.0 meter * y / second ** 2 / ' + str(y)
 
     def test_get_unit(self):
