@@ -754,8 +754,10 @@ class Model(object):
         """
         Removes the ``cmeta_id`` from the variable ``source`` and adds it to ``target``.
 
-        Raises a ``ValueError`` if ``target`` already has a cmeta id.
+        Raises a ``ValueError`` if ``source`` doesn't have a cmeta id, or if ``target`` already has a cmeta id.
         """
+        if source._cmeta_id is None:
+            raise ValueError('Cannot transfer cmeta id: source variable has no cmeta id.')
         if target._cmeta_id is not None:
             raise ValueError('Cannot transfer cmeta id: target variable already has a cmeta id.')
 

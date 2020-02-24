@@ -120,6 +120,17 @@ def test_get_ontology_terms_by_symbol2(hh_model):
     assert len(annotation) == 0
 
 
+def test_has_cmeta_id(basic_model):
+    """Tests Model.has_cmeta_id(). """
+
+    # Test with variable ids
+    assert basic_model.has_cmeta_id('time')
+    assert not basic_model.has_cmeta_id('pepper')
+
+    # Test with model id
+    assert basic_model.has_cmeta_id('test_basic_ode')
+
+
 def test_has_ontology_term_by_symbol(bad_annotation_model):
     """ Tests Model.has_ontology_annotation() function when the annotation is not correct. """
     # Test bad annotations
@@ -249,10 +260,17 @@ def test_transfer_cmeta_id():
     assert v1.rdf_identity is None
     assert v2.rdf_identity is not None
 
-    # Illegal move: to a variable with a cmeta id
-    v3 = model.get_symbol_by_ontology_term((shared.OXMETA, 'cytosolic_calcium_concentration'))
-    assert v2.rdf_identity is not None
-    assert v3.rdf_identity is not None
+    # Illegal move: from a variable without a cmeta id
+    v3 = model.get_symbol_by_name('circle_x$y')
+    assert v1.rdf_identity is None
+    assert v3.rdf_identity is None
     with pytest.raises(ValueError):
-        model.transfer_cmeta_id(v2, v3)
+        model.transfer_cmeta_id(v1, v3)
+
+    # Illegal move: to a variable with a cmeta id
+    v4 = model.get_symbol_by_ontology_term((shared.OXMETA, 'cytosolic_calcium_concentration'))
+    assert v2.rdf_identity is not None
+    assert v4.rdf_identity is not None
+    with pytest.raises(ValueError):
+        model.transfer_cmeta_id(v2, v4)
 

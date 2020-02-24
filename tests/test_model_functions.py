@@ -555,19 +555,6 @@ class TestModelFunctions():
             bad_units_model.units.evaluate_units(equation[1].rhs)
 
     ###################################################################
-    # rdf related methods
-
-    def test_has_cmeta_id(self, basic_model):
-        """Tests Model.has_cmeta_id(). """
-
-        # Test with variable ids
-        assert basic_model.has_cmeta_id('time')
-        assert not basic_model.has_cmeta_id('pepper')
-
-        # Test with model id
-        assert basic_model.has_cmeta_id('test_basic_ode')
-
-    ###################################################################
     # this section is for other functions
 
     def test_find_symbols_and_derivatives(self, basic_model):
