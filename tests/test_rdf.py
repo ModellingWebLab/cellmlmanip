@@ -242,8 +242,11 @@ def test_add_cmeta_id():
 
     # Test on variable with a name that's already in use as a cmeta id
     assert model.has_cmeta_id('time')
+    w = model.get_variable_by_cmeta_id('time')
     v = model.add_variable('time', 'second')
     model.add_cmeta_id(v)
+    assert v.rdf_identity is not None
+    assert v.rdf_identify != w.rdf_identity
 
 
 def test_transfer_cmeta_id():
