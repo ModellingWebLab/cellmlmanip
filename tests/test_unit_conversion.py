@@ -727,7 +727,7 @@ class TestUnitConversion:
         Tests converting units works on a variable without a cmeta id (there was a bug before that stopped this from
         working).
         """
-        time = br_model.get_free_variable()
+        time = br_model.get_free_variable_symbol()
         time_units = br_model.units.evaluate_units(time)
         assert br_model.units.format(time_units) == 'ms'
         desired_units = br_model.units.get_unit('second')
