@@ -723,6 +723,10 @@ class TestUnitConversion:
         assert br_model.convert_variable(variable, unit, direction) == variable
 
     def test_convert_variable_no_cmeta_id(self, br_model):
+        """
+        Tests converting units works on a variable without a cmeta id (there was a bug before that stopped this from
+        working).
+        """
         time = br_model.get_free_variable()
         time_units = br_model.units.evaluate_units(time)
         assert br_model.units.format(time_units) == 'ms'
