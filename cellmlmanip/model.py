@@ -233,11 +233,11 @@ class Model(object):
         """Tells this model that the variable indicated by ``target_name`` should get its value from the variable
         indicated by ``source_name``.
 
-        If the variables' units are not the same, and equation will be added to the target component.
+        If the variables' units are not the same, an equation will be added to the target component.
 
         This method will only work if the source variable has been assigned a value, either through an equation or by
-        connecting it to a variable with an equation. If this is not yet the case, ``False`` is returned. If
-        successful the method returns ``True``.
+        connecting it (directly or indirectly) to a variable with an equation. If this is not yet the case, ``False`` is
+        returned. If successful the method returns ``True``.
 
         :param source_name: The source variable name
         :param target_name: The target variable name
