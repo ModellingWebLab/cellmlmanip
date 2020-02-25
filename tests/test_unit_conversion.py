@@ -722,6 +722,15 @@ class TestUnitConversion:
         direction = DataDirectionFlow.INPUT
         assert br_model.convert_variable(variable, unit, direction) == variable
 
+    def test_convert_variable_no_cmeta_id(self, br_model):
+        time = br_model.get_free_variable()
+        time_units = br_model.units.evaluate_units(time)
+        assert br_model.units.format(time_units) == 'ms'
+        desired_units = br_model.units.get_unit('second')
+        converted_time = br_model.convert_variable(time, desired_units, DataDirectionFlow.INPUT)
+        converted_time_units = br_model.units.evaluate_units(converted_time)
+        assert br_model.units.format(converted_time_units) == 'second'
+
     def test_unique_names(self, silly_names):
         # original state
         def test_original_state(silly_names):
