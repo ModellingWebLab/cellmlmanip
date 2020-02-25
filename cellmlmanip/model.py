@@ -683,6 +683,10 @@ class Model(object):
         self._graph = None
         self._graph_with_sympy_numbers = None
 
+    def is_state(self, variable):
+        """ Checks if the given ``variable`` is a state variable (i.e. if it's defined by an ODE). """
+        return variable in self._ode_definition_map
+
     def get_value(self, symbol):
         """ Returns the evaluated value of the given symbol's RHS. """
         return float(self.graph.nodes[symbol]['equation'].rhs.evalf())
