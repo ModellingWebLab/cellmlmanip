@@ -15,6 +15,14 @@ def local_model(scope='module'):
     return shared.load_model('test_simple_odes')
 
 
+def test_cmeta_id(simple_ode_model):
+    """Tests access to a variable's cmeta id."""
+    var = simple_ode_model.get_symbol_by_cmeta_id('time')
+    assert var.cmeta_id == 'time'
+    with pytest.raises(AttributeError):
+        var.cmeta_id = 'hello'
+
+
 def test_create_rdf_node():
     """ Tests rdf.create_rdf_node() function. """
 
