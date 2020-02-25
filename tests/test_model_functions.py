@@ -655,3 +655,20 @@ class TestModelFunctions():
         c = aslanidi_model.get_variable_by_ontology_term((shared.OXMETA, 'membrane_capacitance'))
         assert not aslanidi_model.is_state(c)
 
+    def test_transform_constants(self):
+        """ Tests Model.transform_constants(). """
+
+        # Parse model, which should convert an initial value to an equation
+        model = shared.load_model('initial_value_constant.cellml')
+        v = model.get_variable_by_name('A$a')
+
+        # Initial value should be None, if transform_constants worked
+        assert v.initial_value is None
+
+        # And its RHS value should be 1
+        assert model.get_value(v) == 1
+
+        # And the equations should have matching units
+        for eq in model.equations:
+            model.check_left_right_units_equal(eq)
+
