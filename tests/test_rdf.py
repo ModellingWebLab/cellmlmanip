@@ -17,7 +17,7 @@ def local_model(scope='module'):
 
 def test_cmeta_id(simple_ode_model):
     """Tests access to a variable's cmeta id."""
-    var = simple_ode_model.get_symbol_by_cmeta_id('time')
+    var = simple_ode_model.get_variable_by_cmeta_id('time')
     assert var.cmeta_id == 'time'
     with pytest.raises(AttributeError):
         var.cmeta_id = 'hello'
