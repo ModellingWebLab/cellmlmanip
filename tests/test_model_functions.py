@@ -640,18 +640,18 @@ class TestModelFunctions():
         """ Tests Model.is_state(). """
 
         # State variable
-        v = aslanidi_model.get_symbol_by_ontology_term((shared.OXMETA, 'membrane_voltage'))
+        v = aslanidi_model.get_variable_by_ontology_term((shared.OXMETA, 'membrane_voltage'))
         assert aslanidi_model.is_state(v)
 
         # Intermediary variable
-        i = aslanidi_model.get_symbol_by_ontology_term((shared.OXMETA, 'membrane_fast_sodium_current'))
+        i = aslanidi_model.get_variable_by_ontology_term((shared.OXMETA, 'membrane_fast_sodium_current'))
         assert not aslanidi_model.is_state(i)
 
         # Free variable
-        t = aslanidi_model.get_symbol_by_ontology_term((shared.OXMETA, 'time'))
+        t = aslanidi_model.get_variable_by_ontology_term((shared.OXMETA, 'time'))
         assert not aslanidi_model.is_state(t)
 
         # Constant
-        c = aslanidi_model.get_symbol_by_ontology_term((shared.OXMETA, 'membrane_capacitance'))
+        c = aslanidi_model.get_variable_by_ontology_term((shared.OXMETA, 'membrane_capacitance'))
         assert not aslanidi_model.is_state(c)
 

@@ -522,7 +522,7 @@ class Model(object):
             defn = self._var_definition_map.get(variable)
         return defn
 
-      def get_value(self, variable):
+    def get_value(self, variable):
         """ Returns the evaluated value of the given variable's RHS. """
         return float(self.graph.nodes[variable]['equation'].rhs.evalf())
 
