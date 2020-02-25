@@ -635,3 +635,23 @@ class TestModelFunctions():
         assert new_eqn.rhs.is_Mul
         assert new_eqn.rhs.args[0].value == 0.001
         assert new_eqn.rhs.args[1] == source
+
+    def test_is_state(self, aslanidi_model):
+        """ Tests Model.is_state(). """
+
+        # State variable
+        v = aslanidi_model.get_symbol_by_ontology_term((shared.OXMETA, 'membrane_voltage'))
+        assert aslanidi_model.is_state(v)
+
+        # Intermediary variable
+        i = aslanidi_model.get_symbol_by_ontology_term((shared.OXMETA, 'membrane_fast_sodium_current'))
+        assert not aslanidi_model.is_state(i)
+
+        # Free variable
+        t = aslanidi_model.get_symbol_by_ontology_term((shared.OXMETA, 'time'))
+        assert not aslanidi_model.is_state(t)
+
+        # Constant
+        c = aslanidi_model.get_symbol_by_ontology_term((shared.OXMETA, 'membrane_capacitance'))
+        assert not aslanidi_model.is_state(c)
+
