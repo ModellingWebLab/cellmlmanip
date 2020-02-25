@@ -971,8 +971,9 @@ class Model(object):
         # Create new variable
         new_variable = self.add_variable(name=new_name, units=units, initial_value=new_value)
 
-        # Transfer cmeta id from original to new variable
-        self.transfer_cmeta_id(original_variable, new_variable)
+        # Transfer cmeta id from original to new variable if the original variable has one
+        if original_variable._cmeta_id is not None:
+            self.transfer_cmeta_id(original_variable, new_variable)
 
         # Add/remove/replace equations
         if direction == DataDirectionFlow.INPUT:
