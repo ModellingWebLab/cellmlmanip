@@ -224,9 +224,8 @@ class Model(object):
             if var in self._ode_definition_map:
                 assert var.initial_value is not None, 'State variable {} has no initial_value set'.format(var)
             elif var.initial_value is not None:
-                value = var.initial_value
-                eq = sympy.Eq(var, sympy.Float(value))
-                self.add_equation(eq)
+                value = self.add_number(var.initial_value, var.units)
+                self.add_equation(sympy.Eq(var, value))
                 var.initial_value = None
 
     def connect_variables(self, source_name: str, target_name: str):
