@@ -1087,6 +1087,11 @@ class VariableDummy(sympy.Dummy):
         # TODO: Define allowed types via enum
         self.type = None
 
+    @property
+    def cmeta_id(self):
+        """Provides read-only access the the cmeta id."""
+        return self._cmeta_id
+
     def __str__(self):
         return self.name
 
