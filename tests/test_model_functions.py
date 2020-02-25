@@ -63,7 +63,7 @@ class TestModelFunctions():
     # this section contains tests for each get_XXX function on Model
 
     def test_get_derived_quantities(self, basic_model, simple_ode_model):
-        """ Tests Model.get_state_symbols() works correctly. """
+        """ Tests Model.get_derived_quantities(). """
 
         derived_quantities = basic_model.get_derived_quantities()
         assert len(derived_quantities) == 0
@@ -75,18 +75,18 @@ class TestModelFunctions():
             '_time_units_conversion1$time, _deriv_on_rhs1a$sv1_rate, _time_units_conversion2$time, '\
             '_deriv_on_rhs2a$sv1_rate, _deriv_on_rhs1b$sv1_rate, _deriv_on_rhs2b$sv1_rate]'
 
-    def test_get_state_symbols(self, basic_model):
-        """ Tests Model.get_state_symbols() works correctly. """
+    def test_get_state_variables(self, basic_model):
+        """ Tests Model.get_state_variables() works on a simple model. """
 
-        state_symbols = basic_model.get_state_symbols()
-        assert len(state_symbols) == 1
-        assert state_symbols[0].name == 'env_ode$sv1'
+        states = basic_model.get_state_variables()
+        assert len(states) == 1
+        assert states[0].name == 'env_ode$sv1'
 
-    def test_get_state_symbols2(self, aslanidi_model):
-        """ Tests Model.get_state_symbols() works correctly. """
-        state_symbols = aslanidi_model.get_state_symbols()
-        assert len(state_symbols) == 29
-        assert str(state_symbols) == \
+    def test_get_state_variables_2(self, aslanidi_model):
+        """ Tests Model.get_state_variables() works on a complex model. """
+        states = aslanidi_model.get_state_variables()
+        assert len(states) == 29
+        assert str(states) == \
             '[_membrane$V, _sodium_current_m_gate$m, _sodium_current_h1_gate$h1, _sodium_current_h2_gate$h2, '\
             '_L_type_Ca_channel_d_L_gate$d_L, _L_type_Ca_channel_f_L_gate$f_L, '\
             '_T_type_Ca_channel_d_T_gate$d_T, _T_type_Ca_channel_f_T_gate$f_T, '\
@@ -103,22 +103,19 @@ class TestModelFunctions():
             '_Ca_handling_by_the_SR$F1, _Ca_handling_by_the_SR$F2, _Ca_handling_by_the_SR$F3]'
 
     # also tested in test_hodgkin
-    def test_get_free_variable_symbol(self, basic_model):
-        """ Tests Model.get_free_variable_symbol() works correctly. """
+    def test_get_free_variable(self, basic_model, aslanidi_model):
+        """ Tests Model.get_free_variable() works correctly. """
 
-        free_variable_symbol = basic_model.get_free_variable_symbol()
-        assert free_variable_symbol.name == 'environment$time'
+        var = basic_model.get_free_variable()
+        assert var.name == 'environment$time'
 
-    def test_get_free_variable_symbol_1(self, aslanidi_model):
-        """ Tests Model.get_free_variable_symbol() works correctly. """
+        var = aslanidi_model.get_free_variable()
+        assert var.name == 'environment$time'
 
-        free_variable_symbol = aslanidi_model.get_free_variable_symbol()
-        assert free_variable_symbol.name == 'environment$time'
+    def test_get_derivatives(self, basic_model):
+        """ Tests Model.get_derivatives() works correctly. """
 
-    def test_get_derivative_symbols(self, basic_model):
-        """ Tests Model.get_derivative_symbols() works correctly. """
-
-        derivs = basic_model.get_derivative_symbols()
+        derivs = basic_model.get_derivatives()
         assert len(derivs) == 1
         deriv = derivs[0]
         assert deriv.is_Derivative
@@ -126,8 +123,10 @@ class TestModelFunctions():
         assert deriv.variables[0].is_Dummy
         assert deriv.variables[0].name == 'environment$time'
 
-    def test_get_derivative_symbols2(self, aslanidi_model):
-        derivs = aslanidi_model.get_derivative_symbols()
+    def test_get_derivatives_2(self, aslanidi_model):
+        """ Tests Model.get_derivatives() works correctly on a more complicated model. """
+
+        derivs = aslanidi_model.get_derivatives()
         assert len(derivs) == 29
 
         assert str(derivs) == '[Derivative(_membrane$V, _environment$time), '\
@@ -280,57 +279,58 @@ class TestModelFunctions():
 
     def test_get_definition(self, simple_ode_model):
         # Simple equation
-        a = simple_ode_model.get_symbol_by_cmeta_id('a2')
+        a = simple_ode_model.get_variable_by_cmeta_id('a2')
         defn = simple_ode_model.get_definition(a)
         assert str(defn) == 'Eq(_single_ode_rhs_computed_var$a, _-1.0)'
 
         # ODE definition
-        state_var = simple_ode_model.get_symbol_by_cmeta_id('sv11')
+        state_var = simple_ode_model.get_variable_by_cmeta_id('sv11')
         defn = simple_ode_model.get_definition(state_var)
         assert str(defn) == 'Eq(Derivative(_single_independent_ode$sv1, _environment$time), _1.0)'
 
         # No defining equation
-        time = simple_ode_model.get_symbol_by_cmeta_id('time')
+        time = simple_ode_model.get_variable_by_cmeta_id('time')
         defn = simple_ode_model.get_definition(time)
         assert defn is None
 
     def test_get_value(self, aslanidi_model):
         """ Tests Model.get_value() works correctly. """
 
-        symbol_a = aslanidi_model.get_symbol_by_ontology_term((shared.OXMETA, "membrane_capacitance"))
+        symbol_a = aslanidi_model.get_variable_by_ontology_term((shared.OXMETA, "membrane_capacitance"))
         assert aslanidi_model.get_value(symbol_a) == 5e-5
 
     #################################################################
-    # tests for get_symbol_XXX functions
+    # tests for get_variable_XXX functions
 
-    def test_get_symbol_by_cmeta_id(self, basic_model):
-        """ Tests Model.get_symbol_by_cmeta_id() works correctly. """
-        sv11 = basic_model.get_symbol_by_cmeta_id('sv11')
+    def test_get_variable_by_cmeta_id(self, basic_model):
+        """ Tests Model.get_variable_by_cmeta_id() works correctly. """
+        sv11 = basic_model.get_variable_by_cmeta_id('sv11')
         assert str(sv11.rdf_identity) == '#sv11'
         assert sv11.name == 'env_ode$sv1'
         assert sv11.units == basic_model.units.get_unit('mV')
 
         term = sv11.rdf_identity
-        assert basic_model.get_symbol_by_cmeta_id(term) is sv11
+        assert basic_model.get_variable_by_cmeta_id(term) is sv11
 
-    def test_get_symbol_by_name(self, basic_model):
-        """ Tests Model.get_symbol_by_name() works correctly. """
+    def test_get_variable_by_name(self, basic_model):
+        """ Tests Model.get_variable_by_name() works correctly. """
 
-        sv11 = basic_model.get_symbol_by_name('env_ode$sv1')
+        sv11 = basic_model.get_variable_by_name('env_ode$sv1')
         assert sv11.units == basic_model.units.get_unit('mV')
 
-    def test_get_symbol_by_ontology_term(self, aslanidi_model):
-        """ Tests Model.get_symbol_by_ontology_term() works correctly. """
+    def test_get_variable_by_ontology_term(self, aslanidi_model):
+        """ Tests Model.get_variable_by_ontology_term() works correctly. """
 
-        symbol_a = aslanidi_model.get_symbol_by_ontology_term((shared.OXMETA, 'membrane_capacitance'))
+        symbol_a = aslanidi_model.get_variable_by_ontology_term((shared.OXMETA, 'membrane_capacitance'))
         assert symbol_a.name == 'membrane$Cm'
         assert symbol_a.units == aslanidi_model.units.get_unit('nanoF')
 
-    def test_get_symbols_by_rdf(self, aslanidi_model):
-        """ Tests Model.get_symbols_by_rdf() works correctly. """
+    def test_get_variables_by_rdf(self, aslanidi_model):
+        """ Tests Model.get_variables_by_rdf() works correctly. """
 
-        symbol_a = aslanidi_model.get_symbols_by_rdf(('http://biomodels.net/biology-qualifiers/', 'is'),
-                                                     (shared.OXMETA, 'membrane_voltage'))
+        symbol_a = aslanidi_model.get_variables_by_rdf(
+            ('http://biomodels.net/biology-qualifiers/', 'is'),
+            (shared.OXMETA, 'membrane_voltage'))
         assert len(symbol_a) == 1
         assert symbol_a[0].name == 'membrane$V'
         assert symbol_a[0].units == aslanidi_model.units.get_unit('millivolt')
@@ -341,7 +341,7 @@ class TestModelFunctions():
     #
     # In case of future changes this list was correct on 29 Nov 2019
     #
-    # get_ontology_terms_by_symbol()
+    # get_ontology_terms_by_variable()
     # get_rdf_annotations()
     # get_rdf_value() - indirectly tested by test_get_rdf_annotations() in test_rdf.py
     # has_ontology_annotation()
@@ -359,11 +359,11 @@ class TestModelFunctions():
         # newvar2 = newvar + newvar1
         # but need to also add newvar1 = 2; newvar = 2 in order for the graph to resolve correctly
         model.add_variable(name='newvar', units='mV')
-        symbol = model.get_symbol_by_name('newvar')
+        symbol = model.get_variable_by_name('newvar')
         model.add_variable(name='newvar1', units='mV')
-        symbol1 = model.get_symbol_by_name('newvar1')
+        symbol1 = model.get_variable_by_name('newvar1')
         model.add_variable(name='newvar2', units='mV')
-        symbol2 = model.get_symbol_by_name('newvar2')
+        symbol2 = model.get_variable_by_name('newvar2')
         model.add_equation(sp.Eq(symbol, 2.0))
         model.add_equation(sp.Eq(symbol1, 2.0))
         model.add_equation(sp.Eq(symbol2, sp.Add(symbol, symbol1)))
@@ -382,7 +382,7 @@ class TestModelFunctions():
             # Redefining normal var
             model.add_equation(sp.Eq(symbol, 3.0))
 
-        sv1 = model.get_symbol_by_cmeta_id('sv11')
+        sv1 = model.get_variable_by_cmeta_id('sv11')
         with pytest.raises(ValueError, match='The variable env_ode\\$sv1 is defined twice'):
             # Redefining state var
             model.add_equation(sp.Eq(sv1, 2.0))
@@ -402,24 +402,24 @@ class TestModelFunctions():
 
         model = local_hh_model
         # Get model, assert that V is a state variable
-        v = model.get_symbol_by_ontology_term((shared.OXMETA, 'membrane_voltage'))
+        v = model.get_variable_by_ontology_term((shared.OXMETA, 'membrane_voltage'))
         # the issue here is that retrieving the variable uses the internal structure
         # which does not give the variable a type
         # to check type you need to use the graph
         # assert v.type == 'state'
-        state_var = model.get_state_symbols()
+        state_var = model.get_state_variables()
         assert v in state_var
 
         # Now clamp it to -80mV
-        t = model.get_symbol_by_ontology_term((shared.OXMETA, 'time'))
+        t = model.get_variable_by_ontology_term((shared.OXMETA, 'time'))
         equation = model.graph.nodes[sp.Derivative(v, t)]['equation']
         model.remove_equation(equation)
         equation = sp.Eq(v, model.add_number(-80, v.units))
         model.add_equation(equation)
 
         # Check that V is no longer a state
-        v = model.get_symbol_by_ontology_term((shared.OXMETA, 'membrane_voltage'))
-        state_var = model.get_state_symbols()
+        v = model.get_variable_by_ontology_term((shared.OXMETA, 'membrane_voltage'))
+        state_var = model.get_state_variables()
         assert v not in state_var
 
         # Now make V a state again
@@ -429,8 +429,8 @@ class TestModelFunctions():
         model.add_equation(equation)
 
         # Check that V is a state again
-        v = model.get_symbol_by_ontology_term((shared.OXMETA, 'membrane_voltage'))
-        state_var = model.get_state_symbols()
+        v = model.get_variable_by_ontology_term((shared.OXMETA, 'membrane_voltage'))
+        state_var = model.get_state_variables()
         assert v in state_var
 
         # Test removing non-existing equation
@@ -449,12 +449,12 @@ class TestModelFunctions():
         model = local_model
         assert len(model.variables()) == 3
         with pytest.raises(KeyError):
-            model.get_symbol_by_name('newvar') is None
+            model.get_variable_by_name('newvar') is None
 
         newvar = model.add_variable('newvar', 'mV')
         assert newvar.is_real
         assert len(model.variables()) == 4
-        assert model.get_symbol_by_name('newvar')
+        assert model.get_variable_by_name('newvar')
 
         # Variable can't be added twice
         model.add_variable('varvar1', 'mV')
@@ -472,7 +472,7 @@ class TestModelFunctions():
         """Test the Model.remove_variable() method."""
         model = local_hh_model
         # Removing a 'normal' variable
-        i_stim = model.get_symbol_by_cmeta_id('membrane_stimulus_current')
+        i_stim = model.get_variable_by_cmeta_id('membrane_stimulus_current')
         i_stim_defn = model.get_definition(i_stim)
         assert i_stim_defn is not None
         i_stim_rdf = list(model.get_rdf_annotations(i_stim.rdf_identity))
@@ -481,14 +481,14 @@ class TestModelFunctions():
         model.remove_variable(i_stim)
 
         with pytest.raises(KeyError):
-            model.get_symbol_by_name(i_stim.name)
+            model.get_variable_by_name(i_stim.name)
         assert model.get_definition(i_stim) is None
         assert i_stim_defn not in model.equations
         assert len(list(model.get_rdf_annotations(i_stim.rdf_identity))) == 0
         assert i_stim_rdf[0] not in model.rdf
 
         # Removing a state variable
-        v = model.get_symbol_by_cmeta_id('membrane_voltage')
+        v = model.get_variable_by_cmeta_id('membrane_voltage')
         v_defn = model.get_definition(v)
         assert v_defn is not None
         v_rdf = list(model.get_rdf_annotations(v.rdf_identity))
@@ -497,39 +497,39 @@ class TestModelFunctions():
         model.remove_variable(v)
 
         with pytest.raises(KeyError):
-            model.get_symbol_by_name(v.name)
+            model.get_variable_by_name(v.name)
         assert model.get_definition(v) is None
         assert v_defn not in model.equations
         assert len(list(model.get_rdf_annotations(v.rdf_identity))) == 0
         assert v_rdf[0] not in model.rdf
 
         # Remove a variable with no definition
-        t = model.get_symbol_by_cmeta_id('time')
+        t = model.get_variable_by_cmeta_id('time')
         assert model.get_definition(t) is None
 
         model.remove_variable(t)
 
         with pytest.raises(KeyError):
-            model.get_symbol_by_name(t.name)
+            model.get_variable_by_name(t.name)
 
         # Remove a variable with no cmeta_id
-        var = model.get_symbol_by_name('membrane$E_R')
+        var = model.get_variable_by_name('membrane$E_R')
         model.remove_variable(var)
 
         with pytest.raises(KeyError):
-            model.get_symbol_by_name(var.name)
+            model.get_variable_by_name(var.name)
 
     ###################################################################
     # Unit related functionality
 
     def test_units(self, simple_units_model):
         """ Tests units read and calculated from a model. """
-        symbol_a = simple_units_model.get_symbol_by_cmeta_id("a")
+        symbol_a = simple_units_model.get_variable_by_cmeta_id("a")
         equation = simple_units_model.get_equations_for([symbol_a], strip_units=False)
         assert simple_units_model.units.evaluate_units(equation[0].lhs) == simple_units_model.units.get_unit('ms')
         assert simple_units_model.units.evaluate_units(equation[0].rhs) == simple_units_model.units.get_unit('ms')
 
-        symbol_b = simple_units_model.get_symbol_by_cmeta_id("b")
+        symbol_b = simple_units_model.get_variable_by_cmeta_id("b")
         equation = simple_units_model.get_equations_for([symbol_b])
         assert simple_units_model.units.evaluate_units(equation[1].lhs) == simple_units_model.units.get_unit('per_ms')
         assert simple_units_model.units.evaluate_units(equation[1].rhs) == 1 / simple_units_model.units.get_unit('ms')
@@ -539,8 +539,8 @@ class TestModelFunctions():
 
     def test_bad_units(self, bad_units_model):
         """ Tests units read and calculated from an inconsistent model. """
-        symbol_a = bad_units_model.get_symbol_by_cmeta_id("a")
-        symbol_b = bad_units_model.get_symbol_by_cmeta_id("b")
+        symbol_a = bad_units_model.get_variable_by_cmeta_id("a")
+        symbol_b = bad_units_model.get_variable_by_cmeta_id("b")
         equation = bad_units_model.get_equations_for([symbol_b], strip_units=False)
         assert len(equation) == 2
         assert equation[0].lhs == symbol_a
@@ -557,39 +557,39 @@ class TestModelFunctions():
     ###################################################################
     # this section is for other functions
 
-    def test_find_symbols_and_derivatives(self, basic_model):
-        """ Tests Model.find_symbols_and_derivatives function. """
+    def test_find_variables_and_derivatives(self, basic_model):
+        """ Tests Model.find_variables_and_derivatives() on a simple model. """
         a = VariableDummy('a', 'second')
         b = VariableDummy('b', 'second')
         ex = sp.Add(a, b)
-        syms = basic_model.find_symbols_and_derivatives([ex])
+        syms = basic_model.find_variables_and_derivatives([ex])
         assert len(syms) == 2
 
-    def test_find_symbols_and_derivatives2(self, hh_model):
-        """ Tests Model.find_symbols_and_derivatives() function. """
+    def test_find_variables_and_derivatives_2(self, hh_model):
+        """ Tests Model.find_variables_and_derivatives() on a more complicated model. """
 
         # Test on single variable expressions
-        t = hh_model.get_free_variable_symbol()
-        syms = hh_model.find_symbols_and_derivatives([t])
+        t = hh_model.get_free_variable()
+        syms = hh_model.find_variables_and_derivatives([t])
         assert len(syms) == 1
         assert t in syms
 
-        v = hh_model.get_symbol_by_ontology_term((shared.OXMETA, "membrane_voltage"))
+        v = hh_model.get_variable_by_ontology_term((shared.OXMETA, "membrane_voltage"))
         dvdt = sp.Derivative(v, t)
-        syms = hh_model.find_symbols_and_derivatives([dvdt])
+        syms = hh_model.find_variables_and_derivatives([dvdt])
         assert len(syms) == 1
         assert sp.Derivative(v, t) in syms
 
         # Test on longer expressions
         x = sp.Float(1, FLOAT_PRECISION) + t * sp.sqrt(dvdt) - t
-        syms = hh_model.find_symbols_and_derivatives([x])
+        syms = hh_model.find_variables_and_derivatives([x])
         assert len(syms) == 2
         assert t in syms
         assert sp.Derivative(v, t) in syms
 
         # Test on multiple expressions
         y = sp.Float(2, FLOAT_PRECISION) + v
-        syms = hh_model.find_symbols_and_derivatives([x, y])
+        syms = hh_model.find_variables_and_derivatives([x, y])
         assert len(syms) == 3
         assert v in syms
         assert t in syms
@@ -597,8 +597,8 @@ class TestModelFunctions():
 
     def test_connect_variables(self, local_hh_model):
         """ Tests Model.connect_variables() function. """
-        target = local_hh_model.get_symbol_by_name('sodium_channel$h')
-        source = local_hh_model.get_symbol_by_name('sodium_channel_h_gate$h')
+        target = local_hh_model.get_variable_by_name('sodium_channel$h')
+        source = local_hh_model.get_variable_by_name('sodium_channel_h_gate$h')
         assert target.assigned_to == source
 
         # check cannot assign already connected variable
@@ -608,7 +608,7 @@ class TestModelFunctions():
         # add and connect a new variable with same units
         num_eqns = len(local_hh_model.equations)
         local_hh_model.add_variable(name='newvar', units='dimensionless', public_interface='in')
-        new_target = local_hh_model.get_symbol_by_name('newvar')
+        new_target = local_hh_model.get_variable_by_name('newvar')
         local_hh_model.connect_variables('sodium_channel_h_gate$h', 'newvar')
         assert new_target.assigned_to == source
         assert len(local_hh_model.equations) == num_eqns
@@ -624,8 +624,8 @@ class TestModelFunctions():
         num_eqns = len(local_hh_model.equations)
         # add and connect a variable that requires unit conversion
         local_hh_model.add_variable(name='newvar', units='volt', public_interface='in')
-        new_target = local_hh_model.get_symbol_by_name('newvar')
-        source = local_hh_model.get_symbol_by_name('leakage_current$E_L')
+        new_target = local_hh_model.get_variable_by_name('newvar')
+        source = local_hh_model.get_variable_by_name('leakage_current$E_L')
         local_hh_model.connect_variables('leakage_current$E_L', 'newvar')
         assert new_target.assigned_to == new_target
         assert len(local_hh_model.equations) == num_eqns + 1
@@ -640,18 +640,18 @@ class TestModelFunctions():
         """ Tests Model.is_state(). """
 
         # State variable
-        v = aslanidi_model.get_symbol_by_ontology_term((shared.OXMETA, 'membrane_voltage'))
+        v = aslanidi_model.get_variable_by_ontology_term((shared.OXMETA, 'membrane_voltage'))
         assert aslanidi_model.is_state(v)
 
         # Intermediary variable
-        i = aslanidi_model.get_symbol_by_ontology_term((shared.OXMETA, 'membrane_fast_sodium_current'))
+        i = aslanidi_model.get_variable_by_ontology_term((shared.OXMETA, 'membrane_fast_sodium_current'))
         assert not aslanidi_model.is_state(i)
 
         # Free variable
-        t = aslanidi_model.get_symbol_by_ontology_term((shared.OXMETA, 'time'))
+        t = aslanidi_model.get_variable_by_ontology_term((shared.OXMETA, 'time'))
         assert not aslanidi_model.is_state(t)
 
         # Constant
-        c = aslanidi_model.get_symbol_by_ontology_term((shared.OXMETA, 'membrane_capacitance'))
+        c = aslanidi_model.get_variable_by_ontology_term((shared.OXMETA, 'membrane_capacitance'))
         assert not aslanidi_model.is_state(c)
 

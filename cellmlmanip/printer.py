@@ -53,7 +53,7 @@ class Printer(sympy.printing.printer.Printer):
     To extend this to other languages, create a :class:`Printer` subclass, and override ``_function_names``,
     ``_literal_names``, or any of the ``_print_X`` methods as necessary.
 
-    :param symbol_function: A function that converts symbols to strings (variable names).
+    :param symbol_function: A function that converts ``sympy.Symbols`` to strings (variable names).
     :param derivative_function: A function that converts derivatives to strings.
     """
     # Dictionary mapping Sympy function names to string function names to output.

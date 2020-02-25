@@ -117,7 +117,7 @@ class TestParser(object):
                        'state_units_conversion2$sv1',
                        'deriv_on_rhs2b$sv1_rate']
         for name in unconnected:
-            variable = simple_ode_model.get_symbol_by_name(name)
+            variable = simple_ode_model.get_variable_by_name(name)
             assert variable == variable.assigned_to
 
     def test_connections(self, simple_ode_model):
@@ -125,23 +125,23 @@ class TestParser(object):
         Note these variables appear on lhs of an equation.
         """
         # Check environment component's time variable has propagated
-        environment__time = simple_ode_model.get_symbol_by_name('environment$time')
+        environment__time = simple_ode_model.get_variable_by_name('environment$time')
 
         # We're checking sympy.Dummy objects (same name != same hash)
         assert isinstance(environment__time, sympy.Dummy)
         assert environment__time != sympy.Dummy(environment__time.name)
 
         state_units_conversion2__time = \
-            simple_ode_model.get_symbol_by_name('state_units_conversion2$time').assigned_to
+            simple_ode_model.get_variable_by_name('state_units_conversion2$time').assigned_to
         assert environment__time == state_units_conversion2__time
 
         # propagated environment time to inside nested component circle_y
-        circle_y__time = simple_ode_model.get_symbol_by_name('circle_y$time').assigned_to
+        circle_y__time = simple_ode_model.get_variable_by_name('circle_y$time').assigned_to
         assert environment__time == circle_y__time
 
         # we have a new equation that links together times in different units
         time_units_conversion2__time = \
-            simple_ode_model.get_symbol_by_name('time_units_conversion2$time').assigned_to
+            simple_ode_model.get_variable_by_name('time_units_conversion2$time').assigned_to
         # equation = sympy.Eq(time_units_conversion2__time, environment__time)
         equation = [e for e in simple_ode_model.equations if e.lhs == time_units_conversion2__time]
         assert len(equation) == 1
@@ -164,8 +164,8 @@ class TestParser(object):
         # 2. time_units_conversion2
         #    Eq(_time_units_conversion2$time, _environment$time) microsecond != millisecond
 
-        require_conversion = [simple_ode_model.get_symbol_by_name('time_units_conversion1$time').assigned_to,
-                              simple_ode_model.get_symbol_by_name('time_units_conversion2$time').assigned_to]
+        require_conversion = [simple_ode_model.get_variable_by_name('time_units_conversion1$time').assigned_to,
+                              simple_ode_model.get_variable_by_name('time_units_conversion2$time').assigned_to]
 
         # find the equations that define these variables that require conversion
         invalid_rhs_lhs_count = 0

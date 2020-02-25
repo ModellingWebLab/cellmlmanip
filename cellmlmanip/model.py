@@ -29,7 +29,7 @@ class DataDirectionFlow(Enum):
 class Model(object):
     """
     A componentless representation of a CellML model, containing a list of equations, units, and RDF metadata about
-    symbols used in those equations.
+    variables used in those equations.
 
     The main parts of a Model are 1. a list of sympy equation objects; 2. a collection of named units; and 3. an RDF
     graph that stores further meta data about the model.
@@ -67,10 +67,10 @@ class Model(object):
             self.units = UnitStore()
 
         # Maps string variable names to VariableDummy objects
-        self._name_to_symbol = {}
+        self._name_to_variable = {}
 
         # Maps cmeta ids to VariableDummy objects
-        self._cmeta_id_to_symbol = {}
+        self._cmeta_id_to_variable = {}
 
         # Cached nx.DiGraph of this model's equations, with number dummies or with sympy.Number objects
         self._graph = None
@@ -103,16 +103,17 @@ class Model(object):
 
         # Add to variable and store in mapping
         variable._set_cmeta_id(cmeta_id)
-        self._cmeta_id_to_symbol[cmeta_id] = variable
+        self._cmeta_id_to_variable[cmeta_id] = variable
 
     def add_equation(self, equation, check_duplicates=True):
         """
         Adds an equation to this model.
 
-        The left-hand side (LHS) of the equation must be either a variable symbol or a derivative.
+        The left-hand side (LHS) of the equation must be either a variable (as a :class:`VariableDummy`) or a derivative
+        (as a ``sympy.Derivative``).
 
-        All numbers and variable symbols used in the equation must have been obtained from this model, e.g. via
-        :meth:`add_number()`, :meth:`add_variable()`, or :meth:`get_symbol_by_ontology_term()`.
+        All numbers and variables used in the equation must have been obtained from this model, e.g. via
+        :meth:`add_number()`, :meth:`add_variable()`, or :meth:`get_variable_by_ontology_term()`.
 
         :param equation: A ``sympy.Eq`` object.
         :param check_duplicates: whether to check that the equation's LHS is not already defined
@@ -178,7 +179,7 @@ class Model(object):
         :return: A :class:`VariableDummy` object.
         """
         # Check for clashes
-        if name in self._name_to_symbol:
+        if name in self._name_to_variable:
             raise ValueError('Variable %s already exists.' % name)
 
         # Check uniqueness of cmeta id
@@ -190,19 +191,19 @@ class Model(object):
             units = self.units.get_unit(units)
 
         # Add variable
-        self._name_to_symbol[name] = var = VariableDummy(
+        self._name_to_variable[name] = var = VariableDummy(
             name=name,
             units=units,
             initial_value=initial_value,
             public_interface=public_interface,
             private_interface=private_interface,
-            order_added=len(self._name_to_symbol),
+            order_added=len(self._name_to_variable),
             cmeta_id=cmeta_id,
         )
 
         # Add cmeta id to var mapping
         if cmeta_id is not None:
-            self._cmeta_id_to_symbol[cmeta_id] = var
+            self._cmeta_id_to_variable[cmeta_id] = var
 
         # Invalidate cached graphs
         self._invalidate_cache()
@@ -216,10 +217,10 @@ class Model(object):
         Once this has been called, the only variables with an initial_value attribute will be state variables,
         and the initial value will do what it implies - hold the value the state variable should take at t=0.
 
-        Non state variables with an initial value are actually just constants. For consistent processing later
-        on we add equations defining them, and remove the initial_value attribute.
+        Non state variables with an initial value are actually just constants. For consistent processing later on we add
+        equations defining them, and remove the initial_value attribute.
         """
-        for var in self._name_to_symbol.values():
+        for var in self._name_to_variable.values():
             if var in self._ode_definition_map:
                 assert var.initial_value is not None, 'State variable {} has no initial_value set'.format(var)
             elif var.initial_value is not None:
@@ -229,24 +230,26 @@ class Model(object):
                 var.initial_value = None
 
     def connect_variables(self, source_name: str, target_name: str):
-        """Given the source and target component and variable, create a connection by assigning
-        the symbol from the source to the target. If units are not the same, it will add an equation
-        to the target component reflecting the relationship. If a symbol has not been assigned to
-        the source variable, then return False.
+        """Tells this model that the variable indicated by ``target_name`` should get its value from the variable
+        indicated by ``source_name``.
 
-        :param source_name: source variable name
-        :param target_name: target variable name
+        If the variables' units are not the same, an equation will be added to the target component.
+
+        This method will only work if the source variable has been assigned a value, either through an equation or by
+        connecting it (directly or indirectly) to a variable with an equation. If this is not yet the case, ``False`` is
+        returned. If successful the method returns ``True``.
+
+        :param source_name: The source variable name
+        :param target_name: The target variable name
         """
         logger.debug('connect_variables(%s ⟶ %s)', source_name, target_name)
 
-        source = self._name_to_symbol[source_name]
-        target = self._name_to_symbol[target_name]
+        source = self._name_to_variable[source_name]
+        target = self._name_to_variable[target_name]
 
-        # If the source variable has not been assigned a symbol, we can't make this connection
+        # If the source variable has not been assigned a value, we can't make this connection
         if not source.assigned_to:
-            logger.info('The source variable has not been assigned to a symbol '
-                        '(i.e. expecting a connection): %s ⟶ %s',
-                        target.name, source.name)
+            logger.info('The source variable has not been assigned a value yet', target.name, source.name)
             return False
 
         # If target is already assigned this is an error
@@ -290,7 +293,7 @@ class Model(object):
 
             logger.info('Connection req. unit conversion: %s', self.equations[-1])
 
-            # The assigned symbol for this variable is itself
+            # The assigned variable for this variable is itself
             target.assigned_to = target
 
         logger.debug('Updated target: %s', target)
@@ -316,14 +319,14 @@ class Model(object):
             self.units.format(rhs_units), self.units.format(rhs_units, True),
         )
 
-    def get_equations_for(self, symbols, recurse=True, strip_units=True):
-        """Get all equations for a given collection of symbols.
+    def get_equations_for(self, variables, recurse=True, strip_units=True):
+        """Get all equations for a given collection of variables.
 
         Results are sorted first by dependencies, then by variable name.
 
-        :param symbols: the symbols to get the equations for.
-        :param recurse: indicates whether to recurse the equation graph, or to return only the top level equations.
-        :param strip_units: if ``True``, all ``sympy.Dummy`` objects representing number with units will be replaced
+        :param variables: The variables to get the equations for (as :class:`VariableDummy` objects).
+        :param recurse: Indicates whether to recurse the equation graph, or to return only the top level equations.
+        :param strip_units: If ``True``, all ``sympy.Dummy`` objects representing number with units will be replaced
             with ordinary sympy number objects.
         """
         # Get graph
@@ -332,28 +335,28 @@ class Model(object):
         else:
             graph = self.graph
 
-        # Get sorted list of symbols
-        sorted_symbols = nx.lexicographical_topological_sort(graph, key=str)
+        # Get sorted list of variables
+        sorted_variables = nx.lexicographical_topological_sort(graph, key=str)
 
-        # Create set of symbols for which we require equations
-        required_symbols = set()
-        for output in symbols:
-            required_symbols.add(output)
+        # Create set of variables for which we require equations
+        required_variables = set()
+        for output in variables:
+            required_variables.add(output)
             if recurse:
-                required_symbols.update(nx.ancestors(graph, output))
+                required_variables.update(nx.ancestors(graph, output))
             else:
-                required_symbols.update(graph.pred[output])
+                required_variables.update(graph.pred[output])
 
         eqs = []
-        for symbol in sorted_symbols:
-            # Ignore symbols we don't need
-            if symbol not in required_symbols:
+        for variable in sorted_variables:
+            # Ignore variables we don't need
+            if variable not in required_variables:
                 continue
 
             # Get equation
-            eq = graph.nodes[symbol]['equation']
+            eq = graph.nodes[variable]['equation']
 
-            # Skip symbols that are not set with an equation
+            # Skip variables that are not set with an equation
             if eq is None:
                 continue
 
@@ -361,12 +364,12 @@ class Model(object):
 
         return eqs
 
-    def get_derivative_symbols(self):
-        """Returns a list of derivative symbols found in the given model graph.
+    def get_derivatives(self):
+        """Returns a list of ``sympy.Derivative`` objects found as LHS in the given model graph.
         The list is ordered by appearance in the cellml document.
         """
-        derivative_symbols = [v for v in self.graph if isinstance(v, sympy.Derivative)]
-        return sorted(derivative_symbols, key=lambda deriv: deriv.args[0].order_added)
+        derivatives = [v for v in self.graph if isinstance(v, sympy.Derivative)]
+        return sorted(derivatives, key=lambda deriv: deriv.args[0].order_added)
 
     def get_derived_quantities(self):
         """Returns a list of derived quantities found in the given model graph.
@@ -377,21 +380,19 @@ class Model(object):
                               and node.get('variable_type', '') not in ('state', 'free', 'parameter')]
         return sorted(derived_quantities, key=lambda var: var.order_added)
 
-    def get_state_symbols(self):
-        """Returns a list of state variables found in the given model graph.
-        The list is ordered by appearance in the cellml document.
+    def get_state_variables(self):
         """
-        state_symbols = list(self._ode_definition_map.keys())
-        return sorted(state_symbols, key=lambda state_var: state_var.order_added)
+        Returns a list of state variables found in the given model graph (ordered by appearance in the CellML document).
+        """
+        states = list(self._ode_definition_map.keys())
+        return sorted(states, key=lambda state_var: state_var.order_added)
 
-    def get_free_variable_symbol(self):
-        """Returns the free variable of the given model graph.
-        """
+    def get_free_variable(self):
+        """Returns the free variable in this model (if any)."""
         for v, node in self.graph.nodes.items():
             if node.get('variable_type', '') == 'free':
                 return v
 
-        # This should be unreachable
         raise ValueError('No free variable set in model.')  # pragma: no cover
 
     def get_rdf_annotations(self, subject=None, predicate=None, object_=None):
@@ -423,13 +424,14 @@ class Model(object):
         value = str(triples[0][2]).strip()  # Could make this cleverer by considering data type if desired
         return value
 
-    def get_symbol_by_cmeta_id(self, cmeta_id):
+    def get_variable_by_cmeta_id(self, cmeta_id):
         """
-        Searches the model and returns the symbol for the variable with the given cmeta id.
+        Searches the model and returns the variable with the given cmeta id.
 
-        To get symbols from e.g. an oxmeta ontology term, use :meth:`get_symbol_by_ontology_term()`.
+        To get variables from e.g. an oxmeta ontology term, use :meth:`get_variable_by_ontology_term()`.
 
-        :param cmeta_id: either a string id or :class:`rdflib.URIRef` instance.
+        :param cmeta_id: Either a string id or :class:`rdflib.URIRef` instance.
+        :returns: A :class:`VariableDummy` object
         """
 
         # Get cmeta_id from URIRef
@@ -442,19 +444,19 @@ class Model(object):
                     'Non-local annotations are not supported.')
             cmeta_id = cmeta_id[1:]
 
-        # Get symbol by cmeta id string
+        # Get variable by cmeta id string
         assert isinstance(cmeta_id, str)
         try:
-            return self._cmeta_id_to_symbol[cmeta_id]
+            return self._cmeta_id_to_variable[cmeta_id]
         except KeyError:
             raise KeyError('No variable with cmeta id "%s" found.' % str(cmeta_id))
 
-    def get_symbol_by_name(self, name):
-        """ Returns the symbol for the variable with the given ``name``. """
-        return self._name_to_symbol[name]
+    def get_variable_by_name(self, name):
+        """ Returns the variable with the given ``name``. """
+        return self._name_to_variable[name]
 
-    def get_symbol_by_ontology_term(self, term):
-        """Searches the RDF graph for a variable annotated with the given ``term`` and returns its symbol.
+    def get_variable_by_ontology_term(self, term):
+        """Searches the RDF graph for a variable annotated with the given ``term`` and returns it.
 
         Specifically, this method searches for a unique variable annotated with
         predicate ``http://biomodels.net/biology-qualifiers/is`` and the object
@@ -467,65 +469,62 @@ class Model(object):
         :param term: anything suitable as an input to :meth:`create_rdf_node`; typically either an RDF
             node already, or a tuple ``(namespace_uri, local_name)``.
         """
-        symbols = self.get_symbols_by_rdf(
-            ('http://biomodels.net/biology-qualifiers/', 'is'),
-            term)
-        if len(symbols) == 1:
-            return symbols[0]
-        elif not symbols:
+        variables = self.get_variables_by_rdf(('http://biomodels.net/biology-qualifiers/', 'is'), term)
+        if len(variables) == 1:
+            return variables[0]
+        elif not variables:
             raise KeyError('No variable annotated with {} found.'.format(term))
         else:
             raise ValueError('Multiple variables annotated with {}'.format(term))
 
-    def get_symbols_by_rdf(self, predicate, object_=None):
-        """Searches the RDF graph for variables annotated with the given predicate and object (e.g. "is oxmeta:time")
-        and returns the associated symbols sorted in document order.
+    def get_variables_by_rdf(self, predicate, object_=None):
+        """Searches the RDF graph for variables annotated with the given predicate and object (e.g. ``is oxmeta:time``)
+        and returns the associated variables sorted in document order.
 
         Both ``predicate`` and ``object_`` (if given) must be ``(namespace, local_name)`` tuples or string literals.
         """
         predicate = create_rdf_node(predicate)
         object_ = create_rdf_node(object_)
 
-        # Find symbols
-        symbols = []
-        for result in self.rdf.subjects(predicate, object_):
-            symbols.append(self.get_symbol_by_cmeta_id(result))
+        # Find variables, sort and return
+        variables = [self.get_variable_by_cmeta_id(result) for result in self.rdf.subjects(predicate, object_)]
+        return sorted(variables, key=lambda sym: sym.order_added)
 
-        return sorted(symbols, key=lambda sym: sym.order_added)
-
-    def get_ontology_terms_by_symbol(self, symbol, namespace_uri=None):
+    def get_ontology_terms_by_variable(self, variable, namespace_uri=None):
         """
-        Returns all ontology terms linked to the variable ``symbol`` via the
+        Returns all ontology terms linked to the variable ``variable`` via the
         ``http://biomodels.net/biology-qualifiers/is`` predicate.
 
-        :param symbol: The symbol to search for.
+        :param variable: The variable to search for (as a :class:`VariableDummy` object).
         :param namespace_uri: An optional namespace URI. If given, only terms within the given namespace will be
             returned.
         :returns: A list of term names.
         """
         ontology_terms = []
-        if symbol.rdf_identity:
-            predicate = ('http://biomodels.net/biology-qualifiers/', 'is')
-            predicate = create_rdf_node(predicate)
-            subject = symbol.rdf_identity
-            for object in self.rdf.objects(subject, predicate):
-                # We are only interested in annotation within the namespace
+        if variable.rdf_identity:
+            predicate = create_rdf_node(('http://biomodels.net/biology-qualifiers/', 'is'))
+            for object in self.rdf.objects(variable.rdf_identity, predicate):
+                # Filter by namespace
                 if namespace_uri is None or str(object).startswith(namespace_uri):
                     uri_parts = str(object).split('#')
                     ontology_terms.append(uri_parts[-1])
         return ontology_terms
 
-    def get_definition(self, symbol):
+    def get_definition(self, variable):
         """Get the equation (if any) defining the given variable.
 
-        :param symbol: the variable to look up. If this appears as the LHS of a straight assignment,
-            or the state variable in an ODE, the corresponding equation will be returned.
-        :returns: a Sympy equation, or ``None`` if the variable is not defined by an equation.
+        :param variable: The variable to look up (as a class:`VariableDummy`. If this appears as the LHS of a straight
+            assignment, or the state variable in an ODE, the corresponding equation will be returned.
+        :returns: A Sympy equation, or ``None`` if the variable is not defined by an equation.
         """
-        defn = self._ode_definition_map.get(symbol)
+        defn = self._ode_definition_map.get(variable)
         if defn is None:
-            defn = self._var_definition_map.get(symbol)
+            defn = self._var_definition_map.get(variable)
         return defn
+
+    def get_value(self, variable):
+        """ Returns the evaluated value of the given variable's RHS. """
+        return float(self.graph.nodes[variable]['equation'].rhs.evalf())
 
     @property
     def graph(self):
@@ -536,7 +535,7 @@ class Model(object):
         if self._graph is not None:
             return self._graph
 
-        # Store symbols, their attributes and their relationships in a directed graph
+        # Store variables, their attributes and their relationships in a directed graph
         graph = nx.DiGraph()
 
         equation_count = 0
@@ -545,7 +544,7 @@ class Model(object):
         for equation in self.equations:
             equation_count += 1
 
-            # Add the lhs symbol of the equation to the graph
+            # Add the lhs of the equation to the graph
             lhs = equation.lhs
             graph.add_node(lhs, equation=equation)
 
@@ -574,7 +573,7 @@ class Model(object):
             lhs = equation.lhs
 
             # for each of the symbols or derivatives on the rhs of the equation
-            for rhs in self.find_symbols_and_derivatives([equation.rhs]):
+            for rhs in self.find_variables_and_derivatives([equation.rhs]):
 
                 if rhs in graph.nodes:
                     # If the symbol maps to a node in the graph just add the dependency edge
@@ -584,7 +583,7 @@ class Model(object):
                     graph.add_node(rhs, equation=None, variable_type=rhs.type)
                     graph.add_edge(rhs, lhs)
                 else:
-                    assert False, 'Unexpected symbol {} on RHS'.format(rhs)  # pragma: no cover
+                    assert False, 'Unexpected variable {} on RHS'.format(rhs)  # pragma: no cover
 
             # check that the free  and state variables are defined as a node
             if lhs.is_Derivative:
@@ -636,7 +635,7 @@ class Model(object):
 
                 # Check if simplification removed dependencies on other variables, and if so remove the corresponding
                 # edges.
-                refs = self.find_symbols_and_derivatives([rhs])
+                refs = self.find_variables_and_derivatives([rhs])
                 edges = list(graph.in_edges(equation.lhs))
                 for edge in edges:
                     ref = edge[0]
@@ -661,22 +660,13 @@ class Model(object):
             return True
 
         # Check if it's a variable id. All other cmeta_ids in the original CellML are ignored.
-        return cmeta_id in self._cmeta_id_to_symbol
+        return cmeta_id in self._cmeta_id_to_variable
 
-    def has_ontology_annotation(self, symbol, namespace_uri=None):
-        """Searches the RDF graph for the annotation ``{namespace_uri}annotation_name``
-        for the given symbol and returns whether it has annotation, optionally restricted
-        to a specific ``{namespace_uri}annotation_name``
-
-        Specifically, this method searches for a ``annotation_name`` for
-        subject symbol
-        predicate ``http://biomodels.net/biology-qualifiers/is`` and the object
-        specified by ``{namespace_uri}annotation_name``
-        for a specific ``{namespace_uri}`` if set, otherwise for any namespace_uri
-
-        Will return a boolean.
+    def has_ontology_annotation(self, variable, namespace_uri=None):
+        """Checks that there is at least one result for
+        :meth:`Model.get_ontology_terms_by_variable(variable, namespace_uri)`.
         """
-        return len(self.get_ontology_terms_by_symbol(symbol, namespace_uri)) != 0
+        return len(self.get_ontology_terms_by_variable(variable, namespace_uri)) != 0
 
     def _invalidate_cache(self):
         """ Removes cached graphs: should be called after manipulating variables or equations. """
@@ -687,26 +677,22 @@ class Model(object):
         """ Checks if the given ``variable`` is a state variable (i.e. if it's defined by an ODE). """
         return variable in self._ode_definition_map
 
-    def get_value(self, symbol):
-        """ Returns the evaluated value of the given symbol's RHS. """
-        return float(self.graph.nodes[symbol]['equation'].rhs.evalf())
-
-    def find_symbols_and_derivatives(self, expressions):
-        """ Returns a set containing all symbols and derivatives referenced in a list of expressions.
+    def find_variables_and_derivatives(self, expressions):
+        """ Returns a set containing all variables and derivatives referenced in a list of expressions.
 
         Note that we can't just use ``.atoms(VariableDummy, sympy.Derivative)`` for this, because it
         will return the state and free variables from inside derivatives, which is not what we want.
 
-        :param expressions: an iterable of expressions to get symbols for.
-        :return: a set of symbols and derivative objects.
+        :param expressions: an iterable of expressions to get variables for.
+        :return: a set of variables and derivatives, as :class:`VariableDummy` and ``sympy.Derivative`` respectively.
         """
-        symbols = set()
+        variables = set()
         for expr in expressions:
             if expr.is_Derivative or isinstance(expr, VariableDummy):
-                symbols.add(expr)
+                variables.add(expr)
             else:
-                symbols |= self.find_symbols_and_derivatives(expr.args)
-        return symbols
+                variables |= self.find_variables_and_derivatives(expr.args)
+        return variables
 
     def remove_equation(self, equation):
         """
@@ -729,29 +715,28 @@ class Model(object):
         # Invalidate cached equation graphs
         self._invalidate_cache()
 
-    def remove_variable(self, symbol):
+    def remove_variable(self, variable):
         """Remove a variable and its defining equation from the model.
 
-        This will remove the equation either that defines ``symbol`` directly, or if it is
-        a state variable the corresponding ODE. All annotations about this variable are also
-        removed from the RDF graph.
+        This will remove the equation either that defines ``variable`` directly, or if it is a state variable the
+        corresponding ODE. All annotations about this variable are also removed from the RDF graph.
 
-        :param VariableDummy symbol: the variable to remove
+        :param VariableDummy variable: the variable to remove
         """
         # Remove defining equation
-        defn = self.get_definition(symbol)
+        defn = self.get_definition(variable)
         if defn is not None:
             self.remove_equation(defn)
 
         # Remove any annotations
-        if symbol.rdf_identity:
-            for triple in self.rdf.triples((symbol.rdf_identity, None, None)):
+        if variable.rdf_identity:
+            for triple in self.rdf.triples((variable.rdf_identity, None, None)):
                 self.rdf.remove(triple)
 
         # Remove references to variable and invalidate cache
-        del self._name_to_symbol[symbol.name]
-        if symbol._cmeta_id is not None:
-            del self._cmeta_id_to_symbol[symbol._cmeta_id]
+        del self._name_to_variable[variable.name]
+        if variable._cmeta_id is not None:
+            del self._cmeta_id_to_variable[variable._cmeta_id]
         self._invalidate_cache()
 
     def transfer_cmeta_id(self, source, target):
@@ -770,11 +755,11 @@ class Model(object):
         source._set_cmeta_id(None)
 
         # Update mapping
-        self._cmeta_id_to_symbol[target._cmeta_id] = target
+        self._cmeta_id_to_variable[target._cmeta_id] = target
 
     def variables(self):
-        """ Returns an iterator over this model's variable symbols. """
-        return self._name_to_symbol.values()
+        """ Returns an iterator over this model's variables. """
+        return self._name_to_variable.values()
 
     def convert_variable(self, original_variable, units, direction):
         """
@@ -845,8 +830,8 @@ class Model(object):
         # throws DimensionalityError if unit conversion is not possible
         cf = self.units.get_conversion_factor(from_unit=original_units, to_unit=units)
 
-        state_symbols = self.get_state_symbols()
-        free_symbol = self.get_free_variable_symbol()
+        state_symbols = self.get_state_variables()
+        free_symbol = self.get_free_variable()
         # create new variable and relevant equations
         new_variable = self._convert_variable_instance(original_variable, cf, units, direction)
 
@@ -886,7 +871,7 @@ class Model(object):
         assert isinstance(variable, VariableDummy)
 
         # variable must be in model
-        assert variable.name in self._name_to_symbol
+        assert variable.name in self._name_to_variable
 
         # units should be a pint Unit object in the registry for this model
         assert isinstance(units, self.units.Unit)
@@ -1026,7 +1011,7 @@ class Model(object):
         :param str name: Suggested unique name
         :return str: guaranteed unique name
         """
-        if name in self._name_to_symbol:
+        if name in self._name_to_variable:
             name = self._get_unique_name(name + '_a')
         return name
 

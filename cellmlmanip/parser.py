@@ -459,8 +459,8 @@ class Parser(object):
             return parent_name == self.components[child_name].parent
 
         # get the variable information from the model about each end of the connection
-        variable_1 = self.model.get_symbol_by_name(self._get_variable_name(comp_1, var_1))
-        variable_2 = self.model.get_symbol_by_name(self._get_variable_name(comp_2, var_2))
+        variable_1 = self.model.get_variable_by_name(self._get_variable_name(comp_1, var_1))
+        variable_2 = self.model.get_variable_by_name(self._get_variable_name(comp_2, var_2))
 
         # if the components are siblings (either same parent or top-level)
         if _are_siblings(comp_1, comp_2):
