@@ -235,10 +235,22 @@ http://www.cellml.org/
       </math>
    </component>
    <component name="sodium_current">
-      <variable name="i_Na" units="picoA" public_interface="out"/>
+      <variable name="i_Na" units="picoA" public_interface="out" cmeta:id="i_Na">
+        <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:bqbiol="http://biomodels.net/biology-qualifiers/">
+            <rdf:Description rdf:about="#i_Na">
+               <bqbiol:is rdf:resource="https://chaste.comlab.ox.ac.uk/cellml/ns/oxford-metadata#membrane_fast_sodium_current"/>
+            </rdf:Description>
+         </rdf:RDF>
+     </variable>
       <variable name="E_Na" units="millivolt" public_interface="out"/>
       <variable name="P_Na" units="nanolitre_per_second" initial_value="0.0000014"/>
-      <variable name="time" units="second" public_interface="in" private_interface="out"/>
+      <variable name="time" units="second" public_interface="in" private_interface="out" cmeta:id="time">
+        <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:bqbiol="http://biomodels.net/biology-qualifiers/">
+            <rdf:Description rdf:about="#time">
+               <bqbiol:is rdf:resource="https://chaste.comlab.ox.ac.uk/cellml/ns/oxford-metadata#time"/>
+            </rdf:Description>
+         </rdf:RDF>
+      </variable>
       <variable name="V" units="millivolt" public_interface="in" private_interface="out"/>
       <variable name="Na_c" units="millimolar" public_interface="in"/>
       <variable name="Na_i" units="millimolar" public_interface="in"/>

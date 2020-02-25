@@ -522,6 +522,10 @@ class Model(object):
             defn = self._var_definition_map.get(variable)
         return defn
 
+      def get_value(self, variable):
+        """ Returns the evaluated value of the given variable's RHS. """
+        return float(self.graph.nodes[variable]['equation'].rhs.evalf())
+
     @property
     def graph(self):
         """ A ``networkx.DiGraph`` containing the model equations. """
@@ -669,9 +673,9 @@ class Model(object):
         self._graph = None
         self._graph_with_sympy_numbers = None
 
-    def get_value(self, variable):
-        """ Returns the evaluated value of the given variable's RHS. """
-        return float(self.graph.nodes[variable]['equation'].rhs.evalf())
+    def is_state(self, variable):
+        """ Checks if the given ``variable`` is a state variable (i.e. if it's defined by an ODE). """
+        return variable in self._ode_definition_map
 
     def find_variables_and_derivatives(self, expressions):
         """ Returns a set containing all variables and derivatives referenced in a list of expressions.
