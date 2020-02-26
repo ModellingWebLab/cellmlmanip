@@ -560,10 +560,7 @@ class Model(object):
                 free_symbol.type = 'free'
             elif isinstance(equation.rhs, NumberDummy):
                 lhs.type = 'parameter'
-                # logger.error('Parameter: %s = %s', equation.lhs, equation.rhs)
             else:
-                # logger.error('Computed: %s = %s', equation.lhs, equation.rhs)
-
                 lhs.type = 'computed'
 
         # Sanity check: none of the lhs have the same hash
