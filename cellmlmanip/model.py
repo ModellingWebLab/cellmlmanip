@@ -248,7 +248,9 @@ class Model(object):
 
         # If the source variable has not been assigned a value, we can't make this connection
         if not source.assigned_to:
-            logger.info('The source variable has not been assigned a value yet', target.name, source.name)
+            logger.debug(
+                'Cannot connect %s to %s at this time: The source variable has not been assigned a value '.format(
+                    target.name, source.name))
             return False
 
         # If target is already assigned this is an error
@@ -556,9 +558,12 @@ class Model(object):
                 # Get the free symbol and update the variable information
                 free_symbol = lhs.variables[0]
                 free_symbol.type = 'free'
-            elif equation.rhs.is_number:
+            elif isinstance(equation.rhs, NumberDummy):
                 lhs.type = 'parameter'
+                # logger.error('Parameter: %s = %s', equation.lhs, equation.rhs)
             else:
+                # logger.error('Computed: %s = %s', equation.lhs, equation.rhs)
+
                 lhs.type = 'computed'
 
         # Sanity check: none of the lhs have the same hash
