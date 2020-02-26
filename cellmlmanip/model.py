@@ -249,7 +249,7 @@ class Model(object):
         # If the source variable has not been assigned a value, we can't make this connection
         if not source.assigned_to:
             logger.debug(
-                'Cannot connect %s to %s at this time: The source variable has not been assigned a value '.format(
+                'Cannot connect {} to {} at this time: The source variable has not been assigned a value '.format(
                     target.name, source.name))
             return False
 
