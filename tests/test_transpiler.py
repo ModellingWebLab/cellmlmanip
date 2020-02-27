@@ -285,3 +285,10 @@ class TestTranspiler(object):
             for eq in eqs:
                 pass
                 # print(eq)
+
+    def test_change_handler(self):
+        class _exp(sympy.Function):
+            pass
+        Transpiler.set_mathml_handler('exp', _exp)
+        self.assert_equal('<apply><exp/><ci>x</ci></apply>',
+                          [_exp(sympy.Symbol('x'))])
