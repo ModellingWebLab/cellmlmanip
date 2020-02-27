@@ -20,7 +20,6 @@ class Transpiler(object):
     :param number_generator: An optional method to create expressions for numbers with units.
         Must have signature ``f(value, unit) -> sympy.Basic``.
     """
-
     def __init__(self, symbol_generator=None, number_generator=None):
 
         # Create simple lambdas for symbol and number generators
@@ -55,8 +54,17 @@ class Transpiler(object):
         }
 
         # Add tags that can be handled by simple_operator_handler
-        for tag_name in SIMPLE_MATHML_TO_SYMPY_NAMES:
+        for tag_name in SIMPLE_MATHML_TO_SYMPY_CLASSES:
             self.handlers[tag_name] = self._simple_operator_handler
+
+    @staticmethod
+    def set_mathml_handler(mathml_operator, operator_class):
+        """Change how the transpiler handles a given mathml_operator.
+
+        :param mathml_operator: The name of a MathML operator e.g. 'exp', 'true' etc.
+        :param operator_class: A class that can handle the given operator e.g. sympy.exp, sympy.true etc.
+        """
+        SIMPLE_MATHML_TO_SYMPY_CLASSES[mathml_operator] = operator_class
 
     def parse_string(self, xml_string):
         """
@@ -362,7 +370,7 @@ class Transpiler(object):
         """
         tag_name = node.tagName
 
-        handler = getattr(sympy, SIMPLE_MATHML_TO_SYMPY_NAMES[tag_name])
+        handler = SIMPLE_MATHML_TO_SYMPY_CLASSES[tag_name]
 
         # Some MathML relations allow chaining but Sympy relations are binary operations
         if tag_name in MATHML_NARY_RELATIONS:
@@ -372,57 +380,57 @@ class Transpiler(object):
 
 
 # These MathML tags map directly to Sympy classes and don't require any extra handling
-SIMPLE_MATHML_TO_SYMPY_NAMES = {
-    'abs': 'Abs',
-    'and': 'And',
-    'arccos': 'acos',
-    'arccosh': 'acosh',
-    'arccot': 'acot',
-    'arccoth': 'acoth',
-    'arccsc': 'acsc',
-    'arccsch': 'acsch',
-    'arcsec': 'asec',
-    'arcsech': 'asech',
-    'arcsin': 'asin',
-    'arcsinh': 'asinh',
-    'arctan': 'atan',
-    'arctanh': 'atanh',
-    'ceiling': 'ceiling',
-    'cos': 'cos',
-    'cosh': 'cosh',
-    'cot': 'cot',
-    'coth': 'coth',
-    'csc': 'csc',
-    'csch': 'csch',
-    'eq': 'Eq',
-    'exp': 'exp',
-    'exponentiale': 'E',
-    'false': 'false',
-    'floor': 'floor',
-    'geq': 'Ge',
-    'gt': 'Gt',
-    'infinity': 'oo',
-    'leq': 'Le',
-    'ln': 'ln',
-    'lt': 'Lt',
-    'max': 'Max',
-    'min': 'Min',
-    'neq': 'Ne',
-    'not': 'Not',
-    'notanumber': 'nan',
-    'or': 'Or',
-    'pi': 'pi',
-    'plus': 'Add',
-    'rem': 'Mod',
-    'sec': 'sec',
-    'sech': 'sech',
-    'sin': 'sin',
-    'sinh': 'sinh',
-    'tan': 'tan',
-    'tanh': 'tanh',
-    'times': 'Mul',
-    'true': 'true',
-    'xor': 'Xor',
+SIMPLE_MATHML_TO_SYMPY_CLASSES = {
+    'abs': sympy.Abs,
+    'and': sympy.And,
+    'arccos': sympy.acos,
+    'arccosh': sympy.acosh,
+    'arccot': sympy.acot,
+    'arccoth': sympy.acoth,
+    'arccsc': sympy.acsc,
+    'arccsch': sympy.acsch,
+    'arcsec': sympy.asec,
+    'arcsech': sympy.asech,
+    'arcsin': sympy.asin,
+    'arcsinh': sympy.asinh,
+    'arctan': sympy.atan,
+    'arctanh': sympy.atanh,
+    'ceiling': sympy.ceiling,
+    'cos': sympy.cos,
+    'cosh': sympy.cosh,
+    'cot': sympy.cot,
+    'coth': sympy.coth,
+    'csc': sympy.csc,
+    'csch': sympy.csch,
+    'eq': sympy.Eq,
+    'exp': sympy.exp,
+    'exponentiale': sympy.E,
+    'false': sympy.false,
+    'floor': sympy.floor,
+    'geq': sympy.Ge,
+    'gt': sympy.Gt,
+    'infinity': sympy.oo,
+    'leq': sympy.Le,
+    'ln': sympy.ln,
+    'lt': sympy.Lt,
+    'max': sympy.Max,
+    'min': sympy.Min,
+    'neq': sympy.Ne,
+    'not': sympy.Not,
+    'notanumber': sympy.nan,
+    'or': sympy.Or,
+    'pi': sympy.pi,
+    'plus': sympy.Add,
+    'rem': sympy.Mod,
+    'sec': sympy.sec,
+    'sech': sympy.sech,
+    'sin': sympy.sin,
+    'sinh': sympy.sinh,
+    'tan': sympy.tan,
+    'tanh': sympy.tanh,
+    'times': sympy.Mul,
+    'true': sympy.true,
+    'xor': sympy.Xor,
 }
 
 # MathML relation elements that are n-ary operators
