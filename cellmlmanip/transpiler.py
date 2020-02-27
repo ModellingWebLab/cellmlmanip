@@ -54,16 +54,17 @@ class Transpiler(object):
         }
 
         # Add tags that can be handled by simple_operator_handler
-        for tag_name in SIMPLE_MATHML_TO_SYMPY_NAMES:
+        for tag_name in SIMPLE_MATHML_TO_SYMPY_CLASSES:
             self.handlers[tag_name] = self._simple_operator_handler
 
+    @staticmethod
     def set_mathml_handler(mathml_operator, operator_class):
         """Change how the transpiler handles a given mathml_operator.
 
         :param mathml_operator: The name of a MathML operator e.g. 'exp', 'true' etc.
         :param operator_class: A class that can handle the given operator e.g. sympy.exp, sympy.true etc.
         """
-        SIMPLE_MATHML_TO_SYMPY_NAMES[mathml_operator] = operator_class
+        SIMPLE_MATHML_TO_SYMPY_CLASSES[mathml_operator] = operator_class
 
     def parse_string(self, xml_string):
         """
@@ -369,7 +370,7 @@ class Transpiler(object):
         """
         tag_name = node.tagName
 
-        handler = SIMPLE_MATHML_TO_SYMPY_NAMES[tag_name]
+        handler = SIMPLE_MATHML_TO_SYMPY_CLASSES[tag_name]
 
         # Some MathML relations allow chaining but Sympy relations are binary operations
         if tag_name in MATHML_NARY_RELATIONS:
@@ -379,7 +380,7 @@ class Transpiler(object):
 
 
 # These MathML tags map directly to Sympy classes and don't require any extra handling
-SIMPLE_MATHML_TO_SYMPY_NAMES = {
+SIMPLE_MATHML_TO_SYMPY_CLASSES = {
     'abs': sympy.Abs,
     'and': sympy.And,
     'arccos': sympy.acos,
