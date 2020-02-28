@@ -630,7 +630,7 @@ class Model(object):
             # And replace the equation with one with the rhs subbed with sympy.Number objects
             if subs_dict:
                 # Update rhs
-                rhs = equation.rhs.subs(subs_dict)
+                rhs = equation.rhs.xreplace(subs_dict)
 
                 # Check if simplification removed dependencies on other variables, and if so remove the corresponding
                 # edges.
