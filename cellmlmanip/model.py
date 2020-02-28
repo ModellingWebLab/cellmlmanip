@@ -630,7 +630,7 @@ class Model(object):
             # And replace the equation with one with the rhs subbed with sympy.Number objects
             if subs_dict:
                 # Update rhs
-                rhs = equation.rhs.xreplace(subs_dict)
+                rhs = equation.rhs.subs(subs_dict)
 
                 # Check if simplification removed dependencies on other variables, and if so remove the corresponding
                 # edges.
@@ -887,7 +887,7 @@ class Model(object):
             for argument in equation.rhs.atoms(sympy.Derivative):
                 if new_derivative['expression'] == argument:
                     # add new equation
-                    new_eqn = equation.replace(new_derivative['expression'], new_derivative['variable'])
+                    new_eqn = equation.xreplace({new_derivative['expression']: new_derivative['variable']})
                     self.remove_equation(equation)
                     self.add_equation(new_eqn)
                     break
