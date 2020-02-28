@@ -62,7 +62,8 @@ class Transpiler(object):
         """Change how the transpiler handles a given mathml_operator.
 
         :param mathml_operator: The name of a MathML operator e.g. 'exp', 'true' etc.
-        :param operator_class: A class that can handle the given operator e.g. sympy.exp, sympy.true etc.
+        :param operator_class: A class that can handle the given operator e.g. ``sympy.exp``, or a function that creates
+            and returns a sympy object given the operands as arguments.
         """
         SIMPLE_MATHML_TO_SYMPY_CLASSES[mathml_operator] = operator_class
 
