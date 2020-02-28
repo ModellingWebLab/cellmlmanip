@@ -622,11 +622,9 @@ class Model(object):
             if equation is None:
                 continue
 
-            # Get all the dummy symbols on the RHS
-            dummies = equation.rhs.atoms(sympy.Dummy)
-
-            # Get any dummy symbols which are placeholders for numbers
-            subs_dict = {d: sympy.Float(d.value, FLOAT_PRECISION) for d in dummies if isinstance(d, NumberDummy)}
+            # Get all the dummy numbers on the RHS, and prepare substitution map
+            dummies = equation.rhs.atoms(NumberDummy)
+            subs_dict = {d: sympy.Float(d.value, FLOAT_PRECISION) for d in dummies}
 
             # And replace the equation with one with the rhs subbed with sympy.Number objects
             if subs_dict:
