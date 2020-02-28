@@ -69,11 +69,21 @@ class TestModelFunctions():
         assert len(derived_quantities) == 0
 
         derived_quantities = simple_ode_model.get_derived_quantities()
-        assert str(derived_quantities) == \
-            '[_single_ode_rhs_computed_var$a, _derived_from_state_var$dbl_sv1, _deriv_on_rhs$sv1_rate, '\
-            '_circle_x_sibling$x2, _circle_y_implementation$rhs, _circle_sibling$local_complex_maths, '\
-            '_time_units_conversion1$time, _deriv_on_rhs1a$sv1_rate, _time_units_conversion2$time, '\
-            '_deriv_on_rhs2a$sv1_rate, _deriv_on_rhs1b$sv1_rate, _deriv_on_rhs2b$sv1_rate]'
+        assert str(derived_quantities) == (
+            '['
+            # '_single_ode_rhs_computed_var$a, '
+            '_derived_from_state_var$dbl_sv1, '
+            '_deriv_on_rhs$sv1_rate, '
+            '_circle_x_sibling$x2, '
+            '_circle_y_implementation$rhs, '
+            '_circle_sibling$local_complex_maths, '
+            '_time_units_conversion1$time, '
+            '_deriv_on_rhs1a$sv1_rate, '
+            '_time_units_conversion2$time, '
+            '_deriv_on_rhs2a$sv1_rate, '
+            '_deriv_on_rhs1b$sv1_rate, '
+            '_deriv_on_rhs2b$sv1_rate]'
+        )
 
     def test_get_state_variables(self, basic_model):
         """ Tests Model.get_state_variables() works on a simple model. """
@@ -654,4 +664,21 @@ class TestModelFunctions():
         # Constant
         c = aslanidi_model.get_variable_by_ontology_term((shared.OXMETA, 'membrane_capacitance'))
         assert not aslanidi_model.is_state(c)
+
+    def test_transform_constants(self):
+        """ Tests Model.transform_constants(). """
+
+        # Parse model, which should convert an initial value to an equation
+        model = shared.load_model('initial_value_constant.cellml')
+        v = model.get_variable_by_name('A$a')
+
+        # Initial value should be None, if transform_constants worked
+        assert v.initial_value is None
+
+        # And its RHS value should be 1
+        assert model.get_value(v) == 1
+
+        # And the equations should have matching units
+        for eq in model.equations:
+            model.check_left_right_units_equal(eq)
 

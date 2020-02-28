@@ -224,9 +224,8 @@ class Model(object):
             if var in self._ode_definition_map:
                 assert var.initial_value is not None, 'State variable {} has no initial_value set'.format(var)
             elif var.initial_value is not None:
-                value = var.initial_value
-                eq = sympy.Eq(var, sympy.Float(value))
-                self.add_equation(eq)
+                value = self.add_number(var.initial_value, var.units)
+                self.add_equation(sympy.Eq(var, value))
                 var.initial_value = None
 
     def connect_variables(self, source_name: str, target_name: str):
@@ -249,7 +248,9 @@ class Model(object):
 
         # If the source variable has not been assigned a value, we can't make this connection
         if not source.assigned_to:
-            logger.info('The source variable has not been assigned a value yet', target.name, source.name)
+            logger.debug(
+                'Cannot connect {} to {} at this time: The source variable has not been assigned a value '.format(
+                    target.name, source.name))
             return False
 
         # If target is already assigned this is an error
@@ -557,7 +558,7 @@ class Model(object):
                 # Get the free symbol and update the variable information
                 free_symbol = lhs.variables[0]
                 free_symbol.type = 'free'
-            elif equation.rhs.is_number:
+            elif isinstance(equation.rhs, NumberDummy):
                 lhs.type = 'parameter'
             else:
                 lhs.type = 'computed'
