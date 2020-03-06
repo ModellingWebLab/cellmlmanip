@@ -762,19 +762,20 @@ class Model(object):
 
     def convert_variable(self, original_variable, units, direction):
         """
-        Add a new linked version of the given variable in the desired units.
+        Ensures the model contains a variable representing ``original_variable`` in the specified ``units``.
 
-        If the variable already has the requested units, no changes are made and the original variable is returned.
-        Otherwise ``direction`` specifies how information flows between the new variable and the original, and
-        hence what new equation(s) are added to the model to perform the conversion.
-        If ``INPUT`` then the original variable takes its value from the newly added variable;
-        if ``OUTPUT`` then the opposite happens.
+        If the variable is already in the required units, nothing happens. and ``original_variable`` is returned.
 
-        Any ``cmeta:id`` attribute on the original variable is moved to the new one, so ontology annotations will refer
-        to the new variable.
+        If the variable's units can be converted to the new ``units``, a new variable will created in these units, and
+        the ``cmeta:id`` attribute of ``original_variable`` will be moved to the new variable, so that all annotations
+        are transferred to the new variable.
 
-        Similarly if the direction is ``INPUT`` then any initial value will be moved to the new variable
-        (and converted appropriately).
+        The ``direction`` argument specifies how information flows between the new variable and the original, and hence
+        what new equation(s) will be added to the model to perform the conversion.
+        If ``direction`` is ``DataDirectionFlow.INPUT``, then the original variable takes its value from the newly added
+        variable; if it is ``DataDirectionFlow.OUTPUT`` then the opposite happens.
+        If the direction is ``INPUT`` then any initial value will be moved to the new variable (and converted
+        appropriately).
 
         For example::
 
