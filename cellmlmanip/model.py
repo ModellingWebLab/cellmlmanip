@@ -823,7 +823,7 @@ class Model(object):
         :raises DimensionalityError: if the unit conversion is impossible
         """
         # assertion errors will be thrown here if arguments are incorrect type
-        self._check_arguments_for_convert_variables(original_variable, units, direction)
+        self._check_arguments_for_convert_variable(original_variable, units, direction)
 
         original_units = original_variable.units
         # no conversion necessary
@@ -834,8 +834,10 @@ class Model(object):
         # throws DimensionalityError if unit conversion is not possible
         cf = self.units.get_conversion_factor(from_unit=original_units, to_unit=units)
 
+        # Store original state and free symbols (these might change, so need to store references early)
         state_symbols = self.get_state_variables()
         free_symbol = self.get_free_variable()
+
         # create new variable and relevant equations
         new_variable = self._convert_variable_instance(original_variable, cf, units, direction)
 
@@ -858,13 +860,13 @@ class Model(object):
 
         # replace any instances of derivative of rhs of other eqns with new derivative variable
         for new_derivative in new_derivatives:
-            self._replace_derivatives(new_derivative)
+            self._replace_references_to_derivative(new_derivative['expression'], new_derivative['variable'])
 
         self._invalidate_cache()
 
         return new_variable
 
-    def _check_arguments_for_convert_variables(self, variable, units, direction):
+    def _check_arguments_for_convert_variable(self, variable, units, direction):
         """
         Checks the arguments of the convert_variable function.
         :param variable: variable must be a VariableDummy object present in the model
@@ -883,19 +885,14 @@ class Model(object):
         # direction should be part of enum
         assert isinstance(direction, DataDirectionFlow)
 
-    def _replace_derivatives(self, new_derivative):
+    def _replace_references_to_derivative(self, old_derivative, new_derivative):
         """
-        Function to replace an instance of a derivative that occurs on the RHS of any equation
-        :param new_derivative: new variable representing the derivative
+        Replace all references to ``old_derivative`` in the model RHS with references to ``new_derivative``.
         """
         for equation in self.equations.copy():
-            for argument in equation.rhs.atoms(sympy.Derivative):
-                if new_derivative['expression'] == argument:
-                    # add new equation
-                    new_eqn = equation.xreplace({new_derivative['expression']: new_derivative['variable']})
-                    self.remove_equation(equation)
-                    self.add_equation(new_eqn)
-                    break
+            if old_derivative in equation.rhs.atoms(sympy.Derivative):
+                self.remove_equation(equation)
+                self.add_equation(equation.xreplace({old_derivative: new_derivative}))
 
     def _create_new_deriv_variable_and_equation(self, eqn, derivative_variable):
         """
@@ -972,12 +969,12 @@ class Model(object):
         new_name = self._get_unique_name(original_variable.name + '_converted')
 
         # If original has initial_value calculate new initial value (only needed for INPUT case)
-        new_value = None
+        new_initial_value = None
         if direction == DataDirectionFlow.INPUT and original_variable.initial_value:
-            new_value = original_variable.initial_value * cf
+            new_initial_value = original_variable.initial_value * cf
 
         # Create new variable
-        new_variable = self.add_variable(name=new_name, units=units, initial_value=new_value)
+        new_variable = self.add_variable(name=new_name, units=units, initial_value=new_initial_value)
 
         # Transfer cmeta id from original to new variable if the original variable has one
         if original_variable._cmeta_id is not None:
@@ -989,6 +986,8 @@ class Model(object):
             original_variable.initial_value = None
 
             # find the equation for the original variable (if any): orig_var = rhs
+            # Note that variables defined through their derivative are handled separately (and will be temporarily
+            # overdefined).
             # remove equation from model
             # add eqn for new variable in terms of rhs of equation
             #     new_var [new units] = rhs [old units] * cf [new units/old units]
@@ -1000,6 +999,8 @@ class Model(object):
 
             # add eqn for original variable in terms of new variable
             #     orig_var [old units] = new var [new units] / cf [new units/old units]
+            # Note that state variables will still have an ODE at this point, and so will be overdefined, hence the need
+            # to disable checking for duplicates.
             expression = sympy.Eq(original_variable, new_variable / cf)
             self.add_equation(expression, check_duplicates=False)
         else:
