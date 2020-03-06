@@ -777,36 +777,40 @@ class Model(object):
         If the direction is ``INPUT`` then any initial value will be moved to the new variable (and converted
         appropriately).
 
-        For example::
+        For example, a model::
 
-            Original model
-                var{time} time: ms {pub: in};
-                var{sv11} sv1: mV {init: 2};
+            var{time} time: ms {pub: in};
+            var{sv11} sv1: mV {init: 2};
 
-                ode(sv1, time) = 1{mV_per_ms};
+            ode(sv1, time) = 1{mV_per_ms};
 
-        convert_variable(time, second, DataDirectionFlow.INPUT)
+        transformed with::
 
-        becomes
-                var time: ms;
-                var{time} time_converted: s;
-                var{sv11} sv1: mV {init: 2};
-                var sv1_orig_deriv mV_per_ms
+            convert_variable(time, second, DataDirectionFlow.INPUT)
 
-                time = 1000 * time_converted;
-                sv1_orig_deriv = 1{mV_per_ms}
-                ode(sv1, time_converted) = 1000 * sv1_orig_deriv
+        becomes::
 
+            var time: ms;
+            var{time} time_converted: s;
+            var{sv11} sv1: mV {init: 2};
+            var sv1_orig_deriv mV_per_ms
 
-        convert_variable(time, second, DataDirectionFlow.OUTPUT)
+            time = 1000 * time_converted;
+            sv1_orig_deriv = 1{mV_per_ms}
+            ode(sv1, time_converted) = 1000 * sv1_orig_deriv
 
-            creates model
-                var{time} time: ms {pub: in};
-                var{sv11} sv1: mV {init: 2};
-                var{time} time_converted: s
+        while transforming with::
 
-                ode(sv1, time) = 1{mV_per_ms};
-                time_converted = 0.001 * time
+            convert_variable(time, second, DataDirectionFlow.OUTPUT)
+
+        updates the model to::
+
+            var{time} time: ms {pub: in};
+            var{sv11} sv1: mV {init: 2};
+            var{time} time_converted: s
+
+            ode(sv1, time) = 1{mV_per_ms};
+            time_converted = 0.001 * time
 
         :param original_variable: the VariableDummy object representing the variable in the model to be converted
         :param units: a Pint unit object representing the units to convert variable to (note if variable is already
