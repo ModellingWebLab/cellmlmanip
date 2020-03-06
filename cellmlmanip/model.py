@@ -968,7 +968,7 @@ class Model(object):
 
         # If original has initial_value calculate new initial value (only needed for INPUT case)
         new_value = None
-        if direction == DataDirectionFlow.INPUT and original_variable.initial_value:
+        if direction == DataDirectionFlow.INPUT and original_variable.initial_value is not None:
             new_value = original_variable.initial_value * cf
 
         # Create new variable
