@@ -213,6 +213,21 @@ class TestUnitConversion:
         assert len(states) == 1
         assert symbol_a in states
 
+    def test_add_input_state_variable_initial_zero(self, local_model):
+        """
+        Same as :meth:`test_add_input_state_variable`, but for the special case where the initial value of the state
+        variable is 0.
+        """
+        assert self._original_state_local_model(local_model)
+
+        # change mV to V
+        original_var = local_model.get_variable_by_cmeta_id('sv11')
+        original_var.initial_value = 0
+        volt_unit = local_model.units.get_unit('volt')
+        newvar = local_model.convert_variable(original_var, volt_unit, DataDirectionFlow.INPUT)
+        assert newvar != original_var
+        assert newvar.initial_value == 0
+
     def test_add_input_free_variable(self, local_model):
         """ Tests the Model.convert_variable function that changes units of given variable.
         This particular case tests changing a free variable
