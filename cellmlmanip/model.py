@@ -900,7 +900,7 @@ class Model(object):
         :return: new variable for the derivative
         """
         # 1. create a new variable
-        deriv_name = self._get_unique_name(derivative_variable.name + '_orig_deriv')
+        deriv_name = self.get_unique_name(derivative_variable.name + '_orig_deriv')
         deriv_units = self.units.evaluate_units(eqn.args[0])
         new_deriv_variable = self.add_variable(name=deriv_name, units=deriv_units)
 
@@ -964,7 +964,7 @@ class Model(object):
         :return: the new variable created [new units]
         """
         # Get unique name for new variable
-        new_name = self._get_unique_name(original_variable.name + '_converted')
+        new_name = self.get_unique_name(original_variable.name + '_converted')
 
         # If original has initial_value calculate new initial value (only needed for INPUT case)
         new_value = None
@@ -1005,13 +1005,15 @@ class Model(object):
 
         return new_variable
 
-    def _get_unique_name(self, name):
-        """Function to create a unique name within the model.
-        :param str name: Suggested unique name
-        :return str: guaranteed unique name
+    def get_unique_name(self, name):
+        """
+        Creates and returns a unique name, not used in the model.
+
+        :param str name: Suggested unique name.
+        :return str: Guaranteed unique name.
         """
         if name in self._name_to_variable:
-            name = self._get_unique_name(name + '_a')
+            name = self.get_unique_name(name + '_a')
         return name
 
 
