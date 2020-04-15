@@ -11,6 +11,7 @@ import pint
 import sympy
 from pint.converters import ScaleConverter
 from pint.definitions import UnitDefinition
+from pint.errors import DimensionalityError
 
 from . import model
 
@@ -146,6 +147,18 @@ class BooleanUnitsError(UnitError):
         self.expression = expression
         self.message = 'This expression involves boolean values which do not conform to ' \
                        'unit dimensionality rules.'
+
+
+class UnitConversionError(UnitError):
+    """Represents failure to convert between incompatible units.
+
+    :param expression: the Sympy expression in which the error occurred
+    :param from_unit: the units the expression is in
+    :param to_unit: the units we tried to convert to
+    """
+    def __init__(self, expression, from_units, to_units):
+        self.expression = expression
+        self.message = 'Cannot convert units from {} to {}'.format(from_units, to_units)
 
 
 class UnitStore(object):
@@ -664,7 +677,10 @@ class UnitCalculator(object):
         dimensionless = self._store.get_unit('dimensionless')
 
         def maybe_convert_expr(expr, was_converted, to_units, from_units):
-            cf = self._store.get_conversion_factor(to_units, from_units)
+            try:
+                cf = self._store.get_conversion_factor(to_units, from_units)
+            except DimensionalityError:
+                raise UnitConversionError(expr, from_units, to_units)
             if cf != 1.0:
                 print('Converting {} to {} by factor {}'.format(from_units, to_units, cf))
                 was_converted = True
@@ -711,8 +727,8 @@ class UnitCalculator(object):
             # Exponent must be dimensionless
             exponent, was_converted, _ = maybe_convert_child(exponent, False, dimensionless)
             try:
-                exponent_val = float(exponent.evalf())
-            except ValueError:
+                exponent_val = float(exponent)
+            except TypeError:
                 raise InputArgumentMustBeNumberError(str(expr), 'second')
             # Base can be any units, then (try to) convert the result if needed
             base, was_converted, base_units = maybe_convert_child(base, was_converted, None)

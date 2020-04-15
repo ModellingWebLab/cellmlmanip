@@ -9,11 +9,22 @@ from cellmlmanip.units import (
     InputArgumentsInvalidUnitsError,
     InputArgumentsMustBeDimensionlessError,
     UnexpectedMathUnitsError,
+    UnitConversionError,
     UnitStore,
 )
 
 
-class TestUnits(object):
+@pytest.fixture(scope='class')
+def store():
+    return UnitStore()
+
+
+@pytest.fixture(scope='class')
+def calculator(store):
+    return store._calculator
+
+
+class TestUnits:
 
     def test_add_unit(self):
         """Tests UnitStore.add_unit()."""
@@ -186,7 +197,7 @@ class TestUnits(object):
         assert b.get_conversion_factor(x, y) == 0.001
 
 
-class TestEvaluateUnits(object):
+class TestEvaluateUnits:
     """Tests UnitStore.evaluate_units()."""
 
     def test_numbers(self):
@@ -421,3 +432,104 @@ class TestEvaluateUnits(object):
         expr = sp.cos(x).series(x, 0, 10)
         with pytest.raises(UnexpectedMathUnitsError):
             store.evaluate_units(expr)
+
+
+class TestConvertingExpressions:
+    """Test the UnitCalculator.convert_expr_recursively method."""
+
+    # Methods below check error cases
+    def test_symbol_wrong_dimensions(self, store, calculator):
+        x = VariableDummy('x', store.get_unit('metre'))
+        with pytest.raises(UnitConversionError):
+            calculator.convert_expr_recursively(x, store.get_unit('second'))
+
+    def test_derivative_wrong_dimensions(self, store, calculator):
+        x = VariableDummy('x', store.get_unit('metre'))
+        t = VariableDummy('t', store.get_unit('second'))
+        expr = sp.Derivative(x, t)
+        with pytest.raises(UnitConversionError):
+            calculator.convert_expr_recursively(expr, store.get_unit('metre'))
+
+    def test_mul_wrong_dimensions(self, store, calculator):
+        x = VariableDummy('x', store.get_unit('metre'))
+        _1 = NumberDummy(1, store.get_unit('second'))
+        expr = x * _1
+        with pytest.raises(UnitConversionError):
+            calculator.convert_expr_recursively(expr, store.get_unit('metre'))
+
+    def test_error_matrix(self, store, calculator):
+        expr = sp.Matrix([[1, 0], [0, 1]])
+        with pytest.raises(UnexpectedMathUnitsError):
+            calculator.convert_expr_recursively(expr, None)
+
+    def test_error_exponent_not_dimensionless(self, store, calculator):
+        x = VariableDummy('x', store.get_unit('metre'))
+        _1 = NumberDummy(1, store.get_unit('second'))
+        expr = x ** _1
+        with pytest.raises(UnitConversionError):
+            calculator.convert_expr_recursively(expr, None)
+
+    def test_error_exponent_not_number(self, store, calculator):
+        x = VariableDummy('x', store.get_unit('dimensionless'))
+        _1 = NumberDummy(1, store.get_unit('second'))
+        expr = _1 ** x
+        with pytest.raises(InputArgumentMustBeNumberError):
+            calculator.convert_expr_recursively(expr, None)
+
+    def test_pow_wrong_dimensions(self, store, calculator):
+        x = VariableDummy('x', store.get_unit('second'))
+        _2 = NumberDummy(2, store.get_unit('dimensionless'))
+        expr = x ** _2
+        with pytest.raises(UnitConversionError):
+            calculator.convert_expr_recursively(expr, store.get_unit('second'))
+
+    def test_add_wrong_dimensions(self, store, calculator):
+        x = VariableDummy('x', store.get_unit('second'))
+        _2 = NumberDummy(2, store.get_unit('dimensionless'))
+        expr = x + _2
+        with pytest.raises(UnitConversionError):
+            calculator.convert_expr_recursively(expr, None)
+
+    def test_relational_must_be_dimensionless(self, store, calculator):
+        x = VariableDummy('x', store.get_unit('second'))
+        y = VariableDummy('y', store.get_unit('second'))
+        expr = x < y
+        with pytest.raises(BooleanUnitsError):
+            calculator.convert_expr_recursively(expr, store.get_unit('second'))
+
+    def test_relational_dimension_mismatch(self, store, calculator):
+        x = VariableDummy('x', store.get_unit('second'))
+        y = VariableDummy('y', store.get_unit('metre'))
+        expr = x <= y
+        with pytest.raises(UnitConversionError):
+            calculator.convert_expr_recursively(expr, store.get_unit('dimensionless'))
+
+    def test_piecewise_condition_not_dimensionless(self, store, calculator):
+        a = VariableDummy('a', store.get_unit('metre'))
+        x = VariableDummy('x', store.get_unit('second'))
+        expr = sp.Piecewise((a, x), (-a, True))
+        with pytest.raises(UnitConversionError):
+            calculator.convert_expr_recursively(expr, store.get_unit('metre'))
+
+    def test_piecewise_cannot_convert_result(self, store, calculator):
+        a = VariableDummy('a', store.get_unit('metre'))
+        x = VariableDummy('x', store.get_unit('dimensionless'))
+        expr = sp.Piecewise((a, x), (-a, True))
+        with pytest.raises(UnitConversionError):
+            calculator.convert_expr_recursively(expr, store.get_unit('second'))
+
+    def test_exp_must_be_dimensionless(self, store, calculator):
+        x = VariableDummy('x', store.get_unit('dimensionless'))
+        expr = sp.exp(x)
+        with pytest.raises(InputArgumentsMustBeDimensionlessError):
+            calculator.convert_expr_recursively(expr, store.get_unit('second'))
+
+    def test_number_must_be_dimensionless(self, store, calculator):
+        with pytest.raises(InputArgumentsMustBeDimensionlessError):
+            calculator.convert_expr_recursively(sp.E, store.get_unit('second'))
+
+    def test_error_unsupported_math(self, store, calculator):
+        x = VariableDummy('x', store.get_unit('second'))
+        expr = sp.Integral(x**2, x)
+        with pytest.raises(UnexpectedMathUnitsError):
+            calculator.convert_expr_recursively(expr, None)
