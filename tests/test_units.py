@@ -673,6 +673,16 @@ class TestConvertingExpressions:
         assert new_expr.args[1] is _10
         assert x.units is ms
 
+    def test_set_lhs_units_from_converted_rhs(self, store, calculator, ms):
+        x = VariableDummy('x', None)
+        y = VariableDummy('y', store.get_unit('second'))
+        _10 = NumberDummy(10, ms)
+        expr = sp.Eq(x, _10 + y)
+        new_expr = calculator.set_lhs_units_from_rhs(expr)
+        assert str(new_expr) == 'Eq(_x, _10 + _1000.0*_y)'
+        assert new_expr.args[0] is x
+        assert x.units is ms
+
     # Methods below check error cases
     def test_symbol_wrong_dimensions(self, store, calculator):
         x = VariableDummy('x', store.get_unit('metre'))
