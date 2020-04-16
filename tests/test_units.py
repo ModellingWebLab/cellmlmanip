@@ -29,11 +29,9 @@ def cm(store):
     return store.add_unit('cm', '0.01 * metre')
 
 
-
 @pytest.fixture(scope='class')
 def ms(store):
     return store.add_unit('ms', '0.001 * second')
-
 
 
 @pytest.fixture(scope='class')
@@ -546,7 +544,7 @@ class TestConvertingExpressions:
 
     def test_square_root(self, store, calculator, ms):
         x = VariableDummy('x', store.get_unit('second') ** 2)
-        expr = x ** (1/2)
+        expr = x ** (1 / 2)
         new_expr = calculator.convert_expr_recursively(expr, ms)
         assert str(new_expr) == '_1000.0*_x**0.5'
         assert new_expr.args[0].args[0] is x
