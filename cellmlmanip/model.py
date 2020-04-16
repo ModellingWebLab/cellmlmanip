@@ -1039,6 +1039,9 @@ class NumberDummy(sympy.Dummy):
     def __float__(self):
         return self.value
 
+    def _eval_evalf(self, prec):
+        return sympy.Float(self.value, prec)
+
     def __str__(self):
         return str(self.value)
 

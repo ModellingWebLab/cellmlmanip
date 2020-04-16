@@ -680,7 +680,7 @@ class UnitCalculator(object):
             try:
                 cf = self._store.get_conversion_factor(to_units, from_units)
             except DimensionalityError:
-                raise UnitConversionError(expr, from_units, to_units)
+                raise UnitConversionError(expr, from_units, to_units) from None
             if cf != 1.0:
                 print('Converting {} to {} by factor {}'.format(from_units, to_units, cf))
                 was_converted = True
@@ -706,6 +706,7 @@ class UnitCalculator(object):
             # Just convert the result if needed
             _, was_converted, numerator_units = maybe_convert_child(expr.args[0], was_converted, None)
             _, was_converted, denominator_units = maybe_convert_child(expr.args[1][0], was_converted, None)
+            assert not was_converted  # Ensures both parts are simple symbols
             actual_units = numerator_units / denominator_units
             if to_units is not None:
                 expr, was_converted, actual_units = maybe_convert_expr(expr, was_converted, to_units, actual_units)
@@ -729,7 +730,7 @@ class UnitCalculator(object):
             try:
                 exponent_val = float(exponent)
             except TypeError:
-                raise InputArgumentMustBeNumberError(str(expr), 'second')
+                raise InputArgumentMustBeNumberError(str(expr), 'second') from None
             # Base can be any units, then (try to) convert the result if needed
             base, was_converted, base_units = maybe_convert_child(base, was_converted, None)
             if was_converted:
