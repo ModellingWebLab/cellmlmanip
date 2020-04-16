@@ -450,7 +450,7 @@ class TestEvaluateUnits:
 
 
 class TestConvertingExpressions:
-    """Test the UnitCalculator.convert_expr_recursively method."""
+    """Test the UnitCalculator.convert_expr_recursively and set_lhs_units_from_rhs methods."""
     def test_variable_no_conversion(self, store, calculator):
         x = VariableDummy('x', store.get_unit('metre'))
 
@@ -655,6 +655,23 @@ class TestConvertingExpressions:
         new_expr = calculator.convert_expr_recursively(expr, ms)
         assert str(new_expr) == (
             'Piecewise((_1000.0*_y, (_2 < _x) & (_y < _0.001*_z)), (_z, _2 > _x), (_2*_z, True))')
+
+    def test_assignment(self, store, calculator, ms):
+        x = VariableDummy('x', store.get_unit('second'))
+        _10 = NumberDummy(10, ms)
+        expr = sp.Eq(x, _10)
+        new_expr = calculator.convert_expr_recursively(expr, None)
+        assert str(new_expr) == 'Eq(_x, _0.001*_10)'
+
+    def test_set_lhs_units_from_rhs(self, store, calculator, ms):
+        x = VariableDummy('x', None)
+        _10 = NumberDummy(10, ms)
+        expr = sp.Eq(x, _10)
+        new_expr = calculator.set_lhs_units_from_rhs(expr)
+        assert str(new_expr) == 'Eq(_x, _10)'
+        assert new_expr.args[0] is x
+        assert new_expr.args[1] is _10
+        assert x.units is ms
 
     # Methods below check error cases
     def test_symbol_wrong_dimensions(self, store, calculator):

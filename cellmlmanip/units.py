@@ -666,6 +666,21 @@ class UnitCalculator(object):
         new_expr, was_converted, actual_units = self._convert_expr_recursively(expr, to_units)
         return new_expr
 
+    def set_lhs_units_from_rhs(self, equation):
+        """Set the units of the variable assigned to based on the expression assigned.
+
+        :param equation: a :class:`sympy.Eq` instance with a :class:`VariableDummy` on the left hand side
+        :returns: a new version of the equation, but with the RHS using consistent units throughout (with
+            conversions if needed) and the ``units`` attribute on the LHS updated to match
+        """
+        lhs = equation.lhs
+        assert isinstance(lhs, model.VariableDummy)
+        new_rhs, was_converted, rhs_units = self._convert_expr_recursively(equation.rhs, None)
+        lhs.units = rhs_units
+        if was_converted:
+            equation = sympy.Eq(lhs, new_rhs)
+        return equation
+
     def _convert_expr_recursively(self, expr, to_units):
         """Helper method for :meth:`convert_expr_recursively` which does the heavy lifting.
 
