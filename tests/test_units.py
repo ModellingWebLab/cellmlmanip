@@ -656,6 +656,11 @@ class TestConvertingExpressions:
         assert str(new_expr) == (
             'Piecewise((_1000.0*_y, (_2 < _x) & (_y < _0.001*_z)), (_z, _2 > _x), (_2*_z, True))')
 
+        # A simpler case with no conversion
+        _1 = NumberDummy('1', ms)
+        expr = sp.Piecewise((z, x < _2), (_1, True))
+        assert calculator.convert_expr_recursively(expr, ms) is expr
+
     def test_assignment(self, store, calculator, ms):
         x = VariableDummy('x', store.get_unit('second'))
         _10 = NumberDummy(10, ms)
