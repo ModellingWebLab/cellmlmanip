@@ -363,8 +363,8 @@ class UnitStore(object):
         :returns: the magnitude of the resulting conversion factor
         """
         assert isinstance(from_unit, self._registry.Unit), 'from_unit must be a unit, not ' + str(from_unit)
-        conversion_factor = self.convert(1 * from_unit, to_unit).magnitude
-        return 1.0 if math.isclose(conversion_factor, 1.0) else conversion_factor
+        cf = self.convert(1 * from_unit, to_unit).magnitude
+        return 1.0 if isinstance(cf, numbers.Number) and math.isclose(cf, 1.0) else cf
 
     def _prefix_expression(self, match):
         """Takes a regex Match object from _WORD, and adds a prefix (UnitStore id), taking SI prefixes into account."""
