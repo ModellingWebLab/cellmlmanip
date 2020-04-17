@@ -64,7 +64,20 @@ _STORE_PREFIX = re.compile('(?<![a-zA-Z0-9_])store[0-9]+_')
 
 class UnitError(Exception):
     """Base class for errors relating to calculating units."""
-    pass
+    def __str__(self):
+        """Display this error message."""
+        return str(self.expression) + ': ' + self.message
+
+    def add_context(self, expression, message):
+        """Add extra context to the error message.
+
+        Will append ``('Context: ' + message).format(expression)`` to the error message.
+
+        :param expression: the wider expression within which a unit calculation error occurred
+        :param message: further details explaining the context of the error
+        """
+        self.context_expression = expression
+        self.message += ('. Context: ' + message).format(expression)
 
 
 class UnitsCannotBeCalculatedError(UnitError):
@@ -666,7 +679,13 @@ class UnitCalculator(object):
         :returns: a Sympy expression in the desired units; the input ``expr`` if no conversion was needed.
         :raises UnitError: if conversion is not possible, using a suitable subclass depending on the exact reason
         """
-        new_expr, was_converted, actual_units = self._convert_expression_recursively(expr, to_units)
+        try:
+            new_expr, was_converted, actual_units = self._convert_expression_recursively(expr, to_units)
+        except UnitError as e:
+            e.add_context(
+                expr,
+                'trying to convert "{}" to ' + ('consistent units' if to_units is None else str(to_units)))
+            raise
         return new_expr
 
     def set_lhs_units_from_rhs(self, equation):
@@ -679,7 +698,11 @@ class UnitCalculator(object):
         """
         lhs = equation.lhs
         assert isinstance(lhs, model.VariableDummy)
-        new_rhs, was_converted, rhs_units = self._convert_expression_recursively(equation.rhs, None)
+        try:
+            new_rhs, was_converted, rhs_units = self._convert_expression_recursively(equation.rhs, None)
+        except UnitError as e:
+            e.add_context(equation, 'trying to set LHS units from those of the RHS in {}')
+            raise
         lhs.units = rhs_units
         if was_converted:
             equation = sympy.Eq(lhs, new_rhs)

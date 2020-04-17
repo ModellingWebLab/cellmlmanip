@@ -691,14 +691,14 @@ class TestConvertingExpressions:
     # Methods below check error cases
     def test_symbol_wrong_dimensions(self, store, calculator):
         x = VariableDummy('x', store.get_unit('metre'))
-        with pytest.raises(UnitConversionError):
+        with pytest.raises(UnitConversionError, match='from meter to second'):
             calculator.convert_expression_recursively(x, store.get_unit('second'))
 
     def test_derivative_wrong_dimensions(self, store, calculator):
         x = VariableDummy('x', store.get_unit('metre'))
         t = VariableDummy('t', store.get_unit('second'))
         expr = sp.Derivative(x, t)
-        with pytest.raises(UnitConversionError):
+        with pytest.raises(UnitConversionError, match='Context: trying to convert'):
             calculator.convert_expression_recursively(expr, store.get_unit('metre'))
 
     def test_complex_derivative(self, store, calculator):
@@ -794,3 +794,11 @@ class TestConvertingExpressions:
         expr = sp.Integral(x**2, x)
         with pytest.raises(UnexpectedMathUnitsError):
             calculator.convert_expression_recursively(expr, None)
+
+    def test_set_lhs_units_from_inconsistent_rhs(self, store, calculator):
+        x = VariableDummy('x', None)
+        _10 = NumberDummy(10, store.get_unit('metre'))
+        _20 = NumberDummy(20, store.get_unit('second'))
+        expr = sp.Eq(x, _10 + _20)
+        with pytest.raises(UnitConversionError, match='Context: trying to set LHS units'):
+            new_expr = calculator.set_lhs_units_from_rhs(expr)
