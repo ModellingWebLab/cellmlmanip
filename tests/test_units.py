@@ -796,4 +796,4 @@ class TestConvertingExpressions:
         _20 = NumberDummy(20, store.get_unit('second'))
         expr = sp.Eq(x, _10 + _20)
         with pytest.raises(UnitConversionError, match='Context: trying to set LHS units'):
-            new_expr = store.set_lhs_units_from_rhs(expr)
+            store.set_lhs_units_from_rhs(expr)
