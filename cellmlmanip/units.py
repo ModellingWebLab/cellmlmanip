@@ -635,7 +635,7 @@ class UnitCalculator(object):
 
         raise UnexpectedMathUnitsError(str(expr))
 
-    def convert_expr_recursively(self, expr, to_units):
+    def convert_expression_recursively(self, expr, to_units):
         """Generate a version of the given expression in the requested units.
 
         Rather than assuming the expression is internally consistent (and hence just wrapping
@@ -644,8 +644,8 @@ class UnitCalculator(object):
         consistent but not equal units, conversions will be applied as needed.
 
         This method is suitable for use converting the RHS of assignment equations to the units
-        desired by the LHS, if the ``Eq`` expression is passed in as ``expr``, and ``to_units`` may
-        be given as ``None``.
+        desired by the LHS, if the ``Eq`` expression is passed in as ``expr`` and ``to_units`` is
+        given as ``None``.
 
         The conversion strategy for each (sub-)expression depends on the operator:
         - for relational operators, all operands are converted to the units of the first operand
@@ -660,10 +660,11 @@ class UnitCalculator(object):
         - for derivatives, numbers, variables, etc. we just convert to the desired units
 
         :param expr: the Sympy expression to convert
-        :param to_units: the desired units of the expression, or ``None`` if we don't care.
+        :param to_units: the desired units of the expression, or ``None`` if we don't care or for
+            converting an assignment expression.
         :returns: a Sympy expression in the desired units; the input ``expr`` if no conversion was needed.
         """
-        new_expr, was_converted, actual_units = self._convert_expr_recursively(expr, to_units)
+        new_expr, was_converted, actual_units = self._convert_expression_recursively(expr, to_units)
         return new_expr
 
     def set_lhs_units_from_rhs(self, equation):
@@ -675,20 +676,19 @@ class UnitCalculator(object):
         """
         lhs = equation.lhs
         assert isinstance(lhs, model.VariableDummy)
-        new_rhs, was_converted, rhs_units = self._convert_expr_recursively(equation.rhs, None)
+        new_rhs, was_converted, rhs_units = self._convert_expression_recursively(equation.rhs, None)
         lhs.units = rhs_units
         if was_converted:
             equation = sympy.Eq(lhs, new_rhs)
         return equation
 
-    def _convert_expr_recursively(self, expr, to_units):
-        """Helper method for :meth:`convert_expr_recursively` which does the heavy lifting.
+    def _convert_expression_recursively(self, expr, to_units):
+        """Helper method for :meth:`convert_expression_recursively` which does the heavy lifting.
 
         :returns: a tuple ``(new_expr, was_converted, actual_units)``
         """
         print('Trying to convert {} {} to {}'.format(type(expr), expr, to_units))
         was_converted = False  # Tracks whether we needed a units conversion
-        new_args = []
         dimensionless = self._store.get_unit('dimensionless')
 
         def maybe_convert_expr(expr, was_converted, to_units, from_units):
@@ -696,7 +696,7 @@ class UnitCalculator(object):
                 cf = self._store.get_conversion_factor(to_units, from_units)
             except DimensionalityError:
                 raise UnitConversionError(expr, from_units, to_units) from None
-            if cf != 1.0:
+            if cf != 1:
                 print('Converting {} to {} by factor {}'.format(from_units, to_units, cf))
                 was_converted = True
                 cf = model.NumberDummy(cf, to_units / from_units)
@@ -704,7 +704,7 @@ class UnitCalculator(object):
             return expr, was_converted, to_units
 
         def maybe_convert_child(expr, was_converted, to_units):
-            expr, child_was_converted, actual_units = self._convert_expr_recursively(expr, to_units)
+            expr, child_was_converted, actual_units = self._convert_expression_recursively(expr, to_units)
             return expr, child_was_converted or was_converted, actual_units
 
         if expr.is_Matrix:
@@ -727,6 +727,7 @@ class UnitCalculator(object):
                 expr, was_converted, actual_units = maybe_convert_expr(expr, was_converted, to_units, actual_units)
         elif expr.is_Mul:
             # Multiply units of operands, which are allowed to be of any units
+            new_args = []
             all_arg_units = []
             for arg in expr.args:
                 arg, was_converted, arg_units = maybe_convert_child(arg, was_converted, None)
@@ -755,6 +756,7 @@ class UnitCalculator(object):
                 expr, was_converted, actual_units = maybe_convert_expr(expr, was_converted, to_units, actual_units)
         elif expr.is_Add:
             # Convert all arguments to the desired units
+            new_args = []
             for arg in expr.args:
                 arg, was_converted, actual_units = maybe_convert_child(arg, was_converted, to_units)
                 if to_units is None:
@@ -768,6 +770,7 @@ class UnitCalculator(object):
                 raise BooleanUnitsError(str(expr) + ' in ' + str(to_units))
             # All arguments converted to the units of the first argument
             arg_units = None
+            new_args = []
             for arg in expr.args:
                 arg, was_converted, arg_units = maybe_convert_child(arg, was_converted, arg_units)
                 new_args.append(arg)
@@ -777,6 +780,7 @@ class UnitCalculator(object):
             actual_units = dimensionless
         elif expr.is_Piecewise:  # NB: Must come before is_Function!
             # Each condition is dimensionless; each piece gets converted to the desired units
+            new_args = []
             for arg in expr.args:
                 piece, cond = arg
                 new_piece, was_converted, actual_units = maybe_convert_child(piece, was_converted, to_units)
@@ -795,6 +799,7 @@ class UnitCalculator(object):
                 if to_units is not None and to_units != dimensionless:
                     raise InputArgumentsMustBeDimensionlessError(str(expr) + ' in ' + str(to_units))
                 actual_units = dimensionless
+            new_args = []
             for arg in expr.args:
                 arg, was_converted, actual_units = maybe_convert_child(arg, was_converted, actual_units)
                 new_args.append(arg)

@@ -1040,6 +1040,7 @@ class NumberDummy(sympy.Dummy):
         return self.value
 
     def _eval_evalf(self, prec):
+        """This is needed to allow Sympy's ``evalf`` method to represent this value as a float."""
         return sympy.Float(self.value, prec)
 
     def __str__(self):
