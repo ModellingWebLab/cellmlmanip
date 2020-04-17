@@ -395,6 +395,65 @@ class UnitStore(object):
 
         return self._prefix + name
 
+    def convert_expression_recursively(self, expr, to_units):
+        """Generate a version of the given expression in the requested units.
+
+        Rather than assuming the expression is internally consistent (and hence just wrapping
+        in a conversion factor) this will recursively traverse the expression tree and convert
+        at each level as needed. Hence if the operands of internal expressions are in dimensionally
+        consistent but not equal units, conversions will be applied as needed.
+
+        This method is suitable for use converting the RHS of assignment equations to the units
+        desired by the LHS, if the ``Eq`` expression is passed in as ``expr`` and ``to_units`` is
+        given as ``None``.
+
+        The conversion strategy for each (sub-)expression depends on the operator:
+        - for relational operators, all operands are converted to the units of the first operand
+        - for Mul the operands can be in any units, and we convert the result if needed
+        - for Add all operands are converted to the desired units (or the units of the first operand
+          if no desired units are given)
+        - for Pow the exponent must be dimensionless while the operand can be in any units, and we
+          convert the result if needed
+        - for trig functions, exp, log, etc. the operands have to have dimensionless units
+        - for piecewise, the conditions must be dimensionless, and the pieces are set to the desired
+          units (or the units of the first piece)
+        - for derivatives, numbers, variables, etc. we just convert to the desired units
+
+        :param expr: the Sympy expression to convert
+        :param to_units: the desired units of the expression, or ``None`` if we don't care or for
+            converting an assignment expression.
+        :returns: a Sympy expression in the desired units; the input ``expr`` if no conversion was needed.
+        :raises UnitError: if conversion is not possible, using a suitable subclass depending on the exact reason
+        """
+        try:
+            new_expr, was_converted, actual_units = self._calculator.convert_expression_recursively(expr, to_units)
+        except UnitError as e:
+            e.add_context(
+                expr,
+                'trying to convert "{}" to ' + ('consistent units' if to_units is None else str(to_units)))
+            raise
+        return new_expr
+
+    def set_lhs_units_from_rhs(self, equation):
+        """Set the units of the variable assigned to based on the expression assigned.
+
+        :param equation: a :class:`sympy.Eq` instance with a :class:`VariableDummy` on the left hand side
+        :returns: a new version of the equation, but with the RHS using consistent units throughout (with
+            conversions if needed) and the ``units`` attribute on the LHS updated to match
+        :raises UnitError: if conversion is not possible, using a suitable subclass depending on the exact reason
+        """
+        lhs = equation.lhs
+        assert isinstance(lhs, model.VariableDummy)
+        try:
+            new_rhs, was_converted, rhs_units = self._calculator.convert_expression_recursively(equation.rhs, None)
+        except UnitError as e:
+            e.add_context(equation, 'trying to set LHS units from those of the RHS in {}')
+            raise
+        lhs.units = rhs_units
+        if was_converted:
+            equation = sympy.Eq(lhs, new_rhs)
+        return equation
+
 
 class UnitCalculator(object):
     """
@@ -650,66 +709,7 @@ class UnitCalculator(object):
         raise UnexpectedMathUnitsError(str(expr))
 
     def convert_expression_recursively(self, expr, to_units):
-        """Generate a version of the given expression in the requested units.
-
-        Rather than assuming the expression is internally consistent (and hence just wrapping
-        in a conversion factor) this will recursively traverse the expression tree and convert
-        at each level as needed. Hence if the operands of internal expressions are in dimensionally
-        consistent but not equal units, conversions will be applied as needed.
-
-        This method is suitable for use converting the RHS of assignment equations to the units
-        desired by the LHS, if the ``Eq`` expression is passed in as ``expr`` and ``to_units`` is
-        given as ``None``.
-
-        The conversion strategy for each (sub-)expression depends on the operator:
-        - for relational operators, all operands are converted to the units of the first operand
-        - for Mul the operands can be in any units, and we convert the result if needed
-        - for Add all operands are converted to the desired units (or the units of the first operand
-          if no desired units are given)
-        - for Pow the exponent must be dimensionless while the operand can be in any units, and we
-          convert the result if needed
-        - for trig functions, exp, log, etc. the operands have to have dimensionless units
-        - for piecewise, the conditions must be dimensionless, and the pieces are set to the desired
-          units (or the units of the first piece)
-        - for derivatives, numbers, variables, etc. we just convert to the desired units
-
-        :param expr: the Sympy expression to convert
-        :param to_units: the desired units of the expression, or ``None`` if we don't care or for
-            converting an assignment expression.
-        :returns: a Sympy expression in the desired units; the input ``expr`` if no conversion was needed.
-        :raises UnitError: if conversion is not possible, using a suitable subclass depending on the exact reason
-        """
-        try:
-            new_expr, was_converted, actual_units = self._convert_expression_recursively(expr, to_units)
-        except UnitError as e:
-            e.add_context(
-                expr,
-                'trying to convert "{}" to ' + ('consistent units' if to_units is None else str(to_units)))
-            raise
-        return new_expr
-
-    def set_lhs_units_from_rhs(self, equation):
-        """Set the units of the variable assigned to based on the expression assigned.
-
-        :param equation: a :class:`sympy.Eq` instance with a :class:`VariableDummy` on the left hand side
-        :returns: a new version of the equation, but with the RHS using consistent units throughout (with
-            conversions if needed) and the ``units`` attribute on the LHS updated to match
-        :raises UnitError: if conversion is not possible, using a suitable subclass depending on the exact reason
-        """
-        lhs = equation.lhs
-        assert isinstance(lhs, model.VariableDummy)
-        try:
-            new_rhs, was_converted, rhs_units = self._convert_expression_recursively(equation.rhs, None)
-        except UnitError as e:
-            e.add_context(equation, 'trying to set LHS units from those of the RHS in {}')
-            raise
-        lhs.units = rhs_units
-        if was_converted:
-            equation = sympy.Eq(lhs, new_rhs)
-        return equation
-
-    def _convert_expression_recursively(self, expr, to_units):
-        """Helper method for :meth:`convert_expression_recursively` which does the heavy lifting.
+        """Helper method for :meth:`UnitStore.convert_expression_recursively` which does the heavy lifting.
 
         :returns: a tuple ``(new_expr, was_converted, actual_units)``
         """
@@ -737,7 +737,7 @@ class UnitCalculator(object):
 
             :returns: ``(expr or new expr, was_converted or child was_converted, actual_units)``
             """
-            expr, child_was_converted, actual_units = self._convert_expression_recursively(expr, to_units)
+            expr, child_was_converted, actual_units = self.convert_expression_recursively(expr, to_units)
             return expr, child_was_converted or was_converted, actual_units
 
         if expr.is_Matrix:
