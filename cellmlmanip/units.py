@@ -664,6 +664,7 @@ class UnitCalculator(object):
         :param to_units: the desired units of the expression, or ``None`` if we don't care or for
             converting an assignment expression.
         :returns: a Sympy expression in the desired units; the input ``expr`` if no conversion was needed.
+        :raises UnitError: if conversion is not possible, using a suitable subclass depending on the exact reason
         """
         new_expr, was_converted, actual_units = self._convert_expression_recursively(expr, to_units)
         return new_expr
@@ -674,6 +675,7 @@ class UnitCalculator(object):
         :param equation: a :class:`sympy.Eq` instance with a :class:`VariableDummy` on the left hand side
         :returns: a new version of the equation, but with the RHS using consistent units throughout (with
             conversions if needed) and the ``units`` attribute on the LHS updated to match
+        :raises UnitError: if conversion is not possible, using a suitable subclass depending on the exact reason
         """
         lhs = equation.lhs
         assert isinstance(lhs, model.VariableDummy)
@@ -693,6 +695,11 @@ class UnitCalculator(object):
         dimensionless = self._store.get_unit('dimensionless')
 
         def maybe_convert_expr(expr, was_converted, to_units, from_units):
+            """Helper function that adds a conversion factor if needed.
+
+            :returns: ``(expr or new expr, was_converted, to_units)``
+            :raises UnitConversionError: if conversion impossible
+            """
             try:
                 cf = self._store.get_conversion_factor(to_units, from_units)
             except DimensionalityError:
@@ -705,6 +712,10 @@ class UnitCalculator(object):
             return expr, was_converted, to_units
 
         def maybe_convert_child(expr, was_converted, to_units):
+            """Helper function that does the recursive call and updates ``was_converted``.
+
+            :returns: ``(expr or new expr, was_converted or child was_converted, actual_units)``
+            """
             expr, child_was_converted, actual_units = self._convert_expression_recursively(expr, to_units)
             return expr, child_was_converted or was_converted, actual_units
 
