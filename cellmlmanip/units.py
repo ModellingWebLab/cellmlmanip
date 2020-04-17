@@ -713,7 +713,6 @@ class UnitCalculator(object):
 
         :returns: a tuple ``(new_expr, was_converted, actual_units)``
         """
-        print('Trying to convert {} {} to {}'.format(type(expr), expr, to_units))
         was_converted = False  # Tracks whether we needed a units conversion
         dimensionless = self._store.get_unit('dimensionless')
 
@@ -728,7 +727,6 @@ class UnitCalculator(object):
             except DimensionalityError:
                 raise UnitConversionError(expr, from_units, to_units) from None
             if cf != 1:
-                print('Converting {} to {} by factor {}'.format(from_units, to_units, cf))
                 was_converted = True
                 cf = model.NumberDummy(cf, to_units / from_units)
                 expr = cf * expr
@@ -854,5 +852,4 @@ class UnitCalculator(object):
         else:
             raise UnexpectedMathUnitsError(str(expr))
 
-        print('  Result for {} was converted? {} into {}'.format(expr, was_converted, actual_units))
         return expr, was_converted, actual_units
