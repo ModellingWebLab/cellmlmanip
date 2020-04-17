@@ -701,6 +701,16 @@ class TestConvertingExpressions:
         with pytest.raises(UnitConversionError):
             calculator.convert_expression_recursively(expr, store.get_unit('metre'))
 
+    def test_complex_derivative(self, store, calculator):
+        x = VariableDummy('x', store.get_unit('metre'))
+        y = VariableDummy('y', store.get_unit('metre'))
+        t = VariableDummy('t', store.get_unit('second'))
+        t2 = VariableDummy('t2', store.get_unit('second'))
+        expr = sp.Derivative(x + y, t, t2)
+        with pytest.raises(UnexpectedMathUnitsError,
+                           match='only support first order derivatives of single variables'):
+            calculator.convert_expression_recursively(expr, store.get_unit('metre'))
+
     def test_mul_wrong_dimensions(self, store, calculator):
         x = VariableDummy('x', store.get_unit('metre'))
         _1 = NumberDummy(1, store.get_unit('second'))

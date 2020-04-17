@@ -84,11 +84,12 @@ class UnexpectedMathUnitsError(UnitError):
     """Invalid units error thrown when math encountered in an expression is outside the subset of MathML expected.
 
     :param expression: input expression in which the error occurred
+    :param message: optional message with further detail
     """
 
-    def __init__(self, expression):
+    def __init__(self, expression, message=''):
         self.expression = expression
-        self.message = 'The math used by this expression is not supported.'
+        self.message = message or 'The math used by this expression is not supported.'
 
 
 class InputArgumentsInvalidUnitsError(UnitError):
@@ -719,9 +720,14 @@ class UnitCalculator(object):
                 expr, was_converted, actual_units = maybe_convert_expr(expr, was_converted, to_units, expr.units)
         elif expr.is_Derivative:
             # Just convert the result if needed
+            if (not isinstance(expr.args[0], model.VariableDummy) or
+                    len(expr.args) > 2 or
+                    expr.args[1][1] > 1 or
+                    not isinstance(expr.args[1][0], model.VariableDummy)):
+                raise UnexpectedMathUnitsError(
+                    expr, 'We only support first order derivatives of single variables wrt time')
             _, was_converted, numerator_units = maybe_convert_child(expr.args[0], was_converted, None)
             _, was_converted, denominator_units = maybe_convert_child(expr.args[1][0], was_converted, None)
-            assert not was_converted  # Ensures both parts are simple symbols
             actual_units = numerator_units / denominator_units
             if to_units is not None:
                 expr, was_converted, actual_units = maybe_convert_expr(expr, was_converted, to_units, actual_units)
