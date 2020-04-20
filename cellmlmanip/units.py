@@ -369,11 +369,11 @@ class UnitStore(object):
         logger.debug('evaluate_units(%s) ⟶ %s', expr, found)
         return found
 
-    def get_conversion_factor(self, to_unit, from_unit):
+    def get_conversion_factor(self, from_unit, to_unit):
         """Returns the magnitude multiplier required to convert a unit to the specified unit.
 
-        :param to_unit: Unit object into which the units should be converted
-        :param from_unit: the Unit to be converted
+        :param from_unit: the ``Unit`` to be converted
+        :param to_unit: ``Unit`` object into which the units should be converted
         :returns: the magnitude of the resulting conversion factor
         """
         assert isinstance(from_unit, self._registry.Unit), 'from_unit must be a unit, not ' + str(from_unit)
@@ -716,14 +716,14 @@ class UnitCalculator(object):
         was_converted = False  # Tracks whether we needed a units conversion
         dimensionless = self._store.get_unit('dimensionless')
 
-        def maybe_convert_expr(expr, was_converted, to_units, from_units):
+        def maybe_convert_expr(expr, was_converted, from_units, to_units):
             """Helper function that adds a conversion factor if needed.
 
             :returns: ``(expr or new expr, was_converted, to_units)``
             :raises UnitConversionError: if conversion impossible
             """
             try:
-                cf = self._store.get_conversion_factor(to_units, from_units)
+                cf = self._store.get_conversion_factor(from_units, to_units)
             except DimensionalityError:
                 raise UnitConversionError(expr, from_units, to_units) from None
             if cf != 1:
@@ -749,7 +749,7 @@ class UnitCalculator(object):
                 # Nothing to do, just record the actual units
                 actual_units = expr.units
             else:
-                expr, was_converted, actual_units = maybe_convert_expr(expr, was_converted, to_units, expr.units)
+                expr, was_converted, actual_units = maybe_convert_expr(expr, was_converted, expr.units, to_units)
         elif expr.is_Derivative:
             # Just convert the result if needed
             if (not isinstance(expr.args[0], model.VariableDummy) or
@@ -762,7 +762,7 @@ class UnitCalculator(object):
             _, was_converted, denominator_units = maybe_convert_child(expr.args[1][0], was_converted, None)
             actual_units = numerator_units / denominator_units
             if to_units is not None:
-                expr, was_converted, actual_units = maybe_convert_expr(expr, was_converted, to_units, actual_units)
+                expr, was_converted, actual_units = maybe_convert_expr(expr, was_converted, actual_units, to_units)
         elif expr.is_Mul:
             # Multiply units of operands, which are allowed to be of any units
             new_args = []
@@ -775,7 +775,7 @@ class UnitCalculator(object):
             if to_units is not None or was_converted:
                 # Convert the result if required
                 expr = expr.func(*new_args)
-                expr, was_converted, actual_units = maybe_convert_expr(expr, was_converted, to_units, actual_units)
+                expr, was_converted, actual_units = maybe_convert_expr(expr, was_converted, actual_units, to_units)
         elif expr.is_Pow:
             # Pow is used by Sympy for exponentiating, roots and division
             base, exponent = expr.args
@@ -791,7 +791,7 @@ class UnitCalculator(object):
                 expr = expr.func(base, exponent)
             actual_units = base_units ** exponent_val
             if to_units is not None:
-                expr, was_converted, actual_units = maybe_convert_expr(expr, was_converted, to_units, actual_units)
+                expr, was_converted, actual_units = maybe_convert_expr(expr, was_converted, actual_units, to_units)
         elif expr.is_Add:
             # Convert all arguments to the desired units
             new_args = []

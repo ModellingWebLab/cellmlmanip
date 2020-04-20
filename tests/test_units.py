@@ -149,8 +149,8 @@ class TestUnits:
         store = UnitStore()
         s = store.get_unit('second')
         ms = store.add_unit('ms', 'second / 1000')
-        assert store.get_conversion_factor(s, ms) == 0.001
-        assert store.get_conversion_factor(ms, s) == 1000
+        assert store.get_conversion_factor(ms, s) == 0.001
+        assert store.get_conversion_factor(s, ms) == 1000
 
     def test_prefixing(self):
         """Tests edge cases for the internal prefixing."""
@@ -203,8 +203,8 @@ class TestUnits:
         with pytest.raises(KeyError):
             b.get_unit('x')
 
-        assert a.get_conversion_factor(x, y) == 0.001
-        assert b.get_conversion_factor(x, y) == 0.001
+        assert a.get_conversion_factor(x, y) == 1000
+        assert b.get_conversion_factor(x, y) == 1000
 
 
 class TestEvaluateUnits:
