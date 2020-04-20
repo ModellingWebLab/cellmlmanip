@@ -11,6 +11,7 @@ import pint
 import sympy
 from pint.converters import ScaleConverter
 from pint.definitions import UnitDefinition
+from pint.errors import DimensionalityError
 
 from . import model
 
@@ -63,7 +64,20 @@ _STORE_PREFIX = re.compile('(?<![a-zA-Z0-9_])store[0-9]+_')
 
 class UnitError(Exception):
     """Base class for errors relating to calculating units."""
-    pass
+    def __str__(self):
+        """Display this error message."""
+        return str(self.expression) + ': ' + self.message
+
+    def add_context(self, expression, message):
+        """Add extra context to the error message.
+
+        Will append ``('Context: ' + message).format(expression)`` to the error message.
+
+        :param expression: the wider expression within which a unit calculation error occurred
+        :param message: further details explaining the context of the error
+        """
+        self.context_expression = expression
+        self.message += ('. Context: ' + message).format(expression)
 
 
 class UnitsCannotBeCalculatedError(UnitError):
@@ -83,11 +97,12 @@ class UnexpectedMathUnitsError(UnitError):
     """Invalid units error thrown when math encountered in an expression is outside the subset of MathML expected.
 
     :param expression: input expression in which the error occurred
+    :param message: optional message with further detail
     """
 
-    def __init__(self, expression):
+    def __init__(self, expression, message=''):
         self.expression = expression
-        self.message = 'The math used by this expression is not supported.'
+        self.message = message or 'The math used by this expression is not supported.'
 
 
 class InputArgumentsInvalidUnitsError(UnitError):
@@ -146,6 +161,18 @@ class BooleanUnitsError(UnitError):
         self.expression = expression
         self.message = 'This expression involves boolean values which do not conform to ' \
                        'unit dimensionality rules.'
+
+
+class UnitConversionError(UnitError):
+    """Represents failure to convert between incompatible units.
+
+    :param expression: the Sympy expression in which the error occurred
+    :param from_unit: the units the expression is in
+    :param to_unit: the units we tried to convert to
+    """
+    def __init__(self, expression, from_units, to_units):
+        self.expression = expression
+        self.message = 'Cannot convert units from {} to {}'.format(from_units, to_units)
 
 
 class UnitStore(object):
@@ -349,9 +376,9 @@ class UnitStore(object):
         :param from_unit: the Unit to be converted
         :returns: the magnitude of the resulting conversion factor
         """
-        assert isinstance(from_unit, self._registry.Unit), 'from_unit must be a unit'
-        conversion_factor = self.convert(1 * from_unit, to_unit).magnitude
-        return 1.0 if math.isclose(conversion_factor, 1.0) else conversion_factor
+        assert isinstance(from_unit, self._registry.Unit), 'from_unit must be a unit, not ' + str(from_unit)
+        cf = self.convert(1 * from_unit, to_unit).magnitude
+        return 1.0 if isinstance(cf, numbers.Number) and math.isclose(cf, 1.0) else cf
 
     def _prefix_expression(self, match):
         """Takes a regex Match object from _WORD, and adds a prefix (UnitStore id), taking SI prefixes into account."""
@@ -367,6 +394,65 @@ class UnitStore(object):
             return name
 
         return self._prefix + name
+
+    def convert_expression_recursively(self, expr, to_units):
+        """Generate a version of the given expression in the requested units.
+
+        Rather than assuming the expression is internally consistent (and hence just wrapping
+        in a conversion factor) this will recursively traverse the expression tree and convert
+        at each level as needed. Hence if the operands of internal expressions are in dimensionally
+        consistent but not equal units, conversions will be applied as needed.
+
+        This method is suitable for use converting the RHS of assignment equations to the units
+        desired by the LHS, if the ``Eq`` expression is passed in as ``expr`` and ``to_units`` is
+        given as ``None``.
+
+        The conversion strategy for each (sub-)expression depends on the operator:
+        - for relational operators, all operands are converted to the units of the first operand
+        - for Mul the operands can be in any units, and we convert the result if needed
+        - for Add all operands are converted to the desired units (or the units of the first operand
+          if no desired units are given)
+        - for Pow the exponent must be dimensionless while the operand can be in any units, and we
+          convert the result if needed
+        - for trig functions, exp, log, etc. the operands have to have dimensionless units
+        - for piecewise, the conditions must be dimensionless, and the pieces are set to the desired
+          units (or the units of the first piece)
+        - for derivatives, numbers, variables, etc. we just convert to the desired units
+
+        :param expr: the Sympy expression to convert
+        :param to_units: the desired units of the expression, or ``None`` if we don't care or for
+            converting an assignment expression.
+        :returns: a Sympy expression in the desired units; the input ``expr`` if no conversion was needed.
+        :raises UnitError: if conversion is not possible, using a suitable subclass depending on the exact reason
+        """
+        try:
+            new_expr, was_converted, actual_units = self._calculator.convert_expression_recursively(expr, to_units)
+        except UnitError as e:
+            e.add_context(
+                expr,
+                'trying to convert "{}" to ' + ('consistent units' if to_units is None else str(to_units)))
+            raise
+        return new_expr
+
+    def set_lhs_units_from_rhs(self, equation):
+        """Set the units of the variable assigned to based on the expression assigned.
+
+        :param equation: a :class:`sympy.Eq` instance with a :class:`VariableDummy` on the left hand side
+        :returns: a new version of the equation, but with the RHS using consistent units throughout (with
+            conversions if needed) and the ``units`` attribute on the LHS updated to match
+        :raises UnitError: if conversion is not possible, using a suitable subclass depending on the exact reason
+        """
+        lhs = equation.lhs
+        assert isinstance(lhs, model.VariableDummy)
+        try:
+            new_rhs, was_converted, rhs_units = self._calculator.convert_expression_recursively(equation.rhs, None)
+        except UnitError as e:
+            e.add_context(equation, 'trying to set LHS units from those of the RHS in {}')
+            raise
+        lhs.units = rhs_units
+        if was_converted:
+            equation = sympy.Eq(lhs, new_rhs)
+        return equation
 
 
 class UnitCalculator(object):
@@ -622,3 +708,148 @@ class UnitCalculator(object):
 
         raise UnexpectedMathUnitsError(str(expr))
 
+    def convert_expression_recursively(self, expr, to_units):
+        """Helper method for :meth:`UnitStore.convert_expression_recursively` which does the heavy lifting.
+
+        :returns: a tuple ``(new_expr, was_converted, actual_units)``
+        """
+        was_converted = False  # Tracks whether we needed a units conversion
+        dimensionless = self._store.get_unit('dimensionless')
+
+        def maybe_convert_expr(expr, was_converted, to_units, from_units):
+            """Helper function that adds a conversion factor if needed.
+
+            :returns: ``(expr or new expr, was_converted, to_units)``
+            :raises UnitConversionError: if conversion impossible
+            """
+            try:
+                cf = self._store.get_conversion_factor(to_units, from_units)
+            except DimensionalityError:
+                raise UnitConversionError(expr, from_units, to_units) from None
+            if cf != 1:
+                was_converted = True
+                cf = model.NumberDummy(cf, to_units / from_units)
+                expr = cf * expr
+            return expr, was_converted, to_units
+
+        def maybe_convert_child(expr, was_converted, to_units):
+            """Helper function that does the recursive call and updates ``was_converted``.
+
+            :returns: ``(expr or new expr, was_converted or child was_converted, actual_units)``
+            """
+            expr, child_was_converted, actual_units = self.convert_expression_recursively(expr, to_units)
+            return expr, child_was_converted or was_converted, actual_units
+
+        if expr.is_Matrix:
+            # See comment in :meth:`traverse()`!
+            raise UnexpectedMathUnitsError(str(expr))
+        elif expr.is_Symbol:
+            assert isinstance(expr, (model.NumberDummy, model.VariableDummy))
+            if to_units is None:
+                # Nothing to do, just record the actual units
+                actual_units = expr.units
+            else:
+                expr, was_converted, actual_units = maybe_convert_expr(expr, was_converted, to_units, expr.units)
+        elif expr.is_Derivative:
+            # Just convert the result if needed
+            if (not isinstance(expr.args[0], model.VariableDummy) or
+                    len(expr.args) > 2 or
+                    expr.args[1][1] > 1 or
+                    not isinstance(expr.args[1][0], model.VariableDummy)):
+                raise UnexpectedMathUnitsError(
+                    expr, 'We only support first order derivatives of single variables wrt time')
+            _, was_converted, numerator_units = maybe_convert_child(expr.args[0], was_converted, None)
+            _, was_converted, denominator_units = maybe_convert_child(expr.args[1][0], was_converted, None)
+            actual_units = numerator_units / denominator_units
+            if to_units is not None:
+                expr, was_converted, actual_units = maybe_convert_expr(expr, was_converted, to_units, actual_units)
+        elif expr.is_Mul:
+            # Multiply units of operands, which are allowed to be of any units
+            new_args = []
+            all_arg_units = []
+            for arg in expr.args:
+                arg, was_converted, arg_units = maybe_convert_child(arg, was_converted, None)
+                new_args.append(arg)
+                all_arg_units.append(arg_units)
+            actual_units = reduce(mul, all_arg_units)
+            if to_units is not None or was_converted:
+                # Convert the result if required
+                expr = expr.func(*new_args)
+                expr, was_converted, actual_units = maybe_convert_expr(expr, was_converted, to_units, actual_units)
+        elif expr.is_Pow:
+            # Pow is used by Sympy for exponentiating, roots and division
+            base, exponent = expr.args
+            # Exponent must be dimensionless
+            exponent, was_converted, _ = maybe_convert_child(exponent, False, dimensionless)
+            try:
+                exponent_val = float(exponent)
+            except TypeError:
+                raise InputArgumentMustBeNumberError(str(expr), 'second') from None
+            # Base can be any units, then (try to) convert the result if needed
+            base, was_converted, base_units = maybe_convert_child(base, was_converted, None)
+            if was_converted:
+                expr = expr.func(base, exponent)
+            actual_units = base_units ** exponent_val
+            if to_units is not None:
+                expr, was_converted, actual_units = maybe_convert_expr(expr, was_converted, to_units, actual_units)
+        elif expr.is_Add:
+            # Convert all arguments to the desired units
+            new_args = []
+            for arg in expr.args:
+                arg, was_converted, actual_units = maybe_convert_child(arg, was_converted, to_units)
+                if to_units is None:
+                    to_units = actual_units  # Use units of the first argument for subsequent ones
+                new_args.append(arg)
+            if was_converted and new_args:
+                expr = expr.func(*new_args)
+        elif expr.is_Relational:
+            # The desired units must be dimensionless (or arbitrary)
+            if to_units is not None and to_units != dimensionless:
+                raise BooleanUnitsError(str(expr) + ' in ' + str(to_units))
+            # All arguments converted to the units of the first argument
+            arg_units = None
+            new_args = []
+            for arg in expr.args:
+                arg, was_converted, arg_units = maybe_convert_child(arg, was_converted, arg_units)
+                new_args.append(arg)
+            if was_converted and new_args:
+                expr = expr.func(*new_args)
+            # Result is dimensionless
+            actual_units = dimensionless
+        elif expr.is_Piecewise:  # NB: Must come before is_Function!
+            # Each condition is dimensionless; each piece gets converted to the desired units
+            new_args = []
+            for arg in expr.args:
+                piece, cond = arg
+                new_piece, was_converted, actual_units = maybe_convert_child(piece, was_converted, to_units)
+                new_cond, was_converted, _ = maybe_convert_child(cond, was_converted, dimensionless)
+                if to_units is None:
+                    to_units = actual_units  # Use units of the first piece for subsequent ones
+                new_args.append((new_piece, new_cond))
+            if was_converted and new_args:
+                expr = expr.func(*new_args)
+        elif expr.is_Function:
+            if expr.func in [sympy.floor, sympy.ceiling, sympy.Abs]:
+                # Push any needed conversion to the argument(s)
+                actual_units = to_units
+            else:
+                # All arguments should be dimensionless, as should the whole expr
+                if to_units is not None and to_units != dimensionless:
+                    raise InputArgumentsMustBeDimensionlessError(str(expr) + ' in ' + str(to_units))
+                actual_units = dimensionless
+            new_args = []
+            for arg in expr.args:
+                arg, was_converted, actual_units = maybe_convert_child(arg, was_converted, actual_units)
+                new_args.append(arg)
+            if was_converted and new_args:
+                expr = expr.func(*new_args)
+        elif expr.is_number or expr.is_Boolean:  # NB: Must come last
+            # Plain numbers can only be dimensionless
+            # This will also catch E, pi, oo & nan, true & false
+            if to_units is not None and to_units != dimensionless:
+                raise InputArgumentsMustBeDimensionlessError(str(expr) + ' in ' + str(to_units))
+            actual_units = dimensionless
+        else:
+            raise UnexpectedMathUnitsError(str(expr))
+
+        return expr, was_converted, actual_units

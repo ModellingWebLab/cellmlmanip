@@ -9,11 +9,32 @@ from cellmlmanip.units import (
     InputArgumentsInvalidUnitsError,
     InputArgumentsMustBeDimensionlessError,
     UnexpectedMathUnitsError,
+    UnitConversionError,
     UnitStore,
 )
 
 
-class TestUnits(object):
+@pytest.fixture(scope='class')
+def store():
+    return UnitStore()
+
+
+@pytest.fixture(scope='class')
+def cm(store):
+    return store.add_unit('cm', '0.01 * metre')
+
+
+@pytest.fixture(scope='class')
+def ms(store):
+    return store.add_unit('ms', '0.001 * second')
+
+
+@pytest.fixture(scope='class')
+def microsecond(store):
+    return store.add_unit('microsecond', '1e-6 * second')
+
+
+class TestUnits:
 
     def test_add_unit(self):
         """Tests UnitStore.add_unit()."""
@@ -186,7 +207,7 @@ class TestUnits(object):
         assert b.get_conversion_factor(x, y) == 0.001
 
 
-class TestEvaluateUnits(object):
+class TestEvaluateUnits:
     """Tests UnitStore.evaluate_units()."""
 
     def test_numbers(self):
@@ -421,3 +442,358 @@ class TestEvaluateUnits(object):
         expr = sp.cos(x).series(x, 0, 10)
         with pytest.raises(UnexpectedMathUnitsError):
             store.evaluate_units(expr)
+
+
+class TestConvertingExpressions:
+    """Test the UnitStore.convert_expression_recursively and set_lhs_units_from_rhs methods."""
+    def test_variable_no_conversion(self, store):
+        x = VariableDummy('x', store.get_unit('metre'))
+
+        new_x = store.convert_expression_recursively(x, None)
+        assert x is new_x
+
+        new_x = store.convert_expression_recursively(x, x.units)
+        assert x is new_x
+
+    def test_variable_conversion(self, store, cm):
+        x = VariableDummy('x', store.get_unit('metre'))
+        new_x = store.convert_expression_recursively(x, cm)
+        assert str(new_x) == '_100.0*_x'
+        assert new_x.args[1] is x
+        assert isinstance(new_x.args[0], NumberDummy)
+        assert new_x.args[0].units == cm / store.get_unit('metre')
+
+    def test_number_conversion(self, store, cm):
+        _5 = NumberDummy(5, cm)
+        new_5 = store.convert_expression_recursively(_5, store.get_unit('metre'))
+        assert str(new_5) == '_0.01*_5'
+        assert new_5.args[1] is _5
+        assert isinstance(new_5.args[0], NumberDummy)
+        assert new_5.args[0].units == store.get_unit('metre') / cm
+
+    def test_plain_numbers(self, store):
+        dimensionless = store.get_unit('dimensionless')
+        assert store.convert_expression_recursively(sp.E, dimensionless) is sp.E
+        assert store.convert_expression_recursively(sp.pi, None) is sp.pi
+        assert store.convert_expression_recursively(sp.oo, dimensionless) is sp.oo
+        assert store.convert_expression_recursively(sp.nan, None) is sp.nan
+        assert store.convert_expression_recursively(sp.true, dimensionless) is sp.true
+        assert store.convert_expression_recursively(sp.false, None) is sp.false
+
+        expr = sp.Integer(2)
+        assert store.convert_expression_recursively(expr, dimensionless) is expr
+
+        expr = sp.Rational(2, 3)
+        assert store.convert_expression_recursively(expr, None) is expr
+
+    def test_derivative_no_conversion(self, store):
+        x = VariableDummy('x', store.get_unit('metre'))
+        t = VariableDummy('t', store.get_unit('second'))
+        expr = sp.Derivative(x, t)
+
+        new_expr = store.convert_expression_recursively(expr, None)
+        assert expr is new_expr
+
+        new_expr = store.convert_expression_recursively(expr, x.units / t.units)
+        assert expr is new_expr
+
+    def test_derivative_conversion(self, store, cm, ms):
+        x = VariableDummy('x', store.get_unit('metre'))
+        t = VariableDummy('t', store.get_unit('second'))
+        expr = sp.Derivative(x, t)
+
+        new_expr = store.convert_expression_recursively(expr, cm / t.units)
+        assert str(new_expr) == '_100.0*Derivative(_x, _t)'
+        assert new_expr.args[0].args[0] is x
+        assert new_expr.args[0].args[1][0] is t
+
+        new_expr = store.convert_expression_recursively(expr, x.units / ms)
+        assert str(new_expr) == '_0.001*Derivative(_x, _t)'
+
+    def test_mul_and_pow(self, store, cm, ms):
+        x = VariableDummy('x', cm)
+        y = VariableDummy('y', ms)
+        expr = x / y  # Becomes x * (1/y)
+
+        # No conversion
+        new_expr = store.convert_expression_recursively(expr, None)
+        assert expr is new_expr
+
+        # With conversion
+        new_expr = store.convert_expression_recursively(expr, store.get_unit('metre') / store.get_unit('second'))
+        assert str(new_expr) == '_10.0*_x/_y'
+        assert new_expr.args[2] is x
+        assert new_expr.args[0].args[0] is y
+
+        # With conversion only for exponent
+        _4 = NumberDummy('4', store.get_unit('second'))
+        _2 = NumberDummy('2000', ms)
+        expr = x ** (_4 / _2)
+        new_expr = store.convert_expression_recursively(expr, None)
+        assert str(new_expr) == '_x**(_1000.0*_4/_2000)'
+
+        # With a base that needs internal conversion
+        expr = (y + _4) ** 2
+        new_expr = store.convert_expression_recursively(expr, None)
+        assert str(new_expr) == '(_0.001*_y + _4)**2'
+
+    def test_square_root(self, store, ms):
+        x = VariableDummy('x', store.get_unit('second') ** 2)
+        expr = x ** (1 / 2)
+        new_expr = store.convert_expression_recursively(expr, ms)
+        assert str(new_expr) == '_1000.0*_x**0.5'
+        assert new_expr.args[0].args[0] is x
+
+    def test_add_and_subtract(self, store, ms, microsecond):
+        x = VariableDummy('x', store.get_unit('second'))
+        y = VariableDummy('y', ms)
+        z = VariableDummy('z', microsecond)
+
+        # If no conversion is needed we get the original expression
+        expr = y + NumberDummy('2', ms)
+        assert store.convert_expression_recursively(expr, ms) is expr
+
+        # If we don't specify units, the first argument (y in canonical form) is chosen
+        expr = z + x - y
+        new_expr = store.convert_expression_recursively(expr, None)
+        assert str(new_expr) == '_0.001*_z + _1000.0*_x - _y'
+
+        new_expr = store.convert_expression_recursively(expr, microsecond)
+        assert str(new_expr) == '-_1000.0*_y + _1000000.0*_x + _z'
+
+    def test_abs_ceil_floor(self, store, ms):
+        x = VariableDummy('x', store.get_unit('second'))
+
+        expr = sp.Abs(x)
+        new_expr = store.convert_expression_recursively(expr, None)
+        assert new_expr is expr
+
+        expr = sp.Abs(x)
+        new_expr = store.convert_expression_recursively(expr, ms)
+        assert isinstance(new_expr, sp.Abs)
+        assert str(new_expr) == 'Abs(_1000.0*_x)'
+        assert new_expr.args[0].args[1] is x
+
+        expr = sp.floor(x)
+        new_expr = store.convert_expression_recursively(expr, store.get_unit('second'))
+        assert new_expr is expr
+
+        expr = sp.floor(x)
+        new_expr = store.convert_expression_recursively(expr, ms)
+        assert isinstance(new_expr, sp.floor)
+        assert str(new_expr) == 'floor(_1000.0*_x)'
+        assert new_expr.args[0].args[1] is x
+
+        expr = sp.ceiling(x)
+        new_expr = store.convert_expression_recursively(expr, ms)
+        assert isinstance(new_expr, sp.ceiling)
+        assert str(new_expr) == 'ceiling(_1000.0*_x)'
+        assert new_expr.args[0].args[1] is x
+
+    def test_exp_log_trig(self, store, ms):
+        dimensionless = store.get_unit('dimensionless')
+        x = VariableDummy('x', dimensionless)
+        y = VariableDummy('y', store.get_unit('second'))
+        z = VariableDummy('z', ms)
+
+        expr = sp.exp(x)
+        assert store.convert_expression_recursively(expr, dimensionless) is expr
+
+        expr = sp.log(y / z)
+        new_expr = store.convert_expression_recursively(expr, None)
+        assert isinstance(new_expr, sp.log)
+        assert str(new_expr) == 'log(_1000.0*_y/_z)'
+
+        expr = sp.sin(z / y)
+        new_expr = store.convert_expression_recursively(expr, dimensionless)
+        assert isinstance(new_expr, sp.sin)
+        assert str(new_expr) == 'sin(_0.001*_z/_y)'
+
+    def test_relations(self, store, ms):
+        x = VariableDummy('x', ms)
+        y = VariableDummy('y', store.get_unit('second'))
+        z = VariableDummy('z', ms)
+
+        expr = y < z
+        new_expr = store.convert_expression_recursively(expr, None)
+        assert str(new_expr) == '_y < _0.001*_z'
+
+        expr = z > y
+        new_expr = store.convert_expression_recursively(expr, store.get_unit('dimensionless'))
+        assert str(new_expr) == '_z > _1000.0*_y'
+
+        # Case with no conversion
+        expr = x < z
+        new_expr = store.convert_expression_recursively(expr, None)
+        assert new_expr is expr
+
+    def test_piecewise(self, store, ms, microsecond, cm):
+        # This also checks more complex nested expressions
+        dimensionless = store.get_unit('dimensionless')
+        _2 = NumberDummy(2, dimensionless)
+        x = VariableDummy('x', dimensionless)
+        y = VariableDummy('y', store.get_unit('second'))
+        z = VariableDummy('z', ms)
+
+        expr = sp.Piecewise(
+            (y, sp.And(y < z, x > _2)),
+            (z, x < _2),
+            (z * _2, True),
+        )
+
+        # Units of result will be chosen from first case, i.e. second
+        new_expr = store.convert_expression_recursively(expr, None)
+        assert str(new_expr) == (
+            'Piecewise((_y, (_2 < _x) & (_y < _0.001*_z)), (_0.001*_z, _2 > _x), (_0.001*_2*_z, True))')
+
+        # Units of result are specified
+        new_expr = store.convert_expression_recursively(expr, ms)
+        assert str(new_expr) == (
+            'Piecewise((_1000.0*_y, (_2 < _x) & (_y < _0.001*_z)), (_z, _2 > _x), (_2*_z, True))')
+
+        # A simpler case with no conversion
+        _1 = NumberDummy('1', ms)
+        expr = sp.Piecewise((z, x < _2), (_1, True))
+        assert store.convert_expression_recursively(expr, ms) is expr
+
+    def test_assignment(self, store, ms):
+        x = VariableDummy('x', store.get_unit('second'))
+        _10 = NumberDummy(10, ms)
+        expr = sp.Eq(x, _10)
+        new_expr = store.convert_expression_recursively(expr, None)
+        assert str(new_expr) == 'Eq(_x, _0.001*_10)'
+
+    def test_set_lhs_units_from_rhs(self, store, ms):
+        x = VariableDummy('x', None)
+        _10 = NumberDummy(10, ms)
+        expr = sp.Eq(x, _10)
+        new_expr = store.set_lhs_units_from_rhs(expr)
+        assert str(new_expr) == 'Eq(_x, _10)'
+        assert new_expr.args[0] is x
+        assert new_expr.args[1] is _10
+        assert x.units is ms
+
+    def test_set_lhs_units_from_converted_rhs(self, store, ms):
+        x = VariableDummy('x', None)
+        y = VariableDummy('y', store.get_unit('second'))
+        _10 = NumberDummy(10, ms)
+        expr = sp.Eq(x, _10 + y)
+        new_expr = store.set_lhs_units_from_rhs(expr)
+        assert str(new_expr) == 'Eq(_x, _10 + _1000.0*_y)'
+        assert new_expr.args[0] is x
+        assert x.units is ms
+
+    # Methods below check error cases
+    def test_symbol_wrong_dimensions(self, store):
+        x = VariableDummy('x', store.get_unit('metre'))
+        with pytest.raises(UnitConversionError, match='from meter to second'):
+            store.convert_expression_recursively(x, store.get_unit('second'))
+
+    def test_derivative_wrong_dimensions(self, store):
+        x = VariableDummy('x', store.get_unit('metre'))
+        t = VariableDummy('t', store.get_unit('second'))
+        expr = sp.Derivative(x, t)
+        with pytest.raises(UnitConversionError, match='Context: trying to convert'):
+            store.convert_expression_recursively(expr, store.get_unit('metre'))
+
+    def test_complex_derivative(self, store):
+        x = VariableDummy('x', store.get_unit('metre'))
+        y = VariableDummy('y', store.get_unit('metre'))
+        t = VariableDummy('t', store.get_unit('second'))
+        t2 = VariableDummy('t2', store.get_unit('second'))
+        expr = sp.Derivative(x + y, t, t2)
+        with pytest.raises(UnexpectedMathUnitsError,
+                           match='only support first order derivatives of single variables'):
+            store.convert_expression_recursively(expr, store.get_unit('metre'))
+
+    def test_mul_wrong_dimensions(self, store):
+        x = VariableDummy('x', store.get_unit('metre'))
+        _1 = NumberDummy(1, store.get_unit('second'))
+        expr = x * _1
+        with pytest.raises(UnitConversionError):
+            store.convert_expression_recursively(expr, store.get_unit('metre'))
+
+    def test_error_matrix(self, store):
+        expr = sp.Matrix([[1, 0], [0, 1]])
+        with pytest.raises(UnexpectedMathUnitsError):
+            store.convert_expression_recursively(expr, None)
+
+    def test_error_exponent_not_dimensionless(self, store):
+        x = VariableDummy('x', store.get_unit('metre'))
+        _1 = NumberDummy(1, store.get_unit('second'))
+        expr = x ** _1
+        with pytest.raises(UnitConversionError):
+            store.convert_expression_recursively(expr, None)
+
+    def test_error_exponent_not_number(self, store):
+        x = VariableDummy('x', store.get_unit('dimensionless'))
+        _1 = NumberDummy(1, store.get_unit('second'))
+        expr = _1 ** x
+        with pytest.raises(InputArgumentMustBeNumberError):
+            store.convert_expression_recursively(expr, None)
+
+    def test_pow_wrong_dimensions(self, store):
+        x = VariableDummy('x', store.get_unit('second'))
+        _2 = NumberDummy(2, store.get_unit('dimensionless'))
+        expr = x ** _2
+        with pytest.raises(UnitConversionError):
+            store.convert_expression_recursively(expr, store.get_unit('second'))
+
+    def test_add_wrong_dimensions(self, store):
+        x = VariableDummy('x', store.get_unit('second'))
+        _2 = NumberDummy(2, store.get_unit('dimensionless'))
+        expr = x + _2
+        with pytest.raises(UnitConversionError):
+            store.convert_expression_recursively(expr, None)
+
+    def test_relational_must_be_dimensionless(self, store):
+        x = VariableDummy('x', store.get_unit('second'))
+        y = VariableDummy('y', store.get_unit('second'))
+        expr = x < y
+        with pytest.raises(BooleanUnitsError):
+            store.convert_expression_recursively(expr, store.get_unit('second'))
+
+    def test_relational_dimension_mismatch(self, store):
+        x = VariableDummy('x', store.get_unit('second'))
+        y = VariableDummy('y', store.get_unit('metre'))
+        expr = x <= y
+        with pytest.raises(UnitConversionError):
+            store.convert_expression_recursively(expr, store.get_unit('dimensionless'))
+
+    def test_piecewise_condition_not_dimensionless(self, store):
+        a = VariableDummy('a', store.get_unit('metre'))
+        x = VariableDummy('x', store.get_unit('second'))
+        expr = sp.Piecewise((a, x), (-a, True))
+        with pytest.raises(UnitConversionError):
+            store.convert_expression_recursively(expr, store.get_unit('metre'))
+
+    def test_piecewise_cannot_convert_result(self, store):
+        a = VariableDummy('a', store.get_unit('metre'))
+        x = VariableDummy('x', store.get_unit('dimensionless'))
+        expr = sp.Piecewise((a, x), (-a, True))
+        with pytest.raises(UnitConversionError):
+            store.convert_expression_recursively(expr, store.get_unit('second'))
+
+    def test_exp_must_be_dimensionless(self, store):
+        x = VariableDummy('x', store.get_unit('dimensionless'))
+        expr = sp.exp(x)
+        with pytest.raises(InputArgumentsMustBeDimensionlessError):
+            store.convert_expression_recursively(expr, store.get_unit('second'))
+
+    def test_number_must_be_dimensionless(self, store):
+        with pytest.raises(InputArgumentsMustBeDimensionlessError):
+            store.convert_expression_recursively(sp.E, store.get_unit('second'))
+
+    def test_error_unsupported_math(self, store):
+        x = VariableDummy('x', store.get_unit('second'))
+        expr = sp.Integral(x**2, x)
+        with pytest.raises(UnexpectedMathUnitsError):
+            store.convert_expression_recursively(expr, None)
+
+    def test_set_lhs_units_from_inconsistent_rhs(self, store):
+        x = VariableDummy('x', None)
+        _10 = NumberDummy(10, store.get_unit('metre'))
+        _20 = NumberDummy(20, store.get_unit('second'))
+        expr = sp.Eq(x, _10 + _20)
+        with pytest.raises(UnitConversionError, match='Context: trying to set LHS units'):
+            store.set_lhs_units_from_rhs(expr)
