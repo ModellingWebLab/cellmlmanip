@@ -24,6 +24,7 @@ For annotations, we check:
 * RDF within <variable> elements
 * RDF within a <component> but not inside a <variable>
 * RDF directly within <model>
+* An annotation on a non-source variable (checks the cmeta:id is moved when connections resolved)
 
 -->
 <model name="test_simple_odes" cmeta:id="test_simple_odes"
@@ -92,7 +93,7 @@ For annotations, we check:
    </units>
 
    <component name="environment">
-      <variable name="time" public_interface="out" units="ms" cmeta:id="time">
+      <variable name="time" public_interface="out" units="ms">
          <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:bqbiol="http://biomodels.net/biology-qualifiers/">
             <rdf:Description rdf:about="#time">
                <bqbiol:is rdf:resource="https://chaste.comlab.ox.ac.uk/cellml/ns/oxford-metadata#time"/>
@@ -103,7 +104,7 @@ For annotations, we check:
 
    <component name="single_independent_ode">
       <!-- d(sv1)/d(time) = 1, sv1(0) = 1 -->
-      <variable name="time" public_interface="in" units="ms"/>
+      <variable name="time" public_interface="in" units="ms" cmeta:id="time"/>
       <variable name="sv1" units="mV" cmeta:id="sv11" initial_value="1">
          <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:bqbiol="http://biomodels.net/biology-qualifiers/">
             <rdf:Description rdf:about="#sv11">
@@ -137,13 +138,13 @@ For annotations, we check:
          </rdf:RDF>
       </variable>
       <variable name="a" units="mV_per_ms" initial_value="1" cmeta:id="a1">
-        <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">      
+        <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
 	      <rdf:Description rdf:about="#a1">
 		      <modifiable-parameter xmlns="https://chaste.comlab.ox.ac.uk/cellml/ns/pycml#">yes</modifiable-parameter>
           </rdf:Description>
         </rdf:RDF>
-      </variable>	  
-	  
+      </variable>
+
       <math xmlns="http://www.w3.org/1998/Math/MathML">
          <apply>
             <eq/>
@@ -706,5 +707,5 @@ For annotations, we check:
          <bqbiol:is rdf:resource="urn:test-ns#parameter_a1"/>
       </rdf:Description>
    </rdf:RDF>
-    
+
 </model>
