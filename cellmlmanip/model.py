@@ -280,6 +280,11 @@ class Model(object):
             if target in self._ode_definition_map:
                 self._ode_definition_map[source.assigned_to] = self._ode_definition_map[target]
                 del self._ode_definition_map[target]
+            # Migrate the cmeta:id too so annotations work as expected
+            # Really modellers should annotate the source variable, but they don't always!
+            if target.cmeta_id is not None:
+                # Note that this method considers source as the variable with the cmeta:id already.
+                self.transfer_cmeta_id(source=target, target=source)
 
         # Otherwise, this connection requires a conversion
         else:
