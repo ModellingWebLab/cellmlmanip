@@ -722,14 +722,18 @@ class UnitCalculator(object):
             :returns: ``(expr or new expr, was_converted, to_units)``
             :raises UnitConversionError: if conversion impossible
             """
-            try:
-                cf = self._store.get_conversion_factor(from_units, to_units)
-            except DimensionalityError:
-                raise UnitConversionError(expr, from_units, to_units) from None
-            if cf != 1:
-                was_converted = True
-                cf = model.NumberDummy(cf, to_units / from_units)
-                expr = cf * expr
+            if to_units is None:
+                # Don't convert, just use the existing units
+                to_units = from_units
+            else:
+                try:
+                    cf = self._store.get_conversion_factor(from_units, to_units)
+                except DimensionalityError:
+                    raise UnitConversionError(expr, from_units, to_units) from None
+                if cf != 1:
+                    was_converted = True
+                    cf = model.NumberDummy(cf, to_units / from_units)
+                    expr = cf * expr
             return expr, was_converted, to_units
 
         def maybe_convert_child(expr, was_converted, to_units):
@@ -745,11 +749,7 @@ class UnitCalculator(object):
             raise UnexpectedMathUnitsError(str(expr))
         elif expr.is_Symbol:
             assert isinstance(expr, (model.NumberDummy, model.VariableDummy))
-            if to_units is None:
-                # Nothing to do, just record the actual units
-                actual_units = expr.units
-            else:
-                expr, was_converted, actual_units = maybe_convert_expr(expr, was_converted, expr.units, to_units)
+            expr, was_converted, actual_units = maybe_convert_expr(expr, was_converted, expr.units, to_units)
         elif expr.is_Derivative:
             # Just convert the result if needed
             if (not isinstance(expr.args[0], model.VariableDummy) or
@@ -761,8 +761,7 @@ class UnitCalculator(object):
             _, was_converted, numerator_units = maybe_convert_child(expr.args[0], was_converted, None)
             _, was_converted, denominator_units = maybe_convert_child(expr.args[1][0], was_converted, None)
             actual_units = numerator_units / denominator_units
-            if to_units is not None:
-                expr, was_converted, actual_units = maybe_convert_expr(expr, was_converted, actual_units, to_units)
+            expr, was_converted, actual_units = maybe_convert_expr(expr, was_converted, actual_units, to_units)
         elif expr.is_Mul:
             # Multiply units of operands, which are allowed to be of any units
             new_args = []
@@ -790,8 +789,7 @@ class UnitCalculator(object):
             if was_converted:
                 expr = expr.func(base, exponent)
             actual_units = base_units ** exponent_val
-            if to_units is not None:
-                expr, was_converted, actual_units = maybe_convert_expr(expr, was_converted, actual_units, to_units)
+            expr, was_converted, actual_units = maybe_convert_expr(expr, was_converted, actual_units, to_units)
         elif expr.is_Add:
             # Convert all arguments to the desired units
             new_args = []
