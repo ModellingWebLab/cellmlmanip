@@ -543,7 +543,7 @@ class TestConvertingExpressions:
         z = VariableDummy('z', ms)
         expr = (x + y) * z
         new_expr = store.convert_expression_recursively(expr, None)
-        assert str(new_expr) == '(_x+_0.001*_y)*_z'
+        assert str(new_expr) == '_z*(_0.001*_y + _x)'
 
     def test_square_root(self, store, ms):
         x = VariableDummy('x', store.get_unit('second') ** 2)
