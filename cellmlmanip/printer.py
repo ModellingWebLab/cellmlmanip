@@ -403,4 +403,3 @@ class Printer(sympy.printing.printer.Printer):
     def _print_Symbol(self, expr):
         """ Handles Sympy Symbol objects. """
         return self._symbol_function(expr)
-

@@ -501,4 +501,3 @@ class Parser(object):
         if not rnc.validate(tree):
             msg = '. '.join([str(x) for x in rnc.error_log])
             raise ValueError('Invalid or unsupported CellML file. ' + msg)
-

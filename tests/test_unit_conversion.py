@@ -3,6 +3,7 @@ from pint import DimensionalityError
 
 from cellmlmanip import units
 from cellmlmanip.model import DataDirectionFlow
+
 from . import shared
 
 

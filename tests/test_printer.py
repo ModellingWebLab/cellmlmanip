@@ -3,10 +3,12 @@
 #
 import logging
 import math
+
 import pytest
 import sympy as sp
 
 import cellmlmanip.printer
+
 
 # Show more logging output
 logging.getLogger().setLevel(logging.INFO)
