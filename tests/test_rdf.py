@@ -4,7 +4,9 @@ import sympy
 
 import cellmlmanip
 import cellmlmanip.rdf
+
 from . import shared
+
 
 PYCMLMETA = 'https://chaste.comlab.ox.ac.uk/cellml/ns/pycml#'
 
@@ -284,4 +286,3 @@ def test_transfer_cmeta_id():
     assert v4.rdf_identity is not None
     with pytest.raises(ValueError):
         model.transfer_cmeta_id(v2, v4)
-

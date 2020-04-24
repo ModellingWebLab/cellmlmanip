@@ -22,6 +22,7 @@
 # import cellmlmanip
 import sphinx
 
+
 # -- General configuration ------------------------------------------------
 
 # If your documentation needs a minimal Sphinx version, state it here.
@@ -185,4 +186,3 @@ texinfo_documents = [
      author, 'Cellmlmanip', 'One line description of project.',
      'Miscellaneous'),
 ]
-

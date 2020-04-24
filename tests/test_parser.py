@@ -317,4 +317,3 @@ class TestParser(object):
         p = parser.Parser(path)
         with pytest.raises(ValueError, match='Element model has extra content'):
             p.parse()
-

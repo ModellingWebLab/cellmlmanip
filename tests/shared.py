@@ -1,5 +1,6 @@
 # Module with cellmlmanip tests
 import os
+
 import cellmlmanip
 
 
