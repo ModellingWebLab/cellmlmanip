@@ -194,6 +194,7 @@ class Model(object):
         self._name_to_variable[name] = var = VariableDummy(
             name=name,
             units=units,
+            model=self,
             initial_value=initial_value,
             public_interface=public_interface,
             private_interface=private_interface,
@@ -741,6 +742,7 @@ class Model(object):
         del self._name_to_variable[variable.name]
         if variable._cmeta_id is not None:
             del self._cmeta_id_to_variable[variable._cmeta_id]
+        variable._model = None  # Just in case!
         self._invalidate_cache()
 
     def transfer_cmeta_id(self, source, target):
@@ -1070,11 +1072,13 @@ class VariableDummy(sympy.Dummy):
     def __init__(self,
                  name,
                  units,
+                 model=None,
                  initial_value=None,
                  public_interface=None,
                  private_interface=None,
                  order_added=None,
                  cmeta_id=None):
+        self._model = model
         self.name = name
         self.units = units
         self.initial_value = None if initial_value is None else float(initial_value)
@@ -1102,24 +1106,28 @@ class VariableDummy(sympy.Dummy):
         # TODO: Define allowed types via enum
         self.type = None
 
-    @property
-    def cmeta_id(self):
-        """Provides read-only access the the cmeta id."""
-        return self._cmeta_id
-
     def __str__(self):
         return self.name
 
-    def _set_cmeta_id(self, cmeta_id):
-        """ Sets this variable's cmeta id. Should only be called by Model, which can verify cmeta id uniqueness. """
-        self._cmeta_id = cmeta_id
-        if cmeta_id is None:
-            self._rdf_identity = None
-        else:
-            self._rdf_identity = create_rdf_node('#' + self._cmeta_id)
+    @property
+    def model(self):
+        """The :class:`Model` this variable is part of."""
+        return self._model
 
     @property
     def rdf_identity(self):
         """The RDF identity for this variable (will be ``None`` unless the variable has a cmeta id)."""
         return self._rdf_identity
 
+    @property
+    def cmeta_id(self):
+        """Provides read-only access to the cmeta id."""
+        return self._cmeta_id
+
+    def _set_cmeta_id(self, cmeta_id):
+        """Sets this variable's cmeta id. Should only be called by Model, which can verify cmeta id uniqueness."""
+        self._cmeta_id = cmeta_id
+        if cmeta_id is None:
+            self._rdf_identity = None
+        else:
+            self._rdf_identity = create_rdf_node('#' + self._cmeta_id)

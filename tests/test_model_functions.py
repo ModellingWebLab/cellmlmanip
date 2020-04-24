@@ -4,8 +4,7 @@ import pytest
 import sympy as sp
 
 from cellmlmanip import parser, units
-from cellmlmanip.model import Model, VariableDummy
-from cellmlmanip.model import FLOAT_PRECISION
+from cellmlmanip.model import FLOAT_PRECISION, Model, VariableDummy
 
 from . import shared
 
@@ -462,6 +461,7 @@ class TestModelFunctions():
             model.get_variable_by_name('newvar') is None
 
         newvar = model.add_variable('newvar', 'mV')
+        assert newvar.model is model
         assert newvar.is_real
         assert len(model.variables()) == 4
         assert model.get_variable_by_name('newvar')
@@ -490,6 +490,7 @@ class TestModelFunctions():
 
         model.remove_variable(i_stim)
 
+        assert i_stim.model is None
         with pytest.raises(KeyError):
             model.get_variable_by_name(i_stim.name)
         assert model.get_definition(i_stim) is None
@@ -506,6 +507,7 @@ class TestModelFunctions():
 
         model.remove_variable(v)
 
+        assert v.model is None
         with pytest.raises(KeyError):
             model.get_variable_by_name(v.name)
         assert model.get_definition(v) is None
@@ -519,6 +521,7 @@ class TestModelFunctions():
 
         model.remove_variable(t)
 
+        assert t.model is None
         with pytest.raises(KeyError):
             model.get_variable_by_name(t.name)
 
@@ -526,6 +529,7 @@ class TestModelFunctions():
         var = model.get_variable_by_name('membrane$E_R')
         model.remove_variable(var)
 
+        assert var.model is None
         with pytest.raises(KeyError):
             model.get_variable_by_name(var.name)
 
@@ -681,4 +685,3 @@ class TestModelFunctions():
         # And the equations should have matching units
         for eq in model.equations:
             model.check_left_right_units_equal(eq)
-
