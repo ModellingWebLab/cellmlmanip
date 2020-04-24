@@ -650,24 +650,28 @@ class TestModelFunctions():
         assert new_eqn.rhs.args[0].value == 0.001
         assert new_eqn.rhs.args[1] == source
 
-    def test_is_state(self, aslanidi_model):
-        """ Tests Model.is_state(). """
+    def test_variable_classification(self, aslanidi_model):
+        """ Tests Model.is_state() and Model.is_constant(). """
 
         # State variable
         v = aslanidi_model.get_variable_by_ontology_term((shared.OXMETA, 'membrane_voltage'))
         assert aslanidi_model.is_state(v)
+        assert not aslanidi_model.is_constant(v)
 
         # Intermediary variable
         i = aslanidi_model.get_variable_by_ontology_term((shared.OXMETA, 'membrane_fast_sodium_current'))
         assert not aslanidi_model.is_state(i)
+        assert not aslanidi_model.is_constant(i)
 
         # Free variable
         t = aslanidi_model.get_variable_by_ontology_term((shared.OXMETA, 'time'))
         assert not aslanidi_model.is_state(t)
+        assert not aslanidi_model.is_constant(t)
 
         # Constant
         c = aslanidi_model.get_variable_by_ontology_term((shared.OXMETA, 'membrane_capacitance'))
         assert not aslanidi_model.is_state(c)
+        assert aslanidi_model.is_constant(c)
 
     def test_transform_constants(self):
         """ Tests Model.transform_constants(). """

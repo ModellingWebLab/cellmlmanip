@@ -682,6 +682,15 @@ class Model(object):
         """ Checks if the given ``variable`` is a state variable (i.e. if it's defined by an ODE). """
         return variable in self._ode_definition_map
 
+    def is_constant(self, variable):
+        """Determine whether the given ``variable`` is a constant.
+
+        This is calculated by looking at the RHS of the defining equation and checking it has no
+        variable references.
+        """
+        defn = self._var_definition_map.get(variable)
+        return defn is not None and len(defn.rhs.atoms(VariableDummy)) == 0
+
     def find_variables_and_derivatives(self, expressions):
         """ Returns a set containing all variables and derivatives referenced in a list of expressions.
 
