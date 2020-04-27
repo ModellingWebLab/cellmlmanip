@@ -392,7 +392,7 @@ class Model(object):
 
         Looks for annotation in the ontology first (if given), then cmeta:id if present, or the name attribute if not
         :param var: the variable for which to get the display name.
-        :param ontology: the namespace prefix for the ontology used.
+        :param ontology: the namespace prefix for the ontology used (defaults to not considering annotations).
 
         :return: the local name from the ontology (if such an annotation exists)
                  or the cmeta_id (if present) or the variable's name"""
