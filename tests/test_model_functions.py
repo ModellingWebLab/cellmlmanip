@@ -86,48 +86,30 @@ class TestModelFunctions():
 
     def test_get_display_name(self, simple_ode_model):
         """ Tests Model.get_display_name(var). """
-        # For getting a display name there are 4 possibilities:
-        # - Has an oxmeta-annotation
-        # - Has an annotation in another ontology
-        # - Has no annotation but does have a cmeta:id
-        # - Has no cmeta:id
-
-        # Check our 4 example variables exist
-        for v in ('single_independent_ode$sv1', 'single_ode_rhs_const_var$a', 'single_ode_rhs_computed_var$a',
-                  'single_ode_rhs_const_var$time'):
-            assert v in [str(var) for var in simple_ode_model.variables()]
-
-        # For getting a display name there are 4 possibilities:
         OXMETA = 'https://chaste.comlab.ox.ac.uk/cellml/ns/oxford-metadata#'
-        for var in simple_ode_model.variables():
-            oxmeta_ontology_tags = simple_ode_model.get_ontology_terms_by_variable(var, OXMETA)
-            display_name = simple_ode_model.get_display_name(var, ontology=OXMETA)
 
-            # Has an oxmeta-annotation
-            if var.name == 'single_independent_ode$sv1':
-                assert var.cmeta_id == 'sv11'
-                assert oxmeta_ontology_tags == ['sodium_reversal_potential']
-                assert display_name == oxmeta_ontology_tags[-1]
+        # For getting a display name there are 4 possibilities:
+        # Has an oxmeta-annotation
+        var = simple_ode_model.get_variable_by_name('single_independent_ode$sv1')
+        assert var.cmeta_id == 'sv11'
+        assert simple_ode_model.get_display_name(var, ontology=OXMETA) == 'sodium_reversal_potential'
 
-            # Has an annotation in another ontology
-            if var.name == 'single_ode_rhs_const_var$a':
-                assert var.cmeta_id == 'a1'
-                assert oxmeta_ontology_tags == []
-                assert simple_ode_model.get_ontology_terms_by_variable(var, 'urn:test-ns#')[-1] == 'parameter_a1'
-                assert display_name == var.cmeta_id
-                assert simple_ode_model.get_display_name(var) == 'parameter_a1'
+        # Has an annotation in another ontology
+        var = simple_ode_model.get_variable_by_name('single_ode_rhs_const_var$a')
+        assert var.cmeta_id == 'a1'
+        assert simple_ode_model.get_display_name(var, ontology=OXMETA) == var.cmeta_id
+        assert simple_ode_model.get_display_name(var) == 'parameter_a1'
+        assert simple_ode_model.get_display_name(var, ontology='urn:test-ns#') == 'parameter_a1'
 
-            # Has no annotation but does have a cmeta:id
-            if var.name == 'single_ode_rhs_computed_var$a':
-                assert var.cmeta_id == 'a2'
-                assert oxmeta_ontology_tags == []
-                assert display_name == var.cmeta_id
+        # Has no annotation but does have a cmeta:id
+        var = simple_ode_model.get_variable_by_name('single_ode_rhs_computed_var$a')
+        assert var.cmeta_id == 'a2'
+        assert simple_ode_model.get_display_name(var, ontology=OXMETA) == var.cmeta_id
 
-            # Has no cmeta:id
-            if var.name == 'single_ode_rhs_const_var$time':
-                assert var.cmeta_id is None
-                assert oxmeta_ontology_tags == []
-                assert display_name == var.name
+        # Has no cmeta:id
+        var = simple_ode_model.get_variable_by_name('single_ode_rhs_const_var$time')
+        assert var.cmeta_id is None
+        assert simple_ode_model.get_display_name(var, ontology=OXMETA) == var.name.replace('$', '__')
 
     def test_get_state_variables(self, basic_model):
         """ Tests Model.get_state_variables() works on a simple model. """
