@@ -101,7 +101,7 @@ class TestModelFunctions():
         OXMETA = 'https://chaste.comlab.ox.ac.uk/cellml/ns/oxford-metadata#'
         for var in simple_ode_model.variables():
             oxmeta_ontology_tags = simple_ode_model.get_ontology_terms_by_variable(var, OXMETA)
-            display_name = simple_ode_model.get_display_name(var)
+            display_name = simple_ode_model.get_display_name(var, ontology=OXMETA)
 
             # Has an oxmeta-annotation
             if var.name == 'single_independent_ode$sv1':
@@ -115,6 +115,7 @@ class TestModelFunctions():
                 assert oxmeta_ontology_tags == []
                 assert simple_ode_model.get_ontology_terms_by_variable(var, 'urn:test-ns#')[-1] == 'parameter_a1'
                 assert display_name == var.cmeta_id
+                assert simple_ode_model.get_display_name(var) == 'parameter_a1'
 
             # Has no annotation but does have a cmeta:id
             if var.name == 'single_ode_rhs_computed_var$a':
