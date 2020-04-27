@@ -391,7 +391,6 @@ class Model(object):
         """Return a display name for the given variable.
 
         Looks for annotation in the ontology first (if given), then cmeta:id if present, or the name attribute if not
-        If there is an interface component, strip the name of it out of the display name
         :param var: the variable for which to get the display name.
         :param ontology: the namespace prefix for the ontology used.
 
