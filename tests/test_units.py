@@ -445,7 +445,9 @@ class TestEvaluateUnits:
 
 
 class TestConvertingExpressions:
-    """Test the UnitStore.convert_expression_recursively and set_lhs_units_from_rhs methods."""
+    """
+    Test the UnitStore methods that perform within-equation conversion.
+    """
     def test_variable_no_conversion(self, store):
         x = VariableDummy('x', store.get_unit('metre'))
 
@@ -671,25 +673,33 @@ class TestConvertingExpressions:
         new_expr = store.convert_expression_recursively(expr, None)
         assert str(new_expr) == 'Eq(_x, _0.001*_10)'
 
-    def test_set_lhs_units_from_rhs(self, store, ms):
-        x = VariableDummy('x', None)
-        _10 = NumberDummy(10, ms)
-        expr = sp.Eq(x, _10)
-        new_expr = store.set_lhs_units_from_rhs(expr)
-        assert str(new_expr) == 'Eq(_x, _10)'
-        assert new_expr.args[0] is x
-        assert new_expr.args[1] is _10
-        assert x.units is ms
+    def test_evaluate_units_and_fix(self, store, ms):
+        s = store.get_unit('second')
 
-    def test_set_lhs_units_from_converted_rhs(self, store, ms):
-        x = VariableDummy('x', None)
-        y = VariableDummy('y', store.get_unit('second'))
-        _10 = NumberDummy(10, ms)
-        expr = sp.Eq(x, _10 + y)
-        new_expr = store.set_lhs_units_from_rhs(expr)
-        assert str(new_expr) == 'Eq(_x, _10 + _1000.0*_y)'
-        assert new_expr.args[0] is x
-        assert x.units is ms
+        # Note that sympy re-orders the expression into a consistent canonical form, in this case based on the value
+        a = NumberDummy(10, ms)
+        b = NumberDummy(0.1, s)
+        expr = a + b
+        assert str(expr) == '_0.1 + _10'
+        units, new_expr = store.evaluate_units_and_fix(expr)
+        assert str(new_expr) == '_0.001*_10 + _0.1'
+        assert units is s
+
+        b = NumberDummy(20, s)
+        expr = a + b
+        assert str(expr) == '_10 + _20'
+        units, new_expr = store.evaluate_units_and_fix(expr)
+        assert str(new_expr) == '_10 + _1000.0*_20'
+        assert units is ms
+
+    def test_evaluate_units_and_fix_with_variable(self, store, ms):
+        a = NumberDummy(10, ms)
+        b = VariableDummy('b', store.get_unit('second'))
+        expr = a + b
+        assert str(expr) == '_10 + _b'
+        units, new_expr = store.evaluate_units_and_fix(expr)
+        assert str(new_expr) == '_10 + _1000.0*_b'
+        assert units is ms
 
     # Methods below check error cases
     def test_symbol_wrong_dimensions(self, store):
@@ -798,10 +808,10 @@ class TestConvertingExpressions:
         with pytest.raises(UnexpectedMathUnitsError):
             store.convert_expression_recursively(expr, None)
 
-    def test_set_lhs_units_from_inconsistent_rhs(self, store):
-        x = VariableDummy('x', None)
+    def test_evaluate_units_and_fix_with_unfixable_expr(self, store):
         _10 = NumberDummy(10, store.get_unit('metre'))
         _20 = NumberDummy(20, store.get_unit('second'))
-        expr = sp.Eq(x, _10 + _20)
-        with pytest.raises(UnitConversionError, match='Context: trying to set LHS units'):
-            store.set_lhs_units_from_rhs(expr)
+        expr = _10 + _20
+        with pytest.raises(UnitConversionError, match='Context: trying to evaluate'):
+            store.evaluate_units_and_fix(expr)
+

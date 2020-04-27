@@ -369,6 +369,23 @@ class UnitStore(object):
         logger.debug('evaluate_units(%s) ⟶ %s', expr, found)
         return found
 
+    def evaluate_units_and_fix(self, expr):
+        """
+        Evaluates and returns the ``Unit`` a Sympy expression is in; but will also attempt to fix inconsistencies in
+        ``expr`` and return an updated expression if needed.
+
+        :param expr: the Sympy expression whose units to evaluate.
+        :returns: A tuple ``(units, new_expr)`` where ``units`` is the calculated ``Unit`` object, and ``new_expr`` is
+            either ``expr`` or a copy made internally consistent.
+        :raises UnitError: if there are unfixable unit errors when evaluating the expression's units.
+        """
+        try:
+            new_expr, was_converted, actual_units = self._calculator.convert_expression_recursively(expr, None)
+        except UnitError as e:
+            e.add_context(expr, 'trying to evaluate "{}"')
+            raise
+        return actual_units, new_expr
+
     def get_conversion_factor(self, from_unit, to_unit):
         """Returns the magnitude multiplier required to convert a unit to the specified unit.
 
@@ -432,26 +449,6 @@ class UnitStore(object):
                 'trying to convert "{}" to ' + ('consistent units' if to_units is None else str(to_units)))
             raise
         return new_expr
-
-    def set_lhs_units_from_rhs(self, equation):
-        """Set the units of the variable assigned to based on the expression assigned.
-
-        :param equation: a :class:`sympy.Eq` instance with a :class:`VariableDummy` on the left hand side
-        :returns: a new version of the equation, but with the RHS using consistent units throughout (with
-            conversions if needed) and the ``units`` attribute on the LHS updated to match
-        :raises UnitError: if conversion is not possible, using a suitable subclass depending on the exact reason
-        """
-        lhs = equation.lhs
-        assert isinstance(lhs, model.VariableDummy)
-        try:
-            new_rhs, was_converted, rhs_units = self._calculator.convert_expression_recursively(equation.rhs, None)
-        except UnitError as e:
-            e.add_context(equation, 'trying to set LHS units from those of the RHS in {}')
-            raise
-        lhs.units = rhs_units
-        if was_converted:
-            equation = sympy.Eq(lhs, new_rhs)
-        return equation
 
 
 class UnitCalculator(object):
