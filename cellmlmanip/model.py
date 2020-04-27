@@ -387,18 +387,19 @@ class Model(object):
                               and node.get('variable_type', '') not in ('state', 'free', 'parameter')]
         return sorted(derived_quantities, key=lambda var: var.order_added)
 
-    def get_display_name(self, var, META='https://chaste.comlab.ox.ac.uk/cellml/ns/oxford-metadata#'):
+    def get_display_name(self, var, preferred_ontology='https://chaste.comlab.ox.ac.uk/cellml/ns/oxford-metadata#'):
         """Return a display name for the given variable.
 
-        Looks for META ontology annotation tag first, then cmeta:id if present, or the name attribute if not.
-        If there is an interface component, strip the name of it out of the display name.
+        Looks for annotation in the preferred ontology first, then cmeta:id if present, or the name attribute if not
+        If there is an interface component, strip the name of it out of the display name
         :param var: the variable for which to get the display name.
-        :param META: the namespace prefix for the ontology used, (by default the oxford chaste metadata ontology).
+        :param preferred_ontology: the namespace prefix for the ontology used,
+                                   (by default the oxford chaste metadata ontology)
 
-        :return: ontology annotation if the var has it, otherwise cmeta_id, if it has it otherwise variable name.
-        """
-        if self.has_ontology_annotation(var, META):
-            return self.get_ontology_terms_by_variable(var, META)[-1]
+        :return: the local name from the preferred ontology (if such an annotation exists)
+                 or the cmeta_id (if present) or the variable's name"""
+        if self.has_ontology_annotation(var, preferred_ontology):
+            return self.get_ontology_terms_by_variable(var, preferred_ontology)[-1]
         return var.cmeta_id if var.cmeta_id else var.name
 
     def get_state_variables(self):
