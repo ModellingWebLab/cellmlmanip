@@ -398,10 +398,8 @@ class Model(object):
                  or the cmeta_id (if present) or the variable's name
         """
         if self.has_ontology_annotation(var, ontology):
-            display_name = self.get_ontology_terms_by_variable(var, ontology)[-1]
-        else:
-            display_name = var.cmeta_id if var.cmeta_id else var.name
-        return display_name.replace('$', '__')
+            return self.get_ontology_terms_by_variable(var, ontology)[-1]
+        return var.cmeta_id if var.cmeta_id else var.name.replace('$', '__')
 
     def get_state_variables(self):
         """
