@@ -84,6 +84,24 @@ class TestModelFunctions():
             '_deriv_on_rhs2b$sv1_rate]'
         )
 
+    def test_get_display_name(self):
+        """ Tests Model.get_display_name(var). """
+        model = shared.load_model('test_display_name.cellml')
+        META = 'https://chaste.comlab.ox.ac.uk/cellml/ns/oxford-metadata#'
+        states = model.get_state_variables()
+        sorted_states = sorted(states, key=lambda v: model.get_display_name(v))
+
+        assert str(states) == \
+            '[_membrane$V, _sodium_channel_m_gate$m, _sodium_channel_h_gate$h, _potassium_channel_n_gate$n]'
+        assert [v.name for v in states] == \
+            ['membrane$V', 'sodium_channel_m_gate$m', 'sodium_channel_h_gate$h', 'potassium_channel_n_gate$n']
+        assert [v.cmeta_id for v in states] == ['no1', None, 'aaa_cmeta_id', None]
+        assert [model.get_ontology_terms_by_variable(v, META) for v in states] == [['membrane_voltage'], [], [], []]
+        assert [model.get_display_name(v) for v in states] == \
+            ['membrane_voltage', 'sodium_channel_m_gate$m', 'aaa_cmeta_id', 'potassium_channel_n_gate$n']
+        assert str(sorted_states) == \
+            '[_sodium_channel_h_gate$h, _membrane$V, _potassium_channel_n_gate$n, _sodium_channel_m_gate$m]'
+
     def test_get_state_variables(self, basic_model):
         """ Tests Model.get_state_variables() works on a simple model. """
 
