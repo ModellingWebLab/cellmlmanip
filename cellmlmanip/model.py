@@ -395,7 +395,8 @@ class Model(object):
         :param ontology: the namespace prefix for the ontology used (defaults to not considering annotations).
 
         :return: the local name from the ontology (if such an annotation exists)
-                 or the cmeta_id (if present) or the variable's name"""
+                 or the cmeta_id (if present) or the variable's name
+        """
         if self.has_ontology_annotation(var, ontology):
             return self.get_ontology_terms_by_variable(var, ontology)[-1]
         return var.cmeta_id if var.cmeta_id else var.name
