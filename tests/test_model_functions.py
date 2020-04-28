@@ -105,6 +105,7 @@ class TestModelFunctions():
         var = simple_ode_model.get_variable_by_name('single_ode_rhs_computed_var$a')
         assert var.cmeta_id == 'a2'
         assert simple_ode_model.get_display_name(var, ontology=OXMETA) == var.cmeta_id
+        assert simple_ode_model.get_display_name(var) == var.cmeta_id
 
         # Has no cmeta:id
         var = simple_ode_model.get_variable_by_name('single_ode_rhs_const_var$time')
