@@ -105,11 +105,12 @@ class TestModelFunctions():
         var = simple_ode_model.get_variable_by_name('single_ode_rhs_computed_var$a')
         assert var.cmeta_id == 'a2'
         assert simple_ode_model.get_display_name(var, ontology=OXMETA) == var.cmeta_id
+        assert simple_ode_model.get_display_name(var) == var.cmeta_id
 
         # Has no cmeta:id
         var = simple_ode_model.get_variable_by_name('single_ode_rhs_const_var$time')
         assert var.cmeta_id is None
-        assert simple_ode_model.get_display_name(var, ontology=OXMETA) == var.name.replace('$', '__')
+        assert simple_ode_model.get_display_name(var) == var.name.replace('$', '__')
 
     def test_get_state_variables(self, basic_model):
         """ Tests Model.get_state_variables() works on a simple model. """

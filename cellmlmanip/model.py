@@ -390,12 +390,14 @@ class Model(object):
     def get_display_name(self, var, ontology=None):
         """Return a display name for the given variable.
 
-        Looks for annotation in the ontology first (if given), then cmeta:id if present, or the name attribute if not
+        Looks for an annotation in the ontology first (or the local name from any annotation if no ontology is
+        specified), then cmeta:id if present, or the variable's name attribute if not.
+        
+        Dollar symbols in the name are replaced by a double underscore.
         :param var: the variable for which to get the display name.
-        :param ontology: the namespace prefix for the ontology used (defaults to not considering annotations).
+        :param ontology: the base URL of an ontology if only annotations within that ontology should be considered
 
-        :return: the local name from the ontology (if such an annotation exists)
-                 or the cmeta_id (if present) or the variable's name
+        :return: the display name for the variable according to the algorithm above
         """
         if self.has_ontology_annotation(var, ontology):
             return self.get_ontology_terms_by_variable(var, ontology)[-1]
