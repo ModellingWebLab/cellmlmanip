@@ -392,7 +392,7 @@ class Model(object):
 
         Looks for an annotation in the ontology first (or the local name from any annotation if no ontology is
         specified), then cmeta:id if present, or the variable's name attribute if not.
-        
+
         Dollar symbols in the name are replaced by a double underscore.
         :param var: the variable for which to get the display name.
         :param ontology: the base URL of an ontology if only annotations within that ontology should be considered
