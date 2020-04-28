@@ -397,8 +397,7 @@ class Model(object):
         :param var: the variable for which to get the display name.
         :param ontology: the namespace prefix for the ontology used (defaults to not considering annotations).
 
-        :return: the local name from the ontology (if such an annotation exists)
-                 or the cmeta_id (if present) or the variable's name
+        :return: the display name for the variable according to the algorithm above
         """
         if self.has_ontology_annotation(var, ontology):
             display_name = self.get_ontology_terms_by_variable(var, ontology)[-1]
