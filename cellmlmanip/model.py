@@ -395,7 +395,7 @@ class Model(object):
         
         Dollar symbols in the name are replaced by a double underscore.
         :param var: the variable for which to get the display name.
-        :param ontology: the namespace prefix for the ontology used (defaults to not considering annotations).
+        :param ontology: the base URL of an ontology if only annotations within that ontology should be considered
 
         :return: the display name for the variable according to the algorithm above
         """
