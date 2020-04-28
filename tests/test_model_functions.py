@@ -84,6 +84,34 @@ class TestModelFunctions():
             '_deriv_on_rhs2b$sv1_rate]'
         )
 
+    def test_get_display_name(self, simple_ode_model):
+        """ Tests Model.get_display_name(var). """
+        OXMETA = 'https://chaste.comlab.ox.ac.uk/cellml/ns/oxford-metadata#'
+
+        # For getting a display name there are 4 possibilities:
+        # Has an oxmeta-annotation
+        var = simple_ode_model.get_variable_by_name('single_independent_ode$sv1')
+        assert var.cmeta_id == 'sv11'
+        assert simple_ode_model.get_display_name(var, ontology=OXMETA) == 'sodium_reversal_potential'
+
+        # Has an annotation in another ontology
+        var = simple_ode_model.get_variable_by_name('single_ode_rhs_const_var$a')
+        assert var.cmeta_id == 'a1'
+        assert simple_ode_model.get_display_name(var, ontology=OXMETA) == var.cmeta_id
+        assert simple_ode_model.get_display_name(var) == 'parameter_a1'
+        assert simple_ode_model.get_display_name(var, ontology='urn:test-ns#') == 'parameter_a1'
+
+        # Has no annotation but does have a cmeta:id
+        var = simple_ode_model.get_variable_by_name('single_ode_rhs_computed_var$a')
+        assert var.cmeta_id == 'a2'
+        assert simple_ode_model.get_display_name(var, ontology=OXMETA) == var.cmeta_id
+        assert simple_ode_model.get_display_name(var) == var.cmeta_id
+
+        # Has no cmeta:id
+        var = simple_ode_model.get_variable_by_name('single_ode_rhs_const_var$time')
+        assert var.cmeta_id is None
+        assert simple_ode_model.get_display_name(var) == var.name.replace('$', '__')
+
     def test_get_state_variables(self, basic_model):
         """ Tests Model.get_state_variables() works on a simple model. """
 
