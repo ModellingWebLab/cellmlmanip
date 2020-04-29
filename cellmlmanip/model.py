@@ -874,7 +874,7 @@ class Model(object):
         assert isinstance(units, self.units.Unit)  # Units must be in the right registry
         assert isinstance(direction, DataDirectionFlow)
 
-        # Compute conversion factor for old units to new
+        # Compute conversion factor for old units to new;
         # throws DimensionalityError if unit conversion is not possible
         cf = self.units.get_conversion_factor(from_unit=original_variable.units, to_unit=units)
         if cf == 1:
@@ -888,101 +888,112 @@ class Model(object):
         # Create new variable and equations defining it and/or the original variable
         new_variable = self._convert_variable_instance(original_variable, cf, units, direction)
 
-        # if is output do not need to do additional changes for state/free symbols
+        # For outputs do not need to do additional changes for state/free symbols, so we're done
         if direction == DataDirectionFlow.OUTPUT:
             return new_variable
 
-        new_derivatives = []
-        # if state variable
-        if original_variable in state_symbols:
-            new_derivatives.append(self._convert_state_variable_deriv(original_variable, new_variable, cf))
+        derivative_replacements = {}  # A map from old derivatives to variables holding original RHS definitions
 
-        # if free variable
+        if original_variable in state_symbols:
+            # Make the converted variable the new state variable
+            derivative_replacements.update(self._convert_state_variable_deriv(original_variable, new_variable, cf))
+
         if original_variable == free_symbol:
-            # for each derivative wrt to free variable add necessary variables/equations
+            # Change every ODE to be w.r.t. the new time variable
+            # Process ODEs in model order to ensure new equations are added in a consistent order
             for ode in [eq for v, eq in sorted(self._ode_definition_map.items(),
                                                key=lambda v_eq: v_eq[0].order_added)]:
                 if ode.args[0].args[1].args[0] == original_variable:
-                    new_derivatives.append(self._convert_free_variable_deriv(ode, new_variable, cf))
+                    derivative_replacements.update(self._convert_free_variable_deriv(ode, new_variable, cf))
 
-        # replace any instances of derivative of rhs of other eqns with new derivative variable
-        for new_derivative in new_derivatives:
-            self._replace_references_to_derivative(new_derivative['expression'], new_derivative['variable'])
+        # Replace any instances of derivatives of the RHS of other equations with variables holding the original
+        # definitions of those derivatives
+        self._replace_references_to_derivatives(derivative_replacements)
 
         self._invalidate_cache()
 
         return new_variable
 
-    def _replace_references_to_derivative(self, old_derivative, new_derivative):
+    def _replace_references_to_derivatives(self, derivative_replacement_map):
         """
-        Replace all references to ``old_derivative`` in the model RHS with references to ``new_derivative``.
+        Replace all references to pre-conversion derivatives on the RHS of model equations.
+
+        :param derivative_replacement_map: a map from old :class:`sympy.Derivative` expressions to their unit-converted
+            replacements
         """
+        derivatives_to_replace = set(derivative_replacement_map.keys())
         for equation in self.equations.copy():
-            if old_derivative in equation.rhs.atoms(sympy.Derivative):
+            if not derivatives_to_replace.isdisjoint(equation.rhs.atoms(sympy.Derivative)):
                 self.remove_equation(equation)
-                self.add_equation(equation.xreplace({old_derivative: new_derivative}))
+                self.add_equation(equation.xreplace(derivative_replacement_map))
 
-    def _create_new_deriv_variable_and_equation(self, eqn, derivative_variable):
+    def _remove_ode_and_assign_rhs_to_new_variable(self, original_ode, original_state_variable):
         """
-        Create a new variable and equation for the derivative.
-        :param eqn: the original derivative eqn
-        :param derivative_variable: the dependent variable
-        :return: new variable for the derivative
-        """
-        # 1. create a new variable
-        deriv_name = self.get_unique_name(derivative_variable.name + '_orig_deriv')
-        deriv_units = self.units.evaluate_units(eqn.args[0])
-        new_deriv_variable = self.add_variable(name=deriv_name, units=deriv_units)
+        Create a new variable holding the original RHS for an ODE, with an equation assigning it.
 
-        # 2. create new equation and remove original
-        expression = sympy.Eq(new_deriv_variable, eqn.args[1])
-        self.remove_equation(eqn)
+        Also removes the original ODE from the model. A replacement will be created by the caller.
+
+        :param original_ode: the original derivative equation
+        :param original_state_variable: the dependent variable
+        :return: the new variable for the right hand side of the original ODE
+        """
+        # Create a variable to hold the original RHS
+        deriv_name = self.get_unique_name(original_state_variable.name + '_orig_deriv')
+        deriv_units = self.units.evaluate_units(original_ode.lhs)
+        rhs_variable = self.add_variable(name=deriv_name, units=deriv_units)
+
+        # Create new equation and remove original ODE
+        expression = sympy.Eq(rhs_variable, original_ode.rhs)
+        self.remove_equation(original_ode)
         self.add_equation(expression)
 
-        return new_deriv_variable
+        return rhs_variable
 
-    def _convert_free_variable_deriv(self, eqn, new_variable, cf):
+    def _convert_free_variable_deriv(self, original_ode, new_time, cf):
         """
-        Create relevant variables/equations when converting a free variable within a derivative.
-        :param eqn: the derivative equation containing free variable
-        :param new_variable: the new variable representing the converted symbol [new_units]
+        Create relevant variables/equations when converting a free variable within a single ODE.
+
+        See :meth:`convert_variable` for an example of how this works.
+
+        :param original_ode: the derivative equation containing the pre-conversion free variable
+        :param new_time: the new variable representing the converted free variable [new_units]
         :param cf: conversion factor for unit conversion [new units/old units]
+        :return: a map from the old derivative term to the variable holding its original RHS
         """
-        derivative_variable = eqn.args[0].args[0]  # units [x]
-        # 1. create a new variable/equation for original derivative
-        # will have units [x/old units]
-        new_deriv_variable = self._create_new_deriv_variable_and_equation(eqn, derivative_variable)
+        state_variable = original_ode.lhs.args[0]  # units [x]
+        # Create a variable to hold the value of the original RHS, and the equation assigning it.
+        # Will have units [x/old units]
+        original_rhs_variable = self._remove_ode_and_assign_rhs_to_new_variable(original_ode, state_variable)
 
-        # 2. create equation for derivative wrt new variable
-        # dx/dnewvar [x/new units] = new_deriv_var [x/old units] / cf [new units/old units]
-        expression = sympy.Eq(sympy.Derivative(derivative_variable, new_variable), new_deriv_variable / cf)
-        self.add_equation(expression)
-        return {'variable': new_deriv_variable, 'expression': eqn.args[0]}
+        # Add equation for derivative wrt new variable
+        # dx/dnewvar [x/new units] = original_rhs_variable [x/old units] / cf [new units/old units]
+        new_ode = sympy.Eq(sympy.Derivative(state_variable, new_time), original_rhs_variable / cf)
+        self.add_equation(new_ode)
+        return {original_ode.lhs: original_rhs_variable}
 
     def _convert_state_variable_deriv(self, original_variable, new_variable, cf):
         """
-        Create relevant variables/equations when converting a state variable.
-        :param original_variable: the variable to be converted [old units]
+        Create relevant variables/equations when converting a state variable as an input.
+
+        See :meth:`convert_variable` for an example of how this works.
+
+        :param original_variable: the state variable to be converted [old units]
         :param new_variable: the new variable representing the converted symbol [new units]
         :param cf: conversion factor for unit conversion [new units/old units]
-        :return: a dictionary containing the 'variable' and 'expression' for new derivative
+        :return: a map from the old derivative term to the variable holding its original RHS
         """
-        # 1. find the derivative equation for this variable
-        eqn = self._ode_definition_map[original_variable]
+        original_ode = self._ode_definition_map[original_variable]
+        free_variable = original_ode.lhs.args[1]  # units [t]
 
-        # get free variable symbol
-        # units [x]
-        wrt_variable = eqn.args[0].args[1]
+        # Create a variable to hold the value of the original RHS, and the equation assigning it.
+        # Will have units [old units/t]
+        original_rhs_variable = self._remove_ode_and_assign_rhs_to_new_variable(original_ode, original_variable)
 
-        # 1. create a new variable/equation for original derivative
-        # will have units [old units/x]
-        new_deriv_variable = self._create_new_deriv_variable_and_equation(eqn, original_variable)
-
-        # 2. add a new derivative equation
-        # dnewvar/dx [new units/x] = new_deriv_var [old units/x] * cf [new units/old units]
-        expression = sympy.Eq(sympy.Derivative(new_variable, wrt_variable), new_deriv_variable * cf)
-        self.add_equation(expression)
-        return {'variable': new_deriv_variable, 'expression': eqn.args[0]}
+        # Add the new ODE
+        # dnewvar/dt [new units/t] = original_rhs_variable [old units/t] * cf [new units/old units]
+        new_ode = sympy.Eq(sympy.Derivative(new_variable, free_variable), original_rhs_variable * cf)
+        self.add_equation(new_ode)
+        return {original_ode.lhs: original_rhs_variable}
 
     def _convert_variable_instance(self, original_variable, cf, units, direction):
         """
