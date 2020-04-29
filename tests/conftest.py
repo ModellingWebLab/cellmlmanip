@@ -65,5 +65,3 @@ def bad_units_model():
     """
     model = shared.load_model('simple_model_invalid_units')
     return model
-
-

@@ -4,8 +4,7 @@ import pytest
 import sympy as sp
 
 from cellmlmanip import parser, units
-from cellmlmanip.model import Model, VariableDummy
-from cellmlmanip.model import FLOAT_PRECISION
+from cellmlmanip.model import FLOAT_PRECISION, Model, VariableDummy
 
 from . import shared
 
@@ -84,6 +83,34 @@ class TestModelFunctions():
             '_deriv_on_rhs1b$sv1_rate, '
             '_deriv_on_rhs2b$sv1_rate]'
         )
+
+    def test_get_display_name(self, simple_ode_model):
+        """ Tests Model.get_display_name(var). """
+        OXMETA = 'https://chaste.comlab.ox.ac.uk/cellml/ns/oxford-metadata#'
+
+        # For getting a display name there are 4 possibilities:
+        # Has an oxmeta-annotation
+        var = simple_ode_model.get_variable_by_name('single_independent_ode$sv1')
+        assert var.cmeta_id == 'sv11'
+        assert simple_ode_model.get_display_name(var, ontology=OXMETA) == 'sodium_reversal_potential'
+
+        # Has an annotation in another ontology
+        var = simple_ode_model.get_variable_by_name('single_ode_rhs_const_var$a')
+        assert var.cmeta_id == 'a1'
+        assert simple_ode_model.get_display_name(var, ontology=OXMETA) == var.cmeta_id
+        assert simple_ode_model.get_display_name(var) == 'parameter_a1'
+        assert simple_ode_model.get_display_name(var, ontology='urn:test-ns#') == 'parameter_a1'
+
+        # Has no annotation but does have a cmeta:id
+        var = simple_ode_model.get_variable_by_name('single_ode_rhs_computed_var$a')
+        assert var.cmeta_id == 'a2'
+        assert simple_ode_model.get_display_name(var, ontology=OXMETA) == var.cmeta_id
+        assert simple_ode_model.get_display_name(var) == var.cmeta_id
+
+        # Has no cmeta:id
+        var = simple_ode_model.get_variable_by_name('single_ode_rhs_const_var$time')
+        assert var.cmeta_id is None
+        assert simple_ode_model.get_display_name(var) == var.name.replace('$', '__')
 
     def test_get_state_variables(self, basic_model):
         """ Tests Model.get_state_variables() works on a simple model. """
@@ -462,6 +489,7 @@ class TestModelFunctions():
             model.get_variable_by_name('newvar') is None
 
         newvar = model.add_variable('newvar', 'mV')
+        assert newvar.model is model
         assert newvar.is_real
         assert len(model.variables()) == 4
         assert model.get_variable_by_name('newvar')
@@ -490,6 +518,7 @@ class TestModelFunctions():
 
         model.remove_variable(i_stim)
 
+        assert i_stim.model is None
         with pytest.raises(KeyError):
             model.get_variable_by_name(i_stim.name)
         assert model.get_definition(i_stim) is None
@@ -506,6 +535,7 @@ class TestModelFunctions():
 
         model.remove_variable(v)
 
+        assert v.model is None
         with pytest.raises(KeyError):
             model.get_variable_by_name(v.name)
         assert model.get_definition(v) is None
@@ -519,6 +549,7 @@ class TestModelFunctions():
 
         model.remove_variable(t)
 
+        assert t.model is None
         with pytest.raises(KeyError):
             model.get_variable_by_name(t.name)
 
@@ -526,6 +557,7 @@ class TestModelFunctions():
         var = model.get_variable_by_name('membrane$E_R')
         model.remove_variable(var)
 
+        assert var.model is None
         with pytest.raises(KeyError):
             model.get_variable_by_name(var.name)
 
@@ -646,24 +678,28 @@ class TestModelFunctions():
         assert new_eqn.rhs.args[0].value == 0.001
         assert new_eqn.rhs.args[1] == source
 
-    def test_is_state(self, aslanidi_model):
-        """ Tests Model.is_state(). """
+    def test_variable_classification(self, aslanidi_model):
+        """ Tests Model.is_state() and Model.is_constant(). """
 
         # State variable
         v = aslanidi_model.get_variable_by_ontology_term((shared.OXMETA, 'membrane_voltage'))
         assert aslanidi_model.is_state(v)
+        assert not aslanidi_model.is_constant(v)
 
         # Intermediary variable
         i = aslanidi_model.get_variable_by_ontology_term((shared.OXMETA, 'membrane_fast_sodium_current'))
         assert not aslanidi_model.is_state(i)
+        assert not aslanidi_model.is_constant(i)
 
         # Free variable
         t = aslanidi_model.get_variable_by_ontology_term((shared.OXMETA, 'time'))
         assert not aslanidi_model.is_state(t)
+        assert not aslanidi_model.is_constant(t)
 
         # Constant
         c = aslanidi_model.get_variable_by_ontology_term((shared.OXMETA, 'membrane_capacitance'))
         assert not aslanidi_model.is_state(c)
+        assert aslanidi_model.is_constant(c)
 
     def test_transform_constants(self):
         """ Tests Model.transform_constants(). """
@@ -681,4 +717,3 @@ class TestModelFunctions():
         # And the equations should have matching units
         for eq in model.equations:
             model.check_left_right_units_equal(eq)
-

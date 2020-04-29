@@ -9,4 +9,3 @@ def load_model(path, unit_store=None):
         underlying registry so that conversions between model units and those from the provided store work.
     """
     return Parser(path).parse(unit_store=unit_store)
-

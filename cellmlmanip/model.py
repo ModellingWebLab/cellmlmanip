@@ -194,6 +194,7 @@ class Model(object):
         self._name_to_variable[name] = var = VariableDummy(
             name=name,
             units=units,
+            model=self,
             initial_value=initial_value,
             public_interface=public_interface,
             private_interface=private_interface,
@@ -280,6 +281,11 @@ class Model(object):
             if target in self._ode_definition_map:
                 self._ode_definition_map[source.assigned_to] = self._ode_definition_map[target]
                 del self._ode_definition_map[target]
+            # Migrate the cmeta:id too so annotations work as expected
+            # Really modellers should annotate the source variable, but they don't always!
+            if target.cmeta_id is not None:
+                # Note that this method considers source as the variable with the cmeta:id already.
+                self.transfer_cmeta_id(source=target, target=source)
 
         # Otherwise, this connection requires a conversion
         else:
@@ -380,6 +386,22 @@ class Model(object):
                               if not isinstance(v, sympy.Derivative)
                               and node.get('variable_type', '') not in ('state', 'free', 'parameter')]
         return sorted(derived_quantities, key=lambda var: var.order_added)
+
+    def get_display_name(self, var, ontology=None):
+        """Return a display name for the given variable.
+
+        Looks for an annotation in the ontology first (or the local name from any annotation if no ontology is
+        specified), then cmeta:id if present, or the variable's name attribute if not.
+
+        Dollar symbols in the name are replaced by a double underscore.
+        :param var: the variable for which to get the display name.
+        :param ontology: the base URL of an ontology if only annotations within that ontology should be considered
+
+        :return: the display name for the variable according to the algorithm above
+        """
+        if self.has_ontology_annotation(var, ontology):
+            return self.get_ontology_terms_by_variable(var, ontology)[-1]
+        return var.cmeta_id if var.cmeta_id else var.name.replace('$', '__')
 
     def get_state_variables(self):
         """
@@ -676,6 +698,15 @@ class Model(object):
         """ Checks if the given ``variable`` is a state variable (i.e. if it's defined by an ODE). """
         return variable in self._ode_definition_map
 
+    def is_constant(self, variable):
+        """Determine whether the given ``variable`` is a constant.
+
+        This is calculated by looking at the RHS of the defining equation and checking it has no
+        variable references.
+        """
+        defn = self._var_definition_map.get(variable)
+        return defn is not None and len(defn.rhs.atoms(VariableDummy)) == 0
+
     def find_variables_and_derivatives(self, expressions):
         """ Returns a set containing all variables and derivatives referenced in a list of expressions.
 
@@ -736,6 +767,7 @@ class Model(object):
         del self._name_to_variable[variable.name]
         if variable._cmeta_id is not None:
             del self._cmeta_id_to_variable[variable._cmeta_id]
+        variable._model = None  # Just in case!
         self._invalidate_cache()
 
     def transfer_cmeta_id(self, source, target):
@@ -902,7 +934,7 @@ class Model(object):
         :return: new variable for the derivative
         """
         # 1. create a new variable
-        deriv_name = self._get_unique_name(derivative_variable.name + '_orig_deriv')
+        deriv_name = self.get_unique_name(derivative_variable.name + '_orig_deriv')
         deriv_units = self.units.evaluate_units(eqn.args[0])
         new_deriv_variable = self.add_variable(name=deriv_name, units=deriv_units)
 
@@ -966,7 +998,7 @@ class Model(object):
         :return: the new variable created [new units]
         """
         # Get unique name for new variable
-        new_name = self._get_unique_name(original_variable.name + '_converted')
+        new_name = self.get_unique_name(original_variable.name + '_converted')
 
         # If original has initial_value calculate new initial value (only needed for INPUT case)
         new_initial_value = None
@@ -1011,13 +1043,15 @@ class Model(object):
 
         return new_variable
 
-    def _get_unique_name(self, name):
-        """Function to create a unique name within the model.
-        :param str name: Suggested unique name
-        :return str: guaranteed unique name
+    def get_unique_name(self, name):
+        """
+        Creates and returns a unique name, not used in the model.
+
+        :param str name: Suggested unique name.
+        :return str: Guaranteed unique name.
         """
         if name in self._name_to_variable:
-            name = self._get_unique_name(name + '_a')
+            name = self.get_unique_name(name + '_a')
         return name
 
 
@@ -1043,6 +1077,10 @@ class NumberDummy(sympy.Dummy):
     def __float__(self):
         return self.value
 
+    def _eval_evalf(self, prec):
+        """This is needed to allow Sympy's ``evalf`` method to represent this value as a float."""
+        return sympy.Float(self.value, prec)
+
     def __str__(self):
         return str(self.value)
 
@@ -1065,11 +1103,13 @@ class VariableDummy(sympy.Dummy):
     def __init__(self,
                  name,
                  units,
+                 model=None,
                  initial_value=None,
                  public_interface=None,
                  private_interface=None,
                  order_added=None,
                  cmeta_id=None):
+        self._model = model
         self.name = name
         self.units = units
         self.initial_value = None if initial_value is None else float(initial_value)
@@ -1097,24 +1137,28 @@ class VariableDummy(sympy.Dummy):
         # TODO: Define allowed types via enum
         self.type = None
 
-    @property
-    def cmeta_id(self):
-        """Provides read-only access the the cmeta id."""
-        return self._cmeta_id
-
     def __str__(self):
         return self.name
 
-    def _set_cmeta_id(self, cmeta_id):
-        """ Sets this variable's cmeta id. Should only be called by Model, which can verify cmeta id uniqueness. """
-        self._cmeta_id = cmeta_id
-        if cmeta_id is None:
-            self._rdf_identity = None
-        else:
-            self._rdf_identity = create_rdf_node('#' + self._cmeta_id)
+    @property
+    def model(self):
+        """The :class:`Model` this variable is part of."""
+        return self._model
 
     @property
     def rdf_identity(self):
         """The RDF identity for this variable (will be ``None`` unless the variable has a cmeta id)."""
         return self._rdf_identity
 
+    @property
+    def cmeta_id(self):
+        """Provides read-only access to the cmeta id."""
+        return self._cmeta_id
+
+    def _set_cmeta_id(self, cmeta_id):
+        """Sets this variable's cmeta id. Should only be called by Model, which can verify cmeta id uniqueness."""
+        self._cmeta_id = cmeta_id
+        if cmeta_id is None:
+            self._rdf_identity = None
+        else:
+            self._rdf_identity = create_rdf_node('#' + self._cmeta_id)
