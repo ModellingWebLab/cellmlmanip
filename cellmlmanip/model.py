@@ -868,23 +868,24 @@ class Model(object):
         :return: new variable with desired units, or original unchanged if conversion was not necessary
         :raises DimensionalityError: if the unit conversion is impossible
         """
-        # assertion errors will be thrown here if arguments are incorrect type
-        self._check_arguments_for_convert_variable(original_variable, units, direction)
+        # Sanity checks on inputs
+        assert isinstance(original_variable, VariableDummy)
+        assert original_variable.name in self._name_to_variable  # Variable must be in model
+        assert isinstance(units, self.units.Unit)  # Units must be in the right registry
+        assert isinstance(direction, DataDirectionFlow)
 
-        original_units = original_variable.units
-        # no conversion necessary
-        if 1 * original_units == 1 * units:
-            return original_variable
-
-        # conversion_factor for old units to new
+        # Compute conversion factor for old units to new
         # throws DimensionalityError if unit conversion is not possible
-        cf = self.units.get_conversion_factor(from_unit=original_units, to_unit=units)
+        cf = self.units.get_conversion_factor(from_unit=original_variable.units, to_unit=units)
+        if cf == 1:
+            # No conversion necessary. The method above will ensure a factor close to 1 is returned as 1.
+            return original_variable
 
         # Store original state and free symbols (these might change, so need to store references early)
         state_symbols = self.get_state_variables()
         free_symbol = self.get_free_variable()
 
-        # create new variable and relevant equations
+        # Create new variable and equations defining it and/or the original variable
         new_variable = self._convert_variable_instance(original_variable, cf, units, direction)
 
         # if is output do not need to do additional changes for state/free symbols
@@ -911,25 +912,6 @@ class Model(object):
         self._invalidate_cache()
 
         return new_variable
-
-    def _check_arguments_for_convert_variable(self, variable, units, direction):
-        """
-        Checks the arguments of the convert_variable function.
-        :param variable: variable must be a VariableDummy object present in the model
-        :param units: units must be a pint Unit object in this model
-        :param direction: must be part of DataDirectionFlow enum
-       """
-        # variable should be a VariableDummy
-        assert isinstance(variable, VariableDummy)
-
-        # variable must be in model
-        assert variable.name in self._name_to_variable
-
-        # units should be a pint Unit object in the registry for this model
-        assert isinstance(units, self.units.Unit)
-
-        # direction should be part of enum
-        assert isinstance(direction, DataDirectionFlow)
 
     def _replace_references_to_derivative(self, old_derivative, new_derivative):
         """
