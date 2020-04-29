@@ -796,7 +796,7 @@ class Model(object):
         """
         Ensures the model contains a variable representing ``original_variable`` in the specified ``units``.
 
-        If the variable is already in the required units, nothing happens. and ``original_variable`` is returned.
+        If the variable is already in the required units, nothing happens, and ``original_variable`` is returned.
 
         If the variable's units can be converted to the new ``units``, a new variable will created in these units, and
         the ``cmeta:id`` attribute of ``original_variable`` will be moved to the new variable, so that all annotations
@@ -811,40 +811,54 @@ class Model(object):
 
         For example, a model::
 
-            var{time} time: ms {pub: in};
-            var{sv11} sv1: mV {init: 2};
+            var time :: ms {meta: time}
+            var sv1 :: mV {meta: sv11, init: 2}
 
-            ode(sv1, time) = 1{mV_per_ms};
+            ode(sv1, time) = 1 :: mV_per_ms
 
         transformed with::
 
-            convert_variable(time, second, DataDirectionFlow.INPUT)
+            convert_variable(sv11, volt, DataDirectionFlow.OUTPUT)
 
         becomes::
 
-            var time: ms;
-            var{time} time_converted: s;
-            var{sv11} sv1: mV {init: 2};
-            var sv1_orig_deriv mV_per_ms
+            var time :: ms {meta: time}
+            var sv1 :: mV {init: 2}
+            var sv1_converted :: volt {meta: sv11}
 
-            time = 1000 * time_converted;
-            sv1_orig_deriv = 1{mV_per_ms}
-            ode(sv1, time_converted) = 1000 * sv1_orig_deriv
+            ode(sv1, time) = 1 :: mV_per_ms
+            sv1_converted = sv1 * 0.001 :: V_per_mV
 
-        while transforming with::
+        If the information flow is reversed, i.e. with::
 
-            convert_variable(time, second, DataDirectionFlow.OUTPUT)
+            convert_variable(sv11, volt, DataDirectionFlow.INPUT)
 
-        updates the model to::
+        then the model becomes::
 
-            var{time} time: ms {pub: in};
-            var{sv11} sv1: mV {init: 2};
-            var{time} time_converted: s
+            var time :: ms {meta: time}
+            var sv1 :: mV
+            var sv1_converted :: volt {meta: sv11, init: 0.002}
 
-            ode(sv1, time) = 1{mV_per_ms};
-            time_converted = 0.001 * time
+            ode(sv1_converted, time) = (1 :: mV_per_ms) * 0.001 :: V_per_mV
+            sv1 = sv1_converted * 1000 :: mV_per_V
 
-        :param original_variable: the VariableDummy object representing the variable in the model to be converted
+        Converting time as an input requires further processing, because every ODE needs adapting. With::
+
+            convert_variable(time, second, DataDirectionFlow.INPUT)
+
+        the model becomes::
+
+            var time :: ms
+            var time_converted :: s {meta: time}
+            var sv1 :: mV {meta: sv11, init: 2}
+            var sv1_orig_deriv :: mV_per_ms
+
+            time = 1000 :: ms_per_s * time_converted
+            sv1_orig_deriv = 1 :: mV_per_ms
+            ode(sv1, time_converted) = 1000 :: ms_per_s * sv1_orig_deriv
+
+        :param original_variable: the :class:`VariableDummy` object representing the variable in the model to be
+                                  converted
         :param units: a Pint unit object representing the units to convert variable to (note if variable is already
                       in these units, model remains unchanged and the original variable is returned
         :param direction: either DataDirectionFlow.INPUT; the variable to be changed is an input and all affected
