@@ -547,7 +547,7 @@ class Model(object):
 
     def get_value(self, variable):
         """ Returns the evaluated value of the given variable's RHS. """
-        return float(self.graph.nodes[variable]['equation'].rhs.evalf())
+        return float(self.graph.nodes[variable]['equation'].rhs)
 
     @property
     def graph(self):
