@@ -1089,18 +1089,18 @@ class NumberDummy(sympy.Dummy):
         return super().__new__(cls, value, real=True)
 
     def __init__(self, value, units):
-        self.value = value
+        self._value = value
         self.units = units
 
     def __float__(self):
-        return float(self.value)
+        return float(self._value)
 
     def _eval_evalf(self, prec):
         """This is needed to allow Sympy's ``evalf`` method to represent this value as a float."""
-        return sympy.Float(self.value, prec)
+        return sympy.Float(self._value, prec)
 
     def __str__(self):
-        return str(self.value)
+        return str(self._value)
 
 
 class VariableDummy(sympy.Dummy):
