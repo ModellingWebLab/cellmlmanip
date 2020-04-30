@@ -880,6 +880,8 @@ class Model(object):
         if cf == 1:
             # No conversion necessary. The method above will ensure a factor close to 1 is returned as 1.
             return original_variable
+        # Make the conversion factor a number symbol with explicit units
+        cf = self.add_number(cf, units / original_variable.units)
 
         # Store original state and free symbols (these might change, so need to store references early)
         state_symbols = self.get_state_variables()
@@ -1017,7 +1019,7 @@ class Model(object):
         # If original has initial_value calculate converted initial value (only needed for INPUT case)
         new_initial_value = None
         if direction == DataDirectionFlow.INPUT and original_variable.initial_value is not None:
-            new_initial_value = original_variable.initial_value * cf
+            new_initial_value = original_variable.initial_value * float(cf)
 
         # Create new variable
         new_variable = self.add_variable(name=new_name, units=units, initial_value=new_initial_value)
@@ -1078,14 +1080,17 @@ class NumberDummy(sympy.Dummy):
 
     # Sympy annoyingly overwrites __new__
     def __new__(cls, value, *args, **kwargs):
-        return super().__new__(cls, str(value), real=True)
+        # Middle argument is the symbol name, so must be a string
+        if not isinstance(value, str):
+            value = '{:g}'.format(value)
+        return super().__new__(cls, value, real=True)
 
     def __init__(self, value, units):
-        self.value = float(value)
+        self.value = value
         self.units = units
 
     def __float__(self):
-        return self.value
+        return float(self.value)
 
     def _eval_evalf(self, prec):
         """This is needed to allow Sympy's ``evalf`` method to represent this value as a float."""
