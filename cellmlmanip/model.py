@@ -997,8 +997,15 @@ class Model(object):
 
     def _convert_variable_instance(self, original_variable, cf, units, direction):
         """
-        Internal function to create new variable and an equation for it.
-        :param original_variable: VariableDummy object to be converted [old units]
+        Internal function to create new variable in given units, possibly with defining equation.
+
+        The defining equation is created unless the variable is an input state variable; this case is handled
+        specially by :meth:`_convert_state_variable_deriv`.
+
+        If the direction is input, also creates an equation assigning ``original_variable`` from the converted one.
+        See :meth:`convert_variable` for the context and examples.
+
+        :param original_variable: :class:`VariableDummy` object to be converted [old units]
         :param cf: conversion factor [new units/old units]
         :param units: Unit object for new units
         :param direction: enumeration value specifying input or output
@@ -1007,7 +1014,7 @@ class Model(object):
         # Get unique name for new variable
         new_name = self.get_unique_name(original_variable.name + '_converted')
 
-        # If original has initial_value calculate new initial value (only needed for INPUT case)
+        # If original has initial_value calculate converted initial value (only needed for INPUT case)
         new_initial_value = None
         if direction == DataDirectionFlow.INPUT and original_variable.initial_value is not None:
             new_initial_value = original_variable.initial_value * cf
@@ -1015,20 +1022,15 @@ class Model(object):
         # Create new variable
         new_variable = self.add_variable(name=new_name, units=units, initial_value=new_initial_value)
 
-        # Transfer cmeta id from original to new variable if the original variable has one
+        # Transfer cmeta id from original to new variable if the original variable has one,
+        # so metadata annotations will point at the new variable.
         if original_variable._cmeta_id is not None:
             self.transfer_cmeta_id(original_variable, new_variable)
 
-        # Add/remove/replace equations
+        # Add/replace equations defining the new variable and/or the original variable
         if direction == DataDirectionFlow.INPUT:
-            # if direction is input; original var will be replaced by equation so do not need to store initial value
-            original_variable.initial_value = None
-
-            # find the equation for the original variable (if any): orig_var = rhs
-            # Note that variables defined through their derivative are handled separately (and will be temporarily
-            # overdefined).
-            # remove equation from model
-            # add eqn for new variable in terms of rhs of equation
+            # If the original variable was defined directly by an equation (original_variable = rhs) then this must be
+            # removed, and the new variable defined in terms of that RHS, with a conversion factor:
             #     new_var [new units] = rhs [old units] * cf [new units/old units]
             original_equation = self._var_definition_map.get(original_variable)
             if original_equation is not None:
@@ -1036,17 +1038,18 @@ class Model(object):
                 self.remove_equation(original_equation)
                 self.add_equation(new_equation)
 
-            # add eqn for original variable in terms of new variable
+            # Add equation defining the original variable in terms of new variable:
             #     orig_var [old units] = new var [new units] / cf [new units/old units]
             # Note that state variables will still have an ODE at this point, and so will be overdefined, hence the need
             # to disable checking for duplicates.
+            original_variable.initial_value = None  # This has moved to the new variable
             expression = sympy.Eq(original_variable, new_variable / cf)
-            self.add_equation(expression, check_duplicates=False)
+            self.add_equation(expression, check_duplicates=original_variable not in self._ode_definition_map)
         else:
-            # if direction is output add eqn for new variable in terms of original variable
+            # Output is the easy case: just add equation for new variable in terms of original variable
             #     new_var [new units] = orig_var [old units] * cf [new units/old units]
-            expression = sympy.Eq(new_variable, original_variable * cf)
-            self.add_equation(expression)
+            new_equation = sympy.Eq(new_variable, original_variable * cf)
+            self.add_equation(new_equation)
 
         return new_variable
 
