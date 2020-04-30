@@ -4,9 +4,9 @@ import os
 import pytest
 import sympy
 
-from cellmlmanip import load_model, parser
+from cellmlmanip import parser
 
-from .shared import check_left_right_units_equal
+from .shared import check_left_right_units_equal, load_model
 
 
 logger = logging.getLogger(__name__)
@@ -276,10 +276,7 @@ class TestParser(object):
 
     def test_multiple_math_elements(self):
         """ Tests parser correctly handles a component with more than one math element. """
-        example_cellml = os.path.join(
-            os.path.dirname(__file__), "cellml_files", "3.4.2.1.component_with_maths.cellml"
-        )
-        model = load_model(example_cellml)
+        model = load_model('3.4.2.1.component_with_maths.cellml')
         assert len(list(model.equations)) == 2
 
     def test_bad_unit_definitions(self):
@@ -311,6 +308,23 @@ class TestParser(object):
         p = parser.Parser(path)
         with pytest.raises(ValueError, match='Reactions are not supported'):
             p.parse()
+
+    def test_transform_constants(self):
+        """ Tests Parser.transform_constants(). """
+
+        # Parse model, which should convert an initial value to an equation
+        model = load_model('initial_value_constant.cellml')
+        v = model.get_variable_by_name('A$a')
+
+        # Initial value should be None, if transform_constants worked
+        assert v.initial_value is None
+
+        # And its RHS value should be 1
+        assert model.get_value(v) == 1
+
+        # And the equations should have matching units
+        for eq in model.equations:
+            check_left_right_units_equal(model.units, eq)
 
     def test_validation(self):
         """ Tests that RNG validation can pick stuff up. """

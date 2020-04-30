@@ -7,6 +7,7 @@ import os
 from collections import OrderedDict, deque
 from enum import Enum
 
+import sympy
 from lxml import etree
 
 from cellmlmanip.model import SYMPY_SYMBOL_DELIMITER, Model
@@ -131,7 +132,7 @@ class Parser(object):
         self._add_connection(model_xml)
 
         # Canonicalise representation
-        self.model.transform_constants()
+        self.transform_constants()
 
         return self.model
 
@@ -484,6 +485,24 @@ class Parser(object):
 
         raise ValueError('Cannot determine the source & target for connection (%s, %s) - (%s, %s)' %
                          (comp_1, var_1, comp_2, var_2))
+
+    def transform_constants(self):
+        """
+        Standardise handling of 'constants'.
+
+        Once this has been called, the only variables with an initial_value attribute will be state variables,
+        and the initial value will do what it implies - hold the value the state variable should take at t=0.
+
+        Non state variables with an initial value are actually just constants. For consistent processing later on we add
+        equations defining them, and remove the initial_value attribute.
+        """
+        for var in self.model.variables():
+            if var in self.model.get_state_variables():
+                assert var.initial_value is not None, 'State variable {} has no initial_value set'.format(var)
+            elif var.initial_value is not None:
+                value = self.model.add_number(var.initial_value, var.units)
+                self.model.add_equation(sympy.Eq(var, value))
+                var.initial_value = None
 
     def _validate(self, parser, tree):
         """

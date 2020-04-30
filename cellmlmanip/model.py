@@ -211,24 +211,6 @@ class Model(object):
 
         return var
 
-    def transform_constants(self):
-        """
-        Called by CellML parser to standardise handling of 'constants'.
-
-        Once this has been called, the only variables with an initial_value attribute will be state variables,
-        and the initial value will do what it implies - hold the value the state variable should take at t=0.
-
-        Non state variables with an initial value are actually just constants. For consistent processing later on we add
-        equations defining them, and remove the initial_value attribute.
-        """
-        for var in self._name_to_variable.values():
-            if var in self._ode_definition_map:
-                assert var.initial_value is not None, 'State variable {} has no initial_value set'.format(var)
-            elif var.initial_value is not None:
-                value = self.add_number(var.initial_value, var.units)
-                self.add_equation(sympy.Eq(var, value))
-                var.initial_value = None
-
     def connect_variables(self, source_name: str, target_name: str):
         """Tells this model that the variable indicated by ``target_name`` should get its value from the variable
         indicated by ``source_name``.
