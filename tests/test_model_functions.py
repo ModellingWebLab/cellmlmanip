@@ -716,4 +716,4 @@ class TestModelFunctions():
 
         # And the equations should have matching units
         for eq in model.equations:
-            model.check_left_right_units_equal(eq)
+            shared.check_left_right_units_equal(model.units, eq)

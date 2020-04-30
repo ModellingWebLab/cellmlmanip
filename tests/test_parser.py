@@ -6,6 +6,8 @@ import sympy
 
 from cellmlmanip import load_model, parser
 
+from .shared import check_left_right_units_equal
+
 
 logger = logging.getLogger(__name__)
 
@@ -250,7 +252,7 @@ class TestParser(object):
         p = parser.Parser(cellml)
         model = p.parse()
         for e in model.equations:
-            model.check_left_right_units_equal(e)
+            check_left_right_units_equal(model.units, e)
 
     def test_units_with_multiplier(self):
         """Tests parsing a unit with a multiplier."""

@@ -314,18 +314,6 @@ class Model(object):
         """ Takes an RDF string and stores it in the model's RDF graph. """
         self.rdf.parse(StringIO(rdf))
 
-    def check_left_right_units_equal(self, equality):
-        """
-        Checks whether the LHS and RHS in a ``sympy.Eq`` have the same units.
-        :param equality: A ``sympy.Eq``.
-        """
-        lhs_units = self.units.evaluate_units(equality.lhs)
-        rhs_units = self.units.evaluate_units(equality.rhs)
-        assert self.units.is_equivalent(rhs_units, lhs_units), 'Units %s %s != %s %s' % (
-            self.units.format(lhs_units), self.units.format(lhs_units, True),
-            self.units.format(rhs_units), self.units.format(rhs_units, True),
-        )
-
     def get_equations_for(self, variables, recurse=True, strip_units=True):
         """Get all equations for a given collection of variables.
 
