@@ -794,52 +794,71 @@ class Model(object):
 
     def convert_variable(self, original_variable, units, direction):
         """
-        Add a new linked version of the given variable in the desired units.
+        Ensures the model contains a variable representing ``original_variable`` in the specified ``units``.
 
-        If the variable already has the requested units, no changes are made and the original variable is returned.
-        Otherwise ``direction`` specifies how information flows between the new variable and the original, and
-        hence what new equation(s) are added to the model to perform the conversion.
-        If ``INPUT`` then the original variable takes its value from the newly added variable;
-        if ``OUTPUT`` then the opposite happens.
+        If the variable is already in the required units, nothing happens, and ``original_variable`` is returned.
 
-        Any ``cmeta:id`` attribute on the original variable is moved to the new one, so ontology annotations will refer
-        to the new variable.
+        If the variable's units can be converted to the new ``units``, a new variable will created in these units, and
+        the ``cmeta:id`` attribute of ``original_variable`` will be moved to the new variable, so that all annotations
+        are transferred to the new variable.
 
-        Similarly if the direction is ``INPUT`` then any initial value will be moved to the new variable
-        (and converted appropriately).
+        The ``direction`` argument specifies how information flows between the new variable and the original, and hence
+        what new equation(s) will be added to the model to perform the conversion.
+        If ``direction`` is ``DataDirectionFlow.INPUT``, then the original variable takes its value from the newly added
+        variable; if it is ``DataDirectionFlow.OUTPUT`` then the opposite happens.
+        If the direction is ``INPUT`` then any initial value will be moved to the new variable (and converted
+        appropriately).
 
-        For example::
+        For example, a model::
 
-            Original model
-                var{time} time: ms {pub: in};
-                var{sv11} sv1: mV {init: 2};
+            var time :: ms {cmeta_id: time}
+            var sv1 :: mV {cmeta_id: sv11, init: 2}
 
-                ode(sv1, time) = 1{mV_per_ms};
+            ode(sv1, time) = 1 :: mV_per_ms
 
-        convert_variable(time, second, DataDirectionFlow.INPUT)
+        transformed with::
 
-        becomes
-                var time: ms;
-                var{time} time_converted: s;
-                var{sv11} sv1: mV {init: 2};
-                var sv1_orig_deriv mV_per_ms
+            convert_variable(sv11, volt, DataDirectionFlow.OUTPUT)
 
-                time = 1000 * time_converted;
-                sv1_orig_deriv = 1{mV_per_ms}
-                ode(sv1, time_converted) = 1000 * sv1_orig_deriv
+        becomes::
 
+            var time :: ms {cmeta_id: time}
+            var sv1 :: mV {init: 2}
+            var sv1_converted :: volt {cmeta_id: sv11}
 
-        convert_variable(time, second, DataDirectionFlow.OUTPUT)
+            ode(sv1, time) = 1 :: mV_per_ms
+            sv1_converted = sv1 * 0.001 :: V_per_mV
 
-            creates model
-                var{time} time: ms {pub: in};
-                var{sv11} sv1: mV {init: 2};
-                var{time} time_converted: s
+        If the information flow is reversed, i.e. with::
 
-                ode(sv1, time) = 1{mV_per_ms};
-                time_converted = 0.001 * time
+            convert_variable(sv11, volt, DataDirectionFlow.INPUT)
 
-        :param original_variable: the VariableDummy object representing the variable in the model to be converted
+        then the model becomes::
+
+            var time :: ms {cmeta_id: time}
+            var sv1 :: mV
+            var sv1_converted :: volt {cmeta_id: sv11, init: 0.002}
+
+            ode(sv1_converted, time) = (1 :: mV_per_ms) * 0.001 :: V_per_mV
+            sv1 = sv1_converted * 1000 :: mV_per_V
+
+        Converting time as an input requires further processing, because every ODE needs adapting. With::
+
+            convert_variable(time, second, DataDirectionFlow.INPUT)
+
+        the model becomes::
+
+            var time :: ms
+            var time_converted :: s {cmeta_id: time}
+            var sv1 :: mV {cmeta_id: sv11, init: 2}
+            var sv1_orig_deriv :: mV_per_ms
+
+            time = 1000 :: ms_per_s * time_converted
+            sv1_orig_deriv = 1 :: mV_per_ms
+            ode(sv1, time_converted) = 1000 :: ms_per_s * sv1_orig_deriv
+
+        :param original_variable: the :class:`VariableDummy` object representing the variable in the model to be
+                                  converted
         :param units: a Pint unit object representing the units to convert variable to (note if variable is already
                       in these units, model remains unchanged and the original variable is returned
         :param direction: either DataDirectionFlow.INPUT; the variable to be changed is an input and all affected
@@ -849,147 +868,144 @@ class Model(object):
         :return: new variable with desired units, or original unchanged if conversion was not necessary
         :raises DimensionalityError: if the unit conversion is impossible
         """
-        # assertion errors will be thrown here if arguments are incorrect type
-        self._check_arguments_for_convert_variables(original_variable, units, direction)
+        # Sanity checks on inputs
+        assert isinstance(original_variable, VariableDummy)
+        assert original_variable.name in self._name_to_variable  # Variable must be in model
+        assert isinstance(units, self.units.Unit)  # Units must be in the right registry
+        assert isinstance(direction, DataDirectionFlow)
 
-        original_units = original_variable.units
-        # no conversion necessary
-        if 1 * original_units == 1 * units:
+        # Compute conversion factor for old units to new;
+        # throws DimensionalityError if unit conversion is not possible
+        cf = self.units.get_conversion_factor(from_unit=original_variable.units, to_unit=units)
+        if cf == 1:
+            # No conversion necessary. The method above will ensure a factor close to 1 is returned as 1.
             return original_variable
 
-        # conversion_factor for old units to new
-        # throws DimensionalityError if unit conversion is not possible
-        cf = self.units.get_conversion_factor(from_unit=original_units, to_unit=units)
-
+        # Store original state and free symbols (these might change, so need to store references early)
         state_symbols = self.get_state_variables()
         free_symbol = self.get_free_variable()
-        # create new variable and relevant equations
+
+        # Create new variable and equations defining it and/or the original variable
         new_variable = self._convert_variable_instance(original_variable, cf, units, direction)
 
-        # if is output do not need to do additional changes for state/free symbols
+        # For outputs do not need to do additional changes for state/free symbols, so we're done
         if direction == DataDirectionFlow.OUTPUT:
             return new_variable
 
-        new_derivatives = []
-        # if state variable
-        if original_variable in state_symbols:
-            new_derivatives.append(self._convert_state_variable_deriv(original_variable, new_variable, cf))
+        derivative_replacements = {}  # A map from old derivatives to variables holding original RHS definitions
 
-        # if free variable
+        if original_variable in state_symbols:
+            # Make the converted variable the new state variable
+            derivative_replacements.update(self._convert_state_variable_deriv(original_variable, new_variable, cf))
+
         if original_variable == free_symbol:
-            # for each derivative wrt to free variable add necessary variables/equations
+            # Change every ODE to be w.r.t. the new time variable
+            # Process ODEs in model order to ensure new equations are added in a consistent order
             for ode in [eq for v, eq in sorted(self._ode_definition_map.items(),
                                                key=lambda v_eq: v_eq[0].order_added)]:
                 if ode.args[0].args[1].args[0] == original_variable:
-                    new_derivatives.append(self._convert_free_variable_deriv(ode, new_variable, cf))
+                    derivative_replacements.update(self._convert_free_variable_deriv(ode, new_variable, cf))
 
-        # replace any instances of derivative of rhs of other eqns with new derivative variable
-        for new_derivative in new_derivatives:
-            self._replace_derivatives(new_derivative)
+        # Replace any instances of derivatives of the RHS of other equations with variables holding the original
+        # definitions of those derivatives
+        self._replace_references_to_derivatives(derivative_replacements)
 
         self._invalidate_cache()
 
         return new_variable
 
-    def _check_arguments_for_convert_variables(self, variable, units, direction):
+    def _replace_references_to_derivatives(self, derivative_replacement_map):
         """
-        Checks the arguments of the convert_variable function.
-        :param variable: variable must be a VariableDummy object present in the model
-        :param units: units must be a pint Unit object in this model
-        :param direction: must be part of DataDirectionFlow enum
-       """
-        # variable should be a VariableDummy
-        assert isinstance(variable, VariableDummy)
+        Replace all references to pre-conversion derivatives on the RHS of model equations.
 
-        # variable must be in model
-        assert variable.name in self._name_to_variable
-
-        # units should be a pint Unit object in the registry for this model
-        assert isinstance(units, self.units.Unit)
-
-        # direction should be part of enum
-        assert isinstance(direction, DataDirectionFlow)
-
-    def _replace_derivatives(self, new_derivative):
+        :param derivative_replacement_map: a map from old :class:`sympy.Derivative` expressions to their unit-converted
+            replacements
         """
-        Function to replace an instance of a derivative that occurs on the RHS of any equation
-        :param new_derivative: new variable representing the derivative
-        """
+        derivatives_to_replace = set(derivative_replacement_map.keys())
         for equation in self.equations.copy():
-            for argument in equation.rhs.atoms(sympy.Derivative):
-                if new_derivative['expression'] == argument:
-                    # add new equation
-                    new_eqn = equation.xreplace({new_derivative['expression']: new_derivative['variable']})
-                    self.remove_equation(equation)
-                    self.add_equation(new_eqn)
-                    break
+            if not derivatives_to_replace.isdisjoint(equation.rhs.atoms(sympy.Derivative)):
+                self.remove_equation(equation)
+                self.add_equation(equation.xreplace(derivative_replacement_map))
 
-    def _create_new_deriv_variable_and_equation(self, eqn, derivative_variable):
+    def _remove_ode_and_assign_rhs_to_new_variable(self, original_ode, original_state_variable):
         """
-        Create a new variable and equation for the derivative.
-        :param eqn: the original derivative eqn
-        :param derivative_variable: the dependent variable
-        :return: new variable for the derivative
-        """
-        # 1. create a new variable
-        deriv_name = self.get_unique_name(derivative_variable.name + '_orig_deriv')
-        deriv_units = self.units.evaluate_units(eqn.args[0])
-        new_deriv_variable = self.add_variable(name=deriv_name, units=deriv_units)
+        Create a new variable holding the original RHS for an ODE, with an equation assigning it.
 
-        # 2. create new equation and remove original
-        expression = sympy.Eq(new_deriv_variable, eqn.args[1])
-        self.remove_equation(eqn)
+        Also removes the original ODE from the model. A replacement will be created by the caller.
+
+        :param original_ode: the original derivative equation
+        :param original_state_variable: the dependent variable
+        :return: the new variable for the right hand side of the original ODE
+        """
+        # Create a variable to hold the original RHS
+        deriv_name = self.get_unique_name(original_state_variable.name + '_orig_deriv')
+        deriv_units = self.units.evaluate_units(original_ode.lhs)
+        rhs_variable = self.add_variable(name=deriv_name, units=deriv_units)
+
+        # Create new equation and remove original ODE
+        expression = sympy.Eq(rhs_variable, original_ode.rhs)
+        self.remove_equation(original_ode)
         self.add_equation(expression)
 
-        return new_deriv_variable
+        return rhs_variable
 
-    def _convert_free_variable_deriv(self, eqn, new_variable, cf):
+    def _convert_free_variable_deriv(self, original_ode, new_time, cf):
         """
-        Create relevant variables/equations when converting a free variable within a derivative.
-        :param eqn: the derivative equation containing free variable
-        :param new_variable: the new variable representing the converted symbol [new_units]
+        Create relevant variables/equations when converting a free variable within a single ODE.
+
+        See :meth:`convert_variable` for an example of how this works.
+
+        :param original_ode: the derivative equation containing the pre-conversion free variable
+        :param new_time: the new variable representing the converted free variable [new_units]
         :param cf: conversion factor for unit conversion [new units/old units]
+        :return: a map from the old derivative term to the variable holding its original RHS
         """
-        derivative_variable = eqn.args[0].args[0]  # units [x]
-        # 1. create a new variable/equation for original derivative
-        # will have units [x/old units]
-        new_deriv_variable = self._create_new_deriv_variable_and_equation(eqn, derivative_variable)
+        state_variable = original_ode.lhs.args[0]  # units [x]
+        # Create a variable to hold the value of the original RHS, and the equation assigning it.
+        # Will have units [x/old units]
+        original_rhs_variable = self._remove_ode_and_assign_rhs_to_new_variable(original_ode, state_variable)
 
-        # 2. create equation for derivative wrt new variable
-        # dx/dnewvar [x/new units] = new_deriv_var [x/old units] / cf [new units/old units]
-        expression = sympy.Eq(sympy.Derivative(derivative_variable, new_variable), new_deriv_variable / cf)
-        self.add_equation(expression)
-        return {'variable': new_deriv_variable, 'expression': eqn.args[0]}
+        # Add equation for derivative wrt new variable
+        # dx/dnewvar [x/new units] = original_rhs_variable [x/old units] / cf [new units/old units]
+        new_ode = sympy.Eq(sympy.Derivative(state_variable, new_time), original_rhs_variable / cf)
+        self.add_equation(new_ode)
+        return {original_ode.lhs: original_rhs_variable}
 
     def _convert_state_variable_deriv(self, original_variable, new_variable, cf):
         """
-        Create relevant variables/equations when converting a state variable.
-        :param original_variable: the variable to be converted [old units]
+        Create relevant variables/equations when converting a state variable as an input.
+
+        See :meth:`convert_variable` for an example of how this works.
+
+        :param original_variable: the state variable to be converted [old units]
         :param new_variable: the new variable representing the converted symbol [new units]
         :param cf: conversion factor for unit conversion [new units/old units]
-        :return: a dictionary containing the 'variable' and 'expression' for new derivative
+        :return: a map from the old derivative term to the variable holding its original RHS
         """
-        # 1. find the derivative equation for this variable
-        eqn = self._ode_definition_map[original_variable]
+        original_ode = self._ode_definition_map[original_variable]
+        free_variable = original_ode.lhs.args[1]  # units [t]
 
-        # get free variable symbol
-        # units [x]
-        wrt_variable = eqn.args[0].args[1]
+        # Create a variable to hold the value of the original RHS, and the equation assigning it.
+        # Will have units [old units/t]
+        original_rhs_variable = self._remove_ode_and_assign_rhs_to_new_variable(original_ode, original_variable)
 
-        # 1. create a new variable/equation for original derivative
-        # will have units [old units/x]
-        new_deriv_variable = self._create_new_deriv_variable_and_equation(eqn, original_variable)
-
-        # 2. add a new derivative equation
-        # dnewvar/dx [new units/x] = new_deriv_var [old units/x] * cf [new units/old units]
-        expression = sympy.Eq(sympy.Derivative(new_variable, wrt_variable), new_deriv_variable * cf)
-        self.add_equation(expression)
-        return {'variable': new_deriv_variable, 'expression': eqn.args[0]}
+        # Add the new ODE
+        # dnewvar/dt [new units/t] = original_rhs_variable [old units/t] * cf [new units/old units]
+        new_ode = sympy.Eq(sympy.Derivative(new_variable, free_variable), original_rhs_variable * cf)
+        self.add_equation(new_ode)
+        return {original_ode.lhs: original_rhs_variable}
 
     def _convert_variable_instance(self, original_variable, cf, units, direction):
         """
-        Internal function to create new variable and an equation for it.
-        :param original_variable: VariableDummy object to be converted [old units]
+        Internal function to create new variable in given units, possibly with defining equation.
+
+        The defining equation is created unless the variable is an input state variable; this case is handled
+        specially by :meth:`_convert_state_variable_deriv`.
+
+        If the direction is input, also creates an equation assigning ``original_variable`` from the converted one.
+        See :meth:`convert_variable` for the context and examples.
+
+        :param original_variable: :class:`VariableDummy` object to be converted [old units]
         :param cf: conversion factor [new units/old units]
         :param units: Unit object for new units
         :param direction: enumeration value specifying input or output
@@ -998,26 +1014,23 @@ class Model(object):
         # Get unique name for new variable
         new_name = self.get_unique_name(original_variable.name + '_converted')
 
-        # If original has initial_value calculate new initial value (only needed for INPUT case)
-        new_value = None
+        # If original has initial_value calculate converted initial value (only needed for INPUT case)
+        new_initial_value = None
         if direction == DataDirectionFlow.INPUT and original_variable.initial_value is not None:
-            new_value = original_variable.initial_value * cf
+            new_initial_value = original_variable.initial_value * cf
 
         # Create new variable
-        new_variable = self.add_variable(name=new_name, units=units, initial_value=new_value)
+        new_variable = self.add_variable(name=new_name, units=units, initial_value=new_initial_value)
 
-        # Transfer cmeta id from original to new variable if the original variable has one
+        # Transfer cmeta id from original to new variable if the original variable has one,
+        # so metadata annotations will point at the new variable.
         if original_variable._cmeta_id is not None:
             self.transfer_cmeta_id(original_variable, new_variable)
 
-        # Add/remove/replace equations
+        # Add/replace equations defining the new variable and/or the original variable
         if direction == DataDirectionFlow.INPUT:
-            # if direction is input; original var will be replaced by equation so do not need to store initial value
-            original_variable.initial_value = None
-
-            # find the equation for the original variable (if any): orig_var = rhs
-            # remove equation from model
-            # add eqn for new variable in terms of rhs of equation
+            # If the original variable was defined directly by an equation (original_variable = rhs) then this must be
+            # removed, and the new variable defined in terms of that RHS, with a conversion factor:
             #     new_var [new units] = rhs [old units] * cf [new units/old units]
             original_equation = self._var_definition_map.get(original_variable)
             if original_equation is not None:
@@ -1025,15 +1038,18 @@ class Model(object):
                 self.remove_equation(original_equation)
                 self.add_equation(new_equation)
 
-            # add eqn for original variable in terms of new variable
+            # Add equation defining the original variable in terms of new variable:
             #     orig_var [old units] = new var [new units] / cf [new units/old units]
+            # Note that state variables will still have an ODE at this point, and so will be overdefined, hence the need
+            # to disable checking for duplicates.
+            original_variable.initial_value = None  # This has moved to the new variable
             expression = sympy.Eq(original_variable, new_variable / cf)
-            self.add_equation(expression, check_duplicates=False)
+            self.add_equation(expression, check_duplicates=original_variable not in self._ode_definition_map)
         else:
-            # if direction is output add eqn for new variable in terms of original variable
+            # Output is the easy case: just add equation for new variable in terms of original variable
             #     new_var [new units] = orig_var [old units] * cf [new units/old units]
-            expression = sympy.Eq(new_variable, original_variable * cf)
-            self.add_equation(expression)
+            new_equation = sympy.Eq(new_variable, original_variable * cf)
+            self.add_equation(new_equation)
 
         return new_variable
 
