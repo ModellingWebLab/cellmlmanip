@@ -119,8 +119,11 @@ class Model(object):
         :param check_duplicates: whether to check that the equation's LHS is not already defined
         """
         assert isinstance(equation, sympy.Eq), 'The argument `equation` must be a sympy.Eq.'
-        self.equations.append(equation)
         lhs = equation.lhs
+        if lhs.is_Derivative:
+            if len(lhs.args) > 2 or lhs.args[1][1] > 1:
+                raise ValueError('Only first order derivatives wrt a single variable are supported')
+        self.equations.append(equation)
         if lhs.is_Derivative:
             state_var = lhs.free_symbols.pop()
             if check_duplicates:

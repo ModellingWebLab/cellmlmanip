@@ -434,6 +434,12 @@ class TestModelFunctions():
         model.add_equation(sp.Eq(sv1, 2.0), check_duplicates=False)
         model.add_equation(sp.Eq(sv1_def.lhs, 1.0), check_duplicates=False)
 
+        # Only first-order derivatives allowed
+        with pytest.raises(ValueError, match='Only first order derivatives'):
+            model.add_equation(sp.Eq(sp.Derivative(symbol, symbol1, symbol2), 1.0))
+        with pytest.raises(ValueError, match='Only first order derivatives'):
+            model.add_equation(sp.Eq(sp.Derivative(symbol, symbol1, symbol1), 1.0))
+
     def test_remove_equation(self, local_hh_model):
         """ Tests the Model.remove_equation method. """
 
