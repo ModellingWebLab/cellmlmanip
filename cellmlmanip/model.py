@@ -647,7 +647,7 @@ class Model(object):
 
             # Get all the dummy numbers on the RHS, and prepare substitution map
             dummies = equation.rhs.atoms(NumberDummy)
-            subs_dict = {d: sympy.Float(d.value, FLOAT_PRECISION) for d in dummies}
+            subs_dict = {d: d.evalf(FLOAT_PRECISION) for d in dummies}
 
             # And replace the equation with one with the rhs subbed with sympy.Number objects
             if subs_dict:
@@ -1073,9 +1073,12 @@ class NumberDummy(sympy.Dummy):
 
     Unlike sympy expressions, this number type will never be removed in simplify operations etc.
 
-    Number dummies should never be created directly, but always via :meth:`Model.add_number()`
+    Number dummies should never be created directly, but always via :meth:`Model.add_number()`.
 
     Assumes the value is real.
+
+    To get the actual value as a float or string, use ``float(dummy)`` or ``str(dummy)`` respectively.
+    You can also use ``dummy.evalf()`` to get the value as a :class:`sympy.Float`.
     """
 
     # Sympy annoyingly overwrites __new__

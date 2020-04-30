@@ -675,7 +675,7 @@ class TestModelFunctions():
         assert new_eqn.is_Equality
         assert new_eqn.lhs == new_target
         assert new_eqn.rhs.is_Mul
-        assert new_eqn.rhs.args[0].value == 0.001
+        assert float(new_eqn.rhs.args[0]) == 0.001
         assert new_eqn.rhs.args[1] == source
 
     def test_variable_classification(self, aslanidi_model):
