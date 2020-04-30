@@ -212,10 +212,15 @@ class Model(object):
         return var
 
     def connect_variables(self, source_name: str, target_name: str):
-        """Tells this model that the variable indicated by ``target_name`` should get its value from the variable
-        indicated by ``source_name``.
+        """Combine two variables that represent the same entity within the model.
 
-        If the variables' units are not the same, an equation will be added to the target component.
+        This method is used to implement CellML connections between variables in different components. It tells the
+        model that the variable indicated by ``target_name`` should get its value from the variable indicated by
+        ``source_name``. In general therefore this method should only be called by the :class:`Parser`.
+
+        If the units of both variables match, then any equations referencing the target variable are changed to
+        reference the source directly, and metadata annotations are moved over. If the units differ, an equation is
+        added defining target in terms of source with a conversion factor.
 
         This method will only work if the source variable has been assigned a value, either through an equation or by
         connecting it (directly or indirectly) to a variable with an equation. If this is not yet the case, ``False`` is
@@ -223,6 +228,8 @@ class Model(object):
 
         :param source_name: The source variable name
         :param target_name: The target variable name
+        :raises ValueError: if a logically impossible connection is attempted
+        :raises DimensionalityError: if the units are incompatible
         """
         logger.debug('connect_variables(%s ⟶ %s)', source_name, target_name)
 
@@ -245,11 +252,12 @@ class Model(object):
             raise ValueError('Multiple definitions for {} ({} and {})'.format(
                 target, source, self._var_definition_map[target]))
 
-        # If source/target variable is in the same unit
-        if source.units == target.units:
+        # Check whether we need a unit conversion
+        cf = self.units.get_conversion_factor(from_unit=source.units, to_unit=target.units)
+        if cf == 1:
             # Direct substitution is possible
             target.assigned_to = source.assigned_to
-            # everywhere the target variable is used, replace with source variable,
+            # Everywhere the target variable is used, replace with source variable,
             # updating the definition maps accordingly
             for index, equation in enumerate(self.equations):
                 self.equations[index] = new_eq = equation.xreplace({target: source.assigned_to})
@@ -271,13 +279,10 @@ class Model(object):
 
         # Otherwise, this connection requires a conversion
         else:
-            # Get the scaling factor required to convert source units to target units
-            factor = self.units.convert(1 * source.units, target.units).magnitude
-
             # Dummy to represent this factor in equations, having units for conversion
-            factor_dummy = self.add_number(factor, target.units / source.units)
+            factor_dummy = self.add_number(cf, target.units / source.units)
 
-            # Add an equations making the connection with the required conversion
+            # Add an equation making the connection with the required conversion
             self.add_equation(sympy.Eq(target, source.assigned_to * factor_dummy))
 
             logger.info('Connection req. unit conversion: %s', self.equations[-1])
