@@ -811,8 +811,8 @@ class Model(object):
 
         For example, a model::
 
-            var time :: ms {meta: time}
-            var sv1 :: mV {meta: sv11, init: 2}
+            var time :: ms {cmeta_id: time}
+            var sv1 :: mV {cmeta_id: sv11, init: 2}
 
             ode(sv1, time) = 1 :: mV_per_ms
 
@@ -822,9 +822,9 @@ class Model(object):
 
         becomes::
 
-            var time :: ms {meta: time}
+            var time :: ms {cmeta_id: time}
             var sv1 :: mV {init: 2}
-            var sv1_converted :: volt {meta: sv11}
+            var sv1_converted :: volt {cmeta_id: sv11}
 
             ode(sv1, time) = 1 :: mV_per_ms
             sv1_converted = sv1 * 0.001 :: V_per_mV
@@ -835,9 +835,9 @@ class Model(object):
 
         then the model becomes::
 
-            var time :: ms {meta: time}
+            var time :: ms {cmeta_id: time}
             var sv1 :: mV
-            var sv1_converted :: volt {meta: sv11, init: 0.002}
+            var sv1_converted :: volt {cmeta_id: sv11, init: 0.002}
 
             ode(sv1_converted, time) = (1 :: mV_per_ms) * 0.001 :: V_per_mV
             sv1 = sv1_converted * 1000 :: mV_per_V
@@ -849,8 +849,8 @@ class Model(object):
         the model becomes::
 
             var time :: ms
-            var time_converted :: s {meta: time}
-            var sv1 :: mV {meta: sv11, init: 2}
+            var time_converted :: s {cmeta_id: time}
+            var sv1 :: mV {cmeta_id: sv11, init: 2}
             var sv1_orig_deriv :: mV_per_ms
 
             time = 1000 :: ms_per_s * time_converted
