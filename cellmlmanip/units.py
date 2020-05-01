@@ -1,4 +1,7 @@
-"""Unit handling for CellML models, using the Pint unit library."""
+"""
+The :mod:`cellmlmanip.units` module provides unit handling for CellML models, using the
+`Pint unit library <https://pint.readthedocs.io/>`_.
+"""
 import logging
 import math
 import numbers
@@ -180,13 +183,13 @@ class UnitStore(object):
     Creates and stores units, and has functions for unit conversion.
 
     Within a UnitStore ``store``, units are represented as ``store.Unit`` objects, while numbers with units are
-    represented as ``store.Quantity`` objects. Both classes are inherited from the ``pint`` package.
+    represented as ``store.Quantity`` objects. Both classes are inherited from the :mod:`pint` package.
 
     Each UnitStore has its own unique namespace for storing units.
 
-    By default, each ``UnitStore`` maintains an internal ``pint.UnitRegistry`` and units from different stores cannot be
-    compared or interact with each other. To allow comparison and conversion between unit stores, an existing
-    ``UnitStore`` can be passed in at construction time, so that the underlying registry will be shared. (This will
+    By default, each UnitStore maintains an internal :class:`pint.UnitRegistry` and units from different stores cannot
+    be compared or interact with each other. To allow comparison and conversion between unit stores, an existing
+    UnitStore can be passed in at construction time, so that the underlying registry will be shared. (This will
     allow units from different stores to interact, but the unit stores will maintain independent namespaces).
 
     For example::
@@ -424,16 +427,17 @@ class UnitStore(object):
         desired by the LHS, if  the ``Eq`` expression is passed in as ``expr`` and ``to_units`` is given as ``None``.
 
         The conversion strategy for each (sub-)expression depends on the operator:
-        - for relational operators, all operands are converted to the units of the first operand
-        - for Mul the operands can be in any units, and we convert the result if needed
-        - for Add all operands are converted to the desired units (or the units of the first operand if no desired units
+
+        * for relational operators, all operands are converted to the units of the first operand
+        * for Mul the operands can be in any units, and we convert the result if needed
+        * for Add all operands are converted to the desired units (or the units of the first operand if no desired units
           are given)
-        - for Pow the exponent must be dimensionless while the operand can be in any units, and we convert the result if
+        * for Pow the exponent must be dimensionless while the operand can be in any units, and we convert the result if
           needed
-        - for trig functions, exp, log, etc. the operands have to have dimensionless units
-        - for piecewise, the conditions must be dimensionless, and the pieces are set to the desired units (or the units
+        * for trig functions, exp, log, etc. the operands have to have dimensionless units
+        * for piecewise, the conditions must be dimensionless, and the pieces are set to the desired units (or the units
           of the first piece)
-        - for derivatives, numbers, variables, etc. we just convert to the desired units
+        * for derivatives, numbers, variables, etc. we just convert to the desired units
 
         :param expr: the Sympy expression to convert
         :param to_units: the desired units of the expression, or ``None`` if we don't care or for converting an

@@ -1,4 +1,7 @@
-"""Classes to represent a flattened CellML model and metadata about its variables."""
+"""
+The main construct in cellmlmanip is a :class:`cellmlmanip.model.Model`.
+This represents a flattened CellML model and metadata about its variables.
+"""
 import logging
 from enum import Enum
 from io import StringIO
@@ -29,12 +32,17 @@ class DataDirectionFlow(Enum):
 class VariableType(Enum):
     """Classification of variables according to their role in the model's mathematics.
 
-    - ``UNKNOWN``: not yet classified
-    - ``STATE``: the dependent variable in an ODE
-    - ``FREE``: the independent variable in an ODE
-    - ``PARAMETER``: defined directly as a constant number (note that this does not include variables defined by an
-      equation that evaluates as constant)
-    - ``COMPUTED``: defined by any other equation
+    ``UNKNOWN``
+        not yet classified
+    ``STATE``
+        the dependent variable in an ODE
+    ``FREE``
+        the independent variable in an ODE
+    ``PARAMETER``
+        defined directly as a constant number (note that this does not include variables defined by an
+        equation that evaluates as constant)
+    ``COMPUTED``
+        defined by any other equation
     """
     UNKNOWN = 0
     STATE = 1
@@ -51,10 +59,11 @@ class Model(object):
     The main parts of a Model are 1. a list of sympy equation objects; 2. a collection of named units; and 3. an RDF
     graph that stores further meta data about the model.
 
-    Equations are stored as ``Sympy.Eq`` objects, but with the caveat that all variables and numbers must be specified
-    using the ``Sympy.Dummy`` objects returned by :meth:`add_variable()` and :meth:`add_number()`.
+    Equations are stored as :class:`sympy.Eq` objects, but with the caveat that all variables and numbers must be
+    specified using the :class:`sympy.Dummy` objects returned by :meth:`add_variable()` and :meth:`add_number()`.
 
-    Units are handled using the ``units`` property of a model, which is an instance of ``cellmlmanip.units.UnitStore``.
+    Units are handled using the ``units`` property of a model, which is an instance of
+    :class:`cellmlmanip.units.UnitStore`.
 
     RDF meta data can be attached to either the model itself or to model variables, via the CellML ``cmeta:id``
     attribute. Cmeta ids set on any other parts of CellML models are ignored.
@@ -127,12 +136,12 @@ class Model(object):
         Adds an equation to this model.
 
         The left-hand side (LHS) of the equation must be either a variable (as a :class:`VariableDummy`) or a derivative
-        (as a ``sympy.Derivative``).
+        (as a :class:`sympy.Derivative`).
 
         All numbers and variables used in the equation must have been obtained from this model, e.g. via
         :meth:`add_number()`, :meth:`add_variable()`, or :meth:`get_variable_by_ontology_term()`.
 
-        :param equation: A ``sympy.Eq`` object.
+        :param equation: A :class:`sympy.Eq` object.
         :param check_duplicates: whether to check that the equation's LHS is not already defined
         """
         assert isinstance(equation, sympy.Eq), 'The argument `equation` must be a sympy.Eq.'
@@ -328,8 +337,8 @@ class Model(object):
 
         :param variables: The variables to get the equations for (as :class:`VariableDummy` objects).
         :param recurse: Indicates whether to recurse the equation graph, or to return only the top level equations.
-        :param strip_units: If ``True``, all ``sympy.Dummy`` objects representing number with units will be replaced
-            with ordinary sympy number objects.
+        :param strip_units: If ``True``, all :class:`NumberDummy` objects representing number with units will be
+            replaced with ordinary sympy number objects.
         """
         # Get graph
         if strip_units:
@@ -367,15 +376,17 @@ class Model(object):
         return eqs
 
     def get_derivatives(self):
-        """Returns a list of ``sympy.Derivative`` objects found as LHS in the given model graph.
-        The list is ordered by appearance in the cellml document.
+        """Returns a list of :class:`sympy.Derivative` objects found as LHS in the given model graph.
+
+        The list is ordered by appearance in the CellML document.
         """
         derivatives = [v for v in self.graph if isinstance(v, sympy.Derivative)]
         return sorted(derivatives, key=lambda deriv: deriv.args[0].order_added)
 
     def get_derived_quantities(self):
         """Returns a list of derived quantities found in the given model graph.
-        A derived quantity is any variable that is not a state variable or parameter/constant.
+
+        A derived quantity is any variable that is not a state variable, free variable, or parameter/constant.
         """
         derived_quantities = [
             v for v, node in self.graph.nodes.items()
@@ -391,6 +402,7 @@ class Model(object):
         specified), then cmeta:id if present, or the variable's name attribute if not.
 
         Dollar symbols in the name are replaced by a double underscore.
+
         :param var: the variable for which to get the display name.
         :param ontology: the base URL of an ontology if only annotations within that ontology should be considered
 
@@ -416,16 +428,18 @@ class Model(object):
         raise ValueError('No free variable set in model.')  # pragma: no cover
 
     def get_rdf_annotations(self, subject=None, predicate=None, object_=None):
-        """Searches the RDF graph and returns 'triples matching the given parameters'
+        """Searches the RDF graph and returns 'triples matching the given parameters'.
 
         :param subject: the subject of the triples returned
         :param predicate: the predicate of the triples returned
         :param object_: the object of the triples returned
 
-        ``subject`` ``predicate`` and ``object_`` are optional, if None then any triple matches
-        if all are none, all triples are returned
-        ``subject`` ``predicate`` and ``object_`` can be anything valid as input to create_rdf_node
-        typically an (NS, local) pair, a string or None"""
+        Each of ``subject``, ``predicate`` and ``object_`` are optional; if ``None`` then any triple matches.
+        If all are ``None``, then all triples are returned.
+
+        The arguments can be anything valid as input to :meth:`cellmlmanip.rdf.create_rdf_node`,
+        typically a (namespace URI, local name) pair, a string or ``None``.
+        """
         subject = create_rdf_node(subject)
         predicate = create_rdf_node(predicate)
         object_ = create_rdf_node(object_)
@@ -449,7 +463,7 @@ class Model(object):
         """
         Searches the model and returns the variable with the given cmeta id.
 
-        To get variables from e.g. an oxmeta ontology term, use :meth:`get_variable_by_ontology_term()`.
+        To get variables from e.g. an oxmeta ontology term, use :meth:`get_variable_by_ontology_term`.
 
         :param cmeta_id: Either a string id or :class:`rdflib.URIRef` instance.
         :returns: A :class:`VariableDummy` object
@@ -480,14 +494,14 @@ class Model(object):
         """Searches the RDF graph for a variable annotated with the given ``term`` and returns it.
 
         Specifically, this method searches for a unique variable annotated with
-        predicate ``http://biomodels.net/biology-qualifiers/is`` and the object
+        predicate http://biomodels.net/biology-qualifiers/is and the object
         specified by ``term``.
 
         Will raise a ``KeyError`` if no variable with the given annotation is
         found, and a ``ValueError`` if more than one variable with the given
         annotation is found.
 
-        :param term: anything suitable as an input to :meth:`create_rdf_node`; typically either an RDF
+        :param term: anything suitable as an input to :meth:`cellmlmanip.rdf.create_rdf_node`; typically either an RDF
             node already, or a tuple ``(namespace_uri, local_name)``.
         """
         variables = self.get_variables_by_rdf(('http://biomodels.net/biology-qualifiers/', 'is'), term)
@@ -514,7 +528,7 @@ class Model(object):
     def get_ontology_terms_by_variable(self, variable, namespace_uri=None):
         """
         Returns all ontology terms linked to the variable ``variable`` via the
-        ``http://biomodels.net/biology-qualifiers/is`` predicate.
+        http://biomodels.net/biology-qualifiers/is predicate.
 
         :param variable: The variable to search for (as a :class:`VariableDummy` object).
         :param namespace_uri: An optional namespace URI. If given, only terms within the given namespace will be
@@ -534,8 +548,8 @@ class Model(object):
     def get_definition(self, variable):
         """Get the equation (if any) defining the given variable.
 
-        :param variable: The variable to look up (as a class:`VariableDummy`. If this appears as the LHS of a straight
-            assignment, or the state variable in an ODE, the corresponding equation will be returned.
+        :param variable: The variable to look up (as a :class:`VariableDummy`). If this appears as the LHS of a
+            straight assignment, or the state variable in an ODE, the corresponding equation will be returned.
         :returns: A Sympy equation, or ``None`` if the variable is not defined by an equation.
         """
         defn = self._ode_definition_map.get(variable)
@@ -549,7 +563,7 @@ class Model(object):
 
     @property
     def graph(self):
-        """ A ``networkx.DiGraph`` containing the model equations. """
+        """ A :class:`networkx.DiGraph` containing the model equations. """
 
         # Return cached graph
         if self._graph is not None:
@@ -627,8 +641,8 @@ class Model(object):
     @property
     def graph_with_sympy_numbers(self):
         """
-        A ``networkx.DiGraph`` containing the model equations, but with numbers represented as sympy ``Number`` objects
-        instead of dummies.
+        A :class:`networkx.DiGraph` containing the model equations,
+        but with numbers represented as :class:`sympy.Number` objects instead of dummies.
         """
         if self._graph_with_sympy_numbers is not None:
             return self._graph_with_sympy_numbers
@@ -681,8 +695,9 @@ class Model(object):
         return cmeta_id in self._cmeta_id_to_variable
 
     def has_ontology_annotation(self, variable, namespace_uri=None):
-        """Checks that there is at least one result for
-        :meth:`Model.get_ontology_terms_by_variable(variable, namespace_uri)`.
+        """
+        Checks that there is at least one result for
+        :meth:`Model.get_ontology_terms_by_variable` with the given arguments.
         """
         return len(self.get_ontology_terms_by_variable(variable, namespace_uri)) != 0
 
@@ -711,7 +726,8 @@ class Model(object):
         will return the state and free variables from inside derivatives, which is not what we want.
 
         :param expressions: an iterable of expressions to get variables for.
-        :return: a set of variables and derivatives, as :class:`VariableDummy` and ``sympy.Derivative`` respectively.
+        :return: a set of variables and derivatives, as :class:`VariableDummy` and :class:`sympy.Derivative`
+            respectively.
         """
         variables = set()
         for expr in expressions:

@@ -11,7 +11,8 @@ def create_rdf_node(node_content):
     a tuple ``(namespace, local_name)``, or a string, in which case it is interpreted
     as either a URI ref if it starts with # otherwise a literal RDF node.
 
-    ``node_content`` may also be ``None`` to return `None`, allowing easy handling of wildcard options to queries."""
+    ``node_content`` may also be ``None`` to return ``None``, allowing easy handling of wildcard options to queries.
+    """
     if node_content is None or isinstance(node_content, rdflib.term.Node):
         return node_content
     elif isinstance(node_content, tuple):

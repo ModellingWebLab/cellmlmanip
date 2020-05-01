@@ -1,6 +1,7 @@
-"""This module contains the CellML parser and related classes. It reads a CellML model and stores
-model information in the cellmlmanip.Model class. MathML equations are translated to Sympy. RDF is
-handled by RDFLib.
+"""
+This :mod:`cellmlmanip.parser` module contains the CellML parser and related classes. It reads a CellML model and
+stores model information in the :class:`cellmlmanip.model.Model` class. MathML equations are translated to Sympy. RDF
+is handled by RDFLib.
 """
 import itertools
 import os
