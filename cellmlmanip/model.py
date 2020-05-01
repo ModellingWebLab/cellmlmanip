@@ -21,7 +21,7 @@ FLOAT_PRECISION = 17
 
 
 class DataDirectionFlow(Enum):
-    """ Direction of data flow for converting units"""
+    """Direction of data flow for converting units."""
     INPUT = 1
     OUTPUT = 2
 
@@ -418,7 +418,8 @@ class Model(object):
         :param subject: the object of the triple returned
         :param predicate: the object of the triple returned
 
-        Note: expects exactly one triple to match and the result to be a literal. It's string value is  returned."""
+        Note: expects exactly one triple to match and the result to be a literal. Its string value is returned.
+        """
         triples = list(self.get_rdf_annotations(subject, predicate))
         assert len(triples) == 1
         assert isinstance(triples[0][2], rdflib.Literal)
