@@ -318,12 +318,12 @@ class TestModelFunctions():
         # Simple equation
         a = simple_ode_model.get_variable_by_cmeta_id('a2')
         defn = simple_ode_model.get_definition(a)
-        assert str(defn) == 'Eq(_single_ode_rhs_computed_var$a, _-1.0)'
+        assert str(defn) == 'Eq(_single_ode_rhs_computed_var$a, _-1)'
 
         # ODE definition
         state_var = simple_ode_model.get_variable_by_cmeta_id('sv11')
         defn = simple_ode_model.get_definition(state_var)
-        assert str(defn) == 'Eq(Derivative(_single_independent_ode$sv1, _environment$time), _1.0)'
+        assert str(defn) == 'Eq(Derivative(_single_independent_ode$sv1, _environment$time), _1)'
 
         # No defining equation
         time = simple_ode_model.get_variable_by_cmeta_id('time')
@@ -675,7 +675,7 @@ class TestModelFunctions():
         assert new_eqn.is_Equality
         assert new_eqn.lhs == new_target
         assert new_eqn.rhs.is_Mul
-        assert new_eqn.rhs.args[0].value == 0.001
+        assert float(new_eqn.rhs.args[0]) == 0.001
         assert new_eqn.rhs.args[1] == source
 
     def test_variable_classification(self, aslanidi_model):

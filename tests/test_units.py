@@ -460,7 +460,7 @@ class TestConvertingExpressions:
     def test_variable_conversion(self, store, cm):
         x = VariableDummy('x', store.get_unit('metre'))
         new_x = store.convert_expression_recursively(x, cm)
-        assert str(new_x) == '_100.0*_x'
+        assert str(new_x) == '_100*_x'
         assert new_x.args[1] is x
         assert isinstance(new_x.args[0], NumberDummy)
         assert new_x.args[0].units == cm / store.get_unit('metre')
@@ -505,7 +505,7 @@ class TestConvertingExpressions:
         expr = sp.Derivative(x, t)
 
         new_expr = store.convert_expression_recursively(expr, cm / t.units)
-        assert str(new_expr) == '_100.0*Derivative(_x, _t)'
+        assert str(new_expr) == '_100*Derivative(_x, _t)'
         assert new_expr.args[0].args[0] is x
         assert new_expr.args[0].args[1][0] is t
 
@@ -523,7 +523,7 @@ class TestConvertingExpressions:
 
         # With conversion
         new_expr = store.convert_expression_recursively(expr, store.get_unit('metre') / store.get_unit('second'))
-        assert str(new_expr) == '_10.0*_x/_y'
+        assert str(new_expr) == '_10*_x/_y'
         assert new_expr.args[2] is x
         assert new_expr.args[0].args[0] is y
 
@@ -532,7 +532,7 @@ class TestConvertingExpressions:
         _2 = NumberDummy('2000', ms)
         expr = x ** (_4 / _2)
         new_expr = store.convert_expression_recursively(expr, None)
-        assert str(new_expr) == '_x**(_1000.0*_4/_2000)'
+        assert str(new_expr) == '_x**(_1000*_4/_2000)'
 
         # With a base that needs internal conversion
         expr = (y + _4) ** 2
@@ -551,7 +551,7 @@ class TestConvertingExpressions:
         x = VariableDummy('x', store.get_unit('second') ** 2)
         expr = x ** (1 / 2)
         new_expr = store.convert_expression_recursively(expr, ms)
-        assert str(new_expr) == '_1000.0*_x**0.5'
+        assert str(new_expr) == '_1000*_x**0.5'
         assert new_expr.args[0].args[0] is x
 
     def test_add_and_subtract(self, store, ms, microsecond):
@@ -566,10 +566,10 @@ class TestConvertingExpressions:
         # If we don't specify units, the first argument (y in canonical form) is chosen
         expr = z + x - y
         new_expr = store.convert_expression_recursively(expr, None)
-        assert str(new_expr) == '_0.001*_z + _1000.0*_x - _y'
+        assert str(new_expr) == '_0.001*_z + _1000*_x - _y'
 
         new_expr = store.convert_expression_recursively(expr, microsecond)
-        assert str(new_expr) == '-_1000.0*_y + _1000000.0*_x + _z'
+        assert str(new_expr) == '-_1000*_y + _1e+06*_x + _z'
 
     def test_abs_ceil_floor(self, store, ms):
         x = VariableDummy('x', store.get_unit('second'))
@@ -581,7 +581,7 @@ class TestConvertingExpressions:
         expr = sp.Abs(x)
         new_expr = store.convert_expression_recursively(expr, ms)
         assert isinstance(new_expr, sp.Abs)
-        assert str(new_expr) == 'Abs(_1000.0*_x)'
+        assert str(new_expr) == 'Abs(_1000*_x)'
         assert new_expr.args[0].args[1] is x
 
         expr = sp.floor(x)
@@ -591,13 +591,13 @@ class TestConvertingExpressions:
         expr = sp.floor(x)
         new_expr = store.convert_expression_recursively(expr, ms)
         assert isinstance(new_expr, sp.floor)
-        assert str(new_expr) == 'floor(_1000.0*_x)'
+        assert str(new_expr) == 'floor(_1000*_x)'
         assert new_expr.args[0].args[1] is x
 
         expr = sp.ceiling(x)
         new_expr = store.convert_expression_recursively(expr, ms)
         assert isinstance(new_expr, sp.ceiling)
-        assert str(new_expr) == 'ceiling(_1000.0*_x)'
+        assert str(new_expr) == 'ceiling(_1000*_x)'
         assert new_expr.args[0].args[1] is x
 
     def test_exp_log_trig(self, store, ms):
@@ -612,7 +612,7 @@ class TestConvertingExpressions:
         expr = sp.log(y / z)
         new_expr = store.convert_expression_recursively(expr, None)
         assert isinstance(new_expr, sp.log)
-        assert str(new_expr) == 'log(_1000.0*_y/_z)'
+        assert str(new_expr) == 'log(_1000*_y/_z)'
 
         expr = sp.sin(z / y)
         new_expr = store.convert_expression_recursively(expr, dimensionless)
@@ -630,7 +630,7 @@ class TestConvertingExpressions:
 
         expr = z > y
         new_expr = store.convert_expression_recursively(expr, store.get_unit('dimensionless'))
-        assert str(new_expr) == '_z > _1000.0*_y'
+        assert str(new_expr) == '_z > _1000*_y'
 
         # Case with no conversion
         expr = x < z
@@ -659,7 +659,7 @@ class TestConvertingExpressions:
         # Units of result are specified
         new_expr = store.convert_expression_recursively(expr, ms)
         assert str(new_expr) == (
-            'Piecewise((_1000.0*_y, (_2 < _x) & (_y < _0.001*_z)), (_z, _2 > _x), (_2*_z, True))')
+            'Piecewise((_1000*_y, (_2 < _x) & (_y < _0.001*_z)), (_z, _2 > _x), (_2*_z, True))')
 
         # A simpler case with no conversion
         _1 = NumberDummy('1', ms)
@@ -689,7 +689,7 @@ class TestConvertingExpressions:
         expr = a + b
         assert str(expr) == '_10 + _20'
         units, new_expr = store.evaluate_units_and_fix(expr)
-        assert str(new_expr) == '_10 + _1000.0*_20'
+        assert str(new_expr) == '_10 + _1000*_20'
         assert units is ms
 
     def test_evaluate_units_and_fix_with_variable(self, store, ms):
@@ -698,7 +698,7 @@ class TestConvertingExpressions:
         expr = a + b
         assert str(expr) == '_10 + _b'
         units, new_expr = store.evaluate_units_and_fix(expr)
-        assert str(new_expr) == '_10 + _1000.0*_b'
+        assert str(new_expr) == '_10 + _1000*_b'
         assert units is ms
 
     # Methods below check error cases
