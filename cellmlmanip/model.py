@@ -240,7 +240,7 @@ class Model(object):
 
         return var
 
-    def connect_variables(self, source_name: str, target_name: str):
+    def connect_variables(self, source_name, target_name):
         """Combine two variables that represent the same entity within the model.
 
         This method is used to implement CellML connections between variables in different components. It tells the
@@ -255,8 +255,8 @@ class Model(object):
         connecting it (directly or indirectly) to a variable with an equation. If this is not yet the case, ``False`` is
         returned. If successful the method returns ``True``.
 
-        :param source_name: The source variable name
-        :param target_name: The target variable name
+        :param str source_name: the source variable name
+        :param str target_name: the target variable name
         :raises ValueError: if a logically impossible connection is attempted
         :raises DimensionalityError: if the units are incompatible
         """
@@ -326,7 +326,7 @@ class Model(object):
 
         return True
 
-    def add_rdf(self, rdf: str):
+    def add_rdf(self, rdf):
         """Takes an RDF string and stores it in the model's RDF graph."""
         self.rdf.parse(StringIO(rdf))
 
@@ -550,8 +550,8 @@ class Model(object):
     def get_definition(self, variable):
         """Get the equation (if any) defining the given variable.
 
-        :param variable: The variable to look up (as a :class:`VariableDummy`). If this appears as the LHS of a
-            straight assignment, or the state variable in an ODE, the corresponding equation will be returned.
+        :param variable: The variable to look up (as a :class:`VariableDummy`). If this appears as the LHS of a straight
+            assignment, or the state variable in an ODE, the corresponding equation will be returned.
         :returns: A Sympy equation, or ``None`` if the variable is not defined by an equation.
         """
         defn = self._ode_definition_map.get(variable)

@@ -494,7 +494,7 @@ class Parser(object):
         Once this has been called, the only variables with an initial_value attribute will be state variables,
         and the initial value will do what it implies - hold the value the state variable should take at t=0.
 
-        Non state variables with an initial value are actually just constants. For consistent processing later on we add
+        Non state variables with an initial value are treated as constants. For consistent processing later on we add
         equations defining them, and remove the initial_value attribute.
         """
         for var in self.model.variables():
