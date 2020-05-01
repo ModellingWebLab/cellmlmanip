@@ -78,7 +78,7 @@ class TestUnitConversion:
         my_nV = store.get_unit('my_nV')
         new_var = model.convert_variable(original_var, my_nV, DataDirectionFlow.OUTPUT)
         assert new_var != original_var
-        assert str(model.get_definition(new_var)) == 'Eq(_env_ode$sv1_converted, 1000000.0*_env_ode$sv1)'
+        assert str(model.get_definition(new_var)) == 'Eq(_env_ode$sv1_converted, _1e+06*_env_ode$sv1)'
 
     ###############################################################
     # Helper functions for later tests
@@ -92,7 +92,7 @@ class TestUnitConversion:
         assert symbol_a.units == local_model.units.get_unit('mV')
         assert symbol_t.units == local_model.units.get_unit('ms')
         assert len(local_model.equations) == 1
-        assert str(local_model.equations[0]) == 'Eq(Derivative(_env_ode$sv1, _environment$time), _1.0)'
+        assert str(local_model.equations[0]) == 'Eq(Derivative(_env_ode$sv1, _environment$time), _1)'
         states = local_model.get_state_variables()
         assert len(states) == 1
         assert symbol_a in states
@@ -115,9 +115,9 @@ class TestUnitConversion:
         assert symbol_x.units == literals_model.units.get_unit('pA')
         assert symbol_y.units == literals_model.units.get_unit('per_pA')
         assert len(literals_model.equations) == 3
-        assert str(literals_model.equations[0]) == 'Eq(Derivative(_env_ode$sv1, _environment$time), _1.0)'
-        assert str(literals_model.equations[1]) == 'Eq(_env_ode$x, _1.0)'
-        assert str(literals_model.equations[2]) == 'Eq(_env_ode$y, _1.0/_env_ode$x)'
+        assert str(literals_model.equations[0]) == 'Eq(Derivative(_env_ode$sv1, _environment$time), _1)'
+        assert str(literals_model.equations[1]) == 'Eq(_env_ode$x, _1)'
+        assert str(literals_model.equations[2]) == 'Eq(_env_ode$y, _1/_env_ode$x)'
         return True
 
     # original state for multiode_model
@@ -129,10 +129,10 @@ class TestUnitConversion:
         assert symbol_a.units == multiode_model.units.get_unit('mV')
         assert symbol_t.units == multiode_model.units.get_unit('ms')
         assert len(multiode_model.equations) == 3
-        assert str(multiode_model.equations[0]) == 'Eq(Derivative(_env_ode$sv1, _environment$time), _1.0)'
+        assert str(multiode_model.equations[0]) == 'Eq(Derivative(_env_ode$sv1, _environment$time), _1)'
         assert str(multiode_model.equations[1]) == \
-            'Eq(_env_ode$x, _1.0 + _3.0*Derivative(_env_ode$sv1, _environment$time))'
-        assert str(multiode_model.equations[2]) == 'Eq(Derivative(_env_ode$y, _environment$time), _2.0)'
+            'Eq(_env_ode$x, _1 + _3*Derivative(_env_ode$sv1, _environment$time))'
+        assert str(multiode_model.equations[2]) == 'Eq(Derivative(_env_ode$y, _environment$time), _2)'
         return True
 
     # original state
@@ -147,8 +147,8 @@ class TestUnitConversion:
         assert symbol_t.units == multiode_freevar_model.units.get_unit('ms')
         assert symbol_y.units == multiode_freevar_model.units.get_unit('mV')
         assert len(multiode_freevar_model.equations) == 2
-        assert str(multiode_freevar_model.equations[0]) == 'Eq(Derivative(_env_ode$sv1, _environment$time), _1.0)'
-        assert str(multiode_freevar_model.equations[1]) == 'Eq(Derivative(_env_ode$y, _environment$time), _2.0)'
+        assert str(multiode_freevar_model.equations[0]) == 'Eq(Derivative(_env_ode$sv1, _environment$time), _1)'
+        assert str(multiode_freevar_model.equations[1]) == 'Eq(Derivative(_env_ode$y, _environment$time), _2)'
         return True
 
     ###############################################################
@@ -205,10 +205,10 @@ class TestUnitConversion:
         assert symbol_derv.units == local_model.units.get_unit('mV') / local_model.units.get_unit('ms')
         assert symbol_derv.initial_value is None
         assert len(local_model.equations) == 3
-        assert str(local_model.equations[0]) == 'Eq(_env_ode$sv1, 1000.0*_env_ode$sv1_converted)'
-        assert str(local_model.equations[1]) == 'Eq(_env_ode$sv1_orig_deriv, _1.0)'
+        assert str(local_model.equations[0]) == 'Eq(_env_ode$sv1, _env_ode$sv1_converted/_0.001)'
+        assert str(local_model.equations[1]) == 'Eq(_env_ode$sv1_orig_deriv, _1)'
         assert str(local_model.equations[2]) == 'Eq(Derivative(_env_ode$sv1_converted, _environment$time), ' \
-                                                '0.001*_env_ode$sv1_orig_deriv)'
+                                                '_0.001*_env_ode$sv1_orig_deriv)'
 
         states = local_model.get_state_variables()
         assert len(states) == 1
@@ -276,10 +276,10 @@ class TestUnitConversion:
         symbol_derv = local_model.get_variable_by_name('env_ode$sv1_orig_deriv')
         assert symbol_derv.units == local_model.units.get_unit('mV') / local_model.units.get_unit('ms')
         assert len(local_model.equations) == 3
-        assert str(local_model.equations[0]) == 'Eq(_environment$time, 1000.0*_environment$time_converted)'
-        assert str(local_model.equations[1]) == 'Eq(_env_ode$sv1_orig_deriv, _1.0)'
+        assert str(local_model.equations[0]) == 'Eq(_environment$time, _environment$time_converted/_0.001)'
+        assert str(local_model.equations[1]) == 'Eq(_env_ode$sv1_orig_deriv, _1)'
         assert str(local_model.equations[2]) == 'Eq(Derivative(_env_ode$sv1, _environment$time_converted), ' \
-                                                '1000.0*_env_ode$sv1_orig_deriv)'
+                                                '_env_ode$sv1_orig_deriv/_0.001)'
 
     def test_add_input_literal_variable(self, literals_model):
         """ Tests the Model.convert_variable function that changes units of given variable.
@@ -339,10 +339,10 @@ class TestUnitConversion:
         assert symbol_y.units == literals_model.units.get_unit('per_pA')
         assert symbol_x_orig.units == literals_model.units.get_unit('pA')
         assert len(literals_model.equations) == 4
-        assert str(literals_model.equations[0]) == 'Eq(Derivative(_env_ode$sv1, _environment$time), _1.0)'
-        assert str(literals_model.equations[1]) == 'Eq(_env_ode$y, _1.0/_env_ode$x)'
-        assert str(literals_model.equations[2]) == 'Eq(_env_ode$x_converted, 0.001*_1.0)'
-        assert str(literals_model.equations[3]) == 'Eq(_env_ode$x, 1000.0*_env_ode$x_converted)'
+        assert str(literals_model.equations[0]) == 'Eq(Derivative(_env_ode$sv1, _environment$time), _1)'
+        assert str(literals_model.equations[1]) == 'Eq(_env_ode$y, _1/_env_ode$x)'
+        assert str(literals_model.equations[2]) == 'Eq(_env_ode$x_converted, _0.001*_1)'
+        assert str(literals_model.equations[3]) == 'Eq(_env_ode$x, _env_ode$x_converted/_0.001)'
 
     def test_add_input_free_variable_multiple(self, multiode_freevar_model):
         """ Tests the Model.convert_variable function that changes units of given variable.
@@ -404,14 +404,14 @@ class TestUnitConversion:
         symbol_derv_y = multiode_freevar_model.get_variable_by_name('env_ode$y_orig_deriv')
         assert symbol_derv_y.units == mV / ms
         assert len(multiode_freevar_model.equations) == 5
-        assert str(multiode_freevar_model.equations[0]) == 'Eq(_environment$time, 1000.0*_environment$time_converted)'
-        assert str(multiode_freevar_model.equations[1]) == 'Eq(_env_ode$sv1_orig_deriv, _1.0)'
+        assert str(multiode_freevar_model.equations[0]) == 'Eq(_environment$time, _environment$time_converted/_0.001)'
+        assert str(multiode_freevar_model.equations[1]) == 'Eq(_env_ode$sv1_orig_deriv, _1)'
         assert str(multiode_freevar_model.equations[2]) == 'Eq(Derivative(_env_ode$sv1, ' \
                                                            '_environment$time_converted), ' \
-                                                           '1000.0*_env_ode$sv1_orig_deriv)'
-        assert str(multiode_freevar_model.equations[3]) == 'Eq(_env_ode$y_orig_deriv, _2.0)'
+                                                           '_env_ode$sv1_orig_deriv/_0.001)'
+        assert str(multiode_freevar_model.equations[3]) == 'Eq(_env_ode$y_orig_deriv, _2)'
         assert str(multiode_freevar_model.equations[4]) == 'Eq(Derivative(_env_ode$y, _environment$time_converted), ' \
-                                                           '1000.0*_env_ode$y_orig_deriv)'
+                                                           '_env_ode$y_orig_deriv/_0.001)'
 
     def test_multiple_odes(self, multiode_model):
         """ Tests the Model.convert_variable function that changes units of given variable.
@@ -458,12 +458,12 @@ class TestUnitConversion:
         # change mV to V
         multiode_model.convert_variable(original_var, volt_unit, DataDirectionFlow.INPUT)
         assert len(multiode_model.equations) == 5
-        assert str(multiode_model.equations[0]) == 'Eq(Derivative(_env_ode$y, _environment$time), _2.0)'
-        assert str(multiode_model.equations[1]) == 'Eq(_env_ode$sv1, 1000.0*_env_ode$sv1_converted)'
-        assert str(multiode_model.equations[2]) == 'Eq(_env_ode$sv1_orig_deriv, _1.0)'
+        assert str(multiode_model.equations[0]) == 'Eq(Derivative(_env_ode$y, _environment$time), _2)'
+        assert str(multiode_model.equations[1]) == 'Eq(_env_ode$sv1, _env_ode$sv1_converted/_0.001)'
+        assert str(multiode_model.equations[2]) == 'Eq(_env_ode$sv1_orig_deriv, _1)'
         assert str(multiode_model.equations[3]) == 'Eq(Derivative(_env_ode$sv1_converted, _environment$time), ' \
-                                                   '0.001*_env_ode$sv1_orig_deriv)'
-        assert str(multiode_model.equations[4]) == 'Eq(_env_ode$x, _1.0 + _3.0*_env_ode$sv1_orig_deriv)'
+                                                   '_0.001*_env_ode$sv1_orig_deriv)'
+        assert str(multiode_model.equations[4]) == 'Eq(_env_ode$x, _1 + _3*_env_ode$sv1_orig_deriv)'
 
     def test_multiple_odes_1(self, multiode_model):
         """ Tests the Model.convert_variable function that changes units of given variable.
@@ -515,14 +515,14 @@ class TestUnitConversion:
         # change ms to s
         multiode_model.convert_variable(original_var, second_unit, DataDirectionFlow.INPUT)
         assert len(multiode_model.equations) == 6
-        assert str(multiode_model.equations[0]) == 'Eq(_environment$time, 1000.0*_environment$time_converted)'
-        assert str(multiode_model.equations[1]) == 'Eq(_env_ode$sv1_orig_deriv, _1.0)'
+        assert str(multiode_model.equations[0]) == 'Eq(_environment$time, _environment$time_converted/_0.001)'
+        assert str(multiode_model.equations[1]) == 'Eq(_env_ode$sv1_orig_deriv, _1)'
         assert str(multiode_model.equations[2]) == 'Eq(Derivative(_env_ode$sv1, _environment$time_converted), ' \
-                                                   '1000.0*_env_ode$sv1_orig_deriv)'
-        assert str(multiode_model.equations[3]) == 'Eq(_env_ode$y_orig_deriv, _2.0)'
+                                                   '_env_ode$sv1_orig_deriv/_0.001)'
+        assert str(multiode_model.equations[3]) == 'Eq(_env_ode$y_orig_deriv, _2)'
         assert str(multiode_model.equations[4]) == 'Eq(Derivative(_env_ode$y, _environment$time_converted), ' \
-                                                   '1000.0*_env_ode$y_orig_deriv)'
-        assert str(multiode_model.equations[5]) == 'Eq(_env_ode$x, _1.0 + _3.0*_env_ode$sv1_orig_deriv)'
+                                                   '_env_ode$y_orig_deriv/_0.001)'
+        assert str(multiode_model.equations[5]) == 'Eq(_env_ode$x, _1 + _3*_env_ode$sv1_orig_deriv)'
 
         # test the graph forming and get_state_variables still works
         states = multiode_model.get_state_variables()
@@ -588,10 +588,10 @@ class TestUnitConversion:
         assert symbol_y.units == literals_model.units.get_unit('per_pA')
         assert symbol_x_orig.units == literals_model.units.get_unit('pA')
         assert len(literals_model.equations) == 4
-        assert str(literals_model.equations[0]) == 'Eq(Derivative(_env_ode$sv1, _environment$time), _1.0)'
-        assert str(literals_model.equations[1]) == 'Eq(_env_ode$x, _1.0)'
-        assert str(literals_model.equations[2]) == 'Eq(_env_ode$y, _1.0/_env_ode$x)'
-        assert str(literals_model.equations[3]) == 'Eq(_env_ode$x_converted, 0.001*_env_ode$x)'
+        assert str(literals_model.equations[0]) == 'Eq(Derivative(_env_ode$sv1, _environment$time), _1)'
+        assert str(literals_model.equations[1]) == 'Eq(_env_ode$x, _1)'
+        assert str(literals_model.equations[2]) == 'Eq(_env_ode$y, _1/_env_ode$x)'
+        assert str(literals_model.equations[3]) == 'Eq(_env_ode$x_converted, _0.001*_env_ode$x)'
         state_variables = literals_model.get_state_variables()
         assert len(state_variables) == 1
         assert symbol_a in state_variables
@@ -640,8 +640,8 @@ class TestUnitConversion:
         assert symbol_orig.units == local_model.units.get_unit('mV')
         assert symbol_orig.initial_value == 2.0
         assert len(local_model.equations) == 2
-        assert str(local_model.equations[0]) == 'Eq(Derivative(_env_ode$sv1, _environment$time), _1.0)'
-        assert str(local_model.equations[1]) == 'Eq(_env_ode$sv1_converted, 0.001*_env_ode$sv1)'
+        assert str(local_model.equations[0]) == 'Eq(Derivative(_env_ode$sv1, _environment$time), _1)'
+        assert str(local_model.equations[1]) == 'Eq(_env_ode$sv1_converted, _0.001*_env_ode$sv1)'
         state_variables = local_model.get_state_variables()
         assert len(state_variables) == 1
         assert symbol_orig in state_variables
@@ -691,8 +691,8 @@ class TestUnitConversion:
         symbol_orig = local_model.get_variable_by_name('environment$time')
         assert symbol_orig.units == local_model.units.get_unit('ms')
         assert len(local_model.equations) == 2
-        assert str(local_model.equations[0]) == 'Eq(Derivative(_env_ode$sv1, _environment$time), _1.0)'
-        assert str(local_model.equations[1]) == 'Eq(_environment$time_converted, 0.001*_environment$time)'
+        assert str(local_model.equations[0]) == 'Eq(Derivative(_env_ode$sv1, _environment$time), _1)'
+        assert str(local_model.equations[1]) == 'Eq(_environment$time_converted, _0.001*_environment$time)'
         state_variables = local_model.get_state_variables()
         assert len(state_variables) == 1
         assert symbol_a in state_variables
@@ -763,7 +763,7 @@ class TestUnitConversion:
             assert silly_names.get_variable_by_name('env_ode$sv1_converted')
             assert silly_names.get_variable_by_name('env_ode$sv1_orig_deriv')
             assert len(silly_names.equations) == 1
-            assert str(silly_names.equations[0]) == 'Eq(Derivative(_env_ode$sv1, _environment$time), _1.0)'
+            assert str(silly_names.equations[0]) == 'Eq(Derivative(_env_ode$sv1, _environment$time), _1)'
             state_variables = silly_names.get_state_variables()
             assert len(state_variables) == 1
             assert symbol_a in state_variables
@@ -792,7 +792,7 @@ class TestUnitConversion:
         assert symbol_derv.units == silly_names.units.get_unit('mV') / silly_names.units.get_unit('ms')
         assert symbol_derv.initial_value is None
         assert len(silly_names.equations) == 3
-        assert str(silly_names.equations[0]) == 'Eq(_env_ode$sv1, 1000.0*_env_ode$sv1_converted_a)'
-        assert str(silly_names.equations[1]) == 'Eq(_env_ode$sv1_orig_deriv_a, _1.0)'
+        assert str(silly_names.equations[0]) == 'Eq(_env_ode$sv1, _env_ode$sv1_converted_a/_0.001)'
+        assert str(silly_names.equations[1]) == 'Eq(_env_ode$sv1_orig_deriv_a, _1)'
         assert str(silly_names.equations[2]) == 'Eq(Derivative(_env_ode$sv1_converted_a, _environment$time), ' \
-                                                '0.001*_env_ode$sv1_orig_deriv_a)'
+                                                '_0.001*_env_ode$sv1_orig_deriv_a)'
