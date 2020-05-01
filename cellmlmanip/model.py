@@ -26,6 +26,23 @@ class DataDirectionFlow(Enum):
     OUTPUT = 2
 
 
+class VariableType(Enum):
+    """Classification of variables according to their role in the model's mathematics.
+
+    - ``UNKNOWN``: not yet classified
+    - ``STATE``: the dependent variable in an ODE
+    - ``FREE``: the independent variable in an ODE
+    - ``PARAMETER``: defined directly as a constant number (note that this does not include variables defined by an
+      equation that evaluates as constant)
+    - ``COMPUTED``: defined by any other equation
+    """
+    UNKNOWN = 0
+    STATE = 1
+    FREE = 2
+    PARAMETER = 3
+    COMPUTED = 4
+
+
 class Model(object):
     """
     A componentless representation of a CellML model, containing a list of equations, units, and RDF metadata about
@@ -360,9 +377,11 @@ class Model(object):
         """Returns a list of derived quantities found in the given model graph.
         A derived quantity is any variable that is not a state variable or parameter/constant.
         """
-        derived_quantities = [v for v, node in self.graph.nodes.items()
-                              if not isinstance(v, sympy.Derivative)
-                              and node.get('variable_type', '') not in ('state', 'free', 'parameter')]
+        derived_quantities = [
+            v for v, node in self.graph.nodes.items()
+            if not isinstance(v, sympy.Derivative)
+            and node.get('variable_type', VariableType.UNKNOWN) not in (
+                VariableType.FREE, VariableType.STATE, VariableType.PARAMETER)]
         return sorted(derived_quantities, key=lambda var: var.order_added)
 
     def get_display_name(self, var, ontology=None):
@@ -390,8 +409,9 @@ class Model(object):
 
     def get_free_variable(self):
         """Returns the free variable in this model (if any)."""
+        # TODO: Use self._ode_definition_map instead?
         for v, node in self.graph.nodes.items():
-            if node.get('variable_type', '') == 'free':
+            if node.get('variable_type', VariableType.UNKNOWN) == VariableType.FREE:
                 return v
 
         raise ValueError('No free variable set in model.')  # pragma: no cover
@@ -554,15 +574,15 @@ class Model(object):
             if lhs.is_Derivative:
                 # Get the state symbol and update the variable information
                 state_symbol = lhs.free_symbols.pop()
-                state_symbol.type = 'state'
+                state_symbol.type = VariableType.STATE
 
                 # Get the free symbol and update the variable information
                 free_symbol = lhs.variables[0]
-                free_symbol.type = 'free'
+                free_symbol.type = VariableType.FREE
             elif isinstance(equation.rhs, NumberDummy):
-                lhs.type = 'parameter'
+                lhs.type = VariableType.PARAMETER
             else:
-                lhs.type = 'computed'
+                lhs.type = VariableType.COMPUTED
 
         # Sanity check: none of the lhs have the same hash
         assert len(graph.nodes) == equation_count
@@ -580,7 +600,7 @@ class Model(object):
                 if rhs in graph.nodes:
                     # If the symbol maps to a node in the graph just add the dependency edge
                     graph.add_edge(rhs, lhs)
-                elif rhs.type in ['state', 'free']:
+                elif rhs.type in [VariableType.STATE, VariableType.FREE]:
                     # If the variable is a state or free variable of a derivative
                     graph.add_node(rhs, equation=None, variable_type=rhs.type)
                     graph.add_edge(rhs, lhs)
