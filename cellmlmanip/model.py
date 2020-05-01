@@ -409,10 +409,9 @@ class Model(object):
 
     def get_free_variable(self):
         """Returns the free variable in this model (if any)."""
-        # TODO: Use self._ode_definition_map instead?
-        for v, node in self.graph.nodes.items():
-            if node.get('variable_type', VariableType.UNKNOWN) == VariableType.FREE:
-                return v
+        for ode in self._ode_definition_map.values():
+            free_variable = ode.lhs.variables[0]
+            return free_variable
 
         raise ValueError('No free variable set in model.')  # pragma: no cover
 
