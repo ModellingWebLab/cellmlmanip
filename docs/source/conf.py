@@ -35,6 +35,7 @@ needs_sphinx = '2.0'
 extensions = [
     'sphinx.ext.autodoc',
     'sphinx.ext.doctest',
+    'sphinx.ext.intersphinx',
     # 'sphinx.ext.mathjax',
     # 'sphinx.ext.napoleon',
     'sphinx.ext.viewcode',
@@ -47,6 +48,16 @@ autodoc_default_options = {
     'inherited-members': False,
     'show-inheritance': True,
 }
+
+# Where to find documentation for projects we use
+intersphinx_mapping = {
+    'networkx': ('https://networkx.github.io/documentation/stable/', None),
+    'rdflib': ('https://rdflib.readthedocs.io/en/stable/', None),
+    'sympy': ('https://docs.sympy.org/latest/', None),
+    'pint': ('https://pint.readthedocs.io/en/stable/', None),
+    'python': ('https://docs.python.org/3', None),
+}
+intersphinx_timeout = 10
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
