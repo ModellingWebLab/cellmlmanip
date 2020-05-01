@@ -8,7 +8,7 @@ def create_rdf_node(node_content):
     :param node_content: the content for the node.
 
     The ``node_content``, if given, must either be a :class:`rdflib.term.Node` instance,
-    a tuple ``(namespace, local_name)``, or a string, in which case it is interpreted
+    a tuple ``(namespace_uri, local_name)``, or a string, in which case it is interpreted
     as either a URI ref if it starts with # otherwise a literal RDF node.
 
     ``node_content`` may also be ``None`` to return ``None``, allowing easy handling of wildcard options to queries.
