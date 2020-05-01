@@ -2,6 +2,7 @@
 The Model API
 **************
 
-.. currentmodule:: cellmlmanip.model
 
-.. autoclass :: Model
+.. automodule:: cellmlmanip.model
+
+.. autofunction:: cellmlmanip.rdf.create_rdf_node

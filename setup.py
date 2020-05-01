@@ -28,7 +28,7 @@ setup(
     ],
     extras_require={
         'docs': [
-            'sphinx>=1.5, !=1.7.3',
+            'sphinx>=2.0',
         ],
         'test': [
             'codecov',

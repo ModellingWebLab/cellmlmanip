@@ -6,4 +6,4 @@ Sympy expressions can be converted to code strings using a :class:`cellmlmanip.p
 
 .. currentmodule:: cellmlmanip.printer
 
-.. autoclass :: Printer
+.. automodule:: cellmlmanip.printer
