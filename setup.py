@@ -9,7 +9,7 @@ with open('LICENSE') as f:
 
 setup(
     name='cellmlmanip',
-    version='0.0.1',
+    version='0.1.0',
     description='CellML loading and model equation manipulation',
     long_description=readme,
     author='',
