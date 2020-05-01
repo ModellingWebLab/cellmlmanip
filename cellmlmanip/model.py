@@ -551,7 +551,6 @@ class Model(object):
     @property
     def graph(self):
         """ A ``networkx.DiGraph`` containing the model equations. """
-        # TODO: Set the parameters of the model (parameters rather than use initial values)
 
         # Return cached graph
         if self._graph is not None:
@@ -1143,7 +1142,6 @@ class VariableDummy(sympy.Dummy):
         self._set_cmeta_id(cmeta_id)
 
         # This variable's type
-        # TODO: Define allowed types via enum
         self.type = None
 
     def __str__(self):
