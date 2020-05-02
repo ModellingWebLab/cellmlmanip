@@ -1,4 +1,7 @@
-"""Classes to represent a flattened CellML model and metadata about its variables."""
+"""
+The main construct in cellmlmanip is a :class:`cellmlmanip.model.Model`.
+This represents a flattened CellML model and metadata about its variables.
+"""
 import logging
 from enum import Enum
 from io import StringIO
@@ -21,9 +24,31 @@ FLOAT_PRECISION = 17
 
 
 class DataDirectionFlow(Enum):
-    """ Direction of data flow for converting units"""
+    """Direction of data flow for converting units."""
     INPUT = 1
     OUTPUT = 2
+
+
+class VariableType(Enum):
+    """Classification of variables according to their role in the model's mathematics.
+
+    ``UNKNOWN``
+        not yet classified
+    ``STATE``
+        the dependent variable in an ODE
+    ``FREE``
+        the independent variable in an ODE
+    ``PARAMETER``
+        defined directly as a constant number (note that this does not include variables defined by an
+        equation that evaluates as constant)
+    ``COMPUTED``
+        defined by any other equation
+    """
+    UNKNOWN = 0
+    STATE = 1
+    FREE = 2
+    PARAMETER = 3
+    COMPUTED = 4
 
 
 class Model(object):
@@ -34,10 +59,11 @@ class Model(object):
     The main parts of a Model are 1. a list of sympy equation objects; 2. a collection of named units; and 3. an RDF
     graph that stores further meta data about the model.
 
-    Equations are stored as ``Sympy.Eq`` objects, but with the caveat that all variables and numbers must be specified
-    using the ``Sympy.Dummy`` objects returned by :meth:`add_variable()` and :meth:`add_number()`.
+    Equations are stored as :class:`sympy.Eq` objects, but with the caveat that all variables and numbers must be
+    specified using the :class:`sympy.Dummy` objects returned by :meth:`add_variable()` and :meth:`add_number()`.
 
-    Units are handled using the ``units`` property of a model, which is an instance of ``cellmlmanip.units.UnitStore``.
+    Units are handled using the ``units`` property of a model, which is an instance of
+    :class:`cellmlmanip.units.UnitStore`.
 
     RDF meta data can be attached to either the model itself or to model variables, via the CellML ``cmeta:id``
     attribute. Cmeta ids set on any other parts of CellML models are ignored.
@@ -110,17 +136,20 @@ class Model(object):
         Adds an equation to this model.
 
         The left-hand side (LHS) of the equation must be either a variable (as a :class:`VariableDummy`) or a derivative
-        (as a ``sympy.Derivative``).
+        (as a :class:`sympy.Derivative`).
 
         All numbers and variables used in the equation must have been obtained from this model, e.g. via
         :meth:`add_number()`, :meth:`add_variable()`, or :meth:`get_variable_by_ontology_term()`.
 
-        :param equation: A ``sympy.Eq`` object.
+        :param equation: A :class:`sympy.Eq` object.
         :param check_duplicates: whether to check that the equation's LHS is not already defined
         """
         assert isinstance(equation, sympy.Eq), 'The argument `equation` must be a sympy.Eq.'
-        self.equations.append(equation)
         lhs = equation.lhs
+        if lhs.is_Derivative:
+            if len(lhs.args) > 2 or lhs.args[1][1] > 1:
+                raise ValueError('Only first order derivatives wrt a single variable are supported')
+        self.equations.append(equation)
         if lhs.is_Derivative:
             state_var = lhs.free_symbols.pop()
             if check_duplicates:
@@ -138,7 +167,7 @@ class Model(object):
         """
         Assert that a variable doesn't have an existing definition.
 
-        :param var: the VariableDummy, either a state var or normal var
+        :param var: the :class:`VariableDummy`, either a state var or normal var
         :param equation: the new definition being added
         """
         if var in self._ode_definition_map:
@@ -153,7 +182,7 @@ class Model(object):
         Creates and returns a :class:`NumberDummy` to represent a number with units in sympy expressions.
 
         :param number: A number (anything convertible to float).
-        :param units: A string unit name or a ``Unit`` object.
+        :param units: A string unit name or a :class:`~cellmlmanip.units.UnitStore.Unit` object.
 
         :return: A :class:`NumberDummy` object.
         """
@@ -170,7 +199,7 @@ class Model(object):
         Adds a variable to the model and returns a :class:`VariableDummy` to represent it in sympy expressions.
 
         :param name: A string name.
-        :param units: A string unit name or a ``Unit`` object.
+        :param units: A string unit name or a :class:`~cellmlmanip.units.UnitStore.Unit` object.
         :param initial_value: An optional initial value.
         :param public_interface: An optional public interface specifier (only required when parsing CellML).
         :param private_interface: An optional private interface specifier (only required when parsing CellML).
@@ -211,36 +240,25 @@ class Model(object):
 
         return var
 
-    def transform_constants(self):
-        """
-        Called by CellML parser to standardise handling of 'constants'.
+    def connect_variables(self, source_name, target_name):
+        """Combine two variables that represent the same entity within the model.
 
-        Once this has been called, the only variables with an initial_value attribute will be state variables,
-        and the initial value will do what it implies - hold the value the state variable should take at t=0.
+        This method is used to implement CellML connections between variables in different components. It tells the
+        model that the variable indicated by ``target_name`` should get its value from the variable indicated by
+        ``source_name``. In general therefore this method should only be called by the :class:`Parser`.
 
-        Non state variables with an initial value are actually just constants. For consistent processing later on we add
-        equations defining them, and remove the initial_value attribute.
-        """
-        for var in self._name_to_variable.values():
-            if var in self._ode_definition_map:
-                assert var.initial_value is not None, 'State variable {} has no initial_value set'.format(var)
-            elif var.initial_value is not None:
-                value = self.add_number(var.initial_value, var.units)
-                self.add_equation(sympy.Eq(var, value))
-                var.initial_value = None
-
-    def connect_variables(self, source_name: str, target_name: str):
-        """Tells this model that the variable indicated by ``target_name`` should get its value from the variable
-        indicated by ``source_name``.
-
-        If the variables' units are not the same, an equation will be added to the target component.
+        If the units of both variables match, then any equations referencing the target variable are changed to
+        reference the source directly, and metadata annotations are moved over. If the units differ, an equation is
+        added defining target in terms of source with a conversion factor.
 
         This method will only work if the source variable has been assigned a value, either through an equation or by
         connecting it (directly or indirectly) to a variable with an equation. If this is not yet the case, ``False`` is
         returned. If successful the method returns ``True``.
 
-        :param source_name: The source variable name
-        :param target_name: The target variable name
+        :param str source_name: the source variable name
+        :param str target_name: the target variable name
+        :raises ValueError: if a logically impossible connection is attempted
+        :raises DimensionalityError: if the units are incompatible
         """
         logger.debug('connect_variables(%s ⟶ %s)', source_name, target_name)
 
@@ -263,11 +281,12 @@ class Model(object):
             raise ValueError('Multiple definitions for {} ({} and {})'.format(
                 target, source, self._var_definition_map[target]))
 
-        # If source/target variable is in the same unit
-        if source.units == target.units:
+        # Check whether we need a unit conversion
+        cf = self.units.get_conversion_factor(from_unit=source.units, to_unit=target.units)
+        if cf == 1:
             # Direct substitution is possible
             target.assigned_to = source.assigned_to
-            # everywhere the target variable is used, replace with source variable,
+            # Everywhere the target variable is used, replace with source variable,
             # updating the definition maps accordingly
             for index, equation in enumerate(self.equations):
                 self.equations[index] = new_eq = equation.xreplace({target: source.assigned_to})
@@ -289,13 +308,10 @@ class Model(object):
 
         # Otherwise, this connection requires a conversion
         else:
-            # Get the scaling factor required to convert source units to target units
-            factor = self.units.convert(1 * source.units, target.units).magnitude
-
             # Dummy to represent this factor in equations, having units for conversion
-            factor_dummy = self.add_number(factor, target.units / source.units)
+            factor_dummy = self.add_number(cf, target.units / source.units)
 
-            # Add an equations making the connection with the required conversion
+            # Add an equation making the connection with the required conversion
             self.add_equation(sympy.Eq(target, source.assigned_to * factor_dummy))
 
             logger.info('Connection req. unit conversion: %s', self.equations[-1])
@@ -310,21 +326,9 @@ class Model(object):
 
         return True
 
-    def add_rdf(self, rdf: str):
-        """ Takes an RDF string and stores it in the model's RDF graph. """
+    def add_rdf(self, rdf):
+        """Takes an RDF string and stores it in the model's RDF graph."""
         self.rdf.parse(StringIO(rdf))
-
-    def check_left_right_units_equal(self, equality):
-        """
-        Checks whether the LHS and RHS in a ``sympy.Eq`` have the same units.
-        :param equality: A ``sympy.Eq``.
-        """
-        lhs_units = self.units.evaluate_units(equality.lhs)
-        rhs_units = self.units.evaluate_units(equality.rhs)
-        assert self.units.is_equivalent(rhs_units, lhs_units), 'Units %s %s != %s %s' % (
-            self.units.format(lhs_units), self.units.format(lhs_units, True),
-            self.units.format(rhs_units), self.units.format(rhs_units, True),
-        )
 
     def get_equations_for(self, variables, recurse=True, strip_units=True):
         """Get all equations for a given collection of variables.
@@ -333,8 +337,8 @@ class Model(object):
 
         :param variables: The variables to get the equations for (as :class:`VariableDummy` objects).
         :param recurse: Indicates whether to recurse the equation graph, or to return only the top level equations.
-        :param strip_units: If ``True``, all ``sympy.Dummy`` objects representing number with units will be replaced
-            with ordinary sympy number objects.
+        :param strip_units: If ``True``, all :class:`NumberDummy` objects representing number with units will be
+            replaced with ordinary sympy number objects.
         """
         # Get graph
         if strip_units:
@@ -372,19 +376,23 @@ class Model(object):
         return eqs
 
     def get_derivatives(self):
-        """Returns a list of ``sympy.Derivative`` objects found as LHS in the given model graph.
-        The list is ordered by appearance in the cellml document.
+        """Returns a list of :class:`sympy.Derivative` objects found as LHS in the given model graph.
+
+        The list is ordered by appearance in the CellML document.
         """
         derivatives = [v for v in self.graph if isinstance(v, sympy.Derivative)]
         return sorted(derivatives, key=lambda deriv: deriv.args[0].order_added)
 
     def get_derived_quantities(self):
         """Returns a list of derived quantities found in the given model graph.
-        A derived quantity is any variable that is not a state variable or parameter/constant.
+
+        A derived quantity is any variable that is not a state variable, free variable, or parameter/constant.
         """
-        derived_quantities = [v for v, node in self.graph.nodes.items()
-                              if not isinstance(v, sympy.Derivative)
-                              and node.get('variable_type', '') not in ('state', 'free', 'parameter')]
+        derived_quantities = [
+            v for v, node in self.graph.nodes.items()
+            if not isinstance(v, sympy.Derivative)
+            and node.get('variable_type', VariableType.UNKNOWN) not in (
+                VariableType.FREE, VariableType.STATE, VariableType.PARAMETER)]
         return sorted(derived_quantities, key=lambda var: var.order_added)
 
     def get_display_name(self, var, ontology=None):
@@ -394,6 +402,7 @@ class Model(object):
         specified), then cmeta:id if present, or the variable's name attribute if not.
 
         Dollar symbols in the name are replaced by a double underscore.
+
         :param var: the variable for which to get the display name.
         :param ontology: the base URL of an ontology if only annotations within that ontology should be considered
 
@@ -412,23 +421,25 @@ class Model(object):
 
     def get_free_variable(self):
         """Returns the free variable in this model (if any)."""
-        for v, node in self.graph.nodes.items():
-            if node.get('variable_type', '') == 'free':
-                return v
+        for ode in self._ode_definition_map.values():
+            free_variable = ode.lhs.variables[0]
+            return free_variable
 
         raise ValueError('No free variable set in model.')  # pragma: no cover
 
     def get_rdf_annotations(self, subject=None, predicate=None, object_=None):
-        """Searches the RDF graph and returns 'triples matching the given parameters'
+        """Searches the RDF graph and returns triples matching the given parameters.
 
         :param subject: the subject of the triples returned
         :param predicate: the predicate of the triples returned
         :param object_: the object of the triples returned
 
-        ``subject`` ``predicate`` and ``object_`` are optional, if None then any triple matches
-        if all are none, all triples are returned
-        ``subject`` ``predicate`` and ``object_`` can be anything valid as input to create_rdf_node
-        typically an (NS, local) pair, a string or None"""
+        Each of ``subject``, ``predicate`` and ``object_`` are optional; if ``None`` then any triple matches.
+        If all are ``None``, then all triples are returned.
+
+        The arguments can be anything valid as input to :meth:`cellmlmanip.rdf.create_rdf_node`,
+        typically a (namespace URI, local name) pair, a string or ``None``.
+        """
         subject = create_rdf_node(subject)
         predicate = create_rdf_node(predicate)
         object_ = create_rdf_node(object_)
@@ -440,7 +451,8 @@ class Model(object):
         :param subject: the object of the triple returned
         :param predicate: the object of the triple returned
 
-        Note: expects exactly one triple to match and the result to be a literal. It's string value is  returned."""
+        Note: expects exactly one triple to match and the result to be a literal. Its string value is returned.
+        """
         triples = list(self.get_rdf_annotations(subject, predicate))
         assert len(triples) == 1
         assert isinstance(triples[0][2], rdflib.Literal)
@@ -451,7 +463,7 @@ class Model(object):
         """
         Searches the model and returns the variable with the given cmeta id.
 
-        To get variables from e.g. an oxmeta ontology term, use :meth:`get_variable_by_ontology_term()`.
+        To get variables from e.g. an oxmeta ontology term, use :meth:`get_variable_by_ontology_term`.
 
         :param cmeta_id: Either a string id or :class:`rdflib.URIRef` instance.
         :returns: A :class:`VariableDummy` object
@@ -475,21 +487,21 @@ class Model(object):
             raise KeyError('No variable with cmeta id "%s" found.' % str(cmeta_id))
 
     def get_variable_by_name(self, name):
-        """ Returns the variable with the given ``name``. """
+        """Returns the variable with the given ``name``."""
         return self._name_to_variable[name]
 
     def get_variable_by_ontology_term(self, term):
         """Searches the RDF graph for a variable annotated with the given ``term`` and returns it.
 
         Specifically, this method searches for a unique variable annotated with
-        predicate ``http://biomodels.net/biology-qualifiers/is`` and the object
+        predicate http://biomodels.net/biology-qualifiers/is and the object
         specified by ``term``.
 
         Will raise a ``KeyError`` if no variable with the given annotation is
         found, and a ``ValueError`` if more than one variable with the given
         annotation is found.
 
-        :param term: anything suitable as an input to :meth:`create_rdf_node`; typically either an RDF
+        :param term: anything suitable as an input to :meth:`cellmlmanip.rdf.create_rdf_node`; typically either an RDF
             node already, or a tuple ``(namespace_uri, local_name)``.
         """
         variables = self.get_variables_by_rdf(('http://biomodels.net/biology-qualifiers/', 'is'), term)
@@ -501,10 +513,12 @@ class Model(object):
             raise ValueError('Multiple variables annotated with {}'.format(term))
 
     def get_variables_by_rdf(self, predicate, object_=None):
-        """Searches the RDF graph for variables annotated with the given predicate and object (e.g. ``is oxmeta:time``)
-        and returns the associated variables sorted in document order.
+        """Find variables annotated with the given predicate and object (e.g. ``is oxmeta:time``) in our RDF graph.
 
-        Both ``predicate`` and ``object_`` (if given) must be ``(namespace, local_name)`` tuples or string literals.
+        Both ``predicate`` and ``object_`` (if given) must be suitable as an input to
+        :meth:`cellmlmanip.rdf.create_rdf_node`; typically either ``(namespace, local_name)`` tuples or string literals.
+
+        :return: the associated variables sorted in document order
         """
         predicate = create_rdf_node(predicate)
         object_ = create_rdf_node(object_)
@@ -515,13 +529,13 @@ class Model(object):
 
     def get_ontology_terms_by_variable(self, variable, namespace_uri=None):
         """
-        Returns all ontology terms linked to the variable ``variable`` via the
-        ``http://biomodels.net/biology-qualifiers/is`` predicate.
+        Returns all ontology terms linked to the given ``variable`` via the
+        http://biomodels.net/biology-qualifiers/is predicate.
 
         :param variable: The variable to search for (as a :class:`VariableDummy` object).
         :param namespace_uri: An optional namespace URI. If given, only terms within the given namespace will be
             returned.
-        :returns: A list of term names.
+        :returns: A list of term local names.
         """
         ontology_terms = []
         if variable.rdf_identity:
@@ -536,7 +550,7 @@ class Model(object):
     def get_definition(self, variable):
         """Get the equation (if any) defining the given variable.
 
-        :param variable: The variable to look up (as a class:`VariableDummy`. If this appears as the LHS of a straight
+        :param variable: The variable to look up (as a :class:`VariableDummy`). If this appears as the LHS of a straight
             assignment, or the state variable in an ODE, the corresponding equation will be returned.
         :returns: A Sympy equation, or ``None`` if the variable is not defined by an equation.
         """
@@ -546,13 +560,12 @@ class Model(object):
         return defn
 
     def get_value(self, variable):
-        """ Returns the evaluated value of the given variable's RHS. """
+        """Returns the evaluated value of the given variable's RHS."""
         return float(self.graph.nodes[variable]['equation'].rhs)
 
     @property
     def graph(self):
-        """ A ``networkx.DiGraph`` containing the model equations. """
-        # TODO: Set the parameters of the model (parameters rather than use initial values)
+        """A :class:`networkx.DiGraph` containing the model equations."""
 
         # Return cached graph
         if self._graph is not None:
@@ -575,15 +588,15 @@ class Model(object):
             if lhs.is_Derivative:
                 # Get the state symbol and update the variable information
                 state_symbol = lhs.free_symbols.pop()
-                state_symbol.type = 'state'
+                state_symbol.type = VariableType.STATE
 
                 # Get the free symbol and update the variable information
                 free_symbol = lhs.variables[0]
-                free_symbol.type = 'free'
+                free_symbol.type = VariableType.FREE
             elif isinstance(equation.rhs, NumberDummy):
-                lhs.type = 'parameter'
+                lhs.type = VariableType.PARAMETER
             else:
-                lhs.type = 'computed'
+                lhs.type = VariableType.COMPUTED
 
         # Sanity check: none of the lhs have the same hash
         assert len(graph.nodes) == equation_count
@@ -601,7 +614,7 @@ class Model(object):
                 if rhs in graph.nodes:
                     # If the symbol maps to a node in the graph just add the dependency edge
                     graph.add_edge(rhs, lhs)
-                elif rhs.type in ['state', 'free']:
+                elif rhs.type in [VariableType.STATE, VariableType.FREE]:
                     # If the variable is a state or free variable of a derivative
                     graph.add_node(rhs, equation=None, variable_type=rhs.type)
                     graph.add_edge(rhs, lhs)
@@ -630,8 +643,8 @@ class Model(object):
     @property
     def graph_with_sympy_numbers(self):
         """
-        A ``networkx.DiGraph`` containing the model equations, but with numbers represented as sympy ``Number`` objects
-        instead of dummies.
+        A :class:`networkx.DiGraph` containing the model equations,
+        but with numbers represented as :class:`sympy.Number` objects instead of :class:`NumberDummy`.
         """
         if self._graph_with_sympy_numbers is not None:
             return self._graph_with_sympy_numbers
@@ -684,18 +697,19 @@ class Model(object):
         return cmeta_id in self._cmeta_id_to_variable
 
     def has_ontology_annotation(self, variable, namespace_uri=None):
-        """Checks that there is at least one result for
-        :meth:`Model.get_ontology_terms_by_variable(variable, namespace_uri)`.
+        """
+        Checks that there is at least one result for
+        :meth:`Model.get_ontology_terms_by_variable` with the given arguments.
         """
         return len(self.get_ontology_terms_by_variable(variable, namespace_uri)) != 0
 
     def _invalidate_cache(self):
-        """ Removes cached graphs: should be called after manipulating variables or equations. """
+        """Removes cached graphs: should be called after manipulating variables or equations."""
         self._graph = None
         self._graph_with_sympy_numbers = None
 
     def is_state(self, variable):
-        """ Checks if the given ``variable`` is a state variable (i.e. if it's defined by an ODE). """
+        """Checks if the given ``variable`` is a state variable (i.e. if it's defined by an ODE)."""
         return variable in self._ode_definition_map
 
     def is_constant(self, variable):
@@ -708,13 +722,14 @@ class Model(object):
         return defn is not None and len(defn.rhs.atoms(VariableDummy)) == 0
 
     def find_variables_and_derivatives(self, expressions):
-        """ Returns a set containing all variables and derivatives referenced in a list of expressions.
+        """Returns a set containing all variables and derivatives referenced in a list of expressions.
 
         Note that we can't just use ``.atoms(VariableDummy, sympy.Derivative)`` for this, because it
         will return the state and free variables from inside derivatives, which is not what we want.
 
         :param expressions: an iterable of expressions to get variables for.
-        :return: a set of variables and derivatives, as :class:`VariableDummy` and ``sympy.Derivative`` respectively.
+        :return: a set of variables and derivatives, as :class:`VariableDummy` and :class:`sympy.Derivative`
+            objects respectively.
         """
         variables = set()
         for expr in expressions:
@@ -789,7 +804,7 @@ class Model(object):
         self._cmeta_id_to_variable[target._cmeta_id] = target
 
     def variables(self):
-        """ Returns an iterator over this model's variables. """
+        """Returns an iterator over this model's variables."""
         return self._name_to_variable.values()
 
     def convert_variable(self, original_variable, units, direction):
@@ -859,11 +874,12 @@ class Model(object):
 
         :param original_variable: the :class:`VariableDummy` object representing the variable in the model to be
                                   converted
-        :param units: a Pint unit object representing the units to convert variable to (note if variable is already
-                      in these units, model remains unchanged and the original variable is returned
-        :param direction: either DataDirectionFlow.INPUT; the variable to be changed is an input and all affected
-                          equations will be adjusted
-                          or DataDirectionFlow.OUTPUT; the variable to be changed is an output, equations
+        :param units: a :class:`~cellmlmanip.units.UnitStore.Unit` object representing the units to convert variable to
+                      (note if variable is already in these units, model remains unchanged and the original variable is
+                      returned)
+        :param direction: either DataDirectionFlow.INPUT: the variable to be changed is an input and all affected
+                          equations will be adjusted;
+                          or DataDirectionFlow.OUTPUT: the variable to be changed is an output, equations
                           are unaffected apart from converting the actual output
         :return: new variable with desired units, or original unchanged if conversion was not necessary
         :raises DimensionalityError: if the unit conversion is impossible
@@ -1057,7 +1073,7 @@ class Model(object):
 
     def get_unique_name(self, name):
         """
-        Creates and returns a unique name, not used in the model.
+        Creates and returns a unique variable name, not used in the model.
 
         :param str name: Suggested unique name.
         :return str: Guaranteed unique name.
@@ -1152,7 +1168,6 @@ class VariableDummy(sympy.Dummy):
         self._set_cmeta_id(cmeta_id)
 
         # This variable's type
-        # TODO: Define allowed types via enum
         self.type = None
 
     def __str__(self):

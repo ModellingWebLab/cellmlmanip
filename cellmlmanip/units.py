@@ -1,4 +1,7 @@
-"""Unit handling for CellML models, using the Pint unit library."""
+"""
+The :mod:`cellmlmanip.units` module provides unit handling for CellML models, using the
+`Pint unit library <https://pint.readthedocs.io/>`_.
+"""
 import logging
 import math
 import numbers
@@ -180,13 +183,13 @@ class UnitStore(object):
     Creates and stores units, and has functions for unit conversion.
 
     Within a UnitStore ``store``, units are represented as ``store.Unit`` objects, while numbers with units are
-    represented as ``store.Quantity`` objects. Both classes are inherited from the ``pint`` package.
+    represented as ``store.Quantity`` objects. Both classes are inherited from the :mod:`pint` package.
 
     Each UnitStore has its own unique namespace for storing units.
 
-    By default, each ``UnitStore`` maintains an internal ``pint.UnitRegistry`` and units from different stores cannot be
-    compared or interact with each other. To allow comparison and conversion between unit stores, an existing
-    ``UnitStore`` can be passed in at construction time, so that the underlying registry will be shared. (This will
+    By default, each UnitStore maintains an internal :class:`pint.UnitRegistry` and units from different stores cannot
+    be compared or interact with each other. To allow comparison and conversion between unit stores, an existing
+    UnitStore can be passed in at construction time, so that the underlying registry will be shared. (This will
     allow units from different stores to interact, but the unit stores will maintain independent namespaces).
 
     For example::
@@ -207,6 +210,14 @@ class UnitStore(object):
     stores, allowing e.g. units from ``c`` to be converted to units from ``a``.
 
     :param store: An existing :class:`UnitStore` to share a unit registry with.
+
+    .. class:: Unit
+
+        A :class:`pint.Unit` class tied to this unit store.
+
+    .. class:: Quantity
+
+        A :class:`pint.Quantity` class tied to this unit store.
     """
     _next_id = 0
 
@@ -302,9 +313,9 @@ class UnitStore(object):
     def convert(self, quantity, unit):
         """Converts the given ``quantity`` to be in the given ``unit``.
 
-        :param quantity: a ``Quantity`` to convert.
-        :param unit: a ``Unit`` to convert it to.
-        :returns: the converted ``Quantity``.
+        :param quantity: a :class:`.Quantity` to convert.
+        :param unit: a :class:`.Unit` to convert it to.
+        :returns: the converted :class:`.Quantity`.
         """
         assert isinstance(quantity, self._registry.Quantity)
         assert isinstance(unit, self._registry.Unit)
@@ -314,7 +325,7 @@ class UnitStore(object):
         """
         Returns a string representation of a unit.
 
-        :param unit: The ``Unit`` object to format.
+        :param unit: The :class:`.Unit` object to format.
         :param base_units: If this optional argument is set to ``True`` the string will show the base units expansion of
             the given unit.
         """
@@ -327,10 +338,10 @@ class UnitStore(object):
             return _STORE_PREFIX.sub('', str(unit))
 
     def get_unit(self, name):
-        """Retrieves the ``Unit`` object with the given name.
+        """Retrieves the :class:`.Unit` object with the given name.
 
         :param unit_name: string name of the unit
-        :returns: A ``Unit`` object.
+        :returns: A :class:`Unit` object.
         :raises KeyError: If the unit is not defined in this unit store.
         """
         if name not in self._known_units:
@@ -345,8 +356,8 @@ class UnitStore(object):
     def is_equivalent(self, unit1, unit2):
         """Tests whether two units are equivalent.
 
-        :param unit1: The first ``Unit`` object to compare.
-        :param unit2: The second ``Unit`` object to compare.
+        :param unit1: The first :class:`Unit` object to compare.
+        :param unit2: The second :class:`Unit` object to compare.
         :returns: ``True`` if both units are equivalent, ``False`` otherwise.
         """
         assert isinstance(unit1, self.Unit)
@@ -359,10 +370,10 @@ class UnitStore(object):
 
     def evaluate_units(self, expr):
         """
-        Evaluates and returns the ``Unit`` a Sympy expression is in.
+        Evaluates and returns the :class:`Unit` a Sympy expression is in.
 
         :param expr: the Sympy expression whose units to evaluate.
-        :returns: The calculated ``Unit`` object.
+        :returns: The calculated :class:`Unit` object.
         :raises UnitError: if there are unit errors when evaluating the expression's units.
         """
         found = self._calculator.traverse(expr).units
@@ -371,12 +382,12 @@ class UnitStore(object):
 
     def evaluate_units_and_fix(self, expr):
         """
-        Evaluates and returns the ``Unit`` a Sympy expression is in; but will also attempt to fix inconsistencies in
-        ``expr`` and return an updated expression if needed.
+        Evaluates and returns the :class:`Unit` a Sympy expression is in; but will also attempt to fix inconsistencies
+        in ``expr`` and return an updated expression if needed.
 
         :param expr: the Sympy expression whose units to evaluate.
-        :returns: A tuple ``(units, new_expr)`` where ``units`` is the calculated ``Unit`` object, and ``new_expr`` is
-            either ``expr`` or a copy made internally consistent.
+        :returns: A tuple ``(units, new_expr)`` where ``units`` is the calculated :class:`Unit` object, and ``new_expr``
+            is either ``expr`` or a copy made internally consistent.
         :raises UnitError: if there are unfixable unit errors when evaluating the expression's units.
         """
         try:
@@ -389,8 +400,8 @@ class UnitStore(object):
     def get_conversion_factor(self, from_unit, to_unit):
         """Returns the magnitude multiplier required to convert a unit to the specified unit.
 
-        :param from_unit: the ``Unit`` to be converted
-        :param to_unit: ``Unit`` object into which the units should be converted
+        :param from_unit: the :class:`Unit` to be converted
+        :param to_unit: :class:`Unit` object into which the units should be converted
         :returns: the magnitude of the resulting conversion factor
         """
         assert isinstance(from_unit, self._registry.Unit), 'from_unit must be a unit, not ' + str(from_unit)
@@ -424,20 +435,21 @@ class UnitStore(object):
         desired by the LHS, if  the ``Eq`` expression is passed in as ``expr`` and ``to_units`` is given as ``None``.
 
         The conversion strategy for each (sub-)expression depends on the operator:
-        - for relational operators, all operands are converted to the units of the first operand
-        - for Mul the operands can be in any units, and we convert the result if needed
-        - for Add all operands are converted to the desired units (or the units of the first operand if no desired units
+
+        * for relational operators, all operands are converted to the units of the first operand
+        * for Mul the operands can be in any units, and we convert the result if needed
+        * for Add all operands are converted to the desired units (or the units of the first operand if no desired units
           are given)
-        - for Pow the exponent must be dimensionless while the operand can be in any units, and we convert the result if
+        * for Pow the exponent must be dimensionless while the operand can be in any units, and we convert the result if
           needed
-        - for trig functions, exp, log, etc. the operands have to have dimensionless units
-        - for piecewise, the conditions must be dimensionless, and the pieces are set to the desired units (or the units
+        * for trig functions, exp, log, etc. the operands have to have dimensionless units
+        * for piecewise, the conditions must be dimensionless, and the pieces are set to the desired units (or the units
           of the first piece)
-        - for derivatives, numbers, variables, etc. we just convert to the desired units
+        * for derivatives, numbers, variables, etc. we just convert to the desired units
 
         :param expr: the Sympy expression to convert
-        :param to_units: the desired units of the expression, or ``None`` if we don't care or for converting an
-            assignment expression.
+        :param to_units: the desired units of the expression as a :class:`Unit` object, or ``None`` if we don't care or
+            for converting an assignment expression.
         :returns: a Sympy expression in the desired units; the input ``expr`` if no conversion was needed.
         :raises UnitError: if conversion is not possible, using a suitable subclass depending on the exact reason
         """

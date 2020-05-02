@@ -20,14 +20,14 @@
 # import sys
 # sys.path.insert(0, os.path.abspath('.'))
 # import cellmlmanip
-import sphinx
+# import sphinx
 
 
 # -- General configuration ------------------------------------------------
 
 # If your documentation needs a minimal Sphinx version, state it here.
 #
-# needs_sphinx = '1.0'
+needs_sphinx = '2.0'
 
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
@@ -35,23 +35,29 @@ import sphinx
 extensions = [
     'sphinx.ext.autodoc',
     'sphinx.ext.doctest',
+    'sphinx.ext.intersphinx',
     # 'sphinx.ext.mathjax',
     # 'sphinx.ext.napoleon',
     'sphinx.ext.viewcode',
 ]
 
 # Autodoc defaults
-if int(sphinx.__version__.split('.')[1]) < 8:
-    autodoc_default_flags = [
-        'members',
-        'inherited-members',
-        # 'show-inheritance',
-    ]
-else:
-    autodoc_default_options = {
-        'members': None,
-        'inherited-members': None,
-    }
+autodoc_default_options = {
+    'members': True,
+    'member-order': 'bysource',
+    'inherited-members': False,
+    'show-inheritance': True,
+}
+
+# Where to find documentation for projects we use
+intersphinx_mapping = {
+    'networkx': ('https://networkx.github.io/documentation/stable/', None),
+    'rdflib': ('https://rdflib.readthedocs.io/en/stable/', None),
+    'sympy': ('https://docs.sympy.org/latest/', None),
+    'pint': ('https://pint.readthedocs.io/en/stable/', None),
+    'python': ('https://docs.python.org/3', None),
+}
+intersphinx_timeout = 10
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
@@ -67,7 +73,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'Cellmlmanip'
-copyright = u'2019, Cellmlmanip authors'
+copyright = u'2019-, Cellmlmanip authors'
 author = u'Cellmlmanip authors'
 
 # The version info for the project you're documenting, acts as replacement for
@@ -75,7 +81,7 @@ author = u'Cellmlmanip authors'
 # built documents.
 #
 # The short X.Y version.
-version = '0.0.1'
+version = '0.1.0'
 # The full version, including alpha/beta/rc tags.
 release = version
 

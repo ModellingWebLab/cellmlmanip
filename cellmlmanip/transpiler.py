@@ -1,4 +1,5 @@
-"""Parses Content MathML and returns equivalent SymPy expressions
+"""
+The :mod:`cellmlmanip.transpiler` module parses Content MathML and returns equivalent SymPy expressions.
 
 Content Markup specification: https://www.w3.org/TR/MathML2/chapter4.html
 """
