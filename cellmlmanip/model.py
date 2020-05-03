@@ -316,7 +316,7 @@ class Model(object):
 
         # State? Then return initial value
         if variable in self._ode_definition_map:
-            return variable.initial_value
+            return float(variable.initial_value)
 
         # Get RHS and evaluate
         expr = self.graph.nodes[variable]['equation'].rhs
@@ -331,7 +331,7 @@ class Model(object):
             expr = expr.xreplace(evaluated)
             deps = expr.atoms(VariableDummy)
 
-        return expr.evalf()
+        return float(expr.evalf())
 
     def get_equations_for(self, variables, recurse=True, strip_units=True):
         """Get all equations for a given collection of variables.
