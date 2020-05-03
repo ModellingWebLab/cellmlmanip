@@ -308,8 +308,30 @@ class Model(object):
         return defn
 
     def get_value(self, variable):
-        """Returns the evaluated value of the given variable's RHS."""
-        return float(self.graph.nodes[variable]['equation'].rhs)
+        """Returns the evaluated value of the given variable, as a float."""
+        return self._get_value(variable)
+
+    def _get_value(self, variable, evaluated=None):
+        """Returns the evaluated value of the given variable, as a float."""
+
+        # State? Then return initial value
+        if variable in self._ode_definition_map:
+            return variable.initial_value
+
+        # Get RHS and evaluate
+        expr = self.graph.nodes[variable]['equation'].rhs
+        deps = expr.atoms(VariableDummy)
+        while deps:
+            if evaluated is None:
+                evaluated = {x: x.initial_value for x in self._ode_definition_map.keys()}
+                expr = expr.xreplace(evaluated)
+            for dep in deps:
+                if dep not in evaluated:
+                    evaluated[dep] = self._get_value(dep, evaluated)
+            expr = expr.xreplace(evaluated)
+            deps = expr.atoms(VariableDummy)
+
+        return expr.evalf()
 
     def get_equations_for(self, variables, recurse=True, strip_units=True):
         """Get all equations for a given collection of variables.

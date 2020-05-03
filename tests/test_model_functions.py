@@ -333,8 +333,13 @@ class TestModelFunctions():
     def test_get_value(self, aslanidi_model):
         """ Tests Model.get_value() works correctly. """
 
-        symbol_a = aslanidi_model.get_variable_by_ontology_term((shared.OXMETA, "membrane_capacitance"))
+        # Test getting a constant
+        symbol_a = aslanidi_model.get_variable_by_ontology_term((shared.OXMETA, 'membrane_capacitance'))
         assert aslanidi_model.get_value(symbol_a) == 5e-5
+
+        # Test getting an intermediary value
+        symbol_ina = aslanidi_model.get_variable_by_ontology_term((shared.OXMETA, 'membrane_fast_sodium_current'))
+        assert aslanidi_model.get_value(symbol_ina) == pytest.approx(-9.01935072162187552e-05)
 
     #################################################################
     # tests for get_variable_XXX functions
