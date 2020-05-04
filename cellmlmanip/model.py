@@ -312,8 +312,9 @@ class Model(object):
         Returns the evaluated value of the given variable, as a float.
 
         For state variables, this returns the initial value. For variables that depend on other variables this
-        recursively evaluates any dependencies (again at the initial state). Zero is returned for variables without a
-        definition (e.g. for the free variable).
+        recursively evaluates any dependencies (again at the initial state). Zero is returned for the free variable (as
+        identified by :meth:`get_free_variable()`); trying to evaluate other variables without a definition will
+        result in ``KeyError``.
         """
         return self._get_value(variable)
 
@@ -325,9 +326,7 @@ class Model(object):
             return float(variable.initial_value)
 
         # Get RHS and evaluate
-        expr = self._var_definition_map.get(variable)
-        if expr is None:
-            return 0
+        expr = self._var_definition_map[variable]
         expr = expr.rhs
         deps = expr.atoms(Variable)
         if deps:
