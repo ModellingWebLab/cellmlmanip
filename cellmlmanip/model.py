@@ -329,7 +329,7 @@ class Model(object):
         if expr is None:
             return 0
         expr = expr.rhs
-        deps = expr.atoms(VariableDummy)
+        deps = expr.atoms(Variable)
         if deps:
             if evaluated is None:
                 evaluated = {x: x.initial_value for x in self._ode_definition_map.keys()}
@@ -340,7 +340,7 @@ class Model(object):
                 if dep not in evaluated:
                     evaluated[dep] = self._get_value(dep, evaluated)
             expr = expr.xreplace(evaluated)
-            deps = expr.atoms(VariableDummy)
+            deps = expr.atoms(Variable)
 
         return float(expr)
 
