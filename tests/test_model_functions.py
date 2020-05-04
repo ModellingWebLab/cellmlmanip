@@ -22,12 +22,12 @@ class TestModelFunctions():
 
     @pytest.fixture
     def local_model(scope='function'):
-        """ Fixture to load a local copy of  the basic_ode model that may get modified. """
+        """ Fixture to load a local copy of the basic_ode model that may get modified. """
         return shared.load_model('basic_ode')
 
     @pytest.fixture
     def local_hh_model(scope='function'):
-        """ Fixture to load a local copy of  the hodgkin_huxley_squid_axon_model_1952_modified
+        """ Fixture to load a local copy of the hodgkin_huxley_squid_axon_model_1952_modified
         model that may get modified. """
         return shared.load_model('hodgkin_huxley_squid_axon_model_1952_modified')
 
@@ -330,11 +330,41 @@ class TestModelFunctions():
         defn = simple_ode_model.get_definition(time)
         assert defn is None
 
-    def test_get_value(self, aslanidi_model):
+    def test_get_value(self, local_hh_model):
         """ Tests Model.get_value() works correctly. """
+        model = local_hh_model
 
-        symbol_a = aslanidi_model.get_variable_by_ontology_term((shared.OXMETA, "membrane_capacitance"))
-        assert aslanidi_model.get_value(symbol_a) == 5e-5
+        # Test getting a constant
+        C = model.get_variable_by_ontology_term((shared.OXMETA, 'membrane_capacitance'))
+        assert model.get_value(C) == 1.0
+
+        # Test getting a state
+        V = model.get_variable_by_ontology_term((shared.OXMETA, 'membrane_voltage'))
+        assert model.get_value(V) == V.initial_value
+
+        # Test getting an intermediary value
+        INa = model.get_variable_by_ontology_term((shared.OXMETA, 'membrane_fast_sodium_current'))
+        assert model.get_value(INa) == pytest.approx(-1.03500000000000014e+00)
+
+        # Test getting the time variable
+        t = model.get_free_variable()
+        assert model.get_value(t) == 0
+
+        # Test getting a value that depends on time
+        model.remove_equation(model.get_definition(C))
+        model.add_equation(sp.Eq(C, 4 * (0.5 + t)))
+        assert model.get_value(C) == 2
+
+        # Test getting a value in a model without states
+        for state in model.get_state_variables():
+            model.remove_equation(model.get_definition(state))
+            model.add_equation(sp.Eq(state, model.create_quantity(state.initial_value, state.units)))
+        assert model.get_value(INa) == pytest.approx(-1.03500000000000014e+00)
+
+        # Test getting an undefined variable
+        model.remove_equation(model.get_definition(C))
+        with pytest.raises(ValueError, match='No definition'):
+            model.get_value(C)
 
     #################################################################
     # tests for get_variable_XXX functions

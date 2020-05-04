@@ -308,8 +308,45 @@ class Model(object):
         return defn
 
     def get_value(self, variable):
-        """Returns the evaluated value of the given variable's RHS."""
-        return float(self.graph.nodes[variable]['equation'].rhs)
+        """
+        Returns the evaluated value of the given variable, as a float.
+
+        For state variables, this returns the initial value. For variables that depend on other variables this
+        recursively evaluates any dependencies (again at the initial state). Zero is returned for the free variable (as
+        identified by :meth:`get_free_variable()`); trying to evaluate other variables without a definition will
+        result in a ``ValueError``.
+        """
+        return self._get_value(variable)
+
+    def _get_value(self, variable, evaluated=None):
+        """Internal method to implement :meth:`get_value()`."""
+
+        # State? Then return initial value
+        if variable in self._ode_definition_map:
+            return float(variable.initial_value)
+
+        # Get RHS and evaluate
+        try:
+            expr = self._var_definition_map[variable]
+        except KeyError:
+            if self._ode_definition_map and variable is self.get_free_variable():
+                return 0
+            raise ValueError('No definition set for ' + self.get_display_name(variable))
+        expr = expr.rhs
+        deps = expr.atoms(Variable)
+        if deps:
+            if evaluated is None:
+                evaluated = {x: x.initial_value for x in self._ode_definition_map.keys()}
+                if self._ode_definition_map:
+                    time = self.get_free_variable()
+                    evaluated[time] = 0
+            for dep in deps:
+                if dep not in evaluated:
+                    evaluated[dep] = self._get_value(dep, evaluated)
+            expr = expr.xreplace(evaluated)
+            deps = expr.atoms(Variable)
+
+        return float(expr)
 
     def get_equations_for(self, variables, recurse=True, strip_units=True):
         """Get all equations for a given collection of variables.
