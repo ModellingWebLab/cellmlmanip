@@ -346,11 +346,25 @@ class TestModelFunctions():
         INa = model.get_variable_by_ontology_term((shared.OXMETA, 'membrane_fast_sodium_current'))
         assert model.get_value(INa) == pytest.approx(-1.03500000000000014e+00)
 
-        # Test getting a value that depends on time
+        # Test getting the time variable
         t = model.get_free_variable()
+        assert model.get_value(t) == 0
+
+        # Test getting a value that depends on time
         model.remove_equation(model.get_definition(C))
         model.add_equation(sp.Eq(C, 4 * (0.5 + t)))
         assert model.get_value(C) == 2
+
+        # Test getting a value in a model without states
+        for state in model.get_state_variables():
+            model.remove_equation(model.get_definition(state))
+            model.add_equation(sp.Eq(state, model.create_quantity(state.initial_value, state.units)))
+        assert model.get_value(INa) == pytest.approx(-1.03500000000000014e+00)
+
+        # Test getting an undefined variable
+        model.remove_equation(model.get_definition(C))
+        with pytest.raises(ValueError, match='No definition'):
+            model.get_value(C)
 
     #################################################################
     # tests for get_variable_XXX functions

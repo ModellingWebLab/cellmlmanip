@@ -314,7 +314,7 @@ class Model(object):
         For state variables, this returns the initial value. For variables that depend on other variables this
         recursively evaluates any dependencies (again at the initial state). Zero is returned for the free variable (as
         identified by :meth:`get_free_variable()`); trying to evaluate other variables without a definition will
-        result in ``KeyError``.
+        result in a ``ValueError``.
         """
         return self._get_value(variable)
 
@@ -326,7 +326,12 @@ class Model(object):
             return float(variable.initial_value)
 
         # Get RHS and evaluate
-        expr = self._var_definition_map[variable]
+        try:
+            expr = self._var_definition_map[variable]
+        except KeyError:
+            if self._ode_definition_map and variable is self.get_free_variable():
+                return 0
+            raise ValueError('No definition set for ' + self.get_display_name(variable))
         expr = expr.rhs
         deps = expr.atoms(Variable)
         if deps:
