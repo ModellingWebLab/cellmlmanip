@@ -4,7 +4,7 @@ import pytest
 import sympy as sp
 
 from cellmlmanip import parser, units
-from cellmlmanip.model import FLOAT_PRECISION, Model, VariableDummy
+from cellmlmanip.model import FLOAT_PRECISION, Model, Variable
 
 from . import shared
 
@@ -215,19 +215,19 @@ class TestModelFunctions():
         a1 = m.add_variable('a1', u)
 
         # dy1/dt = 1
-        m.add_equation(sp.Eq(sp.Derivative(y1, t), m.add_number(1, u)))
+        m.add_equation(sp.Eq(sp.Derivative(y1, t), m.create_quantity(1, u)))
         # dy2/dt = v1 --> Doesn't simplify, reference to v1 is maintained
         m.add_equation(sp.Eq(sp.Derivative(y2, t), v1))
         # dy3/dt = v2 * (2 + dy1/dt)
-        m.add_equation(sp.Eq(sp.Derivative(y3, t), sp.Mul(v2, sp.Add(m.add_number(2, u), sp.Derivative(y1, t)))))
+        m.add_equation(sp.Eq(sp.Derivative(y3, t), sp.Mul(v2, sp.Add(m.create_quantity(2, u), sp.Derivative(y1, t)))))
         # v1 = (5 - 5) * v3 --> Simplifies to 0
-        m.add_equation(sp.Eq(v1, sp.Mul(sp.Add(m.add_number(5, u), m.add_number(-5, u)), v3)))
+        m.add_equation(sp.Eq(v1, sp.Mul(sp.Add(m.create_quantity(5, u), m.create_quantity(-5, u)), v3)))
         # v2 = 23 + v4 --> Doesn't simplify, reference to v4 is maintained
-        m.add_equation(sp.Eq(v2, sp.Add(m.add_number(23, u), v4)))
+        m.add_equation(sp.Eq(v2, sp.Add(m.create_quantity(23, u), v4)))
         # v3 = 2 / 3
-        m.add_equation(sp.Eq(v3, sp.Mul(m.add_number(2, u), sp.Pow(m.add_number(3, u), sp.S.NegativeOne))))
+        m.add_equation(sp.Eq(v3, sp.Mul(m.create_quantity(2, u), sp.Pow(m.create_quantity(3, u), sp.S.NegativeOne))))
         # v4 = -23
-        m.add_equation(sp.Eq(v4, m.add_number(-23, u)))
+        m.add_equation(sp.Eq(v4, m.create_quantity(-23, u)))
         # v5 = v3 + v4
         m.add_equation(sp.Eq(v5, sp.Add(v3, v4)))
         # a1 = v5 + v2 + v1 + t
@@ -473,7 +473,7 @@ class TestModelFunctions():
         t = model.get_variable_by_ontology_term((shared.OXMETA, 'time'))
         equation = model.graph.nodes[sp.Derivative(v, t)]['equation']
         model.remove_equation(equation)
-        equation = sp.Eq(v, model.add_number(-80, v.units))
+        equation = sp.Eq(v, model.create_quantity(-80, v.units))
         model.add_equation(equation)
 
         # Check that V is no longer a state
@@ -484,7 +484,7 @@ class TestModelFunctions():
         # Now make V a state again
         dvdt_units = v.units / t.units
         model.remove_equation(equation)
-        equation = sp.Eq(sp.Derivative(v, t), model.add_number(0, dvdt_units))
+        equation = sp.Eq(sp.Derivative(v, t), model.create_quantity(0, dvdt_units))
         model.add_equation(equation)
 
         # Check that V is a state again
@@ -493,14 +493,14 @@ class TestModelFunctions():
         assert v in state_var
 
         # Test removing non-existing equation
-        equation = sp.Eq(sp.Derivative(v, t), model.add_number(5, dvdt_units))
+        equation = sp.Eq(sp.Derivative(v, t), model.create_quantity(5, dvdt_units))
         with pytest.raises(KeyError, match='Equation not found'):
             model.remove_equation(equation)
 
-    def test_add_number(self, local_model):
-        """ Tests the Model.add_number method. """
+    def test_create_quantity(self, local_model):
+        """ Tests the Model.create_quantity method. """
         model = local_model
-        number2 = model.add_number(2.0, 'mV')
+        number2 = model.create_quantity(2.0, 'mV')
         assert number2.is_Dummy
 
     def test_add_variable(self, local_model):
@@ -623,8 +623,8 @@ class TestModelFunctions():
 
     def test_find_variables_and_derivatives(self, basic_model):
         """ Tests Model.find_variables_and_derivatives() on a simple model. """
-        a = VariableDummy('a', 'second')
-        b = VariableDummy('b', 'second')
+        a = Variable('a', 'second')
+        b = Variable('b', 'second')
         ex = sp.Add(a, b)
         syms = basic_model.find_variables_and_derivatives([ex])
         assert len(syms) == 2

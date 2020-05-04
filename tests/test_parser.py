@@ -188,10 +188,10 @@ class TestParser(object):
         class ExpressionWithUnitPrinter(LambdaPrinter):
             """Sympy expression printer to print expressions with unit information."""
 
-            def _print_NumberDummy(self, expr):
+            def _print_Quantity(self, expr):
                 return '%f[%s]' % (float(expr), str(expr.units))
 
-            def _print_VariableDummy(self, expr):
+            def _print_Variable(self, expr):
                 return '%s[%s]' % (expr.name, str(expr.units))
 
             def _print_Derivative(self, expr):
