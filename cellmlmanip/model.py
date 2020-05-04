@@ -325,7 +325,7 @@ class Model(object):
             return float(variable.initial_value)
 
         # Get RHS and evaluate
-        expr = self.graph.nodes[variable]['equation']
+        expr = self._var_definition_map.get(variable)
         if expr is None:
             return 0
         expr = expr.rhs
@@ -333,6 +333,9 @@ class Model(object):
         if deps:
             if evaluated is None:
                 evaluated = {x: x.initial_value for x in self._ode_definition_map.keys()}
+                if self._ode_definition_map:
+                    time = self.get_free_variable()
+                    evaluated[time] = 0
             for dep in deps:
                 if dep not in evaluated:
                     evaluated[dep] = self._get_value(dep, evaluated)
