@@ -32,7 +32,7 @@ class Model(object):
     graph that stores further meta data about the model.
 
     Equations are stored as :class:`sympy.Eq` objects, but with the caveat that all variables and numbers must be
-    specified using the :class:`sympy.Dummy` objects returned by :meth:`add_variable()` and :meth:`add_number()`.
+    specified using the :class:`sympy.Dummy` objects returned by :meth:`add_variable()` and :meth:`create_quantity()`.
 
     Units are handled using the ``units`` property of a model, which is an instance of
     :class:`cellmlmanip.units.UnitStore`.
@@ -64,10 +64,10 @@ class Model(object):
         else:
             self.units = UnitStore()
 
-        # Maps string variable names to VariableDummy objects
+        # Maps string variable names to Variable objects
         self._name_to_variable = {}
 
-        # Maps cmeta ids to VariableDummy objects
+        # Maps cmeta ids to Variable objects
         self._cmeta_id_to_variable = {}
 
         # Cached nx.DiGraph of this model's equations, with number dummies or with sympy.Number objects
@@ -77,10 +77,10 @@ class Model(object):
         # An RDF graph containing further meta data
         self.rdf = rdflib.Graph()
 
-        # Map from VariableDummy to defining equation, where the variable is defined by a simple equation
+        # Map from Variable to defining equation, where the variable is defined by a simple equation
         self._var_definition_map = {}
 
-        # Map from VariableDummy to defining equation, where the variable is defined by an ODE
+        # Map from Variable to defining equation, where the variable is defined by an ODE
         self._ode_definition_map = {}
 
     ####################################################################################################
@@ -153,7 +153,7 @@ class Model(object):
         variable references.
         """
         defn = self._var_definition_map.get(variable)
-        return defn is not None and len(defn.rhs.atoms(VariableDummy)) == 0
+        return defn is not None and len(defn.rhs.atoms(Variable)) == 0
 
     def get_variable_by_name(self, name):
         """Returns the variable with the given ``name``."""
@@ -166,7 +166,7 @@ class Model(object):
         To get variables from e.g. an oxmeta ontology term, use :meth:`get_variable_by_ontology_term`.
 
         :param cmeta_id: Either a string id or :class:`rdflib.URIRef` instance.
-        :returns: A :class:`VariableDummy` object
+        :returns: A :class:`Variable` object
         """
 
         # Get cmeta_id from URIRef
@@ -260,7 +260,7 @@ class Model(object):
         Returns all ontology terms linked to the given ``variable`` via the
         http://biomodels.net/biology-qualifiers/is predicate.
 
-        :param variable: The variable to search for (as a :class:`VariableDummy` object).
+        :param variable: The variable to search for (as a :class:`Variable` object).
         :param namespace_uri: An optional namespace URI. If given, only terms within the given namespace will be
             returned.
         :returns: A list of term local names.
@@ -298,7 +298,7 @@ class Model(object):
     def get_definition(self, variable):
         """Get the equation (if any) defining the given variable.
 
-        :param variable: The variable to look up (as a :class:`VariableDummy`). If this appears as the LHS of a straight
+        :param variable: The variable to look up (as a :class:`Variable`). If this appears as the LHS of a straight
             assignment, or the state variable in an ODE, the corresponding equation will be returned.
         :returns: A Sympy equation, or ``None`` if the variable is not defined by an equation.
         """
@@ -316,9 +316,9 @@ class Model(object):
 
         Results are sorted first by dependencies, then by variable name.
 
-        :param variables: The variables to get the equations for (as :class:`VariableDummy` objects).
+        :param variables: The variables to get the equations for (as :class:`Variable` objects).
         :param recurse: Indicates whether to recurse the equation graph, or to return only the top level equations.
-        :param strip_units: If ``True``, all :class:`NumberDummy` objects representing number with units will be
+        :param strip_units: If ``True``, all :class:`Quantity` objects representing number with units will be
             replaced with ordinary sympy number objects.
         """
         # Get graph
@@ -386,7 +386,7 @@ class Model(object):
                 # Get the free symbol and update the variable information
                 free_symbol = lhs.variables[0]
                 free_symbol.type = VariableType.FREE
-            elif isinstance(equation.rhs, NumberDummy):
+            elif isinstance(equation.rhs, Quantity):
                 lhs.type = VariableType.PARAMETER
             else:
                 lhs.type = VariableType.COMPUTED
@@ -437,7 +437,7 @@ class Model(object):
     def graph_with_sympy_numbers(self):
         """
         A :class:`networkx.DiGraph` containing the model equations,
-        but with numbers represented as :class:`sympy.Number` objects instead of :class:`NumberDummy`.
+        but with numbers represented as :class:`sympy.Number` objects instead of :class:`Quantity`.
         """
         if self._graph_with_sympy_numbers is not None:
             return self._graph_with_sympy_numbers
@@ -452,7 +452,7 @@ class Model(object):
                 continue
 
             # Get all the dummy numbers on the RHS, and prepare substitution map
-            dummies = equation.rhs.atoms(NumberDummy)
+            dummies = equation.rhs.atoms(Quantity)
             subs_dict = {d: d.evalf(FLOAT_PRECISION) for d in dummies}
 
             # And replace the equation with one with the rhs subbed with sympy.Number objects
@@ -493,7 +493,7 @@ class Model(object):
     def add_variable(self, name, units, initial_value=None, public_interface=None, private_interface=None,
                      cmeta_id=None):
         """
-        Adds a variable to the model and returns a :class:`VariableDummy` to represent it in sympy expressions.
+        Adds a variable to the model and returns a :class:`Variable` to represent it in sympy expressions.
 
         :param name: A string name.
         :param units: A string unit name or a :class:`~cellmlmanip.units.UnitStore.Unit` object.
@@ -502,7 +502,7 @@ class Model(object):
         :param private_interface: An optional private interface specifier (only required when parsing CellML).
         :param cmeta_id: An optional string specifying a cmeta:id
         :raises ValueError: If a variable with that name already exists, or the given cmeta_id is already taken.
-        :return: A :class:`VariableDummy` object.
+        :return: A :class:`Variable` object.
         """
         # Check for clashes
         if name in self._name_to_variable:
@@ -517,7 +517,7 @@ class Model(object):
             units = self.units.get_unit(units)
 
         # Add variable
-        self._name_to_variable[name] = var = VariableDummy(
+        self._name_to_variable[name] = var = Variable(
             name=name,
             units=units,
             model=self,
@@ -543,7 +543,7 @@ class Model(object):
         This will remove the equation either that defines ``variable`` directly, or if it is a state variable the
         corresponding ODE. All annotations about this variable are also removed from the RDF graph.
 
-        :param VariableDummy variable: the variable to remove
+        :param Variable variable: the variable to remove
         """
         # Remove defining equation
         defn = self.get_definition(variable)
@@ -566,11 +566,11 @@ class Model(object):
         """
         Adds an equation to this model.
 
-        The left-hand side (LHS) of the equation must be either a variable (as a :class:`VariableDummy`) or a derivative
+        The left-hand side (LHS) of the equation must be either a variable (as a :class:`Variable`) or a derivative
         (as a :class:`sympy.Derivative`).
 
         All numbers and variables used in the equation must have been obtained from this model, e.g. via
-        :meth:`add_number()`, :meth:`add_variable()`, or :meth:`get_variable_by_ontology_term()`.
+        :meth:`create_quantity()`, :meth:`add_variable()`, or :meth:`get_variable_by_ontology_term()`.
 
         :param equation: A :class:`sympy.Eq` object.
         :param check_duplicates: whether to check that the equation's LHS is not already defined
@@ -586,7 +586,7 @@ class Model(object):
             if check_duplicates:
                 self._check_duplicate_definitions(state_var, equation)
             self._ode_definition_map[state_var] = equation
-        elif isinstance(lhs, VariableDummy):
+        elif isinstance(lhs, Variable):
             if check_duplicates:
                 self._check_duplicate_definitions(lhs, equation)
             self._var_definition_map[lhs] = equation
@@ -615,21 +615,24 @@ class Model(object):
         # Invalidate cached equation graphs
         self._invalidate_cache()
 
-    def add_number(self, value, units):
+    def create_quantity(self, value, units):
         """
-        Creates and returns a :class:`NumberDummy` to represent a number with units in sympy expressions.
+        Creates and returns a :class:`Quantity` to represent a number with units in sympy expressions.
+
+        Use this method rather than creating quantities directly to ensure their units are compatible with those used by
+        the model, so unit conversion etc. works.
 
         :param number: A number (anything convertible to float).
         :param units: A string unit name or a :class:`~cellmlmanip.units.UnitStore.Unit` object.
 
-        :return: A :class:`NumberDummy` object.
+        :return: A :class:`Quantity` object.
         """
 
         # Check units
         if not isinstance(units, self.units.Unit):
             units = self.units.get_unit(units)
 
-        return NumberDummy(value, units)
+        return Quantity(value, units)
 
     def add_cmeta_id(self, variable):
         """
@@ -637,7 +640,7 @@ class Model(object):
 
         If the variable already has a cmeta id no action is performed.
 
-        :param variable: A :class:`VariableDummy`.
+        :param variable: A :class:`Variable`.
         """
         if variable._cmeta_id is not None:
             return
@@ -738,7 +741,7 @@ class Model(object):
             sv1_orig_deriv = 1 :: mV_per_ms
             ode(sv1, time_converted) = 1000 :: ms_per_s * sv1_orig_deriv
 
-        :param original_variable: the :class:`VariableDummy` object representing the variable in the model to be
+        :param original_variable: the :class:`Variable` object representing the variable in the model to be
                                   converted
         :param units: a :class:`~cellmlmanip.units.UnitStore.Unit` object representing the units to convert variable to
                       (note if variable is already in these units, model remains unchanged and the original variable is
@@ -751,7 +754,7 @@ class Model(object):
         :raises DimensionalityError: if the unit conversion is impossible
         """
         # Sanity checks on inputs
-        assert isinstance(original_variable, VariableDummy)
+        assert isinstance(original_variable, Variable)
         assert original_variable.name in self._name_to_variable  # Variable must be in model
         assert isinstance(units, self.units.Unit)  # Units must be in the right registry
         assert isinstance(direction, DataDirectionFlow)
@@ -763,7 +766,7 @@ class Model(object):
             # No conversion necessary. The method above will ensure a factor close to 1 is returned as 1.
             return original_variable
         # Make the conversion factor a number symbol with explicit units
-        cf = self.add_number(cf, units / original_variable.units)
+        cf = self.create_quantity(cf, units / original_variable.units)
 
         # Store original state and free symbols (these might change, so need to store references early)
         state_symbols = self.get_state_variables()
@@ -804,16 +807,16 @@ class Model(object):
     def find_variables_and_derivatives(self, expressions):
         """Returns a set containing all variables and derivatives referenced in a list of expressions.
 
-        Note that we can't just use ``.atoms(VariableDummy, sympy.Derivative)`` for this, because it
+        Note that we can't just use ``.atoms(Variable, sympy.Derivative)`` for this, because it
         will return the state and free variables from inside derivatives, which is not what we want.
 
         :param expressions: an iterable of expressions to get variables for.
-        :return: a set of variables and derivatives, as :class:`VariableDummy` and :class:`sympy.Derivative`
+        :return: a set of variables and derivatives, as :class:`Variable` and :class:`sympy.Derivative`
             objects respectively.
         """
         variables = set()
         for expr in expressions:
-            if expr.is_Derivative or isinstance(expr, VariableDummy):
+            if expr.is_Derivative or isinstance(expr, Variable):
                 variables.add(expr)
             else:
                 variables |= self.find_variables_and_derivatives(expr.args)
@@ -828,7 +831,7 @@ class Model(object):
         """
         Assert that a variable doesn't have an existing definition.
 
-        :param var: the :class:`VariableDummy`, either a state var or normal var
+        :param var: the :class:`Variable`, either a state var or normal var
         :param equation: the new definition being added
         """
         if var in self._ode_definition_map:
@@ -907,7 +910,7 @@ class Model(object):
         # Otherwise, this connection requires a conversion
         else:
             # Dummy to represent this factor in equations, having units for conversion
-            factor_dummy = self.add_number(cf, target.units / source.units)
+            factor_dummy = self.create_quantity(cf, target.units / source.units)
 
             # Add an equation making the connection with the required conversion
             self.add_equation(sympy.Eq(target, source.assigned_to * factor_dummy))
@@ -1015,7 +1018,7 @@ class Model(object):
         If the direction is input, also creates an equation assigning ``original_variable`` from the converted one.
         See :meth:`convert_variable` for the context and examples.
 
-        :param original_variable: :class:`VariableDummy` object to be converted [old units]
+        :param original_variable: :class:`Variable` object to be converted [old units]
         :param cf: conversion factor [new units/old units]
         :param units: Unit object for new units
         :param direction: enumeration value specifying input or output
@@ -1064,18 +1067,18 @@ class Model(object):
         return new_variable
 
 
-class NumberDummy(sympy.Dummy):
+class Quantity(sympy.Dummy):
     """
     Used to represent a number with a unit, inside a Sympy expression.
 
     Unlike sympy expressions, this number type will never be removed in simplify operations etc.
 
-    Number dummies should never be created directly, but always via :meth:`Model.add_number()`.
+    Quantities should never be created directly, but always via :meth:`Model.create_quantity()`.
 
     Assumes the value is real.
 
     To get the actual value as a float or string, use ``float(dummy)`` or ``str(dummy)`` respectively.
-    You can also use ``dummy.evalf()`` to get the value as a :class:`sympy.Float`.
+    You can also use ``quantity.evalf()`` to get the value as a :class:`sympy.Float`.
     """
 
     # Sympy annoyingly overwrites __new__
@@ -1083,7 +1086,7 @@ class NumberDummy(sympy.Dummy):
         # Middle argument is the symbol name, so must be a string
         if not isinstance(value, str):
             value = '{:g}'.format(value)
-        return super().__new__(cls, value, real=True)
+        return super().__new__(cls, '_' + value, real=True)
 
     def __init__(self, value, units):
         self._value = value
@@ -1100,11 +1103,11 @@ class NumberDummy(sympy.Dummy):
         return str(self._value)
 
 
-class VariableDummy(sympy.Dummy):
+class Variable(sympy.Dummy):
     """
     Used to represent a variable (with meta data) in a Sympy expression.
 
-    Variable dummies should never be created directly, but always via :meth:`Model.add_variable()`.
+    Variables should never be created directly, but always via :meth:`Model.add_variable()`.
 
     For the constructor arguments, see :meth:`Model.add_variable()`.
 

@@ -331,7 +331,7 @@ class Parser(object):
         # reuse transpiler so dummy symbols are kept across <math> elements
         transpiler = Transpiler(
             symbol_generator=symbol_generator,
-            number_generator=lambda x, y: self.model.add_number(x, self.model.units.get_unit(y)),
+            number_generator=lambda x, y: self.model.create_quantity(x, self.model.units.get_unit(y)),
         )
 
         # for each math element
@@ -501,7 +501,7 @@ class Parser(object):
             if var in self.model.get_state_variables():
                 assert var.initial_value is not None, 'State variable {} has no initial_value set'.format(var)
             elif var.initial_value is not None:
-                value = self.model.add_number(var.initial_value, var.units)
+                value = self.model.create_quantity(var.initial_value, var.units)
                 self.model.add_equation(sympy.Eq(var, value))
                 var.initial_value = None
 

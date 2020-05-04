@@ -434,9 +434,9 @@ class UnitCalculator(object):
         if expr.is_Symbol:
 
             # is this symbol is a placeholder for a number
-            if isinstance(expr, model.NumberDummy):
+            if isinstance(expr, model.Quantity):
                 return float(expr) * expr.units
-            elif isinstance(expr, model.VariableDummy):
+            elif isinstance(expr, model.Variable):
                 if expr.initial_value and expr.initial_value != 0.0:
                     #  if this symbol has an initial value (that is not zero)
                     # substitute with the initial value for unit arithmetic
@@ -627,7 +627,7 @@ class UnitCalculator(object):
                     raise UnitConversionError(expr, from_units, to_units) from None
                 if cf != 1:
                     was_converted = True
-                    cf = model.NumberDummy(cf, to_units / from_units)
+                    cf = model.Quantity(cf, to_units / from_units)
                     expr = cf * expr
             return expr, was_converted, to_units
 
@@ -643,14 +643,14 @@ class UnitCalculator(object):
             # See comment in :meth:`traverse()`!
             raise UnexpectedMathUnitsError(str(expr))
         elif expr.is_Symbol:
-            assert isinstance(expr, (model.NumberDummy, model.VariableDummy))
+            assert isinstance(expr, (model.Quantity, model.Variable))
             expr, was_converted, actual_units = maybe_convert_expr(expr, was_converted, expr.units, to_units)
         elif expr.is_Derivative:
             # Just convert the result if needed
-            if (not isinstance(expr.args[0], model.VariableDummy) or
+            if (not isinstance(expr.args[0], model.Variable) or
                     len(expr.args) > 2 or
                     expr.args[1][1] > 1 or
-                    not isinstance(expr.args[1][0], model.VariableDummy)):
+                    not isinstance(expr.args[1][0], model.Variable)):
                 raise UnexpectedMathUnitsError(
                     expr, 'We only support first order derivatives of single variables wrt time')
             _, was_converted, numerator_units = maybe_convert_child(expr.args[0], was_converted, None)
