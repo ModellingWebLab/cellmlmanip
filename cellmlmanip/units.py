@@ -65,119 +65,6 @@ _WORD = re.compile('(?<![0-9.])[a-zA-Z_]+[a-zA-Z0-9_]*')
 _STORE_PREFIX = re.compile('(?<![a-zA-Z0-9_])store[0-9]+_')
 
 
-class UnitError(Exception):
-    """Base class for errors relating to calculating units."""
-    def __str__(self):
-        """Display this error message."""
-        return str(self.expression) + ': ' + self.message
-
-    def add_context(self, expression, message):
-        """Add extra context to the error message.
-
-        Will append ``('Context: ' + message).format(expression)`` to the error message.
-
-        :param expression: the wider expression within which a unit calculation error occurred
-        :param message: further details explaining the context of the error
-        """
-        self.context_expression = expression
-        self.message += ('. Context: ' + message).format(expression)
-
-
-class UnitsCannotBeCalculatedError(UnitError):
-    """Generic invalid units error.
-
-    This will be thrown if the expressions or symbols involved in a calculation cannot be calculated.
-
-    :param expression: input expression in which the error occurred
-    """
-
-    def __init__(self, expression):
-        self.expression = expression
-        self.message = 'The units of this expression cannot be calculated.'
-
-
-class UnexpectedMathUnitsError(UnitError):
-    """Invalid units error thrown when math encountered in an expression is outside the subset of MathML expected.
-
-    :param expression: input expression in which the error occurred
-    :param message: optional message with further detail
-    """
-
-    def __init__(self, expression, message=''):
-        self.expression = expression
-        self.message = message or 'The math used by this expression is not supported.'
-
-
-class InputArgumentsInvalidUnitsError(UnitError):
-    """Invalid units error thrown when the arguments to a function have incorrect units.
-
-    For example it is incorrect to add 1 [meter] to 2 [seconds].
-
-    :param expression: input expression in which the error occurred
-    """
-
-    def __init__(self, expression):
-        self.expression = expression
-        self.message = 'The arguments to this expression should all have the same units.'
-
-
-class InputArgumentsMustBeDimensionlessError(UnitError):
-    """Invalid units error thrown when the arguments to a function have units when the function expects the arguments to
-    be dimensionless.
-
-    For example it is incorrect to use a sine function on an argument with units.
-
-    :param expression: input expression in which the error occurred
-    """
-
-    def __init__(self, expression, position=''):
-        self.expression = expression
-        if position.__len__() == 0:
-            self.message = 'The arguments to this expression should be dimensionless.'
-        else:
-            self.message = 'The %s argument to this expression should be dimensionless.' % position
-
-
-class InputArgumentMustBeNumberError(UnitError):
-    """Invalid unit error thrown when the input argument should be a number.
-
-    For example root(x, y) is invalid unless y is a dimensionless number.
-
-    :param expression: input expression in which the error occurred
-    :param position: the position of the argument with error i.e. first/second
-    """
-
-    def __init__(self, expression, position):
-        self.expression = expression
-        self.message = 'The %s argument to this expression should be a number.' % position
-
-
-class BooleanUnitsError(UnitError):
-    """Invalid units error when being asked for units of an expression that will return a boolean.
-
-    For example it is incorrect to use the expression 1 [meter] > 0.5 [seconds].
-
-    :param expression: input expression in which the error occurred
-    """
-
-    def __init__(self, expression):
-        self.expression = expression
-        self.message = 'This expression involves boolean values which do not conform to ' \
-                       'unit dimensionality rules.'
-
-
-class UnitConversionError(UnitError):
-    """Represents failure to convert between incompatible units.
-
-    :param expression: the Sympy expression in which the error occurred
-    :param from_unit: the units the expression is in
-    :param to_unit: the units we tried to convert to
-    """
-    def __init__(self, expression, from_units, to_units):
-        self.expression = expression
-        self.message = 'Cannot convert units from {} to {}'.format(from_units, to_units)
-
-
 class UnitStore(object):
     """
     Creates and stores units, and has functions for unit conversion.
@@ -310,16 +197,21 @@ class UnitStore(object):
         # Return new unit
         return getattr(self._registry, qname)
 
-    def convert(self, quantity, unit):
-        """Converts the given ``quantity`` to be in the given ``unit``.
+    def is_defined(self, name):
+        """Check if a unit with the given ``name`` exists."""
+        return name in self._known_units
 
-        :param quantity: a :class:`.Quantity` to convert.
-        :param unit: a :class:`.Unit` to convert it to.
-        :returns: the converted :class:`.Quantity`.
+    def get_unit(self, name):
+        """Retrieves the :class:`.Unit` object with the given name.
+
+        :param unit_name: string name of the unit
+        :returns: A :class:`Unit` object.
+        :raises KeyError: If the unit is not defined in this unit store.
         """
-        assert isinstance(quantity, self._registry.Quantity)
-        assert isinstance(unit, self._registry.Unit)
-        return quantity.to(unit)
+        if name not in self._known_units:
+            raise KeyError('Unknown unit ' + str(name) + '.')
+
+        return getattr(self._registry, self._prefix_name(name))
 
     def format(self, unit, base_units=False):
         """
@@ -336,22 +228,6 @@ class UnitStore(object):
             return _STORE_PREFIX.sub('', text)
         else:
             return _STORE_PREFIX.sub('', str(unit))
-
-    def get_unit(self, name):
-        """Retrieves the :class:`.Unit` object with the given name.
-
-        :param unit_name: string name of the unit
-        :returns: A :class:`Unit` object.
-        :raises KeyError: If the unit is not defined in this unit store.
-        """
-        if name not in self._known_units:
-            raise KeyError('Unknown unit ' + str(name) + '.')
-
-        return getattr(self._registry, self._prefix_name(name))
-
-    def is_defined(self, name):
-        """Check if a unit with the given ``name`` exists."""
-        return name in self._known_units
 
     def is_equivalent(self, unit1, unit2):
         """Tests whether two units are equivalent.
@@ -380,6 +256,28 @@ class UnitStore(object):
         logger.debug('evaluate_units(%s) ⟶ %s', expr, found)
         return found
 
+    def get_conversion_factor(self, from_unit, to_unit):
+        """Returns the magnitude multiplier required to convert a unit to the specified unit.
+
+        :param from_unit: the :class:`Unit` to be converted
+        :param to_unit: :class:`Unit` object into which the units should be converted
+        :returns: the magnitude of the resulting conversion factor
+        """
+        assert isinstance(from_unit, self._registry.Unit), 'from_unit must be a unit, not ' + str(from_unit)
+        cf = self.convert(1 * from_unit, to_unit).magnitude
+        return 1.0 if isinstance(cf, numbers.Number) and math.isclose(cf, 1.0) else cf
+
+    def convert(self, quantity, unit):
+        """Converts the given ``quantity`` to be in the given ``unit``.
+
+        :param quantity: a :class:`.Quantity` to convert.
+        :param unit: a :class:`.Unit` to convert it to.
+        :returns: the converted :class:`.Quantity`.
+        """
+        assert isinstance(quantity, self._registry.Quantity)
+        assert isinstance(unit, self._registry.Unit)
+        return quantity.to(unit)
+
     def evaluate_units_and_fix(self, expr):
         """
         Evaluates and returns the :class:`Unit` a Sympy expression is in; but will also attempt to fix inconsistencies
@@ -396,32 +294,6 @@ class UnitStore(object):
             e.add_context(expr, 'trying to evaluate "{}"')
             raise
         return actual_units, new_expr
-
-    def get_conversion_factor(self, from_unit, to_unit):
-        """Returns the magnitude multiplier required to convert a unit to the specified unit.
-
-        :param from_unit: the :class:`Unit` to be converted
-        :param to_unit: :class:`Unit` object into which the units should be converted
-        :returns: the magnitude of the resulting conversion factor
-        """
-        assert isinstance(from_unit, self._registry.Unit), 'from_unit must be a unit, not ' + str(from_unit)
-        cf = self.convert(1 * from_unit, to_unit).magnitude
-        return 1.0 if isinstance(cf, numbers.Number) and math.isclose(cf, 1.0) else cf
-
-    def _prefix_expression(self, match):
-        """Takes a regex Match object from _WORD, and adds a prefix (UnitStore id), taking SI prefixes into account."""
-        return self._prefix_name(match.group(0))
-
-    def _prefix_name(self, name):
-        """Adds a prefix to a unit name."""
-
-        # Note: CellML units don't get prefixes. This is OK because they're the same in any model.
-        # It's good because (1) it stops us having to redefine all cellml units, (2) it means 'dimensionless' is still
-        # treated in a special way (dimensionless * meter = meter, but special_dimensionless * meter isn't simplified).
-        if name in _CELLML_UNITS:
-            return name
-
-        return self._prefix + name
 
     def convert_expression_recursively(self, expr, to_units):
         """Generate a version of the given expression in the requested units.
@@ -461,6 +333,21 @@ class UnitStore(object):
                 'trying to convert "{}" to ' + ('consistent units' if to_units is None else str(to_units)))
             raise
         return new_expr
+
+    def _prefix_expression(self, match):
+        """Takes a regex Match object from _WORD, and adds a prefix (UnitStore id), taking SI prefixes into account."""
+        return self._prefix_name(match.group(0))
+
+    def _prefix_name(self, name):
+        """Adds a prefix to a unit name."""
+
+        # Note: CellML units don't get prefixes. This is OK because they're the same in any model.
+        # It's good because (1) it stops us having to redefine all cellml units, (2) it means 'dimensionless' is still
+        # treated in a special way (dimensionless * meter = meter, but special_dimensionless * meter isn't simplified).
+        if name in _CELLML_UNITS:
+            return name
+
+        return self._prefix + name
 
 
 class UnitCalculator(object):
@@ -859,3 +746,116 @@ class UnitCalculator(object):
             raise UnexpectedMathUnitsError(str(expr))
 
         return expr, was_converted, actual_units
+
+
+class UnitError(Exception):
+    """Base class for errors relating to calculating units."""
+    def __str__(self):
+        """Display this error message."""
+        return str(self.expression) + ': ' + self.message
+
+    def add_context(self, expression, message):
+        """Add extra context to the error message.
+
+        Will append ``('Context: ' + message).format(expression)`` to the error message.
+
+        :param expression: the wider expression within which a unit calculation error occurred
+        :param message: further details explaining the context of the error
+        """
+        self.context_expression = expression
+        self.message += ('. Context: ' + message).format(expression)
+
+
+class UnitsCannotBeCalculatedError(UnitError):
+    """Generic invalid units error.
+
+    This will be thrown if the expressions or symbols involved in a calculation cannot be calculated.
+
+    :param expression: input expression in which the error occurred
+    """
+
+    def __init__(self, expression):
+        self.expression = expression
+        self.message = 'The units of this expression cannot be calculated.'
+
+
+class UnexpectedMathUnitsError(UnitError):
+    """Invalid units error thrown when math encountered in an expression is outside the subset of MathML expected.
+
+    :param expression: input expression in which the error occurred
+    :param message: optional message with further detail
+    """
+
+    def __init__(self, expression, message=''):
+        self.expression = expression
+        self.message = message or 'The math used by this expression is not supported.'
+
+
+class InputArgumentsInvalidUnitsError(UnitError):
+    """Invalid units error thrown when the arguments to a function have incorrect units.
+
+    For example it is incorrect to add 1 [meter] to 2 [seconds].
+
+    :param expression: input expression in which the error occurred
+    """
+
+    def __init__(self, expression):
+        self.expression = expression
+        self.message = 'The arguments to this expression should all have the same units.'
+
+
+class InputArgumentsMustBeDimensionlessError(UnitError):
+    """Invalid units error thrown when the arguments to a function have units when the function expects the arguments to
+    be dimensionless.
+
+    For example it is incorrect to use a sine function on an argument with units.
+
+    :param expression: input expression in which the error occurred
+    """
+
+    def __init__(self, expression, position=''):
+        self.expression = expression
+        if position.__len__() == 0:
+            self.message = 'The arguments to this expression should be dimensionless.'
+        else:
+            self.message = 'The %s argument to this expression should be dimensionless.' % position
+
+
+class InputArgumentMustBeNumberError(UnitError):
+    """Invalid unit error thrown when the input argument should be a number.
+
+    For example root(x, y) is invalid unless y is a dimensionless number.
+
+    :param expression: input expression in which the error occurred
+    :param position: the position of the argument with error i.e. first/second
+    """
+
+    def __init__(self, expression, position):
+        self.expression = expression
+        self.message = 'The %s argument to this expression should be a number.' % position
+
+
+class BooleanUnitsError(UnitError):
+    """Invalid units error when being asked for units of an expression that will return a boolean.
+
+    For example it is incorrect to use the expression 1 [meter] > 0.5 [seconds].
+
+    :param expression: input expression in which the error occurred
+    """
+
+    def __init__(self, expression):
+        self.expression = expression
+        self.message = 'This expression involves boolean values which do not conform to ' \
+                       'unit dimensionality rules.'
+
+
+class UnitConversionError(UnitError):
+    """Represents failure to convert between incompatible units.
+
+    :param expression: the Sympy expression in which the error occurred
+    :param from_unit: the units the expression is in
+    :param to_unit: the units we tried to convert to
+    """
+    def __init__(self, expression, from_units, to_units):
+        self.expression = expression
+        self.message = 'Cannot convert units from {} to {}'.format(from_units, to_units)
