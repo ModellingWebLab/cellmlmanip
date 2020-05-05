@@ -242,7 +242,7 @@ def test_add_cmeta_id():
     assert v.rdf_identity is None
     model.add_cmeta_id(v)
     assert v.rdf_identity is not None
-    assert v.rdf_identity == '#circle_x__x'
+    assert str(v.rdf_identity) == '#circle_x__x'
 
     # Test on variable with a cmeta id
     v = model.get_variable_by_ontology_term((shared.OXMETA, 'time'))
