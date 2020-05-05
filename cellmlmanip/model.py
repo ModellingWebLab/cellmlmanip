@@ -683,7 +683,7 @@ class Model(object):
             return
 
         # Create new cmeta id
-        cmeta_id = str(variable)
+        cmeta_id = self.get_display_name(variable)
         while self.has_cmeta_id(cmeta_id):
             cmeta_id += '_'
 
