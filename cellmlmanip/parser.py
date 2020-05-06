@@ -4,7 +4,6 @@ stores model information in the :class:`cellmlmanip.model.Model` class. MathML e
 is handled by RDFLib.
 """
 import itertools
-import logging
 import os
 from collections import OrderedDict, deque
 from enum import Enum
@@ -13,9 +12,6 @@ import sympy
 from lxml import etree
 
 from cellmlmanip.model import SYMPY_SYMBOL_DELIMITER, Model
-
-
-logger = logging.getLogger(__name__)
 
 
 UNIT_PREFIXES = {
@@ -620,10 +616,8 @@ class Transpiler(object):
         for child_element in element.iterchildren(tag='*'):
             # Call the appropriate MathML handler function for this tag
             tag_name = etree.QName(child_element.tag).localname
-            print(tag_name, child_element)
             if tag_name in self.handlers:
                 sympy_expressions.append(self.handlers[tag_name](child_element))
-                logger.debug('Transpiled node %s ⟶ %s', _dump_node(child_element), sympy_expressions[-1])
             else:
                 # MathML handler function not found for this tag!
                 raise NotImplementedError('No handler for element <%s>' % tag_name)
@@ -686,8 +680,6 @@ class Transpiler(object):
         """https://www.w3.org/TR/MathML2/chapter4.html#contm.apply
         """
         result = self.transpile(node)
-
-        logger.debug('Result of <apply>:\n\t%s\t⟶\t%s', _dump_node(node), result)
 
         if len(result) > 1:
             expression = result[0](*(result[1:]))
