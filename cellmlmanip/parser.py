@@ -620,7 +620,7 @@ class Transpiler(object):
                 sympy_expressions.append(self.handlers[tag_name](child_element))
             else:
                 # MathML handler function not found for this tag!
-                raise NotImplementedError('No handler for element <%s>' % tag_name)
+                raise ValueError('No handler for element <%s>' % tag_name)
 
         return sympy_expressions
 
@@ -651,12 +651,11 @@ class Transpiler(object):
                     exponent = int(node[0].tail.strip())
                     number = float('%se%d' % (mantissa, exponent))
                 else:
-                    raise SyntaxError('Expecting '
-                                      '<cn type="e-notation">significand<sep/>exponent</cn>.'
-                                      'Got: ' + _dump_node(node))
+                    raise ValueError('Expecting '
+                                     '<cn type="e-notation">significand<sep/>exponent</cn>.'
+                                     'Got: ' + _dump_node(node))
             else:
-                raise NotImplementedError('Unimplemented type attribute for <cn>: '
-                                          + node.attrib['type'])
+                raise ValueError('Unimplemented type attribute for <cn>: ' + node.attrib['type'])
         else:
             number = float(node.text.strip())
 
@@ -812,7 +811,7 @@ class Transpiler(object):
         elif len(result) == 2:
             return result
         else:
-            raise SyntaxError('Do not know how to handle <bvar> ' + _dump_node(node))
+            raise ValueError('Do not know how to handle <bvar> ' + _dump_node(node))
 
     # ELEMENTARY CLASSICAL FUNCTIONS ###############################################################
 
