@@ -1,10 +1,7 @@
-import os
-from xml.dom import pulldom
-
 import pytest
 import sympy
 
-from cellmlmanip.transpiler import Transpiler
+from cellmlmanip.parser import Transpiler
 
 
 class TestTranspiler(object):
@@ -24,6 +21,12 @@ class TestTranspiler(object):
         mathml_string = self.make_mathml(content_xml)
         transpiled_sympy = transpiler.parse_string(mathml_string)
         assert transpiled_sympy == sympy_expression
+
+    def assert_raises(self, content_xml, exception_class, match=None):
+        transpiler = Transpiler()
+        mathml_string = self.make_mathml(content_xml)
+        with pytest.raises(exception_class, match=match):
+            transpiler.parse_string(mathml_string)
 
     def test_symbol(self):
         self.assert_equal('<ci>x</ci>',
@@ -129,6 +132,9 @@ class TestTranspiler(object):
         self.assert_equal('<apply><root/><degree><ci>n</ci></degree><ci>a</ci></apply>',
                           [sympy.root(sympy.Symbol('a'), sympy.Symbol('n'))])
 
+    def test_degree_error(self):
+        self.assert_raises('<degree></degree>', ValueError, match='Expected single value')
+
     def test_pi(self):
         self.assert_equal('<pi/>',
                           [sympy.pi])
@@ -165,6 +171,9 @@ class TestTranspiler(object):
                           '</apply>',
                           [sympy.Derivative(V, time, 2)])
 
+    def test_bvar_error(self):
+        self.assert_raises('<bvar/>', ValueError, match='Do not know how to handle')
+
     def test_piecewise(self):
         x = sympy.Symbol('x')
         self.assert_equal('<piecewise>'
@@ -180,6 +189,12 @@ class TestTranspiler(object):
                           '<otherwise><cn>0</cn></otherwise>'
                           '</piecewise>',
                           [sympy.Piecewise((10, x > 0.), (20, x > 1.), (30, x > 2.), (0, True))])
+
+    def test_piece_error(self):
+        self.assert_raises('<piece><cn>0</cn></piece>', ValueError, match='Need exactly 2 children')
+
+    def test_otherwise_error(self):
+        self.assert_raises('<otherwise><cn>0</cn><cn>1</cn></otherwise>', ValueError, match='More than 1 child')
 
     def test_multiple_relations(self):
         from sympy.abc import a, b, c, x, y, z
@@ -215,6 +230,10 @@ class TestTranspiler(object):
 
     def test_scientific_notation(self):
         self.assert_equal('<cn type="e-notation">1.234<sep/>5</cn>', [sympy.Number(1.234e5)])
+
+    def test_bad_cn_element(self):
+        self.assert_raises('<cn type="e-notation">1.23<sep/>5<sep/>6</cn>', ValueError, match='significand')
+        self.assert_raises('<cn type="complex-cartesian"/>', ValueError, match='Unimplemented type attribute')
 
     def test_xor(self):
         self.assert_equal('<apply><xor/><ci>a</ci><ci>b</ci></apply>',
@@ -267,28 +286,12 @@ class TestTranspiler(object):
         assert numbers[0][0] == 2
         assert numbers[1][0] == 2000
 
-    def test_hodgkin_1952(self):
-        cellml_path = os.path.join(
-            os.path.dirname(__file__),
-            "cellml_files",
-            "hodgkin_huxley_squid_axon_model_1952_modified.cellml"
-        )
-
-        document = pulldom.parse(cellml_path)
-        components = []
-        for event, node in document:
-            if event == pulldom.START_ELEMENT and node.tagName == 'math':
-                document.expandNode(node)
-                components.append(node)
-        for component in components:
-            eqs = Transpiler().parse_dom(component)
-            for eq in eqs:
-                pass
-                # print(eq)
-
     def test_change_handler(self):
         class _exp(sympy.Function):
             pass
         Transpiler.set_mathml_handler('exp', _exp)
         self.assert_equal('<apply><exp/><ci>x</ci></apply>',
                           [_exp(sympy.Symbol('x'))])
+
+    def test_unhandled_tag(self):
+        self.assert_raises('<matrix/>', ValueError, match='No handler for element')
