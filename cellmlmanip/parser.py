@@ -344,7 +344,7 @@ class Parser(object):
 
         # for each math element
         for math_element in math_elements:
-            sympy_exprs = transpiler.parse_string(etree.tostring(math_element, encoding=str))
+            sympy_exprs = transpiler.parse_tree(math_element)
 
             # add each equation from <math> to the model
             for expr in sympy_exprs:
