@@ -1,10 +1,7 @@
-import os
-from xml.dom import pulldom
-
 import pytest
 import sympy
 
-from cellmlmanip.transpiler import Transpiler
+from cellmlmanip.parser import Transpiler
 
 
 class TestTranspiler(object):
@@ -266,25 +263,6 @@ class TestTranspiler(object):
         assert len(numbers) == 2
         assert numbers[0][0] == 2
         assert numbers[1][0] == 2000
-
-    def test_hodgkin_1952(self):
-        cellml_path = os.path.join(
-            os.path.dirname(__file__),
-            "cellml_files",
-            "hodgkin_huxley_squid_axon_model_1952_modified.cellml"
-        )
-
-        document = pulldom.parse(cellml_path)
-        components = []
-        for event, node in document:
-            if event == pulldom.START_ELEMENT and node.tagName == 'math':
-                document.expandNode(node)
-                components.append(node)
-        for component in components:
-            eqs = Transpiler().parse_dom(component)
-            for eq in eqs:
-                pass
-                # print(eq)
 
     def test_change_handler(self):
         class _exp(sympy.Function):
