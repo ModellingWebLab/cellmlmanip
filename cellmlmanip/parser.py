@@ -558,7 +558,7 @@ class Transpiler(object):
             'divide': self._divide_handler,
             'log': self._log_handler,
             'logbase': self._logbase_handler,
-            'math': self._math_handler,
+            'math': self.transpile,
             'minus': self._minus_handler,
             'otherwise': self._otherwise_handler,
             'piece': self._piece_handler,
@@ -623,14 +623,6 @@ class Transpiler(object):
                 raise NotImplementedError('No handler for element <%s>' % tag_name)
 
         return sympy_expressions
-
-    # MATHML ELEMENT HANDLERS ######################################################################
-
-    def _math_handler(self, node):
-        """Descend XML node <math>...</math>
-        """
-        result = self.transpile(node)
-        return result
 
     # TOKEN ELEMENTS ###############################################################################
 
