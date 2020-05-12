@@ -803,7 +803,6 @@ class Model(object):
             # No conversion necessary. The method above will ensure a factor close to 1 is returned as 1.
             return original_variable
         # Make the conversion factor a number symbol with explicit units
-        cf = self.create_quantity(cf, units / original_variable.units)
 
         # Store original state and free symbols (these might change, so need to store references early)
         state_symbols = self.get_state_variables()
