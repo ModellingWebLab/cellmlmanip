@@ -815,7 +815,7 @@ class TestUnitConversion:
         # Add conversion rule from uA_per_mm2 to uA_per_uF
         chaste_membrane_capacitance = br_model.units.Quantity(sympy.Function('HeartConfig::Instance()->GetCapacitance',
                                                               real=True)(), uA_per_uF / uA_per_mm2)
-                                                              
+
         # Add complex rule
         br_model.units.add_conversion_rule(from_unit=uA_per_mm2, to_unit=uA_per_uF,
                                            rule=lambda ureg, rhs: rhs * chaste_membrane_capacitance)
@@ -831,7 +831,6 @@ class TestUnitConversion:
         assert str(eqs) == \
             '[Eq(_stimulus_protocol$IstimAmplitude, 0.5), Eq(_stimulus_protocol$IstimAmplitude_converted, '\
             '_stimulus_protocol$IstimAmplitude*HeartConfig::Instance()->GetCapacitance())]'
-
 
     def test_complex_conversion_rule_with_factor(self, br_model):
         """
@@ -851,7 +850,7 @@ class TestUnitConversion:
         # Add conversion rule from uA_per_cm2 to uA_per_uF
         chaste_membrane_capacitance = br_model.units.Quantity(sympy.Function('HeartConfig::Instance()->GetCapacitance',
                                                               real=True)(), uA_per_uF / uA_per_cm2)
-                                                              
+
         # Add complex rule
         br_model.units.add_conversion_rule(from_unit=uA_per_cm2, to_unit=uA_per_uF,
                                            rule=lambda ureg, rhs: rhs * chaste_membrane_capacitance)
