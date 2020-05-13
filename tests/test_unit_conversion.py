@@ -798,25 +798,39 @@ class TestUnitConversion:
         assert str(silly_names.equations[2]) == 'Eq(Derivative(_env_ode$sv1_converted_a, _environment$time), ' \
                                                 '_0.001*_env_ode$sv1_orig_deriv_a)'
 
-    def test_complex_conversion_rules(self, br_model):
+    def test_complex_conversion_rule(self, br_model):
         """
         Tests adding a complex sympy conversion rule for incompatible units works as expected.
         """
-        ms = br_model.units.get_unit('ms')
+        uA_per_mm2 = br_model.units.get_unit('uA_per_mm2')
         uA_per_uF = br_model.units.add_unit('uA_per_uF', 'ampere / 1e6 / (farad * 1e-6)')
-        # Get and check period
-        period = br_model.get_variable_by_ontology_term((shared.OXMETA, "membrane_stimulus_current_period"))
-        assert str(period) == 'stimulus_protocol$IstimPeriod'
-        assert period.units == ms
-        conversion_func = br_model.units.Quantity(sympy.Function('cov', real=True)(), uA_per_uF / ms)
-        br_model.units.add_conversion_rule(from_unit=ms, to_unit=uA_per_uF,
-                                           rule=lambda ureg, rhs: rhs * conversion_func)
-        br_model.convert_variable(period, uA_per_uF, DataDirectionFlow.OUTPUT)
 
-        period = br_model.get_variable_by_ontology_term((shared.OXMETA, "membrane_stimulus_current_period"))
-        assert str(period) == 'stimulus_protocol$IstimPeriod_converted'
-        assert period.units == uA_per_uF
-        eqs = br_model.get_equations_for([period])
+        # Get and check amplitude
+        amplitude = br_model.get_variable_by_ontology_term((shared.OXMETA, "membrane_stimulus_current_amplitude"))
+        assert str(amplitude) == 'stimulus_protocol$IstimAmplitude'
+        assert amplitude.units == uA_per_mm2
+        eqs = br_model.get_equations_for([amplitude])
+        assert str(eqs) == '[Eq(_stimulus_protocol$IstimAmplitude, 0.5)]'
+
+        # Add conversion rule from uA_per_mm2 to uA_per_uF
+        chaste_membrane_capacitance = br_model.units.Quantity(sympy.Function('HeartConfig::Instance()->GetCapacitance',
+                                                              real=True)(), uA_per_uF / uA_per_mm2)
+                                                              
+        # Add complex rule
+        br_model.units.add_conversion_rule(from_unit=uA_per_mm2, to_unit=uA_per_uF,
+                                           rule=lambda ureg, rhs: rhs * chaste_membrane_capacitance)
+
+        # Convert variable in model
+        br_model.convert_variable(amplitude, uA_per_uF, DataDirectionFlow.OUTPUT)
+
+        # Get and re-check amplitude
+        amplitude = br_model.get_variable_by_ontology_term((shared.OXMETA, "membrane_stimulus_current_amplitude"))
+        assert str(amplitude) == 'stimulus_protocol$IstimAmplitude_converted'
+        assert amplitude.units == uA_per_uF
+        eqs = br_model.get_equations_for([amplitude])
+        assert str(eqs) == \
+            '[Eq(_stimulus_protocol$IstimAmplitude, 0.5), Eq(_stimulus_protocol$IstimAmplitude_converted, '\
+            '_stimulus_protocol$IstimAmplitude*HeartConfig::Instance()->GetCapacitance())]'
 
 
     def test_complex_conversion_rule_with_factor(self, br_model):
