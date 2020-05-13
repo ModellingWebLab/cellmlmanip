@@ -1,6 +1,6 @@
 import pytest
 import sympy
-from pint import Context, DimensionalityError
+from pint import DimensionalityError
 
 from cellmlmanip import units
 from cellmlmanip.model import DataDirectionFlow
@@ -817,12 +817,9 @@ class TestUnitConversion:
 
         chaste_membrane_capacitance = br_model.units.Quantity(sympy.Function('HeartConfig::Instance()->GetCapacitance',
                                                               real=True)(), uA_per_uF / uA_per_cm2)
-
-        # Define complex rule, create context and add rule
-        context = Context('test_complex_conversion')
-        context.add_transformation(uA_per_cm2, uA_per_uF, lambda ureg, rhs: rhs * chaste_membrane_capacitance)
-        br_model.units._registry.add_context(context)
-        br_model.units._registry.enable_contexts('test_complex_conversion')
+        # Add complex rule
+        br_model.units.add_conversion_rule(from_unit=uA_per_cm2, to_unit=uA_per_uF,
+                                           rule=lambda ureg, rhs: rhs * chaste_membrane_capacitance)
 
         # Convert variable in model
         br_model.convert_variable(amplitude, uA_per_uF, DataDirectionFlow.OUTPUT)
@@ -835,3 +832,22 @@ class TestUnitConversion:
         assert str(eqs) == \
             '[Eq(_stimulus_protocol$IstimAmplitude, 0.5), Eq(_stimulus_protocol$IstimAmplitude_converted, '\
             '100.0*_stimulus_protocol$IstimAmplitude*HeartConfig::Instance()->GetCapacitance())]'
+
+        # Add complex rule
+        br_model.units.add_conversion_rule(from_unit=uA_per_uF, to_unit=uA_per_cm2,
+                                           rule=lambda ureg, rhs: rhs / chaste_membrane_capacitance)
+
+        # convert back
+        # Convert variable in model
+        br_model.convert_variable(amplitude, uA_per_mm2, DataDirectionFlow.OUTPUT)
+
+        # Get and re-check amplitude
+        amplitude = br_model.get_variable_by_ontology_term((shared.OXMETA, "membrane_stimulus_current_amplitude"))
+        assert str(amplitude) == 'stimulus_protocol$IstimAmplitude_converted_converted'
+        assert amplitude.units == uA_per_mm2
+        eqs = br_model.get_equations_for([amplitude])
+        assert str(eqs) == \
+            '[Eq(_stimulus_protocol$IstimAmplitude, 0.5), Eq(_stimulus_protocol$IstimAmplitude_converted, '\
+            '100.0*_stimulus_protocol$IstimAmplitude*HeartConfig::Instance()->GetCapacitance()), '\
+            'Eq(_stimulus_protocol$IstimAmplitude_converted_converted, '\
+            '0.01*_stimulus_protocol$IstimAmplitude_converted/HeartConfig::Instance()->GetCapacitance())]'
