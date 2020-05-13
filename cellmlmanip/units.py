@@ -274,8 +274,6 @@ class UnitStore(object):
         cf = self.convert(1 * from_unit, to_unit).magnitude
         if isinstance(cf, numbers.Number) and math.isclose(cf, 1.0):
             return 1.0
-        if isinstance(cf, sympy.mul.Mul) and 1.0 in cf.args:
-            return sympy.mul.Mul(tuple([c for c in cf.args if not c == 1.0]))
         return cf
 
     def convert(self, quantity, unit):

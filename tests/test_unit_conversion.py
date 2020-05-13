@@ -853,7 +853,7 @@ class TestUnitConversion:
                                                               real=True)(), uA_per_uF / uA_per_cm2)
                                                               
         # Add complex rule
-        br_model.units.add_conversion_rule(from_unit=uA_per_mm2, to_unit=uA_per_uF,
+        br_model.units.add_conversion_rule(from_unit=uA_per_cm2, to_unit=uA_per_uF,
                                            rule=lambda ureg, rhs: rhs * chaste_membrane_capacitance)
 
         # Convert variable in model

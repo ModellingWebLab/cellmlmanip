@@ -802,6 +802,8 @@ class Model(object):
         if cf == 1:
             # No conversion necessary. The method above will ensure a factor close to 1 is returned as 1.
             return original_variable
+        elif isinstance(cf, sympy.mul.Mul) and 1.0 in cf.args:  # if conversion factor is a sympy expr remove 1.0 *
+            cf = sympy.mul.Mul(*[c for c in cf.args if c != 1.0])
         # Make the conversion factor a number symbol with explicit units
         cf = self.create_quantity(cf, units / original_variable.units)
 
