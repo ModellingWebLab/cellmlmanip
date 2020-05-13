@@ -265,7 +265,11 @@ class UnitStore(object):
         """
         assert isinstance(from_unit, self._registry.Unit), 'from_unit must be a unit, not ' + str(from_unit)
         cf = self.convert(1 * from_unit, to_unit).magnitude
-        return 1.0 if isinstance(cf, numbers.Number) and math.isclose(cf, 1.0) else cf
+        if isinstance(cf, numbers.Number) and math.isclose(cf, 1.0):
+            return 1.0
+        if isinstance(cf, sympy.mul.Mul) and 1.0 in cf.args:
+            return sympy.mul.Mul(tuple([c for c in cf.args if not c == 1.0]))
+        return cf
 
     def convert(self, quantity, unit):
         """Converts the given ``quantity`` to be in the given ``unit``.

@@ -814,4 +814,3 @@ class TestConvertingExpressions:
         expr = _10 + _20
         with pytest.raises(UnitConversionError, match='Context: trying to evaluate'):
             store.evaluate_units_and_fix(expr)
-
