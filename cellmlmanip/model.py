@@ -1122,7 +1122,7 @@ class Quantity(sympy.Dummy):
     def __new__(cls, value, *args, **kwargs):
         # Middle argument is the symbol name, so must be a string
         if not isinstance(value, str):
-            value = '{:g}'.format(value) if isinstance(value, float) else str(value)
+            value = '{:g}'.format(value)
         return super().__new__(cls, '_' + value, real=True)
 
     def __init__(self, value, units):
@@ -1134,10 +1134,7 @@ class Quantity(sympy.Dummy):
 
     def _eval_evalf(self, prec):
         """This is needed to allow Sympy's ``evalf`` method to represent this value as a float."""
-        try:
-            return sympy.Float(self._value, prec)
-        except TypeError:
-            return sympy.sympify(self._value)
+        return sympy.Float(self._value, prec)
 
     def __str__(self):
         return str(self._value)
