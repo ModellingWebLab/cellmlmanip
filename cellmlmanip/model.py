@@ -665,6 +665,7 @@ class Model(object):
 
         :return: A :class:`Quantity` object.
         """
+
         # Check units
         if not isinstance(units, self.units.Unit):
             units = self.units.get_unit(units)
