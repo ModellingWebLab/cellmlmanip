@@ -3,6 +3,7 @@ The main construct in cellmlmanip is a :class:`cellmlmanip.model.Model`.
 This represents a flattened CellML model and metadata about its variables.
 """
 import logging
+import numbers
 from enum import Enum
 from io import StringIO
 
@@ -802,10 +803,11 @@ class Model(object):
             # No conversion necessary. The method above will ensure a factor close to 1 is returned as 1.
             return original_variable
 
-        if not isinstance(cf, sympy.basic.Basic):  # if cf is not a sympy expression
+        if isinstance(cf, numbers.Number):
             # Make the conversion factor a number symbol with explicit units
             cf = self.create_quantity(cf, units / original_variable.units)
-        elif isinstance(cf, sympy.mul.Mul) and 1.0 in cf.args:  # if cf is an expr containing 1.0*, remove the 1.0 *
+        elif isinstance(cf, sympy.mul.Mul) and 1.0 in cf.args:
+            # We get an ugly artifact whereby pint gives us a 1.0*f as conversion factor; remove the 1.0
             cf = sympy.mul.Mul(*[a for a in cf.args if a != 1.0])
 
         # Store original state and free symbols (these might change, so need to store references early)
