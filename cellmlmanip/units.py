@@ -266,7 +266,7 @@ class UnitStore(object):
         assert isinstance(from_unit, self._registry.Unit), 'from_unit must be a unit, not ' + str(from_unit)
         cf = self.convert(1 * from_unit, to_unit).magnitude
         if isinstance(cf, numbers.Number) and math.isclose(cf, 1.0):
-            return 1.0
+            return 1
         return cf
 
     def convert(self, quantity, unit):
