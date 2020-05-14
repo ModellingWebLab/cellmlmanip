@@ -23,6 +23,11 @@ class TestUnitConversion:
         return shared.load_model('beeler_reuter_model_1977')
 
     @pytest.fixture
+    def en_model(scope='function'):
+        """ Fixture to load a local copy of  the basic_ode model that may get modified. """
+        return shared.load_model('earm_noble_model_1990')
+
+    @pytest.fixture
     def literals_model(scope='function'):
         """ Fixture to load a local copy of  the basic_ode model that may get modified. """
         return shared.load_model('literals_for_conversion_tests')
@@ -834,7 +839,7 @@ class TestUnitConversion:
 
     def test_complex_conversion_rule_with_factor(self, br_model):
         """
-        Tests adding a complex sympy conversion rule for incompatible units works as expected.
+        Tests complex sympy conversion rule, works even when a conversion factor is needed to be able to use the rule.
         """
         uA_per_mm2 = br_model.units.get_unit('uA_per_mm2')
         uA_per_cm2 = br_model.units.add_unit('uA_per_cm2', 'ampere / 1e6 / (meter * 1e-2)**2')
@@ -866,3 +871,33 @@ class TestUnitConversion:
         assert str(eqs) == \
             '[Eq(_stimulus_protocol$IstimAmplitude, 0.5), Eq(_stimulus_protocol$IstimAmplitude_converted, '\
             '100.0*_stimulus_protocol$IstimAmplitude*HeartConfig::Instance()->GetCapacitance())]'
+
+    def test_complex_conversion_rules_combined(self, en_model):
+        """
+        Tests adding a conversion rule that uses another (converted) variable.
+        """
+        amplitude = en_model.get_variable_by_ontology_term((shared.OXMETA, "membrane_stimulus_current_amplitude"))
+        uF = en_model.units.add_unit('uF', 'farad / 1e6')
+        uA = en_model.units.add_unit('uA', 'ampere / 1e6')
+        uA_per_cm2 = en_model.units.add_unit('uA_per_cm2', 'ampere / 1e6 / (meter * 1e-2)**2')
+        uA_per_uF = en_model.units.add_unit('uA_per_uF', 'ampere / 1e6 / (farad * 1e-6)')
+
+        config_capacitance = \
+            en_model.units.Quantity(sympy.Function('HeartConfig::Instance()->GetCapacitance', real=True)(),
+                                    uA_per_cm2 / uA_per_uF)
+
+        capactiance = en_model.get_variable_by_ontology_term((shared.OXMETA, "membrane_capacitance"))
+
+        en_model.units.add_conversion_rule(from_unit=uF, to_unit=uA / uA_per_cm2,
+                                           rule=lambda ureg, rhs: rhs / config_capacitance)
+        capactiance = en_model.convert_variable(capactiance, uA / uA_per_cm2, DataDirectionFlow.OUTPUT)
+
+        capactiance_quant = en_model.units.Quantity(capactiance, capactiance.units)
+        en_model.units.add_conversion_rule(from_unit=uA, to_unit=uA_per_cm2,
+                                           rule=lambda ureg, rhs: rhs / capactiance_quant)
+        # Convert if necessary
+        amplitude = en_model.convert_variable(amplitude, uA_per_cm2, DataDirectionFlow.OUTPUT)
+        assert str(en_model.get_equations_for([amplitude])) == '[Eq(_membrane$C_m, 4.0000000000000003e-5), '\
+            'Eq(_membrane$C_m_converted, _membrane$C_m/HeartConfig::Instance()->GetCapacitance()), '\
+            'Eq(_membrane$stim_amplitude, -1.3), Eq(_membrane$stim_amplitude_converted, '\
+            '0.001*_membrane$stim_amplitude/_membrane$C_m_converted)]'

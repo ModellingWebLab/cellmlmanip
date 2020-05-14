@@ -358,6 +358,7 @@ class Model(object):
         :param strip_units: If ``True``, all :class:`Quantity` objects representing number with units will be
             replaced with ordinary sympy number objects.
         """
+
         # Get graph
         if strip_units:
             graph = self.graph_with_sympy_numbers
@@ -668,7 +669,6 @@ class Model(object):
         # Check units
         if not isinstance(units, self.units.Unit):
             units = self.units.get_unit(units)
-
         return Quantity(value, units)
 
     def add_cmeta_id(self, variable):
@@ -802,10 +802,12 @@ class Model(object):
         if cf == 1:
             # No conversion necessary. The method above will ensure a factor close to 1 is returned as 1.
             return original_variable
-        elif isinstance(cf, sympy.mul.Mul) and 1.0 in cf.args:  # if conversion factor is a sympy expr remove 1.0 *
-            cf = sympy.mul.Mul(*[c for c in cf.args if c != 1.0])
-        # Make the conversion factor a number symbol with explicit units
-        cf = self.create_quantity(cf, units / original_variable.units)
+
+        if not isinstance(cf, sympy.basic.Basic):  # if cf is not a sympy expression
+            # Make the conversion factor a number symbol with explicit units
+            cf = self.create_quantity(cf, units / original_variable.units)
+        elif isinstance(cf, sympy.mul.Mul) and 1.0 in cf.args:  # if cf is an expr containing 1.0*, remove the 1.0 *
+            cf = sympy.mul.Mul(*[a for a in cf.args if a != 1.0])
 
         # Store original state and free symbols (these might change, so need to store references early)
         state_symbols = self.get_state_variables()
@@ -1109,13 +1111,9 @@ class Model(object):
 class Quantity(sympy.Dummy):
     """
     Used to represent a number with a unit, inside a Sympy expression.
-
     Unlike sympy expressions, this number type will never be removed in simplify operations etc.
-
     Quantities should never be created directly, but always via :meth:`Model.create_quantity()`.
-
     Assumes the value is real.
-
     To get the actual value as a float or string, use ``float(dummy)`` or ``str(dummy)`` respectively.
     You can also use ``quantity.evalf()`` to get the value as a :class:`sympy.Float`.
     """
