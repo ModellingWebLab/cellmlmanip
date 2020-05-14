@@ -197,13 +197,6 @@ class UnitStore(object):
         # Return new unit
         return getattr(self._registry, qname)
 
-    def add_conversion_rule(self, from_unit, to_unit, rule):
-        """Adds complex conversion rule for converting between incompatible units."""
-        context = pint.Context(str(from_unit) + str(to_unit) + str(rule))
-        context.add_transformation(from_unit, to_unit, rule)
-        self._registry.add_context(context)
-        self._registry.enable_contexts(str(from_unit) + str(to_unit) + str(rule))
-
     def is_defined(self, name):
         """Check if a unit with the given ``name`` exists."""
         return name in self._known_units
@@ -286,6 +279,13 @@ class UnitStore(object):
         assert isinstance(quantity, self._registry.Quantity)
         assert isinstance(unit, self._registry.Unit)
         return quantity.to(unit)
+
+    def add_conversion_rule(self, from_unit, to_unit, rule):
+        """Adds complex conversion rule for converting between incompatible units."""
+        context = pint.Context(str(from_unit) + str(to_unit) + str(rule))
+        context.add_transformation(from_unit, to_unit, rule)
+        self._registry.add_context(context)
+        self._registry.enable_contexts(str(from_unit) + str(to_unit) + str(rule))
 
     def evaluate_units_and_fix(self, expr):
         """
