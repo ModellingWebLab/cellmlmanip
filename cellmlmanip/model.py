@@ -358,7 +358,6 @@ class Model(object):
         :param strip_units: If ``True``, all :class:`Quantity` objects representing number with units will be
             replaced with ordinary sympy number objects.
         """
-
         # Get graph
         if strip_units:
             graph = self.graph_with_sympy_numbers
@@ -665,10 +664,10 @@ class Model(object):
 
         :return: A :class:`Quantity` object.
         """
-
         # Check units
         if not isinstance(units, self.units.Unit):
             units = self.units.get_unit(units)
+
         return Quantity(value, units)
 
     def add_cmeta_id(self, variable):
@@ -1111,9 +1110,13 @@ class Model(object):
 class Quantity(sympy.Dummy):
     """
     Used to represent a number with a unit, inside a Sympy expression.
+
     Unlike sympy expressions, this number type will never be removed in simplify operations etc.
+
     Quantities should never be created directly, but always via :meth:`Model.create_quantity()`.
+
     Assumes the value is real.
+
     To get the actual value as a float or string, use ``float(dummy)`` or ``str(dummy)`` respectively.
     You can also use ``quantity.evalf()`` to get the value as a :class:`sympy.Float`.
     """
