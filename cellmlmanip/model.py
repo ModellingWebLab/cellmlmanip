@@ -807,9 +807,6 @@ class Model(object):
         if isinstance(cf, numbers.Number):
             # Make the conversion factor a number symbol with explicit units
             cf = self.create_quantity(cf, units / original_variable.units)
-        elif isinstance(cf, sympy.mul.Mul) and 1.0 in cf.args:
-            # We get an ugly artifact whereby pint gives us a 1.0*f as conversion factor; remove the 1.0
-            cf = sympy.mul.Mul(*[a for a in cf.args if a != 1.0])
 
         # Store original state and free symbols (these might change, so need to store references early)
         state_symbols = self.get_state_variables()
