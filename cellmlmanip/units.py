@@ -131,9 +131,6 @@ class UnitStore(object):
         # Create a unit calculator
         self._calculator = UnitCalculator(self)
 
-        # Used for conversion rules added by add_conversion_rule
-        self._context = None
-
         # Expose the Unit and Quantity classes
         # TODO Might not be needed in 0.10 anymore
         self.Unit = self._registry.Unit
@@ -315,7 +312,7 @@ class UnitStore(object):
         :param to_unit: a :class:`.Unit` in the dimension to convert to
         :param rule: a function of two arguments (unit registry and value) converting a value
             in the dimensions of ``from_unit`` to the dimensions of ``to_unit``
-        
+
         Note that the function does *not* need to convert exactly to/from the specified units,
         just to the correct dimensions. Pint will scale appropriate once that is done.
         """
