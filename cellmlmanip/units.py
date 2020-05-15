@@ -312,20 +312,10 @@ class UnitStore(object):
         :param from_unit: the rule operates on variables of from_unit.
         :param to_unit: the rule facilitates conversion into to_unit.
         """
-        if self._context is not None:
-            # We've already added another rule, so disable the existing context and remember its rules
-            self._registry.disable_contexts()
-            old_funcs = self._context.funcs
-        else:
-            # No existing rules to copy over
-            old_funcs = {}
-        # Create a new context
-        self._context = pint.Context('user_conversion_rules')
-        for src_dest, func in old_funcs:
-            self._context.add_transformation(src_dest[0], src_dest[1], func)
+        context = pint.Context(str(from_unit) + str(to_unit) +str(rule))
         # Now add the new rule and enable the context
-        self._context.add_transformation(from_unit, to_unit, rule)
-        self._registry.enable_contexts(self._context)
+        context.add_transformation(from_unit, to_unit, rule)
+        self._registry.enable_contexts(context)
 
     def evaluate_units_and_fix(self, expr):
         """
