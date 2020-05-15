@@ -312,7 +312,7 @@ class UnitStore(object):
         :param from_unit: the rule operates on variables of from_unit.
         :param to_unit: the rule facilitates conversion into to_unit.
         """
-        context = pint.Context(str(from_unit) + str(to_unit) +str(rule))
+        context = pint.Context(str(from_unit) + str(to_unit) + str(rule))
         # Now add the new rule and enable the context
         context.add_transformation(from_unit, to_unit, rule)
         self._registry.enable_contexts(context)
