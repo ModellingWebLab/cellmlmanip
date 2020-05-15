@@ -800,7 +800,7 @@ class TestUnitConversion:
 
     def test_complex_conversion_rule(self, br_model):
         """
-        Tests adding a complex sympy conversion rule for incompatible units works as expected.
+        Tests adding a complex conversion rule for incompatible units works as expected.
         """
         uA_per_mm2 = br_model.units.get_unit('uA_per_mm2')
         uA_per_uF = br_model.units.add_unit('uA_per_uF', 'ampere / 1e6 / (farad * 1e-6)')
@@ -835,7 +835,7 @@ class TestUnitConversion:
 
     def test_complex_conversion_rule_with_factor(self, br_model):
         """
-        Tests complex sympy conversion rule, works even when a conversion factor is needed to be able to use the rule.
+        Tests complex conversion rule, works even when a conversion factor is needed to be able to use the rule.
         """
         uA_per_mm2 = br_model.units.get_unit('uA_per_mm2')
         uA_per_cm2 = br_model.units.add_unit('uA_per_cm2', 'ampere / 1e6 / (meter * 1e-2)**2')
@@ -880,20 +880,20 @@ class TestUnitConversion:
 
         config_capacitance = \
             aslanidi_model.units.Quantity(sympy.Function('HeartConfig::Instance()->GetCapacitance', real=True)(),
-                                    uA_per_cm2 / uA_per_uF)
+                                          uA_per_cm2 / uA_per_uF)
 
         capactiance = aslanidi_model.get_variable_by_ontology_term((shared.OXMETA, "membrane_capacitance"))
 
         aslanidi_model.units.add_conversion_rule(from_unit=uF, to_unit=uA / uA_per_cm2,
-                                           rule=lambda ureg, rhs: rhs / config_capacitance)
+                                                 rule=lambda ureg, rhs: rhs / config_capacitance)
         capactiance = aslanidi_model.convert_variable(capactiance, uA / uA_per_cm2, DataDirectionFlow.OUTPUT)
 
         capactiance_quant = aslanidi_model.units.Quantity(capactiance, capactiance.units)
         aslanidi_model.units.add_conversion_rule(from_unit=uA, to_unit=uA_per_cm2,
-                                           rule=lambda ureg, rhs: rhs / capactiance_quant)
+                                                 rule=lambda ureg, rhs: rhs / capactiance_quant)
         # Convert if necessary
         amplitude = aslanidi_model.convert_variable(amplitude, uA_per_cm2, DataDirectionFlow.OUTPUT)
         assert str(aslanidi_model.get_equations_for([amplitude])) == '[Eq(_membrane$Cm, 5.0000000000000002e-5), '\
-        'Eq(_membrane$Cm_converted, 0.001*_membrane$Cm/HeartConfig::Instance()->GetCapacitance()), '\
-        'Eq(_membrane$stim_amplitude, -20.0), Eq(_membrane$stim_amplitude_converted, '\
-        '1.0e-6*_membrane$stim_amplitude/_membrane$Cm_converted)]'
+            'Eq(_membrane$Cm_converted, 0.001*_membrane$Cm/HeartConfig::Instance()->GetCapacitance()), '\
+            'Eq(_membrane$stim_amplitude, -20.0), Eq(_membrane$stim_amplitude_converted, '\
+            '1.0e-6*_membrane$stim_amplitude/_membrane$Cm_converted)]'
