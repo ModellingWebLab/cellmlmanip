@@ -883,7 +883,7 @@ class TestUnitConversion:
                 sympy.Function('HeartConfig::Instance()->GetCapacitance', real=True)(),
                 uA_per_cm2 / uA_per_uF)
 
-        capactiance = aslanidi_model.get_variable_by_ontology_term((shared.OXMETA, "membrane_capacitance"))
+        capacitance = aslanidi_model.get_variable_by_ontology_term((shared.OXMETA, "membrane_capacitance"))
 
         aslanidi_model.units.add_conversion_rule(from_unit=uF, to_unit=uA / uA_per_cm2,
                                                  rule=lambda ureg, rhs: rhs / config_capacitance)
