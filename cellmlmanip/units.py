@@ -289,25 +289,27 @@ class UnitStore(object):
     def add_conversion_rule(self, from_unit, to_unit, rule):
         """Adds a complex conversion rule for converting between incompatible units.
 
-        For example:
-        uA = units.add_unit('uA', 'ampere * 1e-6')
-        pA = units.add_unit('pA', 'ampere * 1e-12')
-        uF = units.add_unit('uF', 'farad * 1e-6')
-        pF = units.add_unit('pF', 'farad * 1e-12')
-        cm2 = units.add_unit('cm2', 'centimetre ** 2')
-        uA_per_cm2 = uA_per_cm2 = units.add_unit('uA_per_cm2', 'uA / cm2')
-        uF_per_cm2 = units.add_unit('uF_per_cm2', 'uF / cm2')
-        A_per_F = units.add_unit('A_per_F', 'ampere / farad')
+        For example::
 
-        Cm = units.Quantity(12, pF)
-        Cs = units.Quantity(1.1, uF_per_cm2)
+            units = UnitStore()
+            uA = units.add_unit('uA', 'ampere * 1e-6')
+            pA = units.add_unit('pA', 'ampere * 1e-12')
+            uF = units.add_unit('uF', 'farad * 1e-6')
+            pF = units.add_unit('pF', 'farad * 1e-12')
+            cm2 = units.add_unit('cm2', 'centimetre ** 2')
+            uA_per_cm2 = uA_per_cm2 = units.add_unit('uA_per_cm2', 'uA / cm2')
+            uF_per_cm2 = units.add_unit('uF_per_cm2', 'uF / cm2')
+            A_per_F = units.add_unit('A_per_F', 'ampere / farad')
 
-        c.add_transformation(uA, uA_per_cm2, lambda ureg, rhs: rhs * Cs / Cm)
-        c.add_transformation(uA_per_cm2, A_per_F, lambda ureg, rhs: rhs / Cs)
+            Cm = units.Quantity(12, pF)
+            Cs = units.Quantity(1.1, uF_per_cm2)
 
-        # Test
-        x = r.Quantity(1, pA)
-        print(x.to(A_per_F))
+            units.add_conversion_rule(uA, uA_per_cm2, lambda ureg, rhs: rhs * Cs / Cm)
+            units.add_conversion_rule(uA_per_cm2, A_per_F, lambda ureg, rhs: rhs / Cs)
+
+            # Test
+            print(units.convert(units.Quantity(1, pA), A_per_F))
+            print(units.convert(units.Quantity(1, uA_per_cm2), A_per_F))
 
         :param from_unit: the rule operates on variables of from_unit.
         :param to_unit: the rule facilitates conversion into to_unit.
