@@ -887,11 +887,11 @@ class TestUnitConversion:
 
         aslanidi_model.units.add_conversion_rule(from_unit=uF, to_unit=uA / uA_per_cm2,
                                                  rule=lambda ureg, rhs: rhs / config_capacitance)
-        capactiance = aslanidi_model.convert_variable(capactiance, uA / uA_per_cm2, DataDirectionFlow.OUTPUT)
+        capacitance = aslanidi_model.convert_variable(capacitance, uA / uA_per_cm2, DataDirectionFlow.OUTPUT)
 
-        capactiance_quant = aslanidi_model.units.Quantity(capactiance, capactiance.units)
+        capacitance_quant = aslanidi_model.units.Quantity(capacitance, capacitance.units)
         aslanidi_model.units.add_conversion_rule(from_unit=uA, to_unit=uA_per_cm2,
-                                                 rule=lambda ureg, rhs: rhs / capactiance_quant)
+                                                 rule=lambda ureg, rhs: rhs / capacitance_quant)
         # Convert if necessary
         amplitude = aslanidi_model.convert_variable(amplitude, uA_per_cm2, DataDirectionFlow.OUTPUT)
         assert str(aslanidi_model.get_equations_for([amplitude])) == '[Eq(_membrane$Cm, 5.0000000000000002e-5), '\
