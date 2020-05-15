@@ -3,6 +3,7 @@ The main construct in cellmlmanip is a :class:`cellmlmanip.model.Model`.
 This represents a flattened CellML model and metadata about its variables.
 """
 import logging
+import numbers
 from enum import Enum
 from io import StringIO
 
@@ -802,8 +803,10 @@ class Model(object):
         if cf == 1:
             # No conversion necessary. The method above will ensure a factor close to 1 is returned as 1.
             return original_variable
-        # Make the conversion factor a number symbol with explicit units
-        cf = self.create_quantity(cf, units / original_variable.units)
+
+        if isinstance(cf, numbers.Number):
+            # Make the conversion factor a number symbol with explicit units
+            cf = self.create_quantity(cf, units / original_variable.units)
 
         # Store original state and free symbols (these might change, so need to store references early)
         state_symbols = self.get_state_variables()

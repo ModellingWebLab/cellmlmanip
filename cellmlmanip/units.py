@@ -265,7 +265,12 @@ class UnitStore(object):
         """
         assert isinstance(from_unit, self._registry.Unit), 'from_unit must be a unit, not ' + str(from_unit)
         cf = self.convert(1 * from_unit, to_unit).magnitude
-        return 1.0 if isinstance(cf, numbers.Number) and math.isclose(cf, 1.0) else cf
+        if isinstance(cf, numbers.Number) and math.isclose(cf, 1.0):
+            return 1
+        elif isinstance(cf, sympy.mul.Mul) and 1.0 in cf.args:
+            # We get an ugly artefact whereby pint gives us a 1.0*cf as conversion factor; remove the 1.0
+            return sympy.mul.Mul(*[a for a in cf.args if a != 1.0])
+        return cf
 
     def convert(self, quantity, unit):
         """Converts the given ``quantity`` to be in the given ``unit``.
@@ -277,6 +282,44 @@ class UnitStore(object):
         assert isinstance(quantity, self._registry.Quantity)
         assert isinstance(unit, self._registry.Unit)
         return quantity.to(unit)
+
+    def add_conversion_rule(self, from_unit, to_unit, rule):
+        """Adds a complex conversion rule for converting between incompatible units.
+
+        For example::
+
+            units = UnitStore()
+            uA = units.add_unit('uA', 'ampere * 1e-6')
+            pA = units.add_unit('pA', 'ampere * 1e-12')
+            uF = units.add_unit('uF', 'farad * 1e-6')
+            pF = units.add_unit('pF', 'farad * 1e-12')
+            cm2 = units.add_unit('cm2', 'centimetre ** 2')
+            uA_per_cm2 = uA_per_cm2 = units.add_unit('uA_per_cm2', 'uA / cm2')
+            uF_per_cm2 = units.add_unit('uF_per_cm2', 'uF / cm2')
+            A_per_F = units.add_unit('A_per_F', 'ampere / farad')
+
+            Cm = units.Quantity(12, pF)
+            Cs = units.Quantity(1.1, uF_per_cm2)
+
+            units.add_conversion_rule(uA, uA_per_cm2, lambda ureg, rhs: rhs * Cs / Cm)
+            units.add_conversion_rule(uA_per_cm2, A_per_F, lambda ureg, rhs: rhs / Cs)
+
+            # Test
+            print(units.convert(units.Quantity(1, pA), A_per_F))
+            print(units.convert(units.Quantity(1, uA_per_cm2), A_per_F))
+
+        :param from_unit: a :class:`.Unit` in the dimension to convert from
+        :param to_unit: a :class:`.Unit` in the dimension to convert to
+        :param rule: a function of two arguments (unit registry and value) converting a value
+            in the dimensions of ``from_unit`` to the dimensions of ``to_unit``
+
+        Note that the function does *not* need to convert exactly to/from the specified units,
+        just to the correct dimensions. Pint will scale appropriate once that is done.
+        """
+        context = pint.Context(str(from_unit) + str(to_unit) + str(rule))
+        # Now add the new rule and enable the context
+        context.add_transformation(from_unit, to_unit, rule)
+        self._registry.enable_contexts(context)
 
     def evaluate_units_and_fix(self, expr):
         """

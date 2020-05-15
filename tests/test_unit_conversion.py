@@ -1,4 +1,5 @@
 import pytest
+import sympy
 from pint import DimensionalityError
 
 from cellmlmanip import units
@@ -796,3 +797,104 @@ class TestUnitConversion:
         assert str(silly_names.equations[1]) == 'Eq(_env_ode$sv1_orig_deriv_a, _1)'
         assert str(silly_names.equations[2]) == 'Eq(Derivative(_env_ode$sv1_converted_a, _environment$time), ' \
                                                 '_0.001*_env_ode$sv1_orig_deriv_a)'
+
+    def test_complex_conversion_rule(self, br_model):
+        """
+        Tests adding a complex conversion rule for incompatible units works as expected.
+        """
+        uA_per_mm2 = br_model.units.get_unit('uA_per_mm2')
+        uA_per_uF = br_model.units.add_unit('uA_per_uF', 'ampere / 1e6 / (farad * 1e-6)')
+
+        # Get and check amplitude
+        amplitude = br_model.get_variable_by_ontology_term((shared.OXMETA, "membrane_stimulus_current_amplitude"))
+        assert str(amplitude) == 'stimulus_protocol$IstimAmplitude'
+        assert amplitude.units == uA_per_mm2
+        eqs = br_model.get_equations_for([amplitude])
+        assert str(eqs) == '[Eq(_stimulus_protocol$IstimAmplitude, 0.5)]'
+
+        # Add conversion rule from uA_per_mm2 to uA_per_uF
+        chaste_membrane_capacitance = br_model.units.Quantity(
+            sympy.Function('HeartConfig::Instance()->GetCapacitance', real=True)(),
+            uA_per_uF / uA_per_mm2)
+
+        # Add complex rule
+        br_model.units.add_conversion_rule(from_unit=uA_per_mm2, to_unit=uA_per_uF,
+                                           rule=lambda ureg, rhs: rhs * chaste_membrane_capacitance)
+
+        # Convert variable in model
+        br_model.convert_variable(amplitude, uA_per_uF, DataDirectionFlow.OUTPUT)
+
+        # Get and re-check amplitude
+        amplitude = br_model.get_variable_by_ontology_term((shared.OXMETA, "membrane_stimulus_current_amplitude"))
+        assert str(amplitude) == 'stimulus_protocol$IstimAmplitude_converted'
+        assert amplitude.units == uA_per_uF
+        eqs = br_model.get_equations_for([amplitude])
+        assert str(eqs) == \
+            '[Eq(_stimulus_protocol$IstimAmplitude, 0.5), Eq(_stimulus_protocol$IstimAmplitude_converted, '\
+            '_stimulus_protocol$IstimAmplitude*HeartConfig::Instance()->GetCapacitance())]'
+
+    def test_complex_conversion_rule_with_factor(self, br_model):
+        """
+        Tests complex conversion rule, works even when a conversion factor is needed to be able to use the rule.
+        """
+        uA_per_mm2 = br_model.units.get_unit('uA_per_mm2')
+        uA_per_cm2 = br_model.units.add_unit('uA_per_cm2', 'ampere / 1e6 / (meter * 1e-2)**2')
+        uA_per_uF = br_model.units.add_unit('uA_per_uF', 'ampere / 1e6 / (farad * 1e-6)')
+
+        # Get and check amplitude
+        amplitude = br_model.get_variable_by_ontology_term((shared.OXMETA, "membrane_stimulus_current_amplitude"))
+        assert str(amplitude) == 'stimulus_protocol$IstimAmplitude'
+        assert amplitude.units == uA_per_mm2
+        eqs = br_model.get_equations_for([amplitude])
+        assert str(eqs) == '[Eq(_stimulus_protocol$IstimAmplitude, 0.5)]'
+
+        # Add conversion rule from uA_per_cm2 to uA_per_uF
+        chaste_membrane_capacitance = br_model.units.Quantity(
+            sympy.Function('HeartConfig::Instance()->GetCapacitance', real=True)(),
+            uA_per_uF / uA_per_cm2)
+
+        # Add complex rule
+        br_model.units.add_conversion_rule(from_unit=uA_per_cm2, to_unit=uA_per_uF,
+                                           rule=lambda ureg, rhs: rhs * chaste_membrane_capacitance)
+
+        # Convert variable in model
+        br_model.convert_variable(amplitude, uA_per_uF, DataDirectionFlow.OUTPUT)
+
+        # Get and re-check amplitude
+        amplitude = br_model.get_variable_by_ontology_term((shared.OXMETA, "membrane_stimulus_current_amplitude"))
+        assert str(amplitude) == 'stimulus_protocol$IstimAmplitude_converted'
+        assert amplitude.units == uA_per_uF
+        eqs = br_model.get_equations_for([amplitude])
+        assert str(eqs) == \
+            '[Eq(_stimulus_protocol$IstimAmplitude, 0.5), Eq(_stimulus_protocol$IstimAmplitude_converted, '\
+            '100.0*_stimulus_protocol$IstimAmplitude*HeartConfig::Instance()->GetCapacitance())]'
+
+    def test_complex_conversion_rules_combined(self, aslanidi_model):
+        """
+        Tests adding a conversion rule that uses another (converted) variable.
+        """
+        amplitude = aslanidi_model.get_variable_by_ontology_term((shared.OXMETA, "membrane_stimulus_current_amplitude"))
+        uF = aslanidi_model.units.add_unit('uF', 'farad / 1e6')
+        uA = aslanidi_model.units.add_unit('uA', 'ampere / 1e6')
+        uA_per_cm2 = aslanidi_model.units.add_unit('uA_per_cm2', 'ampere / 1e6 / (meter * 1e-2)**2')
+        uA_per_uF = aslanidi_model.units.add_unit('uA_per_uF', 'ampere / 1e6 / (farad * 1e-6)')
+
+        config_capacitance = aslanidi_model.units.Quantity(
+            sympy.Function('HeartConfig::Instance()->GetCapacitance', real=True)(),
+            uA_per_cm2 / uA_per_uF)
+
+        capacitance = aslanidi_model.get_variable_by_ontology_term((shared.OXMETA, "membrane_capacitance"))
+
+        aslanidi_model.units.add_conversion_rule(from_unit=uF, to_unit=uA / uA_per_cm2,
+                                                 rule=lambda ureg, rhs: rhs / config_capacitance)
+        capacitance = aslanidi_model.convert_variable(capacitance, uA / uA_per_cm2, DataDirectionFlow.OUTPUT)
+
+        capacitance_quant = aslanidi_model.units.Quantity(capacitance, capacitance.units)
+        aslanidi_model.units.add_conversion_rule(from_unit=uA, to_unit=uA_per_cm2,
+                                                 rule=lambda ureg, rhs: rhs / capacitance_quant)
+        # Convert if necessary
+        amplitude = aslanidi_model.convert_variable(amplitude, uA_per_cm2, DataDirectionFlow.OUTPUT)
+        assert str(aslanidi_model.get_equations_for([amplitude])) == '[Eq(_membrane$Cm, 5.0000000000000002e-5), '\
+            'Eq(_membrane$Cm_converted, 0.001*_membrane$Cm/HeartConfig::Instance()->GetCapacitance()), '\
+            'Eq(_membrane$stim_amplitude, -20.0), Eq(_membrane$stim_amplitude_converted, '\
+            '1.0e-6*_membrane$stim_amplitude/_membrane$Cm_converted)]'
