@@ -878,9 +878,9 @@ class TestUnitConversion:
         uA_per_cm2 = aslanidi_model.units.add_unit('uA_per_cm2', 'ampere / 1e6 / (meter * 1e-2)**2')
         uA_per_uF = aslanidi_model.units.add_unit('uA_per_uF', 'ampere / 1e6 / (farad * 1e-6)')
 
-        config_capacitance = \
-            aslanidi_model.units.Quantity(sympy.Function('HeartConfig::Instance()->GetCapacitance', real=True)(),
-                                          uA_per_cm2 / uA_per_uF)
+        config_capacitance = aslanidi_model.units.Quantity(
+                sympy.Function('HeartConfig::Instance()->GetCapacitance', real=True)(),
+                uA_per_cm2 / uA_per_uF)
 
         capactiance = aslanidi_model.get_variable_by_ontology_term((shared.OXMETA, "membrane_capacitance"))
 
