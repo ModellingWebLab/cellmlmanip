@@ -287,7 +287,7 @@ class UnitStore(object):
         return quantity.to(unit)
 
     def add_conversion_rule(self, from_unit, to_unit, rule):
-        """Adds complex conversion rule for converting between incompatible units.
+        """Adds a complex conversion rule for converting between incompatible units.
 
         For example:
         uA = units.add_unit('uA', 'ampere * 1e-6')
