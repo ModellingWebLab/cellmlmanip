@@ -311,8 +311,13 @@ class UnitStore(object):
             print(units.convert(units.Quantity(1, pA), A_per_F))
             print(units.convert(units.Quantity(1, uA_per_cm2), A_per_F))
 
-        :param from_unit: the rule operates on variables of from_unit.
-        :param to_unit: the rule facilitates conversion into to_unit.
+        :param from_unit: a :class:`.Unit` in the dimension to convert from
+        :param to_unit: a :class:`.Unit` in the dimension to convert to
+        :param rule: a function of two arguments (unit registry and value) converting a value
+            in the dimensions of ``from_unit`` to the dimensions of ``to_unit``
+        
+        Note that the function does *not* need to convert exactly to/from the specified units,
+        just to the correct dimensions. Pint will scale appropriate once that is done.
         """
         context = pint.Context(str(from_unit) + str(to_unit) + str(rule))
         # Now add the new rule and enable the context
