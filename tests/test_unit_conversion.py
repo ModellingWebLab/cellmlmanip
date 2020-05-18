@@ -597,6 +597,13 @@ class TestUnitConversion:
         assert len(state_variables) == 1
         assert symbol_a in state_variables
 
+        # without transfering annotations
+        converted = literals_model.convert_variable(
+            symbol_x, pA_unit, DataDirectionFlow.OUTPUT, move_annotations=False)
+        assert converted is not symbol_x
+        assert converted.cmeta_id is None
+        assert literals_model.get_variable_by_cmeta_id('current') is symbol_x
+
     def test_add_output_state_variable(self, local_model):
         """ Tests the Model.convert_variable function that changes units of given variable.
         This particular test is when a state variable is being converted as an output
