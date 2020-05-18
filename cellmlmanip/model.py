@@ -97,7 +97,7 @@ class Model(object):
             free_variable = ode.lhs.variables[0]
             return free_variable
 
-        raise ValueError('No free variable set in model.')  # pragma: no cover
+        raise ValueError('No free variable set in model.')
 
     def get_state_variables(self):
         """
@@ -714,7 +714,7 @@ class Model(object):
         # Update mapping
         self._cmeta_id_to_variable[target._cmeta_id] = target
 
-    def convert_variable(self, original_variable, units, direction):
+    def convert_variable(self, original_variable, units, direction, move_annotations=True):
         """
         Ensures the model contains a variable representing ``original_variable`` in the specified ``units``.
 
@@ -722,7 +722,7 @@ class Model(object):
 
         If the variable's units can be converted to the new ``units``, a new variable will created in these units, and
         the ``cmeta:id`` attribute of ``original_variable`` will be moved to the new variable, so that all annotations
-        are transferred to the new variable.
+        are transferred to the new variable (unless ``move_annotations`` is given as ``False``).
 
         The ``direction`` argument specifies how information flows between the new variable and the original, and hence
         what new equation(s) will be added to the model to perform the conversion.
@@ -788,6 +788,7 @@ class Model(object):
                           equations will be adjusted;
                           or DataDirectionFlow.OUTPUT: the variable to be changed is an output, equations
                           are unaffected apart from converting the actual output
+        :param move_annotations: whether to point metadata annotations at the converted variable instead of the original
         :return: new variable with desired units, or original unchanged if conversion was not necessary
         :raises DimensionalityError: if the unit conversion is impossible
         """
@@ -810,10 +811,14 @@ class Model(object):
 
         # Store original state and free symbols (these might change, so need to store references early)
         state_symbols = self.get_state_variables()
-        free_symbol = self.get_free_variable()
+        try:
+            free_symbol = self.get_free_variable()
+        except ValueError:
+            # No free variable, so don't need to worry about ODE conversion
+            free_symbol = None
 
         # Create new variable and equations defining it and/or the original variable
-        new_variable = self._convert_variable_instance(original_variable, cf, units, direction)
+        new_variable = self._convert_variable_instance(original_variable, cf, units, direction, move_annotations)
 
         # For outputs do not need to do additional changes for state/free symbols, so we're done
         if direction == DataDirectionFlow.OUTPUT:
@@ -835,7 +840,8 @@ class Model(object):
 
         # Replace any instances of derivatives of the RHS of other equations with variables holding the original
         # definitions of those derivatives
-        self._replace_references_to_derivatives(derivative_replacements)
+        if derivative_replacements:
+            self._replace_references_to_derivatives(derivative_replacements)
 
         self._invalidate_cache()
 
@@ -1048,7 +1054,7 @@ class Model(object):
         self.add_equation(new_ode)
         return {original_ode.lhs: original_rhs_variable}
 
-    def _convert_variable_instance(self, original_variable, cf, units, direction):
+    def _convert_variable_instance(self, original_variable, cf, units, direction, move_annotations):
         """
         Internal function to create new variable in given units, possibly with defining equation.
 
@@ -1062,6 +1068,7 @@ class Model(object):
         :param cf: conversion factor [new units/old units]
         :param units: Unit object for new units
         :param direction: enumeration value specifying input or output
+        :param move_annotations: whether to point metadata annotations at the converted variable instead of the original
         :return: the new variable created [new units]
         """
         # Get unique name for new variable
@@ -1077,7 +1084,7 @@ class Model(object):
 
         # Transfer cmeta id from original to new variable if the original variable has one,
         # so metadata annotations will point at the new variable.
-        if original_variable._cmeta_id is not None:
+        if original_variable._cmeta_id is not None and move_annotations:
             self.transfer_cmeta_id(original_variable, new_variable)
 
         # Add/replace equations defining the new variable and/or the original variable

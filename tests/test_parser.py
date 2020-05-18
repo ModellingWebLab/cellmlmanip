@@ -254,6 +254,14 @@ class TestParser(object):
         for e in model.equations:
             check_left_right_units_equal(model.units, e)
 
+    def test_algebraic_model(self):
+        """Tests parsing of a model with no ODEs works."""
+        model = load_model('algebraic')
+
+        # Getting the free variable raises an exception
+        with pytest.raises(ValueError):
+            model.get_free_variable()
+
     def test_units_with_multiplier(self):
         """Tests parsing a unit with a multiplier."""
         cellml = os.path.join(os.path.dirname(__file__), 'cellml_files', 'imperial_units.cellml')
