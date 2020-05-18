@@ -246,13 +246,17 @@ class TestParser(object):
 
         assert match in str(dim_error.value)
 
-    def test_new_base_units(self):
-        """Tests unit checking in a model that defines a new base unit."""
+    def test_algebraic_and_new_base_units(self):
+        """Tests algebraic models and unit checking in a model that defines a new base unit."""
         cellml = os.path.join(os.path.dirname(__file__), "cellml_files", "algebraic.cellml")
         p = parser.Parser(cellml)
         model = p.parse()
         for e in model.equations:
             check_left_right_units_equal(model.units, e)
+
+        # Getting the free variable raises an exception
+        with pytest.raises(ValueError):
+            model.get_free_variable()
 
     def test_units_with_multiplier(self):
         """Tests parsing a unit with a multiplier."""

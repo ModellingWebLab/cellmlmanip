@@ -699,6 +699,36 @@ class TestUnitConversion:
         assert symbol_a in state_variables
         assert local_model.get_free_variable() == symbol_orig
 
+    def test_convert_variable_in_algebraic_model(self):
+        """Tests there are no issues in models with no state/free variables."""
+        model = shared.load_model('algebraic')
+        to_units = model.units.add_unit('desired', 'new_base * 1e3')
+
+        # Input case for a constant (no state/free vars to check)
+        num_equations = len(model.equations)
+        var_d = model.get_variable_by_cmeta_id('d')
+        new_d = model.convert_variable(var_d, to_units, DataDirectionFlow.INPUT)
+        assert new_d is not var_d
+        assert var_d.units == model.units.get_unit('new_base')
+        assert new_d.units == to_units
+        assert var_d.initial_value is None
+        assert new_d.initial_value is None
+        assert len(model.equations) == num_equations + 1
+        assert model.get_definition(var_d) is model.equations[-1]
+        assert str(model.equations[-1]) == 'Eq(_model$d, _model$d_converted/_0.001)'
+
+        # Output case for a computed variable
+        var_c = model.get_variable_by_cmeta_id('c')
+        new_c = model.convert_variable(var_c, to_units, DataDirectionFlow.OUTPUT)
+        assert new_c is not var_c
+        assert var_c.units == model.units.get_unit('new_base')
+        assert new_c.units == to_units
+        assert var_c.initial_value is None
+        assert new_c.initial_value is None
+        assert len(model.equations) == num_equations + 2
+        assert model.get_definition(new_c) is model.equations[-1]
+        assert str(model.equations[-1]) == 'Eq(_model$c_converted, _0.001*_model$c)'
+
     def test_convert_variable_invalid_arguments(self, local_model):
         """ Tests the Model.convert_variable() function when involid arguments are passed.
         """

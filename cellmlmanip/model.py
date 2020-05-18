@@ -97,7 +97,7 @@ class Model(object):
             free_variable = ode.lhs.variables[0]
             return free_variable
 
-        raise ValueError('No free variable set in model.')  # pragma: no cover
+        raise ValueError('No free variable set in model.')
 
     def get_state_variables(self):
         """
@@ -810,7 +810,11 @@ class Model(object):
 
         # Store original state and free symbols (these might change, so need to store references early)
         state_symbols = self.get_state_variables()
-        free_symbol = self.get_free_variable()
+        try:
+            free_symbol = self.get_free_variable()
+        except ValueError:
+            # No free variable, so don't need to worry about ODE conversion
+            free_symbol = None
 
         # Create new variable and equations defining it and/or the original variable
         new_variable = self._convert_variable_instance(original_variable, cf, units, direction)
@@ -835,7 +839,8 @@ class Model(object):
 
         # Replace any instances of derivatives of the RHS of other equations with variables holding the original
         # definitions of those derivatives
-        self._replace_references_to_derivatives(derivative_replacements)
+        if derivative_replacements:
+            self._replace_references_to_derivatives(derivative_replacements)
 
         self._invalidate_cache()
 
