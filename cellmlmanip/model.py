@@ -357,7 +357,8 @@ class Model(object):
         :param variables: The variables to get the equations for (as :class:`Variable` objects).
         :param recurse: Indicates whether to recurse the equation graph, or to return only the top level equations.
         :param strip_units: If ``True``, all :class:`Quantity` objects representing number with units will be
-            replaced with ordinary sympy number objects.
+            replaced with ordinary sympy number objects. Note that if this is done then the equations returned may *not*
+            be found in the model, so you should not try calling e.g. :meth:`remove_equation` with them.
         """
         # Get graph
         if strip_units:
