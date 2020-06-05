@@ -18,4 +18,4 @@ Cellmlmanip is tested and developed on Python 3.5 and higher.
 API documentation explaining how to use cellmlmanip can be found on [readthedocs](https://cellmlmanip.readthedocs.io/en/latest/?badge=latest)
 
 ## Contributing
-For more developer instructions, see [CONTRIBUTING.md](./CONTRIBUTING.md)
+For developer instructions, see [CONTRIBUTING.md](./CONTRIBUTING.md)
