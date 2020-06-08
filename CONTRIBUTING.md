@@ -1,17 +1,16 @@
 # Contributing to cellmlmanip
 
-##Developer installation
-Users install chaste_codegen using pip. For instructions on installing as a user, see README.md
+## Developer installation
+Cellmlmanip can be installed using pip.
 
-For developers, to set up a virtual environment and install requirements:
-
-conda create -n cellmlmanip python=3.6
-conda activate cellmlmanip
+For developers contributing to cellmlmanip, it can be downloaded and installed from source:
+```
+git clone https://github.com/ModellingWebLab/cellmlmanip.git
 pip install -r requirements/dev.txt
 pip install -e .
-Cellmlmanip is tested and developed on Python 3.5 and higher.
 
-For more developer instructions, see CONTRIBUTING.md
+```
+
 
 ## Testing
 
