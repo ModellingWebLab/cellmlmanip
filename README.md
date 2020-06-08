@@ -4,7 +4,7 @@
 CellML loading and model equation manipulation library
 
 ## Installing 
-We reccomend installing chaste_codegen in a vritual environment (using conda or virtualenv)
+We recommend installing cellmlmanip in a virtual environment (e.g. using conda or pipenv or virtualenv).
 
 Users install `cellmlmanip` using pip.
 
