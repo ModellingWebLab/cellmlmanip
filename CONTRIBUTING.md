@@ -3,7 +3,7 @@
 ## Developer installation
 Cellmlmanip can be installed using pip.
 
-For developers contributing to cellmlmanip, it can be downloaded and installed from source:
+For developers contributing to cellmlmanip itself, it can be downloaded and installed from source:
 ```
 git clone https://github.com/ModellingWebLab/cellmlmanip.git
 pip install -r requirements/dev.txt
