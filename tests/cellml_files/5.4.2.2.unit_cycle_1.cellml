@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- CellML 1.0, 5.4.2.2: A unit cannot reference itself -->
+<!-- This model is from the CellML tests in https://github.com/MichaelClerx/cellml-validation
+     Used here as a test-case for self-referencing units -->
+<model name="unit_cycle_1"
+       xmlns="http://www.cellml.org/cellml/1.0#">
+    <units name="wooster">
+        <unit units="wooster" />
+    </units>
+</model>

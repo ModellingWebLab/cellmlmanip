@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    This model is designed to test the following annotation errors:
+    * two variables annotated with the same id
+    * annotation referencing a cmeta:id that doesn't exist
+    * or something that isn't a cmeta:id
+    * annotating something that isn't a variable
+	* double annotation of a variable
+-->
+<model name="test_bad_annotations" cmeta:id="test_bad_annotations"
+   xmlns="http://www.cellml.org/cellml/1.0#"
+   xmlns:cellml="http://www.cellml.org/cellml/1.0#"
+   xmlns:cmeta="http://www.cellml.org/metadata/1.0#">
+
+<component name="c" cmeta:id="c">
+    <variable name="v1" cmeta:id="v1" units="second" initial_value="0" />
+    <variable name="v2" cmeta:id="v2" units="second" initial_value="1" />
+
+    <!-- Temporary variable to make sure cellmlmanip maintains v1 and v2 -->
+    <variable name="v3" units="second"/>
+    <math xmlns="http://www.w3.org/1998/Math/MathML">
+        <apply>
+            <eq/>
+            <ci>v3</ci>
+            <apply>
+                <plus />
+                <ci>v1</ci>
+                <ci>v2</ci>
+            </apply>
+        </apply>
+    </math>
+</component>
+
+<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:bqbiol="http://biomodels.net/biology-qualifiers/">
+    <!-- Two variables with same annotation -->
+    <rdf:Description rdf:about="#v1">
+        <bqbiol:is rdf:resource="https://chaste.comlab.ox.ac.uk/cellml/ns/oxford-metadata#time"/>
+    </rdf:Description>
+    <rdf:Description rdf:about="#v2">
+        <bqbiol:is rdf:resource="https://chaste.comlab.ox.ac.uk/cellml/ns/oxford-metadata#time"/>
+    </rdf:Description>
+	
+    <!-- cmeta:id doesn't exist -->
+    <rdf:Description rdf:about="#missing">
+        <bqbiol:is rdf:resource="https://chaste.comlab.ox.ac.uk/cellml/ns/oxford-metadata#membrane_potential"/>
+    </rdf:Description>
+
+    <!-- Annotating a non-variable -->
+    <rdf:Description rdf:about="#c">
+        <bqbiol:is rdf:resource="https://chaste.comlab.ox.ac.uk/cellml/ns/oxford-metadata#membrane_fast_sodium_current"/>
+    </rdf:Description>
+
+    <!-- Annotating something outside this model -->
+    <rdf:Description rdf:about="http://not.a.cmeta/id">
+        <bqbiol:is rdf:resource="https://chaste.comlab.ox.ac.uk/cellml/ns/oxford-metadata#membrane_persistent_sodium_current"/>
+    </rdf:Description>
+ </rdf:RDF>
+
+</model>

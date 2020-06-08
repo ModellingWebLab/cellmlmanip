@@ -1,0 +1,7 @@
+-r base.in
+
+codecov
+flake8
+isort
+pytest
+pytest-cov
