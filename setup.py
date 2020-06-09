@@ -9,7 +9,7 @@ setup(
     version='0.1.0',
     description='CellML loading and model equation manipulation',
     long_description=readme,
-    long_description_content_type="text/markdown",
+    long_description_content_type='text/markdown',
     author='Asif U Tamuri, Sarah M Keating, Maurice Hendrix, Michael Clerx, Jonathan Cooper',
     author_email='j.p.cooper@ucl.ac.uk',
     url='https://github.com/ModellingWebLab/cellmlmanip',
