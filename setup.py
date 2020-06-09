@@ -14,9 +14,9 @@ setup(
     author_email='j.p.cooper@ucl.ac.uk',
     url='https://github.com/ModellingWebLab/cellmlmanip',
     classifiers=[
-        "Programming Language :: Python :: 3",
-        "License :: OSI Approved :: BSD License",
-        "Operating System :: OS Independent",
+        'Programming Language :: Python :: 3',
+        'License :: OSI Approved :: BSD License"'
+        'Operating System :: OS Independent',
     ],
 
     packages=find_packages(exclude=('tests', 'docs')),
