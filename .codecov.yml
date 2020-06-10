@@ -1,0 +1,11 @@
+# Change default codecov settings.
+
+# Coverage is allowed to drop by 0.5%, as otherwise commits with
+# 100% diff coverage that delete lines can be rejected!
+
+coverage:
+  status:
+    project:
+      default:
+        threshold: 0.5
+  range: 70..95  # Below 70% is red; above 95% is green

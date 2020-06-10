@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+This model contains a non-existent element, which should be picked up by the RNG validation.
+-->
+<model name="err_extra_content"
+   xmlns="http://www.cellml.org/cellml/1.0#"
+   xmlns:cellml="http://www.cellml.org/cellml/1.0#"
+   >
+   <component name="billy">
+      <variable name="time" units="ms"/>
+      <variable name="v" units="mV" initial_value="1" />
+   </component>
+   <extra>
+    <thing name="this is extra stuff" />
+   </extra>
+</model>

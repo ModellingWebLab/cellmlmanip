@@ -1,0 +1,6 @@
+-r base.in
+-r test.in
+
+flake8
+isort
+pip-tools>=4.0.0
