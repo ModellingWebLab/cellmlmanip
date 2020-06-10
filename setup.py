@@ -15,7 +15,7 @@ setup(
     url='https://github.com/ModellingWebLab/cellmlmanip',
     classifiers=[
         'Programming Language :: Python :: 3',
-        'License :: OSI Approved :: BSD License'
+        'License :: OSI Approved :: BSD License',
         'Operating System :: OS Independent',
     ],
 
