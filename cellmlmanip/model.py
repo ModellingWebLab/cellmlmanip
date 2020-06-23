@@ -515,6 +515,10 @@ class Model(object):
 
     @property
     def sorted_variables_sympy_numbers(self):
+        """
+        A :tuple: of `Variable` containing the model variables sorted in lexicographical_topological order,
+        but with numbers represented as :class:`sympy.Number` objects instead of :class:`Quantity`.
+        """
         if self._sorted_variables_sympy_numbers is None:
             # Get sorted list of variables
             self._sorted_variables_sympy_numbers = \
@@ -523,6 +527,9 @@ class Model(object):
 
     @property
     def sorted_variables(self):
+        """
+        A :tuple: of `Variable` containing the model variables sorted in lexicographical_topological order.
+        """
         self._sorted_variables = None
         if self._sorted_variables is None:
             # Get sorted list of variables
