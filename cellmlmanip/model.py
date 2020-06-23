@@ -936,15 +936,16 @@ class Model(object):
             target.assigned_to = source.assigned_to
             # Everywhere the target variable is used, replace with source variable,
             # updating the definition maps accordingly
-            for index, equation in enumerate(self.equations):
-                self.equations[index] = new_eq = equation.xreplace({target: source.assigned_to})
-                if equation.lhs.is_Derivative:
-                    state_var = equation.lhs.free_symbols.pop()
-                    assert state_var in self._ode_definition_map
-                    self._ode_definition_map[state_var] = new_eq
-                else:
-                    assert equation.lhs in self._var_definition_map
-                    self._var_definition_map[equation.lhs] = new_eq
+            if len(self.equations) > 0:
+                for index, equation in enumerate(self.equations):
+                    self.equations[index] = new_eq = equation.xreplace({target: source.assigned_to})
+                    if equation.lhs.is_Derivative:
+                        state_var = equation.lhs.free_symbols.pop()
+                        assert state_var in self._ode_definition_map
+                        self._ode_definition_map[state_var] = new_eq
+                    else:
+                        assert equation.lhs in self._var_definition_map
+                        self._var_definition_map[equation.lhs] = new_eq
             if target in self._ode_definition_map:
                 self._ode_definition_map[source.assigned_to] = self._ode_definition_map[target]
                 del self._ode_definition_map[target]

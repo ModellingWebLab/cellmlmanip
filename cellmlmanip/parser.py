@@ -5,7 +5,7 @@ is handled by RDFLib.
 """
 import itertools
 import os
-from collections import OrderedDict, deque
+from collections import deque
 from enum import Enum
 
 import sympy
@@ -101,7 +101,7 @@ class Parser(object):
         self.model = None
 
         # A dictionary mapping component names to _Component objects
-        self.components = OrderedDict()
+        self.components = {}
 
     def parse(self, unit_store=None):
         """
@@ -132,9 +132,11 @@ class Parser(object):
         self._add_units(model_xml)
         self._add_rdf(model_xml)
 
-        self._add_components(model_xml)
+        maths_to_add = self._add_components(model_xml)
         self._add_relationships(model_xml)
-        self._add_connection(model_xml)
+
+        connected_variable_mapping = self._add_connection(model_xml)
+        self._add_maths(maths_to_add, connected_variable_mapping)
 
         # Canonicalise representation
         self.transform_constants()
@@ -166,7 +168,7 @@ class Parser(object):
         units_found = set(_CELLML_UNITS)
 
         # get all the units defined in the cellml model
-        definitions_to_add = OrderedDict()
+        definitions_to_add = deque()
         for units_element in units_elements:
             units_name = units_element.get('name')
             # if it's a defined base unit, we can be add immediately to the model
@@ -175,14 +177,14 @@ class Parser(object):
                 units_found.add(units_name)
             # all other units are collected (because they may depend on further user-defined units)
             else:
-                unit_elements = [dict(t.attrib) for t in units_element.getchildren()]
-                definitions_to_add[units_name] = unit_elements
+                unit_elements = [t.attrib for t in units_element.getchildren()]
+                definitions_to_add.append((units_name, unit_elements))
 
         iteration = 0
         # while we still have units to add
         while definitions_to_add:
             # get a definition from the top of the list
-            unit_name, unit_elements = definitions_to_add.popitem()
+            unit_name, unit_elements = definitions_to_add.pop()
 
             # check whether this unit is defined in terms of units that we know about
             add_now = True
@@ -190,8 +192,7 @@ class Parser(object):
                 # if defined in terms of units we don't know about
                 if unit['units'] not in units_found:
                     # defer adding this units - add it back to the end of the list
-                    definitions_to_add[unit_name] = unit_elements
-                    definitions_to_add.move_to_end(unit_name, last=False)
+                    definitions_to_add.appendleft((unit_name, unit_elements))
                     add_now = False
                     break
 
@@ -253,9 +254,12 @@ class Parser(object):
         """
         <model> <component> </model>
         :param model: an etree.Element
+
+        :reurn: a list of (element, variable_to_symbol) tuples with maths to be added later.
         """
         component_elements = model.findall(with_ns(XmlNs.CELLML, 'component'))
 
+        maths_to_add = []
         # for each component defined in the model
         for element in component_elements:
             # component are only kept in parser to resolve relationships and connections
@@ -265,8 +269,8 @@ class Parser(object):
             # process the <variable> tags in this component
             variable_to_symbol = self._add_variables(element)
 
-            # process the <math> tags in this component
-            self._add_maths(element, variable_to_symbol)
+            # to speed up parsing, we store the maths to add to perform adding later when we know how variables connect
+            maths_to_add.append((element, variable_to_symbol))
 
             # Raise error if component units are defined
             component_units = element.findall(with_ns(XmlNs.CELLML, 'units'))
@@ -279,6 +283,7 @@ class Parser(object):
             if reactions:
                 raise ValueError(
                     'Reactions are not supported (found in component ' + name + ').')
+        return maths_to_add
 
     def _add_variables(self, component_element):
         """
@@ -288,7 +293,7 @@ class Parser(object):
         variable_elements = component_element.findall(with_ns(XmlNs.CELLML, 'variable'))
 
         # we keep a {variable name: sympy symbol} lookup that we pass to the transpiler
-        variable_lookup_symbol = dict()
+        variable_lookup_symbol = {}
 
         for variable_element in variable_elements:
             attributes = dict(variable_element.attrib)
@@ -310,41 +315,49 @@ class Parser(object):
 
         return variable_lookup_symbol
 
-    def _add_maths(self, component_element, variable_to_symbol):
+    def _add_maths(self, maths_to_add, connected_variable_mapping):
         """
+        Add maths for all elements sorted in maths_to_add.
+
         <model> <component> <math> </component> </model>
 
-        :param component_element: an etree.Element
-        :param variable_to_symbol: a ``Dict[str, sympy.Dummy]``
+        :param maths_to_add: a list of (component_element, variable_to_symbol) tuples
+                             where ``component_element`` is an ``etree.Element`
+                             and ``variable_to_symbol`` is a ``Dict[str, sympy.Dummy]``
+
+        :param connected_variable_mapping: a ``Dict[str, sympy.Dummy]`` mapping a connected variable to its source.
         """
-        # get all <math> elements in the component
-        math_elements = component_element.findall(with_ns(XmlNs.MATHML, 'math'))
 
-        # nothing to do if we don't have any <math> elements
-        if not math_elements:
-            return
+        for component_element, variable_to_symbol in maths_to_add:
+            # get all <math> elements in the component
+            math_elements = component_element.findall(with_ns(XmlNs.MATHML, 'math'))
 
-        # Method to create symbols
-        prefix = component_element.get('name') + SYMPY_SYMBOL_DELIMITER
+            # nothing to do if we don't have any <math> elements
+            if math_elements:
+                # Method to create symbols
+                prefix = component_element.get('name') + SYMPY_SYMBOL_DELIMITER
 
-        def symbol_generator(identifer):
-            out = variable_to_symbol.get(prefix + identifer, None)
-            assert out is not None, '%s not found in symbol dict' % (prefix + identifer)
-            return out
+                def symbol_generator(identifer):
+                    symbol_name = prefix + identifer
+                    out = variable_to_symbol.get(symbol_name, None)
+                    while str(out) in connected_variable_mapping:
+                        out = connected_variable_mapping[str(out)]
+                    assert out is not None, '%s not found in symbol dict' % (prefix + identifer)
+                    return out
 
-        # reuse transpiler so dummy symbols are kept across <math> elements
-        transpiler = Transpiler(
-            symbol_generator=symbol_generator,
-            number_generator=lambda x, y: self.model.create_quantity(x, self.model.units.get_unit(y)),
-        )
+                # reuse transpiler so dummy symbols are kept across <math> elements
+                transpiler = Transpiler(
+                    symbol_generator=symbol_generator,
+                    number_generator=lambda x, y: self.model.create_quantity(x, self.model.units.get_unit(y)),
+                )
 
-        # for each math element
-        for math_element in math_elements:
-            sympy_exprs = transpiler.parse_tree(math_element)
+                # for each math element
+                for math_element in math_elements:
+                    sympy_exprs = transpiler.parse_tree(math_element)
 
-            # add each equation from <math> to the model
-            for expr in sympy_exprs:
-                self.model.add_equation(expr)
+                    # add each equation from <math> to the model
+                    for expr in sympy_exprs:
+                        self.model.add_equation(expr)
 
     def _add_relationships(self, model: etree.Element):
         group_elements = model.findall(with_ns(XmlNs.CELLML, 'group'))
@@ -393,11 +406,14 @@ class Parser(object):
     def _add_connection(self, model):
         """
         :param model: an etree.Element
+
+        :return: dict mapping a connected variable to its source variable.
         """
+        connected_variable_mapping = {}
         connection_elements = model.findall(with_ns(XmlNs.CELLML, 'connection'))
 
         # a list to collect the (source, target) connection tuples
-        connect_from_to = []
+        connections_to_process = deque()
 
         # for each connection in the model
         for connection in connection_elements:
@@ -410,14 +426,13 @@ class Parser(object):
             # the remaining children are <map_variables> tags
             for child in connection[1:]:
                 assert child.tag == with_ns(XmlNs.CELLML, 'map_variables')
-                connect_from_to.append(
+                connections_to_process.append(
                     self._determine_connection_direction(comp_1, child.attrib.get('variable_1'),
                                                          comp_2, child.attrib.get('variable_2'))
                 )
 
         # we add the connection to the model by first connecting
         # those variables we know are source variables
-        connections_to_process = deque(connect_from_to)
 
         # keep processing the list of connections until we've done them all
         unchanged_loop_count = 0
@@ -432,10 +447,12 @@ class Parser(object):
                 connections_to_process.append(connection)
                 unchanged_loop_count += 1
             else:
+                connected_variable_mapping[str(connection[1])] = self.model.get_variable_by_name(connection[0])
                 unchanged_loop_count = 0
 
             if unchanged_loop_count > len(connections_to_process):
                 raise ValueError('Unable to add connections to the model')
+        return connected_variable_mapping
 
     def _determine_connection_direction(self, comp_1, var_1, comp_2, var_2):
         """Takes a CellML connection and attempts to resolve the connect by assigning the target
@@ -499,8 +516,9 @@ class Parser(object):
         Non state variables with an initial value are treated as constants. For consistent processing later on we add
         equations defining them, and remove the initial_value attribute.
         """
-        for var in self.model.variables():
-            if var in self.model.get_state_variables():
+        state_vars = set(self.model.get_state_variables())
+        for var in set(self.model.variables()):
+            if var in state_vars:
                 assert var.initial_value is not None, 'State variable {} has no initial_value set'.format(var)
             elif var.initial_value is not None:
                 value = self.model.create_quantity(var.initial_value, var.units)
