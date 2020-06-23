@@ -834,8 +834,7 @@ class Model(object):
         if original_variable == free_symbol:
             # Change every ODE to be w.r.t. the new time variable
             # Process ODEs in model order to ensure new equations are added in a consistent order
-            for ode in [eq for v, eq in sorted(self._ode_definition_map.items(),
-                                               key=lambda v_eq: v_eq[0].order_added)]:
+            for _, ode in sorted(self._ode_definition_map.items(), key=lambda v_eq: v_eq[0].order_added):
                 if ode.args[0].args[1].args[0] == original_variable:
                     derivative_replacements.update(self._convert_free_variable_deriv(ode, new_variable, cf))
 
