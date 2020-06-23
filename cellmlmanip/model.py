@@ -105,7 +105,7 @@ class Model(object):
 
         :param sort: indicates whether the list is sorted by appearance in the CellML document.
         """
-        states = tuple(self._ode_definition_map.keys())
+        states = list(self._ode_definition_map.keys())
         if sort:
             states.sort(key=lambda state_var: state_var.order_added)
         return states
