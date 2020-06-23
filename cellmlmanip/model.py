@@ -530,7 +530,6 @@ class Model(object):
         """
         A :tuple: of `Variable` containing the model variables sorted in lexicographical_topological order.
         """
-        self._sorted_variables = None
         if self._sorted_variables is None:
             # Get sorted list of variables
             self._sorted_variables = tuple(nx.lexicographical_topological_sort(self.graph, key=str))
