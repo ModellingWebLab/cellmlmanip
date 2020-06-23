@@ -65,9 +65,13 @@ class TestModelFunctions():
         """ Tests Model.get_derived_quantities(). """
 
         derived_quantities = basic_model.get_derived_quantities()
+        unsorted_derived_quantities = basic_model.get_derived_quantities(sort=False)
+        assert set(derived_quantities) == set(unsorted_derived_quantities)
         assert len(derived_quantities) == 0
 
         derived_quantities = simple_ode_model.get_derived_quantities()
+        unsorted_derived_quantities = simple_ode_model.get_derived_quantities(sort=False)
+        assert set(derived_quantities) == set(unsorted_derived_quantities)
         assert str(derived_quantities) == (
             '['
             # '_single_ode_rhs_computed_var$a, '
@@ -116,12 +120,16 @@ class TestModelFunctions():
         """ Tests Model.get_state_variables() works on a simple model. """
 
         states = basic_model.get_state_variables()
+        unsorted_states = basic_model.get_state_variables(sort=False)
+        assert set(states) == set(unsorted_states)
         assert len(states) == 1
         assert states[0].name == 'env_ode$sv1'
 
     def test_get_state_variables_2(self, aslanidi_model):
         """ Tests Model.get_state_variables() works on a complex model. """
         states = aslanidi_model.get_state_variables()
+        unsorted_states = aslanidi_model.get_state_variables(sort=False)
+        assert set(states) == set(unsorted_states)
         assert len(states) == 29
         assert str(states) == \
             '[_membrane$V, _sodium_current_m_gate$m, _sodium_current_h1_gate$h1, _sodium_current_h2_gate$h2, '\
@@ -153,6 +161,8 @@ class TestModelFunctions():
         """ Tests Model.get_derivatives() works correctly. """
 
         derivs = basic_model.get_derivatives()
+        unsorted_derivs = basic_model.get_derivatives(sort=False)
+        assert set(derivs) == set(unsorted_derivs)
         assert len(derivs) == 1
         deriv = derivs[0]
         assert deriv.is_Derivative
@@ -164,6 +174,8 @@ class TestModelFunctions():
         """ Tests Model.get_derivatives() works correctly on a more complicated model. """
 
         derivs = aslanidi_model.get_derivatives()
+        unsorted_derivs = aslanidi_model.get_derivatives(sort=False)
+        assert set(derivs) == set(unsorted_derivs)
         assert len(derivs) == 29
 
         assert str(derivs) == '[Derivative(_membrane$V, _environment$time), '\
@@ -394,10 +406,11 @@ class TestModelFunctions():
 
     def test_get_variables_by_rdf(self, aslanidi_model):
         """ Tests Model.get_variables_by_rdf() works correctly. """
-
-        symbol_a = aslanidi_model.get_variables_by_rdf(
-            ('http://biomodels.net/biology-qualifiers/', 'is'),
-            (shared.OXMETA, 'membrane_voltage'))
+        predicate = ('http://biomodels.net/biology-qualifiers/', 'is')
+        object_ = (shared.OXMETA, 'membrane_voltage')
+        symbol_a = aslanidi_model.get_variables_by_rdf(predicate, object_)
+        unsorted_symbol_a = aslanidi_model.get_variables_by_rdf(predicate, object_, sort=False)
+        assert set(symbol_a) == set(unsorted_symbol_a)
         assert len(symbol_a) == 1
         assert symbol_a[0].name == 'membrane$V'
         assert symbol_a[0].units == aslanidi_model.units.get_unit('millivolt')
