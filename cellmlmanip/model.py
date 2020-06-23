@@ -72,8 +72,7 @@ class Model(object):
         self._cmeta_id_to_variable = {}
 
         # Cached nx.DiGraph of this model's equations, with number dummies or with sympy.Number objects
-        self._graph = None
-        self._graph_with_sympy_numbers = None
+        self._invalidate_cache()
 
         # An RDF graph containing further meta data
         self.rdf = rdflib.Graph()
@@ -363,11 +362,10 @@ class Model(object):
         # Get graph
         if strip_units:
             graph = self.graph_with_sympy_numbers
+            sorted_variables = self.sorted_variables_sympy_numbers
         else:
             graph = self.graph
-
-        # Get sorted list of variables
-        sorted_variables = nx.lexicographical_topological_sort(graph, key=str)
+            sorted_variables = self.sorted_variables
 
         # Create set of variables for which we require equations
         required_variables = set()
@@ -514,6 +512,22 @@ class Model(object):
         # Cache graph and return
         self._graph_with_sympy_numbers = graph
         return graph
+
+    @property
+    def sorted_variables_sympy_numbers(self):
+        if self._sorted_variables_sympy_numbers is None:
+            # Get sorted list of variables
+            self._sorted_variables_sympy_numbers = \
+                tuple(nx.lexicographical_topological_sort(self.graph_with_sympy_numbers, key=str))
+        return self._sorted_variables_sympy_numbers
+
+    @property
+    def sorted_variables(self):
+        self._sorted_variables = None
+        if self._sorted_variables is None:
+            # Get sorted list of variables
+            self._sorted_variables = tuple(nx.lexicographical_topological_sort(self.graph, key=str))
+        return self._sorted_variables
 
     def get_unique_name(self, name):
         """
@@ -873,6 +887,8 @@ class Model(object):
         """Removes cached graphs: should be called after manipulating variables or equations."""
         self._graph = None
         self._graph_with_sympy_numbers = None
+        self._sorted_variables_sympy_numbers = None
+        self._sorted_variables = None
 
     def _check_duplicate_definitions(self, var, equation):
         """
