@@ -68,22 +68,19 @@ class _Component:
 
     def set_parent(self, parent_name):
         """Sets the parent of this component"""
-        if self.parent:
-            raise ValueError('Parent of component %s already %s. Cannot set %s!' % (self.name,
-                                                                                    self.parent,
-                                                                                    parent_name))
+        assert not self.parent, 'Parent of component %s already %s. Cannot set %s!' % (self.name, self.parent,
+                                                                                       parent_name)
         self.parent = parent_name
 
     def add_sibling(self, sibling_name):
         """Adds a sibling for this component"""
-        if sibling_name in self.siblings:
-            raise ValueError('Sibling component %s already added!' % sibling_name)
+        assert sibling_name not in self.siblings, 'Sibling component %s already added!' % sibling_name
         self.siblings.add(sibling_name)
 
     def add_encapsulated(self, encapsulated_name):
         """Adds an encapsulated component to this component"""
-        if encapsulated_name in self.encapsulated:
-            raise ValueError('Encapsulated component %s already added!' % encapsulated_name)
+        assert encapsulated_name not in self.encapsulated, 'Encapsulated component %s already added!' % \
+            encapsulated_name
         self.encapsulated.add(encapsulated_name)
 
 
