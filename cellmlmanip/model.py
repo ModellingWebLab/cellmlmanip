@@ -105,7 +105,7 @@ class Model(object):
 
         :param sort: indicates whether the list is sorted by appearance in the CellML document.
         """
-        states = list(self._ode_definition_map.keys())
+        states = tuple(self._ode_definition_map.keys())
         if sort:
             states.sort(key=lambda state_var: state_var.order_added)
         return states
@@ -245,10 +245,11 @@ class Model(object):
 
         Note: expects exactly one triple to match and the result to be a literal. Its string value is returned.
         """
-        triples = list(self.get_rdf_annotations(subject, predicate))
-        assert len(triples) == 1
-        assert isinstance(triples[0][2], rdflib.Literal)
-        value = str(triples[0][2]).strip()  # Could make this cleverer by considering data type if desired
+        triples = self.get_rdf_annotations(subject, predicate)
+        triple = next(triples)
+        assert next(triples, None) is None, "Expecting exactly 1 triple"
+        assert isinstance(triple[2], rdflib.Literal)
+        value = str(triple[2]).strip()  # Could make this cleverer by considering data type if desired
         return value
 
     def get_rdf_annotations(self, subject=None, predicate=None, object_=None):
@@ -515,7 +516,7 @@ class Model(object):
                 # Check if simplification removed dependencies on other variables, and if so remove the corresponding
                 # edges.
                 refs = self.find_variables_and_derivatives([rhs])
-                edges = list(graph.in_edges(equation.lhs))
+                edges = tuple(graph.in_edges(equation.lhs))
                 for edge in edges:
                     ref = edge[0]
                     if ref not in refs:
