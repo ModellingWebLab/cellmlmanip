@@ -450,8 +450,7 @@ class Parser(object):
                 connected_variable_mapping[str(connection[1])] = self.model.get_variable_by_name(connection[0])
                 unchanged_loop_count = 0
 
-            if unchanged_loop_count > len(connections_to_process):
-                raise ValueError('Unable to add connections to the model')
+            assert unchanged_loop_count <= len(connections_to_process), 'Unable to add connections to the model'
         return connected_variable_mapping
 
     def _determine_connection_direction(self, comp_1, var_1, comp_2, var_2):
