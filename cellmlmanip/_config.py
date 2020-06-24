@@ -35,6 +35,6 @@ def version(formatted=False):
     "cellmlmanip 1.0.0").
     """
     if formatted:
-        return 'chaste_codegen ' + __version__
+        return 'cellmlmanip ' + __version__
     else:
         return __version_int__
