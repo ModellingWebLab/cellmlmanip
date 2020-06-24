@@ -16,7 +16,9 @@
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #
-# import os
+import os
+
+
 # import sys
 # sys.path.insert(0, os.path.abspath('.'))
 # import cellmlmanip
@@ -81,7 +83,8 @@ author = u'Cellmlmanip authors'
 # built documents.
 #
 # The short X.Y version.
-version = '0.1.0'
+with open(os.path.join('..', 'cellmlmanip', 'version.txt'), 'r') as f:
+    version = f.read()
 # The full version, including alpha/beta/rc tags.
 release = version
 
