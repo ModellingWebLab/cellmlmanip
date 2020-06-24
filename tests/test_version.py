@@ -26,4 +26,4 @@ def test_version():
     version = cellmlmanip.version(formatted=True)
     assert isinstance(version, str)
     assert len(version) >= 1
-    assert version.startswith('chaste_codegen ')
+    assert version.startswith('cellmlmanip ')
