@@ -1,12 +1,19 @@
+import os
+
 from setuptools import find_packages, setup
 
 
+# Load README
 with open('README.md') as f:
     readme = f.read()
 
+# Load version number
+with open(os.path.join('cellmlmanip', 'version.txt'), 'r') as f:
+    version = f.read()
+
 setup(
     name='cellmlmanip',
-    version='0.1.0',
+    version=version,
     description='CellML loading and model equation manipulation',
     long_description=readme,
     long_description_content_type='text/markdown',
@@ -37,7 +44,7 @@ setup(
             'codecov',
             'flake8',
             'isort',
-            'pytest>=3.2',
+            'pytest>=4.6',
             'pytest-cov',
         ],
     },
