@@ -246,7 +246,8 @@ class Model(object):
         Note: expects exactly one triple to match and the result to be a literal. Its string value is returned.
         """
         triples = self.get_rdf_annotations(subject, predicate)
-        triple = next(triples)
+        triple = next(triples, None)
+        assert triple is not None, 'Expecting exactly 1 triple'
         assert next(triples, None) is None, "Expecting exactly 1 triple"
         assert isinstance(triple[2], rdflib.Literal)
         value = str(triple[2]).strip()  # Could make this cleverer by considering data type if desired
