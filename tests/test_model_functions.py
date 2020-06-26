@@ -66,8 +66,7 @@ class TestModelFunctions():
 
         derived_quantities = basic_model.get_derived_quantities()
         unsorted_derived_quantities = basic_model.get_derived_quantities(sort=False)
-        assert set(derived_quantities) == set(unsorted_derived_quantities)
-        assert len(derived_quantities) == 0
+        assert len(derived_quantities) == len(unsorted_derived_quantities) == 0
 
         derived_quantities = simple_ode_model.get_derived_quantities()
         unsorted_derived_quantities = simple_ode_model.get_derived_quantities(sort=False)
