@@ -497,9 +497,11 @@ class Parser(object):
         # if the components are siblings (either same parent or top-level)
         if _are_siblings(comp_1, comp_2):
             # they are both connected on their public_interface
-            if variable_1.public_interface == 'out' and variable_2.public_interface == 'in':
+            # Validation makese sure the public_interface are in/out
+            # and if they are equal it would trigger an error at the connection stage (Target already assigned)
+            if variable_1.public_interface == 'out':
                 return variable_1, variable_2
-            elif variable_1.public_interface == 'in' and variable_2.public_interface == 'out':
+            else:
                 return variable_2, variable_1
         else:
             # determine which component is parent of the other
