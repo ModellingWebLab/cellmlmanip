@@ -132,7 +132,7 @@ class Parser(object):
         component_variables = self._add_components(model_xml)
         self._add_relationships(model_xml)
 
-        connected_variable_mapping = self._add_connection(model_xml)
+        connected_variable_mapping = self._add_connections(model_xml)
         self._add_maths(component_variables, connected_variable_mapping)
 
         # Canonicalise representation
@@ -319,8 +319,8 @@ class Parser(object):
         <model> <component> <math> </component> </model>
 
         :param component_variables: a list of (component_element, variable_to_symbol) tuples
-                             where ``component_element`` is an ``etree.Element`
-                             and ``variable_to_symbol`` is a ``Dict[str, sympy.Dummy]``
+                                    where ``component_element`` is an ``etree.Element`
+                                    and ``variable_to_symbol`` is a ``Dict[str, sympy.Dummy]``
 
         :param connected_variable_mapping: a ``Dict[str, sympy.Dummy]`` mapping a connected variable to its source.
         """
@@ -401,7 +401,7 @@ class Parser(object):
                 if component_a != component_b:
                     self.components[component_a].add_sibling(component_b)
 
-    def _add_connection(self, model):
+    def _add_connections(self, model):
         """
         :param model: an etree.Element
 
