@@ -314,7 +314,7 @@ class Parser(object):
 
     def _add_maths(self, maths_to_add, connected_variable_mapping):
         """
-        Add maths for all elements sorted in maths_to_add.
+        Add maths for all elements stored in maths_to_add.
 
         <model> <component> <math> </component> </model>
 
