@@ -1,1 +1,2 @@
 include cellmlmanip/data/*
+include cellmlmanip/version.txt
