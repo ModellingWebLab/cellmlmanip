@@ -121,7 +121,7 @@ class TestModelFunctions():
 
         states = basic_model.get_state_variables()
         unsorted_states = basic_model.get_state_variables(sort=False)
-        assert set(states) == set(unsorted_states)
+        assert states == unsorted_states
         assert len(states) == 1
         assert states[0].name == 'env_ode$sv1'
 
