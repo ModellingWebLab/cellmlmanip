@@ -248,6 +248,7 @@ class Model(object):
         triples = self.get_rdf_annotations(subject, predicate)
         triples = tuple(self.get_rdf_annotations(subject, predicate))
         assert len(triples) == 1, 'Expecting exactly 1 triple'
+        triple = triples[0]
         assert isinstance(triple[2], rdflib.Literal)
         value = str(triple[2]).strip()  # Could make this cleverer by considering data type if desired
         return value
