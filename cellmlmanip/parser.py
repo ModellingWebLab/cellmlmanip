@@ -54,7 +54,6 @@ def with_ns(ns_enum, name):
 
 def _dump_node(node):
     """Pretty-print an XML node."""
-    assert False
     return etree.tostring(node, pretty_print=True).decode()
 
 
