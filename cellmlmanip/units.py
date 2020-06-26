@@ -481,7 +481,7 @@ class UnitCalculator(object):
                 'Unexpected symbol type: ' + str(expr)
             if isinstance(expr, model.Quantity):
                 return float(expr) * expr.units
-            elif isinstance(expr, model.Variable):
+            else:
                 if expr.initial_value and expr.initial_value != 0.0:
                     #  if this symbol has an initial value (that is not zero)
                     # substitute with the initial value for unit arithmetic
