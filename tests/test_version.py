@@ -1,5 +1,5 @@
 #
-# Tests the basics of chaste_codegen
+# Tests the versioning of cellmlmanip
 #
 # import pytest
 import logging
