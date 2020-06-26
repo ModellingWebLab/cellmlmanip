@@ -835,8 +835,8 @@ class Model(object):
             # Change every ODE to be w.r.t. the new time variable
             # Process ODEs in model order to ensure new equations are added in a consistent order
             for _, ode in sorted(self._ode_definition_map.items(), key=lambda v_eq: v_eq[0].order_added):
-                if ode.args[0].args[1].args[0] == original_variable:
-                    derivative_replacements.update(self._convert_free_variable_deriv(ode, new_variable, cf))
+                assert ode.args[0].args[1].args[0] == original_variable, "Can only have 1 free variable in the model"
+                derivative_replacements.update(self._convert_free_variable_deriv(ode, new_variable, cf))
 
         # Replace any instances of derivatives of the RHS of other equations with variables holding the original
         # definitions of those derivatives

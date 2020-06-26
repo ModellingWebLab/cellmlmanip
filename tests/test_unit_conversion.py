@@ -121,21 +121,6 @@ class TestUnitConversion:
         assert str(literals_model.equations[2]) == 'Eq(_env_ode$y, _1/_env_ode$x)'
         return True
 
-    def test_convert_time(self, literals_model):
-        time = literals_model.get_free_variable()
-        sv1 = literals_model.get_variable_by_name('env_ode$sv1')
-        dsv1dt = sympy.Derivative(sv1, time)
-        second = literals_model.units.get_unit('second')
-        assert str(literals_model.get_equations_for([dsv1dt])) == \
-            "[Eq(Derivative(_env_ode$sv1, _environment$time), 1.0)]"
-        literals_model.convert_variable(time, second, DataDirectionFlow.INPUT)
-        time = literals_model.get_free_variable()
-        sv1 = literals_model.get_variable_by_name('env_ode$sv1')
-        dsv1dt = sympy.Derivative(sv1, time)
-        assert str(literals_model.get_equations_for([dsv1dt])) == \
-            ("[Eq(_env_ode$sv1_orig_deriv, 1.0), Eq(Derivative(_env_ode$sv1, _environment$time_converted), "
-             "999.99999999999998*_env_ode$sv1_orig_deriv)]")
-
     # original state for multiode_model
     def _original_state_multiode_model(self, multiode_model):
         assert len(multiode_model.variables()) == 5
