@@ -99,32 +99,41 @@ class Model(object):
 
         raise ValueError('No free variable set in model.')
 
-    def get_state_variables(self):
+    def get_state_variables(self, sort=True):
         """
         Returns a list of state variables found in the given model graph (ordered by appearance in the CellML document).
+
+        :param sort: indicates whether the list is sorted by appearance in the CellML document.
         """
         states = list(self._ode_definition_map.keys())
-        return sorted(states, key=lambda state_var: state_var.order_added)
+        if sort:
+            states.sort(key=lambda state_var: state_var.order_added)
+        return states
 
-    def get_derivatives(self):
+    def get_derivatives(self, sort=True):
         """Returns a list of :class:`sympy.Derivative` objects found as LHS in the given model graph.
 
-        The list is ordered by appearance in the CellML document.
+        :param sort: indicates whether the list is sorted by appearance in the CellML document.
         """
         derivatives = [v for v in self.graph if isinstance(v, sympy.Derivative)]
-        return sorted(derivatives, key=lambda deriv: deriv.args[0].order_added)
+        if sort:
+            derivatives.sort(key=lambda deriv: deriv.args[0].order_added)
+        return derivatives
 
-    def get_derived_quantities(self):
+    def get_derived_quantities(self, sort=True):
         """Returns a list of derived quantities found in the given model graph.
 
         A derived quantity is any variable that is not a state variable, free variable, or parameter/constant.
+        :param sort: indicates whether the list is sorted by appearance in the CellML document.
         """
         derived_quantities = [
             v for v, node in self.graph.nodes.items()
             if not isinstance(v, sympy.Derivative)
             and node.get('variable_type', VariableType.UNKNOWN) not in (
                 VariableType.FREE, VariableType.STATE, VariableType.PARAMETER)]
-        return sorted(derived_quantities, key=lambda var: var.order_added)
+        if sort:
+            derived_quantities.sort(key=lambda var: var.order_added)
+        return derived_quantities
 
     def get_display_name(self, var, ontology=None):
         """Return a display name for the given variable.
@@ -209,11 +218,13 @@ class Model(object):
         else:
             raise ValueError('Multiple variables annotated with {}'.format(term))
 
-    def get_variables_by_rdf(self, predicate, object_=None):
+    def get_variables_by_rdf(self, predicate, object_=None, sort=True):
         """Find variables annotated with the given predicate and object (e.g. ``is oxmeta:time``) in our RDF graph.
 
         Both ``predicate`` and ``object_`` (if given) must be suitable as an input to
         :meth:`cellmlmanip.rdf.create_rdf_node`; typically either ``(namespace, local_name)`` tuples or string literals.
+
+        :param sort: indicates whether the list is sorted by appearance in the CellML document.
 
         :return: the associated variables sorted in document order
         """
@@ -222,7 +233,9 @@ class Model(object):
 
         # Find variables, sort and return
         variables = [self.get_variable_by_cmeta_id(result) for result in self.rdf.subjects(predicate, object_)]
-        return sorted(variables, key=lambda sym: sym.order_added)
+        if sort:
+            variables.sort(key=lambda sym: sym.order_added)
+        return variables
 
     def get_rdf_value(self, subject, predicate):
         """Get the value of an RDF object connected to ``subject`` by ``predicate``.
@@ -232,10 +245,12 @@ class Model(object):
 
         Note: expects exactly one triple to match and the result to be a literal. Its string value is returned.
         """
-        triples = list(self.get_rdf_annotations(subject, predicate))
-        assert len(triples) == 1
-        assert isinstance(triples[0][2], rdflib.Literal)
-        value = str(triples[0][2]).strip()  # Could make this cleverer by considering data type if desired
+        triples = self.get_rdf_annotations(subject, predicate)
+        triples = tuple(self.get_rdf_annotations(subject, predicate))
+        assert len(triples) == 1, 'Expecting exactly 1 triple'
+        triple = triples[0]
+        assert isinstance(triple[2], rdflib.Literal)
+        value = str(triple[2]).strip()  # Could make this cleverer by considering data type if desired
         return value
 
     def get_rdf_annotations(self, subject=None, predicate=None, object_=None):
@@ -502,7 +517,7 @@ class Model(object):
                 # Check if simplification removed dependencies on other variables, and if so remove the corresponding
                 # edges.
                 refs = self.find_variables_and_derivatives([rhs])
-                edges = list(graph.in_edges(equation.lhs))
+                edges = tuple(graph.in_edges(equation.lhs))
                 for edge in edges:
                     ref = edge[0]
                     if ref not in refs:
