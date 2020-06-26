@@ -321,6 +321,7 @@ class Parser(object):
         :param component_variables: a list of (component_element, variable_to_symbol) tuples
                                     where ``component_element`` is an ``etree.Element`
                                     and ``variable_to_symbol`` is a ``Dict[str, sympy.Dummy]``
+                                        with the key the variable name and the value the variable in the model
 
         :param connected_variable_mapping: a ``Dict[str, sympy.Dummy]`` mapping a connected variable to its source.
         """
