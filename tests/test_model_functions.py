@@ -2,7 +2,6 @@ import os
 
 import pytest
 import sympy as sp
-from networkx.exception import NetworkXError
 
 from cellmlmanip import parser, units
 from cellmlmanip.model import FLOAT_PRECISION, Model, Variable
@@ -673,73 +672,6 @@ class TestModelFunctions():
         assert v in syms
         assert t in syms
         assert sp.Derivative(v, t) in syms
-
-    def test_connect_variables(self, local_hh_model):
-        """ Tests Model.connect_variables() function. """
-        target = local_hh_model.get_variable_by_name('sodium_channel$h')
-        source = local_hh_model.get_variable_by_name('sodium_channel_h_gate$h')
-        assert target.assigned_to == source
-
-        # check cannot assign already connected variable
-        with pytest.raises(ValueError, match='Target already assigned'):
-            local_hh_model.connect_variables('sodium_channel$h', 'sodium_channel_h_gate$h')
-
-        # add and connect a new variable with same units
-        num_eqns = len(local_hh_model.equations)
-        local_hh_model.add_variable(name='newvar', units='dimensionless', public_interface='in')
-        new_target = local_hh_model.get_variable_by_name('newvar')
-        local_hh_model.connect_variables('sodium_channel_h_gate$h', 'newvar')
-        assert new_target.assigned_to == source
-        assert len(local_hh_model.equations) == num_eqns
-
-        # Can't connect a variable already defined by an equation to another source
-        newvar2 = local_hh_model.add_variable(name='newvar2', units='dimensionless', public_interface='in')
-        local_hh_model.add_equation(sp.Eq(newvar2, 1.0))
-        with pytest.raises(ValueError, match='Multiple definitions for newvar2'):
-            local_hh_model.connect_variables('sodium_channel$E_Na', 'newvar2')
-
-    def test_connect_variable2(self, local_hh_model):
-        """ Tests Model.connect_variables() function. """
-        num_eqns = len(local_hh_model.equations)
-        # add and connect a variable that requires unit conversion
-        local_hh_model.add_variable(name='newvar', units='volt', public_interface='in')
-        new_target = local_hh_model.get_variable_by_name('newvar')
-        source = local_hh_model.get_variable_by_name('leakage_current$E_L')
-        local_hh_model.connect_variables('leakage_current$E_L', 'newvar')
-        assert new_target.assigned_to == new_target
-        assert len(local_hh_model.equations) == num_eqns + 1
-        new_eqn = local_hh_model.equations[-1]
-        assert new_eqn.is_Equality
-        assert new_eqn.lhs == new_target
-        assert new_eqn.rhs.is_Mul
-        assert float(new_eqn.rhs.args[0]) == 0.001
-        assert new_eqn.rhs.args[1] == source
-
-    def test_connect_variable3(self, local_hh_model):
-        """ Tests Model.connect_variables() function."""
-        num_eqns = len(local_hh_model.equations)
-        source = local_hh_model.get_variable_by_name('leakage_current$E_L')
-        new_target = local_hh_model.add_variable(name='newvar', units='millivolt', public_interface='in')
-        time = local_hh_model.get_free_variable()
-        dntdt = sp.Derivative(new_target, time)
-        local_hh_model.add_equation(sp.Eq(dntdt, 25.0 + new_target))
-
-        local_hh_model.connect_variables('leakage_current$E_L', 'newvar')
-        assert len(local_hh_model.equations) == num_eqns + 1
-
-        with pytest.raises(NetworkXError, match=r'The node newvar is not in the graph.'):
-            local_hh_model.get_equations_for((new_target, ))
-
-        with pytest.raises(NetworkXError, match=r'is not in the graph.'):
-            local_hh_model.get_equations_for((dntdt, ))
-
-        assert str(local_hh_model.get_equations_for((source, ))) ==\
-            "[Eq(_membrane$E_R, -75.0), Eq(_leakage_current$E_L, _membrane$E_R + 10.613)]"
-
-        print(local_hh_model.get_equations_for((sp.Derivative(source, local_hh_model.get_free_variable()), )))
-        assert str(local_hh_model.get_equations_for((sp.Derivative(source, time), ))) ==\
-            ("[Eq(_membrane$E_R, -75.0), Eq(_leakage_current$E_L, _membrane$E_R + 10.613), "
-             "Eq(Derivative(_leakage_current$E_L, _environment$time), _leakage_current$E_L + 25.0)]")
 
     def test_variable_classification(self, aslanidi_model):
         """ Tests Model.is_state() and Model.is_constant(). """

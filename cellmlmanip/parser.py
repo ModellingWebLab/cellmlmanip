@@ -439,12 +439,27 @@ class Parser(object):
 
             # if we did not successfully connect this variable (because, e.g., we don't know the
             # source of *this* source)
-            if not self.model.connect_variables(*connection):
+            source, target = connection
+            # Target should not already be assigned to
+            assert not target.assigned_to, \
+                'Target already assigned to %s before assignment to %s' % (target.assigned_to, source.assigned_to)
+
+            if not source.assigned_to:
                 # add it back to the list
                 connections_to_process.append(connection)
                 unchanged_loop_count += 1
             else:
-                connected_variable_mapping[str(connection[1])] = self.model.get_variable_by_name(connection[0])
+                connected_variable_mapping[target.name] = source  # Store connection for later when maths is added
+                # Check whether we need a unit conversion
+                cf = self.model.units.get_conversion_factor(from_unit=source.units, to_unit=target.units)
+                if cf == 1:
+                    target.assigned_to = source.assigned_to  # Direct substitution is possible
+                    if target.cmeta_id is not None:  # In case annotation is on target instead of source
+                        self.model.transfer_cmeta_id(source=target, target=source)
+                else:
+                    cf_quant = self.model.create_quantity(cf, target.units / source.units)  # conversion factor quant
+                    self.model.add_equation(sympy.Eq(target, source.assigned_to * cf_quant))  # Add connecting equation
+                    target.assigned_to = target  # The assigned variable for this variable is itself
                 unchanged_loop_count = 0
 
             assert unchanged_loop_count <= len(connections_to_process), 'Unable to add connections to the model'
@@ -483,9 +498,9 @@ class Parser(object):
         if _are_siblings(comp_1, comp_2):
             # they are both connected on their public_interface
             if variable_1.public_interface == 'out' and variable_2.public_interface == 'in':
-                return variable_1.name, variable_2.name
+                return variable_1, variable_2
             elif variable_1.public_interface == 'in' and variable_2.public_interface == 'out':
-                return variable_2.name, variable_1.name
+                return variable_2, variable_1
         else:
             # determine which component is parent of the other
             if _parent_of(comp_1, comp_2):
@@ -495,9 +510,9 @@ class Parser(object):
 
             # parent/child components are connected using private/public interface, respectively
             if child_var.public_interface == 'in' and parent_var.private_interface == 'out':
-                return parent_var.name, child_var.name
+                return parent_var, child_var
             elif child_var.public_interface == 'out' and parent_var.private_interface == 'in':
-                return child_var.name, parent_var.name
+                return child_var, parent_var
 
         raise ValueError('Cannot determine the source & target for connection (%s, %s) - (%s, %s)' %
                          (comp_1, var_1, comp_2, var_2))
