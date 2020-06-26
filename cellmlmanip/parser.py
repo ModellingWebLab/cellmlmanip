@@ -252,7 +252,7 @@ class Parser(object):
         <model> <component> </model>
         :param model: an etree.Element
 
-        :reurn: a list of (element, variable_to_symbol) tuples with maths to be added later.
+        :return: a list of (element, variable_to_symbol) tuples with maths to be added later.
         """
         component_elements = model.findall(with_ns(XmlNs.CELLML, 'component'))
 
