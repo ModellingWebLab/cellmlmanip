@@ -517,7 +517,6 @@ class Parser(object):
                 return parent_var, child_var
             elif child_var.public_interface == 'out' and parent_var.private_interface == 'in':
                 return child_var, parent_var
-
         raise ValueError('Cannot determine the source & target for connection (%s, %s) - (%s, %s)' %
                          (comp_1, var_1, comp_2, var_2))
 
