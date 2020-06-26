@@ -342,7 +342,8 @@ class Parser(object):
                     assert out is not None, '%s not found in symbol dict' % (prefix + identifer)
                     return out
 
-                # reuse transpiler so dummy symbols are kept across <math> elements
+                # Set up transpiler to generate correct symbol names for connected variables in one go
+                # without the need for post-processing
                 transpiler = Transpiler(
                     symbol_generator=symbol_generator,
                     number_generator=lambda x, y: self.model.create_quantity(x, self.model.units.get_unit(y)),
