@@ -129,11 +129,11 @@ class Parser(object):
         self._add_units(model_xml)
         self._add_rdf(model_xml)
 
-        maths_to_add = self._add_components(model_xml)
+        component_variables = self._add_components(model_xml)
         self._add_relationships(model_xml)
 
         connected_variable_mapping = self._add_connection(model_xml)
-        self._add_maths(maths_to_add, connected_variable_mapping)
+        self._add_maths(component_variables, connected_variable_mapping)
 
         # Canonicalise representation
         self.transform_constants()
@@ -256,7 +256,7 @@ class Parser(object):
         """
         component_elements = model.findall(with_ns(XmlNs.CELLML, 'component'))
 
-        maths_to_add = []
+        component_variables = []
         # for each component defined in the model
         for element in component_elements:
             # component are only kept in parser to resolve relationships and connections
@@ -267,7 +267,7 @@ class Parser(object):
             variable_to_symbol = self._add_variables(element)
 
             # to speed up parsing, we store the maths to add to perform adding later when we know how variables connect
-            maths_to_add.append((element, variable_to_symbol))
+            component_variables.append((element, variable_to_symbol))
 
             # Raise error if component units are defined
             component_units = element.findall(with_ns(XmlNs.CELLML, 'units'))
@@ -280,7 +280,7 @@ class Parser(object):
             if reactions:
                 raise ValueError(
                     'Reactions are not supported (found in component ' + name + ').')
-        return maths_to_add
+        return component_variables
 
     def _add_variables(self, component_element):
         """
@@ -312,20 +312,20 @@ class Parser(object):
 
         return variable_lookup_symbol
 
-    def _add_maths(self, maths_to_add, connected_variable_mapping):
+    def _add_maths(self, component_variables, connected_variable_mapping):
         """
-        Add maths for all elements stored in maths_to_add.
+        Add maths for all elements stored in component_variables.
 
         <model> <component> <math> </component> </model>
 
-        :param maths_to_add: a list of (component_element, variable_to_symbol) tuples
+        :param component_variables: a list of (component_element, variable_to_symbol) tuples
                              where ``component_element`` is an ``etree.Element`
                              and ``variable_to_symbol`` is a ``Dict[str, sympy.Dummy]``
 
         :param connected_variable_mapping: a ``Dict[str, sympy.Dummy]`` mapping a connected variable to its source.
         """
 
-        for component_element, variable_to_symbol in maths_to_add:
+        for component_element, variable_to_symbol in component_variables:
             # get all <math> elements in the component
             math_elements = component_element.findall(with_ns(XmlNs.MATHML, 'math'))
 
