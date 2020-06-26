@@ -590,6 +590,30 @@ For annotations, we check:
          <component_ref component="deriv_on_rhs2b"/>
       </component_ref>
    </group>
+   <group>
+      <relationship_ref relationship="encapsulation"/>
+      <component_ref component="circle_parent">
+         <component_ref component="circle_x">
+            <component_ref component="circle_x_source"/>
+            <component_ref component="circle_x_sibling"/>
+         </component_ref>
+         <component_ref component="circle_y">
+            <component_ref component="circle_y_implementation"/>
+         </component_ref>
+      </component_ref>
+      <component_ref component="time_units_conversion1">
+         <component_ref component="deriv_on_rhs1a"/>
+      </component_ref>
+      <component_ref component="time_units_conversion2">
+         <component_ref component="deriv_on_rhs2a"/>
+      </component_ref>
+      <component_ref component="state_units_conversion1">
+         <component_ref component="deriv_on_rhs1b"/>
+      </component_ref>
+      <component_ref component="state_units_conversion2">
+         <component_ref component="deriv_on_rhs2b"/>
+      </component_ref>
+   </group>
 
    <connection>
       <map_components component_1="single_independent_ode" component_2="environment"/>

@@ -54,6 +54,7 @@ def with_ns(ns_enum, name):
 
 def _dump_node(node):
     """Pretty-print an XML node."""
+    assert False
     return etree.tostring(node, pretty_print=True).decode()
 
 
@@ -79,8 +80,8 @@ class _Component:
 
     def add_encapsulated(self, encapsulated_name):
         """Adds an encapsulated component to this component"""
-        assert encapsulated_name not in self.encapsulated, 'Encapsulated component %s already added!' % \
-            encapsulated_name
+        if encapsulated_name in self.encapsulated:
+            raise ValueError('Encapsulated component %s already added!' % encapsulated_name)
         self.encapsulated.add(encapsulated_name)
 
 

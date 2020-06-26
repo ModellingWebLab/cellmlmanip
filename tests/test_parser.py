@@ -341,3 +341,7 @@ class TestParser(object):
         p = parser.Parser(path)
         with pytest.raises(ValueError, match='Element model has extra content'):
             p.parse()
+
+    def test_bad_encapsulation(self):
+        with pytest.raises(ValueError, match="Encapsulated component circle_x already added!"):
+            model = load_model('test_simple_odes_bad_encapsulation')
