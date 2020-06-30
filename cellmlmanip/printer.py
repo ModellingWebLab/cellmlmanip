@@ -330,14 +330,15 @@ class Printer(sympy.printing.printer.Printer):
 
         parts = '('
         brackets = 1
-        for e, c in expr.args:
+        for e, c in expr.args:  # pragma: no branch
             # Note that Sympy filters BooleanFalse out as well as clauses after a true clause
             if isinstance(c, BooleanTrue):
                 other = self._print(e)
-            else:
-                # Add e-if-c-else-? statement
-                parts += self._print_ternary(c, e)
-                brackets += 1
+                break
+                # Sympy filters BooleanFalse out:
+            # Add e-if-c-else-? statement
+            parts += self._print_ternary(c, e)
+            brackets += 1
         parts += other
         parts += ')' * brackets
         return parts
