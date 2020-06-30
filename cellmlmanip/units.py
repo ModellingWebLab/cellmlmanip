@@ -411,8 +411,6 @@ class UnitCalculator(object):
         :param list_of_quantities: a list of ``pint.Quantity`` objects.
         :returns: boolean indicating whether all units are equivalent
         """
-        if len(list_of_quantities) == 1:
-            return True
 
         def _is_equal(quantity1, quantity2):
             assert isinstance(quantity1, self._registry.Quantity)
@@ -436,7 +434,6 @@ class UnitCalculator(object):
         :param expr: a Sympy expression
         :returns: the quantity (i.e. magnitude(expression) * unit) of the expression
         :raises KeyError: if variable not found in metadata
-        :raises UnitsCannotBeCalculatedError: if expression just cannot calculate
         :raises UnexpectedMathUnitsError: if math is not supported
         :raises BooleanUnitsError: if math returns booleans
         :raises InputArgumentsMustBeDimensionlessError: if input arguments should be dimensionless
@@ -807,19 +804,6 @@ class UnitError(Exception):
         """
         self.context_expression = expression
         self.message += ('. Context: ' + message).format(expression)
-
-
-class UnitsCannotBeCalculatedError(UnitError):
-    """Generic invalid units error.
-
-    This will be thrown if the expressions or symbols involved in a calculation cannot be calculated.
-
-    :param expression: input expression in which the error occurred
-    """
-
-    def __init__(self, expression):
-        self.expression = expression
-        self.message = 'The units of this expression cannot be calculated.'
 
 
 class UnexpectedMathUnitsError(UnitError):
