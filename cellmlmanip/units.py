@@ -477,9 +477,11 @@ class UnitCalculator(object):
         if expr.is_Symbol:
 
             # is this symbol is a placeholder for a number
+            assert isinstance(expr, model.Quantity) or isinstance(expr, model.Variable), \
+                'Unexpected symbol type: ' + str(expr)
             if isinstance(expr, model.Quantity):
                 return float(expr) * expr.units
-            elif isinstance(expr, model.Variable):
+            else:
                 if expr.initial_value and expr.initial_value != 0.0:
                     #  if this symbol has an initial value (that is not zero)
                     # substitute with the initial value for unit arithmetic
@@ -487,8 +489,6 @@ class UnitCalculator(object):
                 else:
                     # otherwise, keep the symbol
                     return self._registry.Quantity(expr, expr.units)
-            else:   # pragma: no cover
-                raise RuntimeError('Unexpected symbol type: ' + str(expr))
 
         elif expr == sympy.oo:
             return math.inf * dimensionless
