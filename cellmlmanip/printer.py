@@ -335,10 +335,10 @@ class Printer(sympy.printing.printer.Printer):
             if isinstance(c, BooleanTrue):
                 other = self._print(e)
                 break
-            else:
+#            else:
                 # Add e-if-c-else-? statement
-                parts += self._print_ternary(c, e)
-                brackets += 1
+            parts += self._print_ternary(c, e)
+            brackets += 1
         return parts
 
     def _print_ordinary_pow(self, expr):

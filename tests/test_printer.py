@@ -208,8 +208,6 @@ class TestPrinter(object):
     def test_piecewise_expressions(self, p, x):
 
         # Piecewise expressions
-        e = sp.Piecewise((0, x > 0), (1, True))
-        assert p.doprint(e) == '((0) if (x > 0) else (1))'
         e = sp.Piecewise((0, x > 0), (1, x > 1), (2, True))
         assert (
             p.doprint(e) == '((0) if (x > 0) else ((1) if (x > 1) else (2)))')
