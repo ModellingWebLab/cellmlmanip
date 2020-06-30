@@ -12,44 +12,6 @@ from .shared import check_left_right_units_equal, load_model
 logger = logging.getLogger(__name__)
 
 
-def check_rdf_identities(model):
-    """Checks that every variable in a model with an ``rdf_identity`` is a source variable."""
-    is_okay = True
-    for variable in model.graph:
-        if variable.is_Derivative:
-            variable = variable.free_symbols.pop()
-        if variable.rdf_identity is not None:
-            if variable != variable.assigned_to:
-                is_okay = False
-                logger.critical('%s has cmeta id but is assigned to %s',
-                                variable.dummy, variable.assigned_to)
-    return is_okay
-
-
-def check_dummy_assignment(model):
-    """Every variable in the model should be assigned to itself or another variabe.
-    The source variable must be assigned to itself."""
-    is_okay = True
-    for variable in model.graph:
-        if variable.is_Derivative:
-            variable = variable.free_symbols.pop()
-        # either the variable is assigned to itself
-        if variable == variable.assigned_to:
-            continue
-
-        # or the variable is assigned to a source variable
-        source = variable.assigned_to
-
-        # the source dummy must be assigned to itself
-        if source.assigned_to != source:
-            is_okay = False
-            logger.critical('%s is assigned to %s, which is assigned to %s',
-                            variable,
-                            source,
-                            source.assigned_to)
-    return is_okay
-
-
 class TestParser(object):
     @pytest.fixture(scope="class")
     def parser_instance(self):
@@ -180,41 +142,31 @@ class TestParser(object):
                 assert simple_ode_model.units.is_equivalent(lhs_units, rhs_units)
         assert invalid_rhs_lhs_count == 2
 
-    def test_print_eq(self, simple_ode_model):
-        """Prints a models equations to screen, including units."""
-        from sympy.printing.lambdarepr import LambdaPrinter
+    def test_check_rdf_identities(self, simple_ode_model):
+        """Checks that every variable in a model with an ``rdf_identity`` is a source variable."""
+        for variable in simple_ode_model.graph:
+            if variable.is_Derivative:
+                variable = variable.free_symbols.pop()
+            if variable.rdf_identity is not None:
+                assert variable == variable.assigned_to, ('%s has cmeta id but is assigned to %s',
+                                                          variable.dummy, variable.assigned_to)
 
-        class ExpressionWithUnitPrinter(LambdaPrinter):
-            """Sympy expression printer to print expressions with unit information."""
+    def check_dummy_assignment(self, simple_ode_model):
+        """Every variable in the model should be assigned to itself or another variabe.
+        The source variable must be assigned to itself."""
+        for variable in simple_ode_model.graph:
+            if variable.is_Derivative:
+                variable = variable.free_symbols.pop()
+            # either the variable is assigned to itself
+            if variable == variable.assigned_to:
+                continue
 
-            def _print_Quantity(self, expr):
-                return '%f[%s]' % (float(expr), str(expr.units))
+            # or the variable is assigned to a source variable
+            source = variable.assigned_to
 
-            def _print_Variable(self, expr):
-                return '%s[%s]' % (expr.name, str(expr.units))
-
-            def _print_Derivative(self, expr):
-                state = expr.free_symbols.pop()
-                freev = expr.variables[0]
-                return 'Derivative(%s[%s], %s[%s])' % (state, state.units, freev, freev.units)
-
-        printer = ExpressionWithUnitPrinter()
-
-        # show equations
-        print()
-        for index, equation in enumerate(simple_ode_model.equations):
-            print('%3d. Eq(%s, %s)' % (index + 1,
-                                       printer.doprint(equation.lhs),
-                                       printer.doprint(equation.rhs)))
-            lhs_units = simple_ode_model.units.evaluate_units(equation.lhs)
-            rhs_units = simple_ode_model.units.evaluate_units(equation.rhs)
-            print('     %s %s %s' %
-                  (lhs_units,
-                   '==' if rhs_units == lhs_units else '!=',
-                   rhs_units))
-
-        assert check_rdf_identities(simple_ode_model)
-        assert check_dummy_assignment(simple_ode_model)
+            # the source dummy must be assigned to itself
+            assert source.assigned_to == source, ('%s is assigned to %s, which is assigned to %s',
+                                                  variable, source, source.assigned_to)
 
     def test_connect_to_hidden_component(self):
         """ Tests parser throws exception when cannot connect components. """
