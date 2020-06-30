@@ -332,10 +332,6 @@ class Printer(sympy.printing.printer.Printer):
         brackets = 1
         for e, c in expr.args:
             # Check if boolean True (if found, stop evaluating further)
-            print(c)
-            print(type(c))
-            print(isinstance(c, BooleanTrue))
-            print()
             if isinstance(c, BooleanTrue):
                 other = self._print(e)
                 # Sympy filters BooleanFalse out:
