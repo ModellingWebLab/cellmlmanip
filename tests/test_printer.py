@@ -223,8 +223,7 @@ class TestPrinter(object):
         assert p.doprint(e) == '((0) if (x > 0) else (2))'
 
         # First condition false, multiple true clauses
-        e = sp.Piecewise((6, False), (0, x < 5), (1, True), (2, True))
-        print(e)
+        e = sp.Piecewise((0, x < 5), (1, True), (2, x > 7))
         assert p.doprint(e) == '((0) if (x < 5) else (1))'
 
     def test_long_expression(self, p, x, y, z):
