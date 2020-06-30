@@ -281,7 +281,7 @@ class TestEvaluateUnits:
         assert store.evaluate_units(sp.sympify('1.0')) == store.get_unit('dimensionless')
 
     def test_func_args_same_units_(self, store, a, b, d, x, y, _1):
-        """ Tests functions were all args should have same unit and this is the unit returned. """
+        """ Tests functions where all args should have same unit and this is the unit returned. """
 
         assert store.evaluate_units(-a) == store.get_unit('meter')
         assert store.evaluate_units(a + a + a + a) == store.get_unit('meter')
