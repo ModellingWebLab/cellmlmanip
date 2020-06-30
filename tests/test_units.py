@@ -319,9 +319,13 @@ class TestEvaluateUnits:
         except TypeError as err:
             assert err.args[0] == 'floor takes exactly 1 argument (2 given)'
 
+    def test_piecewise_one_arg(self, store, a, x):
+        """ Tests piecewise with only 1 argument"""
+        m = store.evaluate_units(sp.Piecewise((a, x < 1)))
+        assert m == store.get_unit('meter')
+
     def test_special_piecewise(self, store, a, b, c, x):
         """ Tests special case - piecewise """
-
         m = store.evaluate_units(sp.Piecewise((a, x < 1), (a + a, x > 1), (3 * a, True)))
         assert m == store.get_unit('meter')
         # fail special case -piecewise
