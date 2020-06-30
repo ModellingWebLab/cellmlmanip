@@ -420,7 +420,7 @@ class UnitCalculator(object):
             return math.isclose(base1[0], base2[0]) and base1[1] == base2[1]
 
         list_of_quantities = iter(list_of_quantities)
-        first = next(list_of_quantities)
+        first = next(list_of_quantities, True)
         return all(_is_equal(first, rest) for rest in list_of_quantities)
 
     def _is_dimensionless(self, quantity):
