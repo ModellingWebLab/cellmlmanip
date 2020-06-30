@@ -75,8 +75,7 @@ class _Component:
 
     def add_sibling(self, sibling_name):
         """Adds a sibling for this component"""
-        if sibling_name in self.siblings:
-            raise ValueError('Sibling component %s already added!' % sibling_name)
+        assert sibling_name not in self.siblings, 'Sibling component %s already added!' % sibling_name
         self.siblings.add(sibling_name)
 
     def add_encapsulated(self, encapsulated_name):

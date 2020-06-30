@@ -302,9 +302,9 @@ class TestParser(object):
                                               "Cannot set environment: multiple parents not allowed!")):
             load_model('test_wrong_parent_component')
 
-    def test_wrong_siblings(self):
+    def test_wrong_encapsulation(self):
         with pytest.raises(ValueError, match="Encapsulated component circle_x_sibling already added!"):
-            load_model('test_wrong_siblings')
+            load_model('test_wrong_encapsulation')
 
     def test_wrong_relationship_tags(self):
         with pytest.raises(ValueError, match="Expecting exactly 1 relationship_ref tag per group, got 2!"):

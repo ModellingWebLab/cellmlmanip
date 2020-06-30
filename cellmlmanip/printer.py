@@ -187,11 +187,6 @@ class Printer(sympy.printing.printer.Printer):
     def _print_float(self, expr):
         """ Handles Python ``float``s. """
         return str(expr)
-        # Print short format if it doesn't change the value, else long format
-        # short = str(expr)
-        # if float(short) == expr:
-        #    return short
-        # return '{: .17e}'.format(expr)
 
     def _print_Float(self, expr):
         """ Handles Sympy Float objects. """
@@ -211,9 +206,6 @@ class Printer(sympy.printing.printer.Printer):
             raise ValueError('Unsupported function: ' + str(name))
 
         return name + '(' + args + ')'
-
-    # def _print_Infinity(self, expr):
-    #    return 'float(\'inf\')'
 
     def _print_int(self, expr):
         """ Handles python ``int``s. """
@@ -288,9 +280,9 @@ class Printer(sympy.printing.printer.Printer):
 
         # Fix brackets for Pow with exp -1 with more than one Symbol
         for item in pow_brackets:
-            if item.base in b:
-                b_str[b.index(item.base)] = \
-                    '(' + b_str[b.index(item.base)] + ')'
+            assert item.base in b, "item.base should be kept in b for powers"
+            b_str[b.index(item.base)] = \
+                '(' + b_str[b.index(item.base)] + ')'
 
         # Combine numerator and denomenator and return
         a_str = sign + ' * '.join(a_str)
@@ -338,15 +330,11 @@ class Printer(sympy.printing.printer.Printer):
 
         parts = '('
         brackets = 1
-        for e, c in expr.args:
-            # Check if boolean True (if found, stop evaluating further)
+        for e, c in expr.args:  # pragma: no branch
+            # Note that Sympy filters BooleanFalse out as well as clauses after a true clause
             if isinstance(c, BooleanTrue):
                 other = self._print(e)
                 break
-            # Sympy filters these out:
-            # elif isinstance(c, BooleanFalse):
-            #    continue
-
             # Add e-if-c-else-? statement
             parts += self._print_ternary(c, e)
             brackets += 1
