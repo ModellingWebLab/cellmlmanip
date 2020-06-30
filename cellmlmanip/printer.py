@@ -335,7 +335,6 @@ class Printer(sympy.printing.printer.Printer):
             if isinstance(c, BooleanTrue):
                 other = self._print(e)
                 break
-                # Sympy filters BooleanFalse out:
             # Add e-if-c-else-? statement
             parts += self._print_ternary(c, e)
             brackets += 1
