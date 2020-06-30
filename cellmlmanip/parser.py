@@ -68,13 +68,15 @@ class _Component:
 
     def set_parent(self, parent_name):
         """Sets the parent of this component"""
-        assert not self.parent, 'Parent of component %s already %s. Cannot set %s!' % (self.name, self.parent,
-                                                                                       parent_name)
+        if self.parent:
+            raise ValueError('Parent of component %s already %s. Cannot set %s: multiple parents not allowed!' %
+                             (self.name, self.parent, parent_name))
         self.parent = parent_name
 
     def add_sibling(self, sibling_name):
         """Adds a sibling for this component"""
-        assert sibling_name not in self.siblings, 'Sibling component %s already added!' % sibling_name
+        if sibling_name in self.siblings:
+            raise ValueError('Sibling component %s already added!' % sibling_name)
         self.siblings.add(sibling_name)
 
     def add_encapsulated(self, encapsulated_name):
@@ -366,7 +368,8 @@ class Parser(object):
 
             # find the relationship for this <group>
             relationship_ref = group_element.findall(with_ns(XmlNs.CELLML, 'relationship_ref'))
-            assert len(relationship_ref) == 1
+            if len(relationship_ref) != 1:
+                raise ValueError("Expecting exactly 1 relationship_ref tag per group, got %s!" % len(relationship_ref))
             relationship = relationship_ref[0].attrib.get('relationship')
 
             # we only handle 'encapsulation' relationships (i.e. ignoring 'containment')
@@ -416,15 +419,13 @@ class Parser(object):
 
         # for each connection in the model
         for connection in connection_elements:
-            # first child is <map_component>
-            child_0 = connection[0]
-            assert child_0.tag == with_ns(XmlNs.CELLML, 'map_components')
-            comp_1, comp_2 = (child_0.attrib.get('component_1'),
-                              child_0.attrib.get('component_2'))
+            # Should have one map_components and at least one map_variables. RELAXNGV makes use of this
+            map_components = connection.find(with_ns(XmlNs.CELLML, 'map_components'))
+            comp_1, comp_2 = (map_components.attrib.get('component_1'),
+                              map_components.attrib.get('component_2'))
 
-            # the remaining children are <map_variables> tags
-            for child in connection[1:]:
-                assert child.tag == with_ns(XmlNs.CELLML, 'map_variables')
+            # go through all tags
+            for child in connection.findall(with_ns(XmlNs.CELLML, 'map_variables')):
                 connections_to_process.append(
                     self._determine_connection_direction(comp_1, child.attrib.get('variable_1'),
                                                          comp_2, child.attrib.get('variable_2'))
@@ -443,8 +444,9 @@ class Parser(object):
             # source of *this* source)
             source, target = connection
             # Target should not already be assigned to
-            assert not target.assigned_to, \
-                'Target already assigned to %s before assignment to %s' % (target.assigned_to, source.assigned_to)
+            if target.assigned_to:
+                raise ValueError('Target already assigned to %s before assignment to %s' %
+                                 (target.assigned_to, source.assigned_to))
 
             if not source.assigned_to:
                 # add it back to the list

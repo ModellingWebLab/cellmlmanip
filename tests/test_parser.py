@@ -180,7 +180,6 @@ class TestParser(object):
                 assert simple_ode_model.units.is_equivalent(lhs_units, rhs_units)
         assert invalid_rhs_lhs_count == 2
 
-    @pytest.mark.skipif('CMLM_TEST_PRINT' not in os.environ, reason="print eq on demand")
     def test_print_eq(self, simple_ode_model):
         """Prints a models equations to screen, including units."""
         from sympy.printing.lambdarepr import LambdaPrinter
@@ -211,7 +210,7 @@ class TestParser(object):
             rhs_units = simple_ode_model.units.evaluate_units(equation.rhs)
             print('     %s %s %s' %
                   (lhs_units,
-                   '==' if simple_ode_model.units.is_unit_equal(rhs_units, lhs_units) else '!=',
+                   '==' if rhs_units == lhs_units else '!=',
                    rhs_units))
 
         assert check_rdf_identities(simple_ode_model)
@@ -345,3 +344,21 @@ class TestParser(object):
     def test_bad_encapsulation(self):
         with pytest.raises(ValueError, match="Encapsulated component circle_x already added!"):
             load_model('test_simple_odes_bad_encapsulation')
+
+    def test_wrong_parent_component(self):
+        with pytest.raises(ValueError, match=("Parent of component dummy2 already dummy. "
+                                              "Cannot set environment: multiple parents not allowed!")):
+            load_model('test_wrong_parent_component')
+
+    def test_wrong_siblings(self):
+        with pytest.raises(ValueError, match="Encapsulated component circle_x_sibling already added!"):
+            load_model('test_wrong_siblings')
+
+    def test_wrong_relationship_tags(self):
+        with pytest.raises(ValueError, match="Expecting exactly 1 relationship_ref tag per group, got 2!"):
+            load_model('test_wrong_relationship_tags')
+
+    def test_wrong_connections(self):
+        with pytest.raises(ValueError, match=(r'Target already assigned to environment\$time '
+                                              r'before assignment to environment\$time')):
+            load_model('test_wrong_connections')

@@ -52,7 +52,7 @@ For annotations, we check:
       <unit units="second" prefix="micro"/>
    </units>
    <units name="mV">
-      <unit units="volt" prefix="-3"/>
+      <unit units="volt" prefix="milli"/>
    </units>
    <units name="per_mV">
       <unit units="volt" prefix="milli" exponent="-1"/>
@@ -540,6 +540,11 @@ For annotations, we check:
       </math>
    </component>
 
+   <component name="dummy">
+   </component>
+   <component name="dummy2">
+   </component>
+
    <component name="deriv_on_rhs2b">
       <!-- sv1_rate = d(sv1)/d(time), where sv1 & time are connected to parent state_units_conversion2 -->
       <variable name="time" public_interface="in" units="ms"/>
@@ -588,6 +593,20 @@ For annotations, we check:
       </component_ref>
       <component_ref component="state_units_conversion2">
          <component_ref component="deriv_on_rhs2b"/>
+      </component_ref>
+   </group>
+
+   <group>
+      <relationship_ref relationship="encapsulation"/>
+      <component_ref component="dummy">
+         <component_ref component="dummy2"/>
+      </component_ref>
+   </group>
+
+   <group>
+      <relationship_ref relationship="encapsulation"/>
+      <component_ref component="environment">
+         <component_ref component="dummy2"/>
       </component_ref>
    </group>
 
@@ -694,8 +713,8 @@ For annotations, we check:
       <map_variables variable_1="sv1" variable_2="sv1"/>
    </connection>
    <connection>
-      <map_variables variable_1="time" variable_2="time"/>
       <map_components component_1="state_units_conversion2" component_2="deriv_on_rhs2b"/>
+      <map_variables variable_1="time" variable_2="time"/>
       <map_variables variable_1="sv1" variable_2="sv1"/>
    </connection>
 
