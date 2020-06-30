@@ -222,6 +222,11 @@ class TestPrinter(object):
             evaluate=False)
         assert p.doprint(e) == '((0) if (x > 0) else (2))'
 
+        # First condition false, multiple true clauses
+        e = sp.Piecewise((6, False), (0, x < 5), (1, True), (2, True))
+        print(e)
+        assert p.doprint(e) == '((0) if (x < 5) else (1))'
+
     def test_long_expression(self, p, x, y, z):
 
         # Longer expressions
@@ -267,3 +272,11 @@ class TestPrinter(object):
              "_units_conversion1$sv1, _environment$time)', 'Derivative(_state_units_conversion2$sv1, _environment$time"
              ") = 1000.0', 'deriv_on_rhs2b$sv1_rate = Derivative(_state_units_conversion2$sv1, _environment$time)', 's"
              "ingle_ode_rhs_const_var$a = 1.0']")
+
+    def test_pow_non_commutative(self, p, x, y):
+        x1 = sp.Symbol('x', commutative=False)
+        y1 = sp.Symbol('y', commutative=False)
+        expr = sp.Pow(x1 / y1, -1)
+        assert p.doprint(expr) == "(x * y**(-1))**(-1)"
+        expr = sp.Pow(x / y, -1)
+        assert p.doprint(expr) == "y / x"
