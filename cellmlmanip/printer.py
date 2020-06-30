@@ -334,12 +334,10 @@ class Printer(sympy.printing.printer.Printer):
             # Note that Sympy filters BooleanFalse out as well as clauses after a true clause
             if isinstance(c, BooleanTrue):
                 other = self._print(e)
-                break
-                # Sympy filters BooleanFalse out:
-#            else:
-            # Add e-if-c-else-? statement
-            parts += self._print_ternary(c, e)
-            brackets += 1
+            else:
+                # Add e-if-c-else-? statement
+                parts += self._print_ternary(c, e)
+                brackets += 1
         parts += other
         parts += ')' * brackets
         return parts
