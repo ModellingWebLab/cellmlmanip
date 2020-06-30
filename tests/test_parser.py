@@ -152,7 +152,7 @@ class TestParser(object):
                                                           variable.dummy, variable.assigned_to)
 
     def check_dummy_assignment(self, simple_ode_model):
-        """Every variable in the model should be assigned to itself or another variabe.
+        """Every variable in the model should be assigned to itself or another variable.
         The source variable must be assigned to itself."""
         for variable in simple_ode_model.graph:
             if variable.is_Derivative:
