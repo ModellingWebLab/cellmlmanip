@@ -99,32 +99,41 @@ class Model(object):
 
         raise ValueError('No free variable set in model.')
 
-    def get_state_variables(self):
+    def get_state_variables(self, sort=True):
         """
         Returns a list of state variables found in the given model graph (ordered by appearance in the CellML document).
+
+        :param sort: indicates whether the list is sorted by appearance in the CellML document.
         """
         states = list(self._ode_definition_map.keys())
-        return sorted(states, key=lambda state_var: state_var.order_added)
+        if sort:
+            states.sort(key=lambda state_var: state_var.order_added)
+        return states
 
-    def get_derivatives(self):
+    def get_derivatives(self, sort=True):
         """Returns a list of :class:`sympy.Derivative` objects found as LHS in the given model graph.
 
-        The list is ordered by appearance in the CellML document.
+        :param sort: indicates whether the list is sorted by appearance in the CellML document.
         """
         derivatives = [v for v in self.graph if isinstance(v, sympy.Derivative)]
-        return sorted(derivatives, key=lambda deriv: deriv.args[0].order_added)
+        if sort:
+            derivatives.sort(key=lambda deriv: deriv.args[0].order_added)
+        return derivatives
 
-    def get_derived_quantities(self):
+    def get_derived_quantities(self, sort=True):
         """Returns a list of derived quantities found in the given model graph.
 
         A derived quantity is any variable that is not a state variable, free variable, or parameter/constant.
+        :param sort: indicates whether the list is sorted by appearance in the CellML document.
         """
         derived_quantities = [
             v for v, node in self.graph.nodes.items()
             if not isinstance(v, sympy.Derivative)
             and node.get('variable_type', VariableType.UNKNOWN) not in (
                 VariableType.FREE, VariableType.STATE, VariableType.PARAMETER)]
-        return sorted(derived_quantities, key=lambda var: var.order_added)
+        if sort:
+            derived_quantities.sort(key=lambda var: var.order_added)
+        return derived_quantities
 
     def get_display_name(self, var, ontology=None):
         """Return a display name for the given variable.
@@ -209,11 +218,13 @@ class Model(object):
         else:
             raise ValueError('Multiple variables annotated with {}'.format(term))
 
-    def get_variables_by_rdf(self, predicate, object_=None):
+    def get_variables_by_rdf(self, predicate, object_=None, sort=True):
         """Find variables annotated with the given predicate and object (e.g. ``is oxmeta:time``) in our RDF graph.
 
         Both ``predicate`` and ``object_`` (if given) must be suitable as an input to
         :meth:`cellmlmanip.rdf.create_rdf_node`; typically either ``(namespace, local_name)`` tuples or string literals.
+
+        :param sort: indicates whether the list is sorted by appearance in the CellML document.
 
         :return: the associated variables sorted in document order
         """
@@ -222,7 +233,9 @@ class Model(object):
 
         # Find variables, sort and return
         variables = [self.get_variable_by_cmeta_id(result) for result in self.rdf.subjects(predicate, object_)]
-        return sorted(variables, key=lambda sym: sym.order_added)
+        if sort:
+            variables.sort(key=lambda sym: sym.order_added)
+        return variables
 
     def get_rdf_value(self, subject, predicate):
         """Get the value of an RDF object connected to ``subject`` by ``predicate``.
@@ -232,10 +245,12 @@ class Model(object):
 
         Note: expects exactly one triple to match and the result to be a literal. Its string value is returned.
         """
-        triples = list(self.get_rdf_annotations(subject, predicate))
-        assert len(triples) == 1
-        assert isinstance(triples[0][2], rdflib.Literal)
-        value = str(triples[0][2]).strip()  # Could make this cleverer by considering data type if desired
+        triples = self.get_rdf_annotations(subject, predicate)
+        triples = tuple(self.get_rdf_annotations(subject, predicate))
+        assert len(triples) == 1, 'Expecting exactly 1 triple'
+        triple = triples[0]
+        assert isinstance(triple[2], rdflib.Literal)
+        value = str(triple[2]).strip()  # Could make this cleverer by considering data type if desired
         return value
 
     def get_rdf_annotations(self, subject=None, predicate=None, object_=None):
@@ -502,7 +517,7 @@ class Model(object):
                 # Check if simplification removed dependencies on other variables, and if so remove the corresponding
                 # edges.
                 refs = self.find_variables_and_derivatives([rhs])
-                edges = list(graph.in_edges(equation.lhs))
+                edges = tuple(graph.in_edges(equation.lhs))
                 for edge in edges:
                     ref = edge[0]
                     if ref not in refs:
@@ -834,10 +849,9 @@ class Model(object):
         if original_variable == free_symbol:
             # Change every ODE to be w.r.t. the new time variable
             # Process ODEs in model order to ensure new equations are added in a consistent order
-            for ode in [eq for v, eq in sorted(self._ode_definition_map.items(),
-                                               key=lambda v_eq: v_eq[0].order_added)]:
-                if ode.args[0].args[1].args[0] == original_variable:
-                    derivative_replacements.update(self._convert_free_variable_deriv(ode, new_variable, cf))
+            for _, ode in sorted(self._ode_definition_map.items(), key=lambda v_eq: v_eq[0].order_added):
+                assert ode.args[0].args[1].args[0] == original_variable, "Can only have 1 free variable in the model"
+                derivative_replacements.update(self._convert_free_variable_deriv(ode, new_variable, cf))
 
         # Replace any instances of derivatives of the RHS of other equations with variables holding the original
         # definitions of those derivatives
@@ -887,92 +901,6 @@ class Model(object):
         if var in self._var_definition_map:
             raise ValueError('The variable {} is defined twice ({} and {})'.format(
                 var, equation, self._var_definition_map[var]))
-
-    def connect_variables(self, source_name, target_name):
-        """Combine two variables that represent the same entity within the model.
-
-        This method is used to implement CellML connections between variables in different components. It tells the
-        model that the variable indicated by ``target_name`` should get its value from the variable indicated by
-        ``source_name``. In general therefore this method should only be called by the :class:`Parser`.
-
-        If the units of both variables match, then any equations referencing the target variable are changed to
-        reference the source directly, and metadata annotations are moved over. If the units differ, an equation is
-        added defining target in terms of source with a conversion factor.
-
-        This method will only work if the source variable has been assigned a value, either through an equation or by
-        connecting it (directly or indirectly) to a variable with an equation. If this is not yet the case, ``False`` is
-        returned. If successful the method returns ``True``.
-
-        :param str source_name: the source variable name
-        :param str target_name: the target variable name
-        :raises ValueError: if a logically impossible connection is attempted
-        :raises DimensionalityError: if the units are incompatible
-        """
-        logger.debug('connect_variables(%s ⟶ %s)', source_name, target_name)
-
-        source = self._name_to_variable[source_name]
-        target = self._name_to_variable[target_name]
-
-        # If the source variable has not been assigned a value, we can't make this connection
-        if not source.assigned_to:
-            logger.debug(
-                'Cannot connect {} to {} at this time: The source variable has not been assigned a value '.format(
-                    target.name, source.name))
-            return False
-
-        # If target is already assigned this is an error
-        if target.assigned_to:
-            raise ValueError('Target already assigned to %s before assignment to %s' %
-                             (target.assigned_to, source.assigned_to))
-
-        if target in self._var_definition_map:
-            raise ValueError('Multiple definitions for {} ({} and {})'.format(
-                target, source, self._var_definition_map[target]))
-
-        # Check whether we need a unit conversion
-        cf = self.units.get_conversion_factor(from_unit=source.units, to_unit=target.units)
-        if cf == 1:
-            # Direct substitution is possible
-            target.assigned_to = source.assigned_to
-            # Everywhere the target variable is used, replace with source variable,
-            # updating the definition maps accordingly
-            for index, equation in enumerate(self.equations):
-                self.equations[index] = new_eq = equation.xreplace({target: source.assigned_to})
-                if equation.lhs.is_Derivative:
-                    state_var = equation.lhs.free_symbols.pop()
-                    assert state_var in self._ode_definition_map
-                    self._ode_definition_map[state_var] = new_eq
-                else:
-                    assert equation.lhs in self._var_definition_map
-                    self._var_definition_map[equation.lhs] = new_eq
-            if target in self._ode_definition_map:
-                self._ode_definition_map[source.assigned_to] = self._ode_definition_map[target]
-                del self._ode_definition_map[target]
-            # Migrate the cmeta:id too so annotations work as expected
-            # Really modellers should annotate the source variable, but they don't always!
-            if target.cmeta_id is not None:
-                # Note that this method considers source as the variable with the cmeta:id already.
-                self.transfer_cmeta_id(source=target, target=source)
-
-        # Otherwise, this connection requires a conversion
-        else:
-            # Dummy to represent this factor in equations, having units for conversion
-            factor_dummy = self.create_quantity(cf, target.units / source.units)
-
-            # Add an equation making the connection with the required conversion
-            self.add_equation(sympy.Eq(target, source.assigned_to * factor_dummy))
-
-            logger.info('Connection req. unit conversion: %s', self.equations[-1])
-
-            # The assigned variable for this variable is itself
-            target.assigned_to = target
-
-        logger.debug('Updated target: %s', target)
-
-        # Invalidate cached graphs
-        self._invalidate_cache()
-
-        return True
 
     def _replace_references_to_derivatives(self, derivative_replacement_map):
         """

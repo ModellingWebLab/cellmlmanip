@@ -65,9 +65,12 @@ class TestModelFunctions():
         """ Tests Model.get_derived_quantities(). """
 
         derived_quantities = basic_model.get_derived_quantities()
-        assert len(derived_quantities) == 0
+        unsorted_derived_quantities = basic_model.get_derived_quantities(sort=False)
+        assert len(derived_quantities) == len(unsorted_derived_quantities) == 0
 
         derived_quantities = simple_ode_model.get_derived_quantities()
+        unsorted_derived_quantities = simple_ode_model.get_derived_quantities(sort=False)
+        assert set(derived_quantities) == set(unsorted_derived_quantities)
         assert str(derived_quantities) == (
             '['
             # '_single_ode_rhs_computed_var$a, '
@@ -116,12 +119,16 @@ class TestModelFunctions():
         """ Tests Model.get_state_variables() works on a simple model. """
 
         states = basic_model.get_state_variables()
+        unsorted_states = basic_model.get_state_variables(sort=False)
+        assert states == unsorted_states
         assert len(states) == 1
         assert states[0].name == 'env_ode$sv1'
 
     def test_get_state_variables_2(self, aslanidi_model):
         """ Tests Model.get_state_variables() works on a complex model. """
         states = aslanidi_model.get_state_variables()
+        unsorted_states = aslanidi_model.get_state_variables(sort=False)
+        assert set(states) == set(unsorted_states)
         assert len(states) == 29
         assert str(states) == \
             '[_membrane$V, _sodium_current_m_gate$m, _sodium_current_h1_gate$h1, _sodium_current_h2_gate$h2, '\
@@ -153,6 +160,8 @@ class TestModelFunctions():
         """ Tests Model.get_derivatives() works correctly. """
 
         derivs = basic_model.get_derivatives()
+        unsorted_derivs = basic_model.get_derivatives(sort=False)
+        assert set(derivs) == set(unsorted_derivs)
         assert len(derivs) == 1
         deriv = derivs[0]
         assert deriv.is_Derivative
@@ -164,6 +173,8 @@ class TestModelFunctions():
         """ Tests Model.get_derivatives() works correctly on a more complicated model. """
 
         derivs = aslanidi_model.get_derivatives()
+        unsorted_derivs = aslanidi_model.get_derivatives(sort=False)
+        assert set(derivs) == set(unsorted_derivs)
         assert len(derivs) == 29
 
         assert str(derivs) == '[Derivative(_membrane$V, _environment$time), '\
@@ -395,9 +406,12 @@ class TestModelFunctions():
     def test_get_variables_by_rdf(self, aslanidi_model):
         """ Tests Model.get_variables_by_rdf() works correctly. """
 
-        symbol_a = aslanidi_model.get_variables_by_rdf(
-            ('http://biomodels.net/biology-qualifiers/', 'is'),
-            (shared.OXMETA, 'membrane_voltage'))
+        predicate = ('http://biomodels.net/biology-qualifiers/', 'is')
+        object_ = (shared.OXMETA, 'membrane_voltage')
+
+        symbol_a = aslanidi_model.get_variables_by_rdf(predicate, object_)
+        unsorted_symbol_a = aslanidi_model.get_variables_by_rdf(predicate, object_, sort=False)
+        assert set(symbol_a) == set(unsorted_symbol_a)
         assert len(symbol_a) == 1
         assert symbol_a[0].name == 'membrane$V'
         assert symbol_a[0].units == aslanidi_model.units.get_unit('millivolt')
@@ -672,47 +686,6 @@ class TestModelFunctions():
         assert v in syms
         assert t in syms
         assert sp.Derivative(v, t) in syms
-
-    def test_connect_variables(self, local_hh_model):
-        """ Tests Model.connect_variables() function. """
-        target = local_hh_model.get_variable_by_name('sodium_channel$h')
-        source = local_hh_model.get_variable_by_name('sodium_channel_h_gate$h')
-        assert target.assigned_to == source
-
-        # check cannot assign already connected variable
-        with pytest.raises(ValueError, match='Target already assigned'):
-            local_hh_model.connect_variables('sodium_channel$h', 'sodium_channel_h_gate$h')
-
-        # add and connect a new variable with same units
-        num_eqns = len(local_hh_model.equations)
-        local_hh_model.add_variable(name='newvar', units='dimensionless', public_interface='in')
-        new_target = local_hh_model.get_variable_by_name('newvar')
-        local_hh_model.connect_variables('sodium_channel_h_gate$h', 'newvar')
-        assert new_target.assigned_to == source
-        assert len(local_hh_model.equations) == num_eqns
-
-        # Can't connect a variable already defined by an equation to another source
-        newvar2 = local_hh_model.add_variable(name='newvar2', units='dimensionless', public_interface='in')
-        local_hh_model.add_equation(sp.Eq(newvar2, 1.0))
-        with pytest.raises(ValueError, match='Multiple definitions for newvar2'):
-            local_hh_model.connect_variables('sodium_channel$E_Na', 'newvar2')
-
-    def test_connect_variable2(self, local_hh_model):
-        """ Tests Model.connect_variables() function. """
-        num_eqns = len(local_hh_model.equations)
-        # add and connect a variable that requires unit conversion
-        local_hh_model.add_variable(name='newvar', units='volt', public_interface='in')
-        new_target = local_hh_model.get_variable_by_name('newvar')
-        source = local_hh_model.get_variable_by_name('leakage_current$E_L')
-        local_hh_model.connect_variables('leakage_current$E_L', 'newvar')
-        assert new_target.assigned_to == new_target
-        assert len(local_hh_model.equations) == num_eqns + 1
-        new_eqn = local_hh_model.equations[-1]
-        assert new_eqn.is_Equality
-        assert new_eqn.lhs == new_target
-        assert new_eqn.rhs.is_Mul
-        assert float(new_eqn.rhs.args[0]) == 0.001
-        assert new_eqn.rhs.args[1] == source
 
     def test_variable_classification(self, aslanidi_model):
         """ Tests Model.is_state() and Model.is_constant(). """

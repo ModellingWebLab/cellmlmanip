@@ -208,8 +208,6 @@ class TestPrinter(object):
     def test_piecewise_expressions(self, p, x):
 
         # Piecewise expressions
-        e = sp.Piecewise((0, x > 0), (1, True))
-        assert p.doprint(e) == '((0) if (x > 0) else (1))'
         e = sp.Piecewise((0, x > 0), (1, x > 1), (2, True))
         assert (
             p.doprint(e) == '((0) if (x > 0) else ((1) if (x > 1) else (2)))')
@@ -221,6 +219,14 @@ class TestPrinter(object):
             (0, x > 0), (1, x != x), (2, True), (3, x > 3),
             evaluate=False)
         assert p.doprint(e) == '((0) if (x > 0) else (2))'
+
+        # First condition false, multiple true clauses
+        e = sp.Piecewise((6, False), (0, x < 5), (1, True), (2, True))
+        assert p.doprint(e) == '((0) if (x < 5) else (1))'
+
+        # Middle condition only true
+        e = sp.Piecewise((0, x < 5), (1, True), (2, x > 7))
+        assert p.doprint(e) == '((0) if (x < 5) else (1))'
 
     def test_long_expression(self, p, x, y, z):
 
@@ -246,3 +252,32 @@ class TestPrinter(object):
         assert p.doprint(sp.Abs(x + y)) == 'abs(x + y)'
         assert p.doprint(sp.Abs(3.2, evaluate=False)) == 'abs(3.2)'
         assert p.doprint(sp.Abs(-3, evaluate=False)) == 'abs(-3)'
+
+    def test_print_model_equations(model, simple_ode_model, p):
+        printed_equations = [p.doprint(eq.lhs) + ' = ' + p.doprint(eq.rhs) for eq in simple_ode_model.equations]
+        assert str(printed_equations) == \
+            ("['time_units_conversion1$time = 0.001 * environment$time', 'time_units_conversion2$time = 1000.0 * envir"
+             "onment$time', 'Derivative(_single_independent_ode$sv1, _environment$time) = 1.0', 'Derivative(_single_od"
+             "e_rhs_const_var$sv1, _environment$time) = single_ode_rhs_const_var$a', 'Derivative(_single_ode_rhs_compu"
+             "ted_var$sv1, _environment$time) = single_ode_rhs_computed_var$a', 'single_ode_rhs_computed_var$a = -1.0'"
+             ", 'derived_from_state_var$dbl_sv1 = 2.0 * single_ode_rhs_computed_var$sv1', 'deriv_on_rhs$sv1_rate = Der"
+             "ivative(_single_ode_rhs_computed_var$sv1, _environment$time)', 'Derivative(_circle_x_source$x, _environm"
+             "ent$time) = -1.0 * circle_y_implementation$y', 'circle_x_sibling$x2 = 2.0 * circle_x_source$x', 'Derivat"
+             "ive(_circle_y_implementation$y, _environment$time) = circle_y_implementation$rhs', 'circle_y_implementat"
+             "ion$rhs = 1.0 * circle_x_source$x', 'circle_sibling$local_complex_maths = 1.0 * math.exp(circle_y_implem"
+             "entation$y / 2.0) + 5.0 * circle_y_implementation$y / 3.0 + circle_y_implementation$y', 'Derivative(_tim"
+             "e_units_conversion1$sv1, _environment$time) = 0.001', 'deriv_on_rhs1a$sv1_rate = Derivative(_time_units_"
+             "conversion1$sv1, _environment$time)', 'Derivative(_time_units_conversion2$sv1, _environment$time) = 1000"
+             ".0', 'deriv_on_rhs2a$sv1_rate = Derivative(_time_units_conversion2$sv1, _environment$time)', 'Derivative"
+             "(_state_units_conversion1$sv1, _environment$time) = 0.001', 'deriv_on_rhs1b$sv1_rate = Derivative(_state"
+             "_units_conversion1$sv1, _environment$time)', 'Derivative(_state_units_conversion2$sv1, _environment$time"
+             ") = 1000.0', 'deriv_on_rhs2b$sv1_rate = Derivative(_state_units_conversion2$sv1, _environment$time)', 's"
+             "ingle_ode_rhs_const_var$a = 1.0']")
+
+    def test_pow_non_commutative(self, p, x, y):
+        x1 = sp.Symbol('x', commutative=False)
+        y1 = sp.Symbol('y', commutative=False)
+        expr = sp.Pow(x1 / y1, -1)
+        assert p.doprint(expr) == "(x * y**(-1))**(-1)"
+        expr = sp.Pow(x / y, -1)
+        assert p.doprint(expr) == "y / x"
