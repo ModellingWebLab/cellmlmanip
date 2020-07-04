@@ -25,3 +25,4 @@ script:
   - isort --verbose --check-only --diff --recursive cellmlmanip
 after_success:
   - codecov
+
