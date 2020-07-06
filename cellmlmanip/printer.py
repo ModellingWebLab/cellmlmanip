@@ -40,6 +40,8 @@
 #
 import sympy
 import sympy.printing
+from sympy.core.mul import _keep_coeff
+from sympy.logic.boolalg import BooleanTrue
 from sympy.printing.precedence import precedence
 
 
@@ -227,7 +229,6 @@ class Printer(sympy.printing.printer.Printer):
         # This method is mostly copied from sympy.printing.Str
 
         # Check overall sign of multiplication
-        from sympy.core.mul import _keep_coeff
         sign = ''
         c, e = expr.as_coeff_Mul()
         if c < 0:
@@ -322,8 +323,6 @@ class Printer(sympy.printing.printer.Printer):
         Sympy's piecewise is defined as a list of tuples ``(expr, cond)`` and evaluated by returning the first ``expr``
         whose ``cond`` is true. If none of the conditions hold a value error is raised.
         """
-        from sympy.logic.boolalg import BooleanTrue
-
         # Assign NaN if no conditions hold
         # If a condition `True` is found, use its expression instead
         other = self._literal_names['nan']

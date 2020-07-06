@@ -197,7 +197,14 @@ class TestTranspiler(object):
         self.assert_raises('<otherwise><cn>0</cn><cn>1</cn></otherwise>', ValueError, match='More than 1 child')
 
     def test_multiple_relations(self):
-        from sympy.abc import a, b, c, x, y, z
+        from sympy.abc import (
+            a,
+            b,
+            c,
+            x,
+            y,
+            z,
+        )
         eq_xml = '<apply><eq/><ci>x</ci><ci>y</ci><ci>z</ci><cn>2.0</cn></apply>'
         lt_xml = '<apply><lt/><ci>a</ci><ci>b</ci><ci>c</ci><cn>2.0</cn></apply>'
         ge_xml = '<apply><geq/><ci>x</ci><ci>y</ci><ci>z</ci><cn>2.0</cn></apply>'
