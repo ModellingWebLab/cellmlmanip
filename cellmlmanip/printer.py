@@ -324,6 +324,8 @@ class Printer(sympy.printing.printer.Printer):
         """
         from sympy.logic.boolalg import BooleanTrue
 
+
+
         # Assign NaN if no conditions hold
         # If a condition `True` is found, use its expression instead
         other = self._literal_names['nan']
