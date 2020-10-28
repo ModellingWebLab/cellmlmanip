@@ -151,22 +151,43 @@ class TestPrinter(object):
     def test_trig_functions(self, p, x):
 
         # Trig functions
-        assert p.doprint(sp.acos(x)) == 'math.acos(x)'
-        assert p.doprint(sp.acosh(x)) == 'math.acosh(x)'
-        assert p.doprint(sp.asin(x)) == 'math.asin(x)'
-        assert p.doprint(sp.asinh(x)) == 'math.asinh(x)'
-        assert p.doprint(sp.atan(x)) == 'math.atan(x)'
-        assert p.doprint(sp.atanh(x)) == 'math.atanh(x)'
-        assert p.doprint(sp.ceiling(x)) == 'math.ceil(x)'
+        assert p.doprint(sp.sin(x)) == 'math.sin(x)'
         assert p.doprint(sp.cos(x)) == 'math.cos(x)'
+        assert p.doprint(sp.tan(x)) == 'math.tan(x)'
+
+        assert p.doprint(sp.asin(x)) == 'math.asin(x)'
+        assert p.doprint(sp.acos(x)) == 'math.acos(x)'
+        assert p.doprint(sp.atan(x)) == 'math.atan(x)'
+
+        assert p.doprint(sp.sinh(x)) == 'math.sinh(x)'
         assert p.doprint(sp.cosh(x)) == 'math.cosh(x)'
+        assert p.doprint(sp.tanh(x)) == 'math.tanh(x)'
+
+        assert p.doprint(sp.asinh(x)) == 'math.asinh(x)'
+        assert p.doprint(sp.acosh(x)) == 'math.acosh(x)'
+        assert p.doprint(sp.atanh(x)) == 'math.atanh(x)'
+
+        assert p.doprint(sp.sec(x)) == '1 / math.cos(x)'
+        assert p.doprint(sp.csc(x)) == '1 / math.sin(x)'
+        assert p.doprint(sp.cot(x)) == '1 / math.tan(x)'
+
+        assert p.doprint(sp.asec(x)) == 'math.acos(1 / x)'
+        assert p.doprint(sp.acsc(x)) == 'math.asin(1 / x)'
+        assert p.doprint(sp.acot(x)) == 'math.atan(1 / x)'
+
+        assert p.doprint(sp.sech(x)) == '1 / math.cosh(x)'
+        assert p.doprint(sp.csch(x)) == '1 / math.sinh(x)'
+        assert p.doprint(sp.coth(x)) == '1 / math.tanh(x)'
+
+        assert p.doprint(sp.asech(x)) == 'math.acosh(1 / x)'
+        assert p.doprint(sp.acsch(x)) == 'math.asinh(1 / x)'
+        assert p.doprint(sp.acoth(x)) == 'math.atanh(1 / x)'
+
+    def test_functions(self, p, x):
+        assert p.doprint(sp.ceiling(x)) == 'math.ceil(x)'
         assert p.doprint(sp.factorial(x)) == 'math.factorial(x)'
         assert p.doprint(sp.floor(x)) == 'math.floor(x)'
         assert p.doprint(sp.log(x)) == 'math.log(x)'
-        assert p.doprint(sp.sin(x)) == 'math.sin(x)'
-        assert p.doprint(sp.sinh(x)) == 'math.sinh(x)'
-        assert p.doprint(sp.tan(x)) == 'math.tan(x)'
-        assert p.doprint(sp.tanh(x)) == 'math.tanh(x)'
 
     def test_conditions(self, p, x, y, z):
 

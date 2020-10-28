@@ -263,12 +263,37 @@ class TestTranspiler(object):
                           [sympy.Max(sympy.Symbol('a'), sympy.Symbol('b'))])
 
     def test_trig(self):
-        self.assert_equal('<apply><cos/><ci>x</ci></apply>',
-                          [sympy.cos(sympy.Symbol('x'))])
-        self.assert_equal('<apply><sin/><ci>x</ci></apply>',
-                          [sympy.sin(sympy.Symbol('x'))])
-        self.assert_equal('<apply><arctanh/><ci>x</ci></apply>',
-                          [sympy.atanh(sympy.Symbol('x'))])
+        self.assert_equal('<apply><sin/><ci>x</ci></apply>', [sympy.sin(sympy.Symbol('x'))])
+        self.assert_equal('<apply><cos/><ci>x</ci></apply>', [sympy.cos(sympy.Symbol('x'))])
+        self.assert_equal('<apply><tan/><ci>x</ci></apply>', [sympy.tan(sympy.Symbol('x'))])
+
+        self.assert_equal('<apply><arcsin/><ci>x</ci></apply>', [sympy.asin(sympy.Symbol('x'))])
+        self.assert_equal('<apply><arccos/><ci>x</ci></apply>', [sympy.acos(sympy.Symbol('x'))])
+        self.assert_equal('<apply><arctan/><ci>x</ci></apply>', [sympy.atan(sympy.Symbol('x'))])
+
+        self.assert_equal('<apply><sinh/><ci>x</ci></apply>', [sympy.sinh(sympy.Symbol('x'))])
+        self.assert_equal('<apply><cosh/><ci>x</ci></apply>', [sympy.cosh(sympy.Symbol('x'))])
+        self.assert_equal('<apply><tanh/><ci>x</ci></apply>', [sympy.tanh(sympy.Symbol('x'))])
+
+        self.assert_equal('<apply><arcsinh/><ci>x</ci></apply>', [sympy.asinh(sympy.Symbol('x'))])
+        self.assert_equal('<apply><arccosh/><ci>x</ci></apply>', [sympy.acosh(sympy.Symbol('x'))])
+        self.assert_equal('<apply><arctanh/><ci>x</ci></apply>', [sympy.atanh(sympy.Symbol('x'))])
+
+        self.assert_equal('<apply><sec/><ci>x</ci></apply>', [sympy.sec(sympy.Symbol('x'))])
+        self.assert_equal('<apply><csc/><ci>x</ci></apply>', [sympy.csc(sympy.Symbol('x'))])
+        self.assert_equal('<apply><cot/><ci>x</ci></apply>', [sympy.cot(sympy.Symbol('x'))])
+
+        self.assert_equal('<apply><arcsec/><ci>x</ci></apply>', [sympy.asec(sympy.Symbol('x'))])
+        self.assert_equal('<apply><arccsc/><ci>x</ci></apply>', [sympy.acsc(sympy.Symbol('x'))])
+        self.assert_equal('<apply><arccot/><ci>x</ci></apply>', [sympy.acot(sympy.Symbol('x'))])
+
+        self.assert_equal('<apply><sech/><ci>x</ci></apply>', [sympy.sech(sympy.Symbol('x'))])
+        self.assert_equal('<apply><csch/><ci>x</ci></apply>', [sympy.csch(sympy.Symbol('x'))])
+        self.assert_equal('<apply><coth/><ci>x</ci></apply>', [sympy.coth(sympy.Symbol('x'))])
+
+        self.assert_equal('<apply><arcsech/><ci>x</ci></apply>', [sympy.asech(sympy.Symbol('x'))])
+        self.assert_equal('<apply><arccsch/><ci>x</ci></apply>', [sympy.acsch(sympy.Symbol('x'))])
+        self.assert_equal('<apply><arccoth/><ci>x</ci></apply>', [sympy.acoth(sympy.Symbol('x'))])
 
     def test_cn_units(self):
         """ Test if the transpiler uses the number_generator to make number objects. """
