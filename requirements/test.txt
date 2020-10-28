@@ -24,7 +24,7 @@ mpmath==1.1.0             # via sympy
 networkx==2.3
 packaging==19.1           # via pytest
 pathlib2==2.3.4           # via pytest
-pint==0.16.0
+pint==0.9
 pluggy==0.12.0            # via pytest
 py==1.8.0                 # via pytest
 pycodestyle==2.5.0        # via flake8
