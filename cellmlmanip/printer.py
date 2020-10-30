@@ -40,6 +40,8 @@
 #
 import sympy
 import sympy.printing
+from sympy.core.mul import _keep_coeff
+from sympy.logic.boolalg import BooleanTrue
 from sympy.printing.precedence import precedence
 
 
@@ -82,6 +84,22 @@ class Printer(sympy.printing.printer.Printer):
         'sqrt': 'math.sqrt',
         'tan': 'math.tan',
         'tanh': 'math.tanh'
+    }
+    _extra_trig_names = {
+        'sec': 'math.cos',
+        'csc': 'math.sin',
+        'cot': 'math.tan',
+        'sech': 'math.cosh',
+        'csch': 'math.sinh',
+        'coth': 'math.tanh',
+    }
+    _extra_inverse_trig_names = {
+        'asec': 'math.acos',
+        'acsc': 'math.asin',
+        'acot': 'math.atan',
+        'asech': 'math.acosh',
+        'acsch': 'math.asinh',
+        'acoth': 'math.atanh',
     }
 
     # Dictionary mapping Sympy literals to strings for output.
@@ -200,12 +218,23 @@ class Printer(sympy.printing.printer.Printer):
         # Convert arguments
         args = self._bracket_args(expr.args, 0)
 
-        if name in self._function_names:
-            name = self._function_names[name]
-        else:
-            raise ValueError('Unsupported function: ' + str(name))
+        # Normal function
+        func = self._function_names.get(name, None)
+        if func is not None:
+            return func + '(' + args + ')'
 
-        return name + '(' + args + ')'
+        # Secondary trig function (e.g. secant)
+        func = self._extra_trig_names.get(name, None)
+        if func is not None:
+            return '1 / ' + func + '(' + args + ')'
+
+        # Inverse of secondary trig function (e.g. arcsecant)
+        func = self._extra_inverse_trig_names.get(name, None)
+        if func is not None:
+            return func + '(1 / ' + args + ')'
+
+        # Unknown function
+        raise ValueError('Unsupported function: ' + str(name))
 
     def _print_int(self, expr):
         """ Handles python ``int``s. """
@@ -227,7 +256,6 @@ class Printer(sympy.printing.printer.Printer):
         # This method is mostly copied from sympy.printing.Str
 
         # Check overall sign of multiplication
-        from sympy.core.mul import _keep_coeff
         sign = ''
         c, e = expr.as_coeff_Mul()
         if c < 0:
@@ -322,8 +350,6 @@ class Printer(sympy.printing.printer.Printer):
         Sympy's piecewise is defined as a list of tuples ``(expr, cond)`` and evaluated by returning the first ``expr``
         whose ``cond`` is true. If none of the conditions hold a value error is raised.
         """
-        from sympy.logic.boolalg import BooleanTrue
-
         # Assign NaN if no conditions hold
         # If a condition `True` is found, use its expression instead
         other = self._literal_names['nan']
