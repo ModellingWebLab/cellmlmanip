@@ -1,4 +1,4 @@
-# Unreleased
+# Release 0.2.1
 - Improved support for secondary trigonometric functions such as sec and acoth (PR#314).
 
 # Release 0.2.0
