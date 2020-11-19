@@ -183,6 +183,23 @@ class TestPrinter(object):
         assert p.doprint(sp.acsch(x)) == 'math.asinh(1 / x)'
         assert p.doprint(sp.acoth(x)) == 'math.atanh(1 / x)'
 
+        assert p.doprint(1 / sp.sec(x)) == 'math.cos(x)'
+        assert p.doprint(1 / sp.sec(x)) == 'math.cos(x)'
+        assert p.doprint(1 / sp.csc(x)) == 'math.sin(x)'
+        assert p.doprint(1 / sp.cot(x)) == 'math.tan(x)'
+
+        assert p.doprint(sp.asec(1 / x)) == 'math.acos(x)'
+        assert p.doprint(sp.acsc(1 / x)) == 'math.asin(x)'
+        assert p.doprint(sp.acot(1 / x)) == 'math.atan(x)'
+
+        assert p.doprint(1 / sp.sech(x)) == 'math.cosh(x)'
+        assert p.doprint(1 / sp.csch(x)) == 'math.sinh(x)'
+        assert p.doprint(1 / sp.coth(x)) == 'math.tanh(x)'
+
+        assert p.doprint(sp.asech(1 / x)) == 'math.acosh(x)'
+        assert p.doprint(sp.acsch(1 / x)) == 'math.asinh(x)'
+        assert p.doprint(sp.acoth(1 / x)) == 'math.atanh(x)'
+
     def test_functions(self, p, x):
         assert p.doprint(sp.ceiling(x)) == 'math.ceil(x)'
         assert p.doprint(sp.factorial(x)) == 'math.factorial(x)'
