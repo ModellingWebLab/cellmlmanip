@@ -133,7 +133,7 @@ class Printer(sympy.printing.printer.Printer):
         """Returns printer's representation for expr (as a string)"""
         if isinstance(expr, sympy.Expr):
             expr = optimize(expr, self._optims)
-        return super()._print(expr)
+        return super().doprint(expr)
 
     def _bracket(self, expr, parent_precedence):
         """
