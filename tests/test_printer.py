@@ -199,9 +199,9 @@ class TestPrinter(object):
         assert p.doprint(sp.asech(1 / x)) == 'math.acosh(x)'
         assert p.doprint(sp.acsch(1 / x)) == 'math.asinh(x)'
         assert p.doprint(sp.acoth(1 / x)) == 'math.atanh(x)'
-        
+
         assert p.doprint(2**sp.sec(x)) == '2**(1 / math.cos(x))'
-        assert p.doprint(5*2**sp.sec(x)) == '5 * 2**(1 / math.cos(x))'
+        assert p.doprint(5 * 2**sp.sec(x)) == '5 * 2**(1 / math.cos(x))'
         assert p.doprint((5 * x)**sp.sec(x)) == '(5 * x)**(1 / math.cos(x))'
 
     def test_functions(self, p, x):
