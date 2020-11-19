@@ -144,6 +144,9 @@ class Printer(sympy.printing.printer.Printer):
         """
         expr_prec = precedence(expr)
         parent_prec = parent_precedence
+        # Some equations are substituted for expr. of lower precedence
+        # For example x**-1 is printed as 1/x. An example where this would give na issue is 2**cos(x)**-1
+        # Which should print as 2**(1 / math.cos(x))
         # Adjust precedence to put brackets around 1/x if necessary
         if isinstance(expr, sympy.Pow) and expr.is_commutative and \
                 (-expr.exp is sympy.S.Half or -expr.exp is sympy.S.One):

@@ -184,7 +184,6 @@ class TestPrinter(object):
         assert p.doprint(sp.acoth(x)) == 'math.atanh(1 / x)'
 
         assert p.doprint(1 / sp.sec(x)) == 'math.cos(x)'
-        assert p.doprint(1 / sp.sec(x)) == 'math.cos(x)'
         assert p.doprint(1 / sp.csc(x)) == 'math.sin(x)'
         assert p.doprint(1 / sp.cot(x)) == 'math.tan(x)'
 
