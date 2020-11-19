@@ -106,9 +106,7 @@ class Printer(sympy.printing.printer.Printer):
     }
 
     # The optimisations to apply to an expr to rewrite extra trig functions
-    _optims = []
-    for k, v in _extra_trig.items():
-        _optims.append(ReplaceOptim(k, v))
+    _optims = [ReplaceOptim(k, v) for k, v in _extra_trig.items()]
 
     # Dictionary mapping Sympy literals to strings for output.
     _literal_names = {
