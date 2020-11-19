@@ -40,10 +40,10 @@
 #
 import sympy
 import sympy.printing
+from sympy.printing.precedence import precedence
 from sympy.codegen.rewriting import ReplaceOptim, optimize
 from sympy.core.mul import _keep_coeff
 from sympy.logic.boolalg import BooleanTrue
-from sympy.printing.precedence import precedence
 
 
 class Printer(sympy.printing.printer.Printer):
@@ -90,12 +90,12 @@ class Printer(sympy.printing.printer.Printer):
     # Extra trig functio to be rewritten as other trig functions
     W = sympy.Wild('W')
     _extra_trig = {
-        sympy.sec(W): 1 / sympy.cos(W),
-        sympy.csc(W): 1 / sympy.sin(W),
-        sympy.cot(W): 1 / sympy.tan(W),
-        sympy.sech(W): 1 / sympy.cosh(W),
-        sympy.csch(W): 1 / sympy.sinh(W),
-        sympy.coth(W): 1 / sympy.tanh(W),
+        sympy.sec(W): (1 / sympy.cos(W)),
+        sympy.csc(W): (1 / sympy.sin(W)),
+        sympy.cot(W): (1 / sympy.tan(W)),
+        sympy.sech(W): (1 / sympy.cosh(W)),
+        sympy.csch(W): (1 / sympy.sinh(W)),
+        sympy.coth(W): (1 / sympy.tanh(W)),
 
         sympy.asec(W): sympy.acos(1 / W),
         sympy.acsc(W): sympy.asin(1 / W),
@@ -131,17 +131,25 @@ class Printer(sympy.printing.printer.Printer):
         else:
             self._derivative_function = derivative_function
 
-    def _print(self, expr, **kwargs):
+    def doprint(self, expr):
+        """Returns printer's representation for expr (as a string)"""
         if isinstance(expr, sympy.Expr):
             expr = optimize(expr, self._optims)
-        return super()._print(expr, *kwargs)
+        return super()._print(expr)
 
     def _bracket(self, expr, parent_precedence):
         """
         Converts ``expr`` to string, and adds parentheses around the result, if and only if
         ``precedence(expr) < parent_precedence``.
         """
-        if precedence(expr) < parent_precedence:
+        expr_prec = precedence(expr)
+        parent_prec = parent_precedence
+        # Adjust precedence to put brackets around 1/x if necessary
+        if isinstance(expr, sympy.Pow) and expr.is_commutative and \
+                (-expr.exp is sympy.S.Half or -expr.exp is sympy.S.One):
+            expr_prec -= 1
+
+        if expr_prec < parent_prec:
             return '(' + self._print(expr) + ')'
         return self._print(expr)
 
