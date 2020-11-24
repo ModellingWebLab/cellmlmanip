@@ -40,9 +40,10 @@
 #
 import sympy
 import sympy.printing
+from sympy.printing.precedence import precedence
+from sympy.codegen.rewriting import ReplaceOptim, optimize
 from sympy.core.mul import _keep_coeff
 from sympy.logic.boolalg import BooleanTrue
-from sympy.printing.precedence import precedence
 
 
 class Printer(sympy.printing.printer.Printer):
@@ -85,22 +86,27 @@ class Printer(sympy.printing.printer.Printer):
         'tan': 'math.tan',
         'tanh': 'math.tanh'
     }
-    _extra_trig_names = {
-        'sec': 'math.cos',
-        'csc': 'math.sin',
-        'cot': 'math.tan',
-        'sech': 'math.cosh',
-        'csch': 'math.sinh',
-        'coth': 'math.tanh',
+
+    # Extra trig functio to be rewritten as other trig functions
+    W = sympy.Wild('W')
+    _extra_trig = {
+        sympy.sec(W): (1 / sympy.cos(W)),
+        sympy.csc(W): (1 / sympy.sin(W)),
+        sympy.cot(W): (1 / sympy.tan(W)),
+        sympy.sech(W): (1 / sympy.cosh(W)),
+        sympy.csch(W): (1 / sympy.sinh(W)),
+        sympy.coth(W): (1 / sympy.tanh(W)),
+
+        sympy.asec(W): sympy.acos(1 / W),
+        sympy.acsc(W): sympy.asin(1 / W),
+        sympy.acot(W): sympy.atan(1 / W),
+        sympy.asech(W): sympy.acosh(1 / W),
+        sympy.acsch(W): sympy.asinh(1 / W),
+        sympy.acoth(W): sympy.atanh(1 / W),
     }
-    _extra_inverse_trig_names = {
-        'asec': 'math.acos',
-        'acsc': 'math.asin',
-        'acot': 'math.atan',
-        'asech': 'math.acosh',
-        'acsch': 'math.asinh',
-        'acoth': 'math.atanh',
-    }
+
+    # The optimisations to apply to an expr to rewrite extra trig functions
+    _optims = [ReplaceOptim(k, v) for k, v in _extra_trig.items()]
 
     # Dictionary mapping Sympy literals to strings for output.
     _literal_names = {
@@ -123,12 +129,28 @@ class Printer(sympy.printing.printer.Printer):
         else:
             self._derivative_function = derivative_function
 
+    def doprint(self, expr):
+        """Returns printer's representation for expr (as a string)"""
+        if isinstance(expr, sympy.Expr):
+            expr = optimize(expr, self._optims)
+        return super().doprint(expr)
+
     def _bracket(self, expr, parent_precedence):
         """
         Converts ``expr`` to string, and adds parentheses around the result, if and only if
         ``precedence(expr) < parent_precedence``.
         """
-        if precedence(expr) < parent_precedence:
+        expr_prec = precedence(expr)
+        parent_prec = parent_precedence
+        # Some equations are substituted for expr. of lower precedence
+        # For example x**-1 is printed as 1/x. An example where this would give na issue is 2**cos(x)**-1
+        # Which should print as 2**(1 / math.cos(x))
+        # Adjust precedence to put brackets around 1/x if necessary
+        if isinstance(expr, sympy.Pow) and expr.is_commutative and \
+                (-expr.exp is sympy.S.Half or -expr.exp is sympy.S.One):
+            expr_prec -= 1
+
+        if expr_prec < parent_prec:
             return '(' + self._print(expr) + ')'
         return self._print(expr)
 
@@ -222,16 +244,6 @@ class Printer(sympy.printing.printer.Printer):
         func = self._function_names.get(name, None)
         if func is not None:
             return func + '(' + args + ')'
-
-        # Secondary trig function (e.g. secant)
-        func = self._extra_trig_names.get(name, None)
-        if func is not None:
-            return '1 / ' + func + '(' + args + ')'
-
-        # Inverse of secondary trig function (e.g. arcsecant)
-        func = self._extra_inverse_trig_names.get(name, None)
-        if func is not None:
-            return func + '(1 / ' + args + ')'
 
         # Unknown function
         raise ValueError('Unsupported function: ' + str(name))
