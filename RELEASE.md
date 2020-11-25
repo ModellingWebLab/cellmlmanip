@@ -1,5 +1,5 @@
 # Release 0.2.2
-- Fixed a rendering issue with secondary trigonometric functions such as sec and acoth (PR#317). This means that for example that 1 / sec(x) now rencers as cos(x) instead of 1 / 1 / cos(x).
+- Fixed a rendering issue with secondary trigonometric functions such as sec and acoth (PR#317). This means for example that 1 / sec(x) now renders as cos(x) instead of 1 / 1 / cos(x).
 
 # Release 0.2.1
 - Improved support for secondary trigonometric functions such as sec and acoth (PR#314).
