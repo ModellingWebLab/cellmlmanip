@@ -1091,12 +1091,12 @@ class Variable(sympy.Dummy):
     """
 
     # Sympy annoyingly overwrites __new__
-    def __new__(cls, name, *args, **kwargs):
-        return super().__new__(cls, name, real=True)
+    def __new__(cls, *args, **kwargs):
+        return super().__new__(cls, real=True)
 
     def __init__(self,
-                 name,
-                 units,
+                 name=None,
+                 units=None,
                  model=None,
                  initial_value=None,
                  public_interface=None,

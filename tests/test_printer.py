@@ -134,7 +134,7 @@ class TestPrinter(object):
         assert p.doprint(sp.sqrt(2)) == 'math.sqrt(2)'
         assert p.doprint(1 / sp.sqrt(2)) == 'math.sqrt(2) / 2'
         assert p.doprint(
-            sp.Mul(1, 1 / sp.sqrt(2), eval=False)) == 'math.sqrt(2) / 2'
+            sp.Mul(1, 1 / sp.sqrt(2), evaluate=False)) == 'math.sqrt(2) / 2'
         assert p.doprint(sp.sqrt(x)) == 'math.sqrt(x)'
         assert p.doprint(1 / sp.sqrt(x)) == '1 / math.sqrt(x)'
         assert p.doprint(x**(x / (2 * x))) == 'math.sqrt(x)'
