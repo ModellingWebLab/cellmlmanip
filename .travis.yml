@@ -25,4 +25,3 @@ script:
   - isort --verbose --check-only --diff cellmlmanip tests setup.py
 after_success:
   - codecov
-
