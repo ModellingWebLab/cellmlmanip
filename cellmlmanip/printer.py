@@ -40,10 +40,10 @@
 #
 import sympy
 import sympy.printing
-from sympy.printing.precedence import precedence
 from sympy.codegen.rewriting import ReplaceOptim, optimize
 from sympy.core.mul import _keep_coeff
 from sympy.logic.boolalg import BooleanTrue
+from sympy.printing.precedence import precedence
 
 
 class Printer(sympy.printing.printer.Printer):
