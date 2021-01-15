@@ -1,3 +1,8 @@
+# (Unreleased)
+- Fixes for sympy 1.7: 
+    - Fixed the printer test (eval=false no longer exists but evaluate=false can still be used). 
+    - Removed the positional arguments in Variable as these were causing issues, instead use named arguments for name and units
+
 # Release 0.2.2
 - Fixed a rendering issue with secondary trigonometric functions such as sec and acoth (PR#317). This means for example that 1 / sec(x) now renders as cos(x) instead of 1 / 1 / cos(x).
 

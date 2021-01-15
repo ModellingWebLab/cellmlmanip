@@ -866,3 +866,7 @@ class TestConvertingExpressions:
         expr = _10 + _20
         with pytest.raises(UnitConversionError, match='Context: trying to evaluate'):
             store.evaluate_units_and_fix(expr)
+
+    def test_sympy_variable_handle(self, x, y):
+        u = 2.0 * x / y
+        assert sp.solveset(u + 1e7, x) == sp.FiniteSet(-5000000.0 * y)
