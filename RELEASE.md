@@ -1,4 +1,4 @@
-# (Unreleased)
+# Release 0.2.3
 - Fixes for sympy 1.7: 
     - Fixed the printer test (eval=false no longer exists but evaluate=false can still be used). 
     - Removed the positional arguments in Variable as these were causing issues, instead use named arguments for name and units
