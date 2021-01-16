@@ -31,7 +31,7 @@ pycodestyle==2.5.0        # via flake8
 pyflakes==2.1.1           # via flake8
 pyparsing==2.4.2          # via packaging, rdflib
 pytest-cov==2.7.1
-pytest==5.0.1
+pytest==6.0.0
 rdflib==4.2.2
 requests==2.22.0          # via codecov
 six==1.12.0               # via isodate, packaging, pathlib2
