@@ -44,7 +44,7 @@ setup(
             'codecov',
             'flake8',
             'isort',
-            'pytest>=4.6',
+            'pytest>=6.0',
             'pytest-cov',
         ],
     },
