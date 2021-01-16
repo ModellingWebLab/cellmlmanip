@@ -15,6 +15,7 @@ entrypoints==0.3          # via flake8
 flake8==3.7.8
 idna==2.8                 # via requests
 importlib-metadata==0.19  # via pluggy, pytest
+iniconfig==1.1.1
 isodate==0.6.0            # via rdflib
 isort==4.3.21
 lxml==4.4.1
