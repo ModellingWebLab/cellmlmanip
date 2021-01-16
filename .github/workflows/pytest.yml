@@ -21,7 +21,7 @@ jobs:
     - name: Lint with flake8
       run: |
         python -m flake8
-    - name: Test sorting wioth isort
+    - name: Check imports are ordered correctly
       run: |
         python -m isort --verbose --check-only --diff cellmlmanip tests setup.py
     - name: Test with pytest
