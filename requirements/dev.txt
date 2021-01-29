@@ -26,7 +26,7 @@ flake8==3.8.4
     #   -r test.in
 idna==2.10
     # via requests
-importlib-metadata==2.1.1
+importlib-metadata==3.4.0
     # via
     #   flake8
     #   pluggy
@@ -35,7 +35,7 @@ iniconfig==1.1.1
     # via pytest
 isodate==0.6.0
     # via rdflib
-isort==4.3.21
+isort==5.7.0
     # via
     #   -r dev.in
     #   -r test.in
@@ -45,13 +45,11 @@ mccabe==0.6.1
     # via flake8
 mpmath==1.1.0
     # via sympy
-networkx==2.4
+networkx==2.5
     # via -r base.in
 packaging==20.8
     # via pytest
-pathlib2==2.3.5
-    # via pytest
-pint==0.9
+pint==0.9 ; python_version < "3.8"
     # via -r base.in
 pip-tools==5.5.0
     # via -r dev.in
@@ -69,7 +67,7 @@ pyparsing==2.4.7
     #   rdflib
 pytest-cov==2.11.1
     # via -r test.in
-pytest==6.1.2
+pytest==6.2.2
     # via
     #   -r test.in
     #   pytest-cov
@@ -80,15 +78,16 @@ requests==2.25.1
 six==1.15.0
     # via
     #   isodate
-    #   pathlib2
     #   rdflib
-sympy==1.6.2
+sympy==1.7.1
     # via -r base.in
 toml==0.10.2
     # via pytest
+typing-extensions==3.7.4.3
+    # via importlib-metadata
 urllib3==1.26.3
     # via requests
-zipp==1.2.0
+zipp==3.4.0
     # via importlib-metadata
 
 # The following packages are considered to be unsafe in a requirements file:

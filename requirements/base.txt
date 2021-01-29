@@ -12,9 +12,9 @@ lxml==4.6.2
     # via -r base.in
 mpmath==1.1.0
     # via sympy
-networkx==2.4
+networkx==2.5
     # via -r base.in
-pint==0.9
+pint==0.9 ; python_version < "3.8"
     # via -r base.in
 pyparsing==2.4.7
     # via rdflib
@@ -22,5 +22,5 @@ rdflib==5.0.0
     # via -r base.in
 six==1.15.0
     # via rdflib
-sympy==1.6.2
+sympy==1.7.1
     # via -r base.in
