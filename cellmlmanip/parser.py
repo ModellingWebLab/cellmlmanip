@@ -12,6 +12,7 @@ import sympy
 from lxml import etree
 
 from cellmlmanip.model import SYMPY_SYMBOL_DELIMITER, Model
+from cellmlmanip.singularity_fixes import fix_singularity_equations
 
 
 UNIT_PREFIXES = {
@@ -101,7 +102,7 @@ class Parser(object):
         # A dictionary mapping component names to _Component objects
         self.components = {}
 
-    def parse(self, unit_store=None):
+    def parse(self, unit_store=None, skip_singularity_fixes=False):
         """
         The main method that reads the XML file and extracts the relevant parts of the CellML model
         definition.
@@ -139,6 +140,20 @@ class Parser(object):
         # Canonicalise representation
         self.transform_constants()
 
+        if not skip_singularity_fixes:
+            try:
+                OXMETA = 'https://chaste.comlab.ox.ac.uk/cellml/ns/oxford-metadata#'
+                PYCMLMETA = 'https://chaste.comlab.ox.ac.uk/cellml/ns/pycml#'
+                # Get and convert V
+                V = self.model.get_variable_by_ontology_term((OXMETA, 'membrane_voltage'))
+                
+                tagged = set(self.model.get_variables_by_rdf((PYCMLMETA, 'modifiable-parameter'), 'yes', sort=False))
+                annotated = set(filter(lambda q: self.model.has_ontology_annotation(q, OXMETA), self.model.variables()))
+
+                modifiable_parameters = (tagged | annotated) - set(self.model.get_derived_quantities(sort=False) + [self.model.get_free_variable()]) - set(self.model.get_state_variables(sort=False))
+                fix_singularity_equations(self.model, V, modifiable_parameters, exp_function=SIMPLE_MATHML_TO_SYMPY_CLASSES['exp'])
+            except (KeyError, ValueError):
+                pass # V not tagged or no free variable
         return self.model
 
     @staticmethod
