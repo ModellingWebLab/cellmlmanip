@@ -1,7 +1,6 @@
 from math import isclose
 
 import networkx as nx
-from cellmlmanip.model import FLOAT_PRECISION, Quantity
 from sympy import (
     Abs,
     Add,
@@ -12,10 +11,12 @@ from sympy import (
     Piecewise,
     Pow,
     Wild,
+    exp,
     log,
     solveset,
-    exp
 )
+
+from cellmlmanip.model import FLOAT_PRECISION, Quantity
 
 
 ONE = Quantity(1.0, 'dimensionless')
