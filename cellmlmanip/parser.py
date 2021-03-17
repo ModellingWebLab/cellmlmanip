@@ -46,6 +46,8 @@ class XmlNs(Enum):
     CMETA = 'http://www.cellml.org/metadata/1.0#'
     MATHML = 'http://www.w3.org/1998/Math/MathML'
     RDF = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#'
+    OXMETA = 'https://chaste.comlab.ox.ac.uk/cellml/ns/oxford-metadata#'
+    PYCMLMETA = 'https://chaste.comlab.ox.ac.uk/cellml/ns/pycml#'
 
 
 def with_ns(ns_enum, name):
@@ -140,20 +142,27 @@ class Parser(object):
         # Canonicalise representation
         self.transform_constants()
 
+        # If enabled, equations are analysied for singularities in GHK equations
+        # and singularities found are fixed by inserting and appropriate piecewise
         if not skip_singularity_fixes:
             try:
-                OXMETA = 'https://chaste.comlab.ox.ac.uk/cellml/ns/oxford-metadata#'
-                PYCMLMETA = 'https://chaste.comlab.ox.ac.uk/cellml/ns/pycml#'
-                # Get and convert V
-                V = self.model.get_variable_by_ontology_term((OXMETA, 'membrane_voltage'))
-                
-                tagged = set(self.model.get_variables_by_rdf((PYCMLMETA, 'modifiable-parameter'), 'yes', sort=False))
-                annotated = set(filter(lambda q: self.model.has_ontology_annotation(q, OXMETA), self.model.variables()))
+                # Get V
+                V = self.model.get_variable_by_ontology_term((XmlNs.OXMETA.value, 'membrane_voltage'))
 
-                modifiable_parameters = (tagged | annotated) - set(self.model.get_derived_quantities(sort=False) + [self.model.get_free_variable()]) - set(self.model.get_state_variables(sort=False))
-                fix_singularity_equations(self.model, V, modifiable_parameters, exp_function=SIMPLE_MATHML_TO_SYMPY_CLASSES['exp'])
+                # Retreive variables for which to exclude analysys to make sure their equations remain.
+                # These are: modifiable-parameters, derived quantities,
+                # annotated variables (so that they will remain findable), time (the free variable), state variables
+                tagged = set(self.model.get_variables_by_rdf((XmlNs.PYCMLMETA.value, 'modifiable-parameter'), 'yes',
+                                                             sort=False))
+                annotated = set(filter(lambda q: self.model.has_ontology_annotation(q, XmlNs.OXMETA.value),
+                                       self.model.variables()))
+
+                excluded = (tagged | annotated) -\
+                    set(self.model.get_derived_quantities(sort=False) + [self.model.get_free_variable()]) -\
+                    set(self.model.get_state_variables(sort=False))
+                fix_singularity_equations(self.model, V, excluded, exp_function=SIMPLE_MATHML_TO_SYMPY_CLASSES['exp'])
             except (KeyError, ValueError):
-                pass # V not tagged or no free variable
+                pass  # V not tagged or no free variable
         return self.model
 
     @staticmethod

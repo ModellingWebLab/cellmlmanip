@@ -17,9 +17,6 @@ from sympy import (
     exp
 )
 
-#from chaste_codegen._math_functions import exp_
-#from chaste_codegen._optimize import optimize_expr_for_c_output
-
 
 ONE = Quantity(1.0, 'dimensionless')
 
