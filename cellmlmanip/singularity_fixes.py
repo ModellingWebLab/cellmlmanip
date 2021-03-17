@@ -90,10 +90,9 @@ def _get_U(expr, V, U_offset, exp_function):
                             find_v_up = solveset(u - U_offset, V)
                             find_v_low = tuple(find_v_low)
                             find_v_up = tuple(find_v_up)
-                            if find_v_low and find_v_up:
-                                assert len(find_v_low) == len(find_v_up) == len(sp) == 1, \
-                                    'Expecting exactly 1 solution for singularity point'
-                                (vs, ve, sp) = (find_v_low[0], find_v_up[0], sp[0])
+                            assert find_v_low and find_v_up and len(find_v_low) == len(find_v_up) == len(sp) == 1, \
+                                'Expecting exactly 1 singularity point '
+                            (vs, ve, sp) = (find_v_low[0], find_v_up[0], sp[0])
                     except TypeError:
                         pass  # Result could be 'ConditionSet' which is not iterable and not Real
 
@@ -105,14 +104,6 @@ def _get_U(expr, V, U_offset, exp_function):
                             # search for a exp(multiple of V - sp)
                             match = n.match(exp_function(Z * V - Z * SP_wildcard))
                             found_on_top = check_top_match(match, sp)
-                            if not found_on_top:
-                                # A few equations don't play ball with the SP wildcard
-                                # We can find those by adding sp in the pattern directly
-                                match = n.match(Z * V - Z * sp)
-                                found_on_top = match is not None and Z in match and Z != 0
-                                if not found_on_top:
-                                    match = n.match(exp_function(Z * V - Z * sp))
-                                    found_on_top = match is not None and Z in match and Z != 0
                         if found_on_top:  # We've found a match stop looking in the other numerator arguments
                             break
                     if found_on_top:  # found singularity, no need to try further
