@@ -268,7 +268,7 @@ class UnitStore(object):
         if isinstance(cf, numbers.Number) and math.isclose(cf, 1.0):
             return 1
         elif isinstance(cf, sympy.Mul) and 1.0 in cf.args:
-            # We get an ugly artefact whereby pint gives us a 1.0*cf as conversion factor; remove the 1.0
+            # We get an ugly artefact whereby print gives us a 1.0*cf as conversion factor; remove the 1.0
             return sympy.Mul(*[a for a in cf.args if a != 1.0])
         return cf
 
