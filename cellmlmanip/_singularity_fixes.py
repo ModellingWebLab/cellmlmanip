@@ -22,7 +22,10 @@ from sympy import (
 
 import cellmlmanip
 from cellmlmanip.model import FLOAT_PRECISION
+
+
 ONE = cellmlmanip.Quantity(1.0, 'dimensionless')
+
 
 def _generate_piecewise(vs, ve, sp, ex, V):
     """Generates a piecewise for expression based on the singularity point (sp) and vmin (vs) and vmax (ve) """
@@ -32,7 +35,7 @@ def _generate_piecewise(vs, ve, sp, ex, V):
     f_vs = ex.xreplace({V: vs})
     f_ve = ex.xreplace({V: ve})
     return Piecewise((f_vs + ((V - vs) / (ve - vs)) * (f_ve - f_vs),
-                        Abs(V - sp) < Abs((ve - vs) / 2)), (ex, True))
+                      Abs(V - sp) < Abs((ve - vs) / 2)), (ex, True))
 
 
 def _get_sinularity(expr, V, U_offset, exp_function):
@@ -124,11 +127,12 @@ def _get_sinularity(expr, V, U_offset, exp_function):
 
 def _fixe_expr_parts(expr, V, U_offset, exp_function):
     """Removes fixable singularities and replaces it with a piecewise
-    :return: either (Vmin (vs), Vmax (ve), singularity point, expression, True) 
-                    if we have identified a singularity needs to be constructed but it cannot be done at this level in the recursion.
-                    For eample if 2 singularities with teh same singularity point are added up, a single singularity is instead constructed at the recursion level above.
+    :return: either (Vmin (vs), Vmax (ve), singularity point, expression, True)
+                    if we have identified a singularity needs to be made but it can't be done yet.
+                    For eample if 2 singularities with the same singularity point are added up,
+                    a single singularity is constructed instead.
              or `(None, None, None, fixed expr, fixed_expr has piecewise)` otherwise
-             
+
     see :meth:fix_singularity_equations for more details "
     """
 
@@ -193,7 +197,7 @@ def _remove_singularities(expr, V, U_offset=1e-7, exp_function=exp):
     :param: U_offset determins the offset either side of U (see get_singularity) for which the fix is used
     :param: exp_function the function representing exp
     :return: (bool, expr) as follows: (expr has changed, expr with singularities fixes if appropriate)
-    
+
     see :meth:fix_singularity_equations for more details "
     """
     if not expr.has(exp_function):
@@ -222,7 +226,8 @@ def remove_fixable_singularities(model, V, modifiable_parameters, U_offset=1e-7,
         # Skip variables that have no equation or equations defining parameters or where rhs is a Piecewise
         if eq is not None and not isinstance(eq.rhs, Piecewise) and eq.lhs not in modifiable_parameters:
             unprocessed_eqs[eq.lhs] = eq.rhs.xreplace(unprocessed_eqs)  # store partially evaluated version of the rhs
-            changed, new_ex = _remove_singularities(unprocessed_eqs[eq.lhs], V, U_offset=U_offset, exp_function=exp_function)
+            changed, new_ex = _remove_singularities(unprocessed_eqs[eq.lhs], V, U_offset=U_offset,
+                                                    exp_function=exp_function)
             if changed:  # update equation if the rhs has a singularity that can be fixed
                 model.remove_equation(eq)
                 model.add_equation(Eq(eq.lhs, new_ex))

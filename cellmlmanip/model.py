@@ -11,10 +11,9 @@ import networkx as nx
 import rdflib
 import sympy
 
+import cellmlmanip
 from cellmlmanip.rdf import create_rdf_node
 from cellmlmanip.units import UnitStore
-#from cellmlmanip._singularity_fixes import fix_singularity_equations
-import cellmlmanip
 
 
 logger = logging.getLogger(__name__)
@@ -1053,20 +1052,20 @@ class Model(object):
         - `U / (exp(U) - 1.0)`
         - `U / (1.0 - exp(U))`
         - `(exp(U) - 1.0) / U`
-        - `(1.0 - exp(U)) / U`  
+        - `(1.0 - exp(U)) / U`
         It replaces these with a piecewise 1e-7 either side of U==0 drawing a stright line in the region.
-        For example `(V + 5)/(exp(V + 5) - 1)` becomes 
-        `((fabs(-V - 5.0000000000000000) < fabs(-4.9999999000000000 / 2 - -5.0000001000000000 / 2)) 
+        For example `(V + 5)/(exp(V + 5) - 1)` becomes
+        `((fabs(-V - 5.0000000000000000) < fabs(-4.9999999000000000 / 2 - -5.0000001000000000 / 2))
            ? -0.494049243462503*V - 1.4702462167574 : ((5.0 + V) / (-1.0 + exp(5.0 + V))))`
-        
-        :param exclude: set of variables which will not be substituted in the evaluation. 
+
+        :param exclude: set of variables which will not be substituted in the evaluation.
          This ensures their defining equations will remain.
         """
         assert isinstance(exclude, set), 'eclude is expected to be a set'
         try:
             time = [self.get_free_variable()]
         except ValueError:
-            time = [] # model has no free variable
+            time = []  # model has no free variable
 
         try:
             # Get V
@@ -1080,7 +1079,8 @@ class Model(object):
             excluded = (exclude | annotated) -\
                 set(self.get_derived_quantities(sort=False) + time) -\
                 set(self.get_state_variables(sort=False))
-            cellmlmanip.remove_fixable_singularities(self, V, excluded, exp_function=cellmlmanip.parser.SIMPLE_MATHML_TO_SYMPY_CLASSES['exp'])
+            cellmlmanip.remove_fixable_singularities(
+                self, V, excluded, exp_function=cellmlmanip.parser.SIMPLE_MATHML_TO_SYMPY_CLASSES['exp'])
         except KeyError:
             logger.warning(self.name + ' Has no membrane_voltage tagged, cannot remove fixable singuarities.')
 
