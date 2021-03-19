@@ -1061,6 +1061,7 @@ class Model(object):
         :param exclude: set of variables which will not be substituted in the evaluation.
          This ensures their defining equations will remain.
         """
+        from ._singularity_fixes import remove_fixable_singularities
         assert isinstance(exclude, set), 'eclude is expected to be a set'
         try:
             time = [self.get_free_variable()]
@@ -1079,8 +1080,9 @@ class Model(object):
             excluded = (exclude | annotated) -\
                 set(self.get_derived_quantities(sort=False) + time) -\
                 set(self.get_state_variables(sort=False))
-            cellmlmanip.remove_fixable_singularities(
-                self, V, excluded, exp_function=cellmlmanip.parser.SIMPLE_MATHML_TO_SYMPY_CLASSES['exp'])
+
+            remove_fixable_singularities(self, V, excluded,
+                                         exp_function=cellmlmanip.parser.SIMPLE_MATHML_TO_SYMPY_CLASSES['exp'])
         except KeyError:
             logger.warning(self.name + ' Has no membrane_voltage tagged, cannot remove fixable singuarities.')
 
