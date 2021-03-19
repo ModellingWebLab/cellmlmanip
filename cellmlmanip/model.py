@@ -13,6 +13,8 @@ import sympy
 
 from cellmlmanip.rdf import create_rdf_node
 from cellmlmanip.units import UnitStore
+#from cellmlmanip._singularity_fixes import fix_singularity_equations
+import cellmlmanip
 
 
 logger = logging.getLogger(__name__)
@@ -22,6 +24,7 @@ SYMPY_SYMBOL_DELIMITER = '$'
 
 # Float precision to use when creating sympy.Float objects
 FLOAT_PRECISION = 17
+OXMETA = 'https://chaste.comlab.ox.ac.uk/cellml/ns/oxford-metadata#'
 
 
 class Model(object):
@@ -1041,6 +1044,45 @@ class Model(object):
             self.add_equation(new_equation)
 
         return new_variable
+
+    def remove_fixable_singularities(self, exclude=set()):
+        """
+        Removes removable singularities from the model equations and replaces these with a piecewise.
+
+        The process looks for equations of any of the following forms, where U is a function of V:
+        - `U / (exp(U) - 1.0)`
+        - `U / (1.0 - exp(U))`
+        - `(exp(U) - 1.0) / U`
+        - `(1.0 - exp(U)) / U`  
+        It replaces these with a piecewise 1e-7 either side of U==0 drawing a stright line in the region.
+        For example `(V + 5)/(exp(V + 5) - 1)` becomes 
+        `((fabs(-V - 5.0000000000000000) < fabs(-4.9999999000000000 / 2 - -5.0000001000000000 / 2)) 
+           ? -0.494049243462503*V - 1.4702462167574 : ((5.0 + V) / (-1.0 + exp(5.0 + V))))`
+        
+        :param exclude: set of variables which will not be substituted in the evaluation. 
+         This ensures their defining equations will remain.
+        """
+        assert isinstance(exclude, set), 'eclude is expected to be a set'
+        try:
+            time = [self.get_free_variable()]
+        except ValueError:
+            time = [] # model has no free variable
+
+        try:
+            # Get V
+            V = self.get_variable_by_ontology_term((OXMETA, 'membrane_voltage'))
+            # Retreive variables for which to exclude analysys to make sure their equations remain.
+            # These are: modifiable-parameters, derived quantities,
+            # annotated variables (so that they will remain findable), time (the free variable), state variables
+            annotated = set(filter(lambda q: self.has_ontology_annotation(q, OXMETA),
+                                   self.variables()))
+
+            excluded = (exclude | annotated) -\
+                set(self.get_derived_quantities(sort=False) + time) -\
+                set(self.get_state_variables(sort=False))
+            cellmlmanip.remove_fixable_singularities(self, V, excluded, exp_function=cellmlmanip.parser.SIMPLE_MATHML_TO_SYMPY_CLASSES['exp'])
+        except KeyError:
+            logger.warning(self.name + ' Has no membrane_voltage tagged, cannot remove fixable singuarities.')
 
 
 class Quantity(sympy.Dummy):

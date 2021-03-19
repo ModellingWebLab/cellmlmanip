@@ -1,3 +1,7 @@
+"""
+`remove_fixable_singularities` specifies a method to remove fixable singularities from a model
+This represents a flattened CellML model and metadata about its variables.
+"""
 from math import isclose
 
 import networkx as nx
@@ -16,31 +20,30 @@ from sympy import (
     solveset,
 )
 
-from cellmlmanip.model import FLOAT_PRECISION, Quantity
-
-
-ONE = Quantity(1.0, 'dimensionless')
-
+import cellmlmanip
+from cellmlmanip.model import FLOAT_PRECISION
+ONE = cellmlmanip.Quantity(1.0, 'dimensionless')
 
 def _generate_piecewise(vs, ve, sp, ex, V):
-    """Generates a piecewsie for expression based on the singularity point sp and vmin (vs) and vmax (ve) """
-    def f(Vx, e):
-        return e.xreplace({V: Vx})
-
+    """Generates a piecewise for expression based on the singularity point (sp) and vmin (vs) and vmax (ve) """
     if vs is None:  # This shouldn't be apiecewise since we have no Vmin / Vmax
         return ex
 
-    return Piecewise(*[(f(vs, ex) + ((V - vs) / (ve - vs)) * (f(ve, ex) - f(vs, ex)),
-                        Abs(V - sp) < Abs((ve - vs) / 2)), (ex, True)])
+    f_vs = ex.xreplace({V: vs})
+    f_ve = ex.xreplace({V: ve})
+    return Piecewise((f_vs + ((V - vs) / (ve - vs)) * (f_ve - f_vs),
+                        Abs(V - sp) < Abs((ve - vs) / 2)), (ex, True))
 
 
-def _get_U(expr, V, U_offset, exp_function):
-    '''Finds U in ghk equations these are of one of the the following forms where U is an expression over V:
+def _get_sinularity(expr, V, U_offset, exp_function):
+    """Finds U_offset and teh singularity either side and singularity U in ghk-like equations
+       these are of one of the the following forms where U is an expression over V:
        - `U / (exp(U) - 1.0)`
        - `U / (1.0 - exp(U))`
        - `(exp(U) - 1.0) / U`
        - `(1.0 - exp(U)) / U`
-       '''
+       :return: (Vmin (vs), Vmax (ve), singularity point)
+       """
     Z = Wild('Z', real=True)
     U_wildcard = Wild('U_wildcard', real=True, include=[V])
     SP_wildcard = Wild('SP_wildcard', real=True)
@@ -55,10 +58,10 @@ def _get_U(expr, V, U_offset, exp_function):
                                                             and isclose(m[SP_wildcard], sp)))
 
     def float_dummies(expr):
-        '''Turns flaots back into Quantity dummies to be in line with the rest of the sympy equations'''
+        """Turns flaots back into Quantity dummies to be in line with the rest of the sympy equations"""
         if expr is None:
             return None
-        return expr.xreplace({f: Quantity(f, 'dimensionless') for f in expr.atoms(Float)})
+        return expr.xreplace({f: cellmlmanip.Quantity(f, 'dimensionless') for f in expr.atoms(Float)})
 
     # the denominator is all args where a **-1
     numerator = tuple(a for a in expr.args if not isinstance(a, Pow) or a.args[1] != -1.0)
@@ -119,29 +122,36 @@ def _get_U(expr, V, U_offset, exp_function):
     return (float_dummies(vs), float_dummies(ve), float_dummies(sp))
 
 
-def _new_expr_parts(expr, V, U_offset, exp_function):
-    """Removes suitable singularities and replaces it with a piecewise, returning (vs, ve, sp, has_singularity)"""
+def _fixe_expr_parts(expr, V, U_offset, exp_function):
+    """Removes fixable singularities and replaces it with a piecewise
+    :return: either (Vmin (vs), Vmax (ve), singularity point, expression, True) 
+                    if we have identified a singularity needs to be constructed but it cannot be done at this level in the recursion.
+                    For eample if 2 singularities with teh same singularity point are added up, a single singularity is instead constructed at the recursion level above.
+             or `(None, None, None, fixed expr, fixed_expr has piecewise)` otherwise
+             
+    see :meth:fix_singularity_equations for more details "
+    """
 
     if isinstance(expr, Mul):  # 1 * A --> A (remove unneeded 1 *)
         expr = Mul(*[a for a in expr.args if not str(a) in ('1.0', '1')])
 
     # Turn Quantity dummies into numbers, to enable analysis
-    subs_dict = {d: d.evalf(FLOAT_PRECISION) for d in expr.atoms(Quantity)}
+    subs_dict = {d: d.evalf(FLOAT_PRECISION) for d in expr.atoms(cellmlmanip.Quantity)}
     check_U_expr = expr.xreplace(subs_dict)
 
-    if not expr.has(exp_function):  # Expressions without exp don't have GHK equations
+    if not expr.has(exp_function):  # Expressions without exp don't have GHK-like equations
         return (None, None, None, expr, False)
 
     elif isinstance(expr, Add):  # A + B + ..
         # The expression is an addition, find singularities in each argument
         new_expr_parts = []
         for a in expr.args:
-            new_expr_parts.append(_new_expr_parts(a, V, U_offset, exp_function))
+            new_expr_parts.append(_fixe_expr_parts(a, V, U_offset, exp_function))
 
         # If all arguments have the same singularity point, return 1 singularity with the widest range
         range = [item for (vs, ve, _, _, _) in new_expr_parts for item in (vs, ve)]
         if len(new_expr_parts) > 1 and len(set([str(sp) for (_, _, sp, _, _) in new_expr_parts])) == 1 \
-                and all(isinstance(b, Quantity) for b in range):
+                and all(isinstance(b, cellmlmanip.Quantity) for b in range):
             sp = new_expr_parts[0][2]
             vs, ve = min(range, key=lambda v: float(str(v))), max(range, key=lambda v: float(str(v)))
             return (vs, ve, sp, expr, True)
@@ -155,19 +165,19 @@ def _new_expr_parts(expr, V, U_offset, exp_function):
 
     elif isinstance(expr, Pow) and expr.args[1] == -1.0 and len(expr.args) == 2:  # 1/A
         # Find singularities in A and adjust result to represent 1 / A
-        vs, ve, sp, ex, has_piecewise = _new_expr_parts(expr.args[0], V, U_offset, exp_function)
+        vs, ve, sp, ex, has_piecewise = _fixe_expr_parts(expr.args[0], V, U_offset, exp_function)
         has_piecewise = has_piecewise or vs is not None
         return (None, None, None, ONE / _generate_piecewise(vs, ve, sp, ex, V), has_piecewise)
 
     elif isinstance(expr, Mul):  # A * B * ...
-        (vs, ve, sp) = _get_U(check_U_expr, V, U_offset, exp_function)  # Find the singularity point
+        (vs, ve, sp) = _get_sinularity(check_U_expr, V, U_offset, exp_function)  # Find the singularity point
         if vs is not None:
             return (vs, ve, sp, expr, True)
         else:  # Couldn't find singularity, try the expression's arguments
             expr_parts = []
             is_piecewise = False
             for sub_ex in expr.args:
-                vs, ve, sp, ex, has_piecewise = _new_expr_parts(sub_ex, V, U_offset, exp_function)
+                vs, ve, sp, ex, has_piecewise = _fixe_expr_parts(sub_ex, V, U_offset, exp_function)
                 has_piecewise = is_piecewise = is_piecewise or has_piecewise or vs is not None
                 expr_parts.append(_generate_piecewise(vs, ve, sp, ex, V))
             return (None, None, None, Mul(*expr_parts), is_piecewise)
@@ -176,31 +186,31 @@ def _new_expr_parts(expr, V, U_offset, exp_function):
         return (None, None, None, expr, False)
 
 
-def new_expr(expr, V, U_offset=1e-7, exp_function=exp):
+def _remove_singularities(expr, V, U_offset=1e-7, exp_function=exp):
     """Removes suitable singularities and replaces it with a piecewise.
     :param: expr the expression to analyse ().
-    :param: V the volatge variable
-    :param: U_offset determins the offset either side of U for which the fix is used
+    :param: V the voltage variable
+    :param: U_offset determins the offset either side of U (see get_singularity) for which the fix is used
     :param: exp_function the function representing exp
-    :param: optimize whether or not to apply optimisations to the new expression
-    :return: expr with singularities fixes if appropriate
+    :return: (bool, expr) as follows: (expr has changed, expr with singularities fixes if appropriate)
+    
+    see :meth:fix_singularity_equations for more details "
     """
     if not expr.has(exp_function):
         return False, expr
-    (vs, ve, sp, ex, changed) = _new_expr_parts(expr, V, U_offset, exp_function)
+    (vs, ve, sp, ex, changed) = _fixe_expr_parts(expr, V, U_offset, exp_function)
     ex = _generate_piecewise(vs, ve, sp, ex, V)
     return changed or vs is not None, ex
 
 
-def fix_singularity_equations(model, V, modifiable_parameters, U_offset=1e-7, exp_function=exp):
-    """Finds singularities in the GHK equations in the model and replaces them with a piecewise.
+def remove_fixable_singularities(model, V, modifiable_parameters, U_offset=1e-7, exp_function=exp):
+    """Finds singularities in the GHK-like equations in the model and replaces them with a piecewise.
     :param: the cellmlmanip model the model to analyse.
-    :param: V the volatge variable
+    :param: V the voltage variable
     :param: modifiable_parameters the variables which are modifiable in the model,
             their defining equations are excluded form the analysis
     :param: U_offset determins the offset either side of U for which the fix is used
     :param: exp_function the function representing exp
-    :param: optimize whether or not to apply optimisations to the new expression
     """
     unprocessed_eqs = {}
     # iterate over sorted variables in the model
@@ -212,7 +222,7 @@ def fix_singularity_equations(model, V, modifiable_parameters, U_offset=1e-7, ex
         # Skip variables that have no equation or equations defining parameters or where rhs is a Piecewise
         if eq is not None and not isinstance(eq.rhs, Piecewise) and eq.lhs not in modifiable_parameters:
             unprocessed_eqs[eq.lhs] = eq.rhs.xreplace(unprocessed_eqs)  # store partially evaluated version of the rhs
-            changed, new_ex = new_expr(unprocessed_eqs[eq.lhs], V, U_offset=U_offset, exp_function=exp_function)
+            changed, new_ex = _remove_singularities(unprocessed_eqs[eq.lhs], V, U_offset=U_offset, exp_function=exp_function)
             if changed:  # update equation if the rhs has a singularity that can be fixed
                 model.remove_equation(eq)
                 model.add_equation(Eq(eq.lhs, new_ex))

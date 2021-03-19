@@ -1,13 +1,6 @@
 # (unreleased)
-- Added an automatic fix for removable singularities in GHK equations. This feature has been moved from chaste_codegen to allow more general use.
-  `load_model` has gained an optional parameter `skip_singularity_fixes` to allow users to switch the fixing off (defaults to False).
-  The process looks for equations of any of the following forms, where U is a function of V:
-  - `U / (exp(U) - 1.0)`
-  - `U / (1.0 - exp(U))`
-  - `(exp(U) - 1.0) / U`
-  - `(1.0 - exp(U)) / U`  
-  It replaces these with a piecewise 1e-7 either side of U==0 drawing a stright line in the region.
-  For example `(V + 5)/(exp(V + 5) - 1)` becomes `((fabs(-V - 5.0000000000000000) < fabs(-4.9999999000000000 / 2 - -5.0000001000000000 / 2)) ? ((-5.0000001000000000 + 5.0) / (-1.0 + exp(-5.0000001000000000 + 5.0)) + (--5.0000001000000000 + V) * ((-4.9999999000000000 + 5.0) / (-1.0 + exp(-4.9999999000000000 + 5.0)) - (-5.0000001000000000 + 5.0) / (-1.0 + exp(-5.0000001000000000 + 5.0))) / (--5.0000001000000000 - 4.9999999000000000)) : ((5.0 + V) / (-1.0 + exp(5.0 + V))))`
+- added Model.remove_fixable_singularities to allow removing fixable singularities in the model's equations.
+
 
   See for more details appendix B in: Johnstone, R. H. (2018). Uncertainty characterisation in action potential modelling for cardiac drug safety [PhD thesis]. University of Oxford. https://ora.ox.ac.uk/objects/uuid:0a28829c-828d-4641-bfb0-11193ef47195
 
