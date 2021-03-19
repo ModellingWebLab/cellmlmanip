@@ -6,8 +6,8 @@ from sympy import (
     log,
 )
 
-from cellmlmanip.model import Quantity, Variable
 from cellmlmanip._singularity_fixes import _remove_singularities
+from cellmlmanip.model import Quantity, Variable
 
 from . import shared
 
