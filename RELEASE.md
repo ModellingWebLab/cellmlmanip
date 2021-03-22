@@ -1,9 +1,6 @@
 # (unreleased)
 - added Model.remove_fixable_singularities to allow removing fixable singularities in the model's equations.
 
-
-  See for more details appendix B in: Johnstone, R. H. (2018). Uncertainty characterisation in action potential modelling for cardiac drug safety [PhD thesis]. University of Oxford. https://ora.ox.ac.uk/objects/uuid:0a28829c-828d-4641-bfb0-11193ef47195
-
 # Release 0.2.3
 - Fixes for sympy 1.7: 
     - Fixed the printer test (eval=false no longer exists but evaluate=false can still be used). 
