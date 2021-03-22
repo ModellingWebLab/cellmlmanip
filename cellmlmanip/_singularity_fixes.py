@@ -1,11 +1,6 @@
 """
 ``remove_fixable_singularities`` specifies a method to remove fixable singularities from a model
 This represents a flattened CellML model and metadata about its variables.
-
-See for more details appendix B in:
- [Johnstone, R. H. (2018). Uncertainty characterisation in action potential modelling for cardiac drug safety.
- University of Oxford.](https://ora.ox.ac.uk/objects/uuid:0a28829c-828d-4641-bfb0-11193ef47195)
-
 """
 from math import isclose
 
