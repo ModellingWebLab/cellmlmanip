@@ -1,7 +1,7 @@
 name: Documentation
 on: [pull_request]
 jobs:
-  coverage:
+  documentation:
     runs-on: ubuntu-latest
 
     steps:
