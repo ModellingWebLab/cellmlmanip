@@ -1055,14 +1055,15 @@ class Model(object):
         It replaces these with a piecewise 1e-7 either side of U==0 drawing a stright line in the region.
         For example `(V + 5)/(exp(V + 5) - 1)` becomes
         `((fabs(-V - 5.0000000000000000) < fabs(-4.9999999000000000 / 2 - -5.0000001000000000 / 2))
-           ? -0.494049243462503*V - 1.4702462167574 : ((5.0 + V) / (-1.0 + exp(5.0 + V))))`
+        ? -0.494049243462503*V - 1.4702462167574 : ((5.0 + V) / (-1.0 + exp(5.0 + V))))`
 
         See for more details appendix B in:
-         [Johnstone, R. H. (2018). Uncertainty characterisation in action potential modelling for cardiac drug safety.
-         University of Oxford.](https://ora.ox.ac.uk/objects/uuid:0a28829c-828d-4641-bfb0-11193ef47195)
+        [Johnstone, R. H. (2018). Uncertainty characterisation in action potential modelling for cardiac drug safety.
+        University of Oxford.](https://ora.ox.ac.uk/objects/uuid:0a28829c-828d-4641-bfb0-11193ef47195)
 
         :param exclude: set of variables which will not be substituted in the evaluation.
-         This ensures their defining equations will remain.
+
+        This ensures their defining equations will remain.
         """
         from ._singularity_fixes import remove_fixable_singularities
         assert isinstance(exclude, set), 'eclude is expected to be a set'
