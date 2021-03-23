@@ -27,22 +27,19 @@ ONE = cellmlmanip.Quantity(1.0, 'dimensionless')
 
 
 def _generate_piecewise(expr, V, sp, Vmin, Vmax):
-    """Generates a new (piecewise) expression based on expr with a linear interpolation when V is between Vmin and Vmax
-
-       The returned expression between Vmin and Vmax is::
-       f(vs) + (f(ve) - f(vs)) * (V - vs) / (ve - vs)
-       whenever sp is not Null, returns the original expression otherwise.
-
-       :param: The expression to turn into a piecewise
-       :param: V the voltage variable.
-       :param: the value of the singularity point.
-       :param: the value of the lower bound.
-       :param: the value of the upper bound.
-       :return: expr with a singularity exception around sp, if sp is not None else return the original expr
     """
-    if sp is None:  # This shouldn't be apiecewise since we have no Vmin / Vmax
-        return expr
+    Generates a new (piecewise) expression based on expr with a linear interpolation when V is between Vmin and Vmax
 
+    The returned expression between Vmin and Vmax is::
+    f(vs) + (f(ve) - f(vs)) * (V - vs) / (ve - vs)
+
+    :param: The expression to turn into a piecewise
+    :param: V the voltage variable.
+    :param: the value of the singularity point: the value of V for whih U == 0
+    :param: the value of the lower bound: the value of V for which U - U_offset == 0
+    :param: the value of the upper bound: the value of V for which U + U_offset == 0
+    :return: expr with a singularity exception around sp, if sp is not None else return the original expr
+    """
     f_Vmin = expr.xreplace({V: Vmin})
     f_Vmax = expr.xreplace({V: Vmax})
     return Piecewise((f_Vmin + ((V - Vmin) / (Vmax - Vmin)) * (f_Vmax - f_Vmin),
@@ -50,15 +47,19 @@ def _generate_piecewise(expr, V, sp, Vmin, Vmax):
 
 
 def _get_singularity(expr, V, U_offset, exp_function):
-    """ Finds singularities in equations of the form:
+    """
+    Finds singularities in equations of the form:
        - ``U / (exp(U) - 1.0)``
        - ``U / (1.0 - exp(U))``
        - ``(exp(U) - 1.0) / U``
        - ``(1.0 - exp(U)) / U``
 
-       In addition to the singularity itself, this functions returns a lower and upper bounds::
-       :return: (Vmin, Vmax, singularity point)
-       """
+    In addition to the singularity itself, this functions returns a lower and upper bounds as follows:
+    - sp is the singularity point: the value of V for whih U == 0
+    - Vmin is the value of V for which U - U_offset == 0
+    - Vmax is the value of V for which U + U_offset == 0:
+    :return: (Vmin, Vmax, singularity point)
+    """
     Z = Wild('Z', real=True)
     U_wildcard = Wild('U_wildcard', real=True, include=[V])
     SP_wildcard = Wild('SP_wildcard', real=True)
@@ -137,8 +138,9 @@ def _get_singularity(expr, V, U_offset, exp_function):
     return (float_dummies(Vmin), float_dummies(Vmax), float_dummies(sp))
 
 
-def _fixe_expr_parts(expr, V, U_offset, exp_function):
-    """Removes fixable singularities and replaces them with piecewise expressions.
+def _fix_expr_parts(expr, V, U_offset, exp_function):
+    """
+    Removes fixable singularities and replaces them with piecewise expressions.
 
     :return: either (Vmin, Vmax, singularity point, expression, True)
                     if we have identified a singularity needs to be made but it can't be done yet.
@@ -146,7 +148,7 @@ def _fixe_expr_parts(expr, V, U_offset, exp_function):
                     a single singularity is constructed instead.
              or ``(None, None, None, fixed expr, fixed_expr has piecewise)`` otherwise
 
-    see :meth:`fix_singularity_equations for more details` "
+    see :meth:`remove_fixable_singularities for more details` "
     """
 
     if isinstance(expr, Mul):  # 1 * A --> A (remove unneeded 1 *)
@@ -163,7 +165,7 @@ def _fixe_expr_parts(expr, V, U_offset, exp_function):
         # The expression is an addition, find singularities in each argument
         new_expr_parts = []
         for a in expr.args:
-            new_expr_parts.append(_fixe_expr_parts(a, V, U_offset, exp_function))
+            new_expr_parts.append(_fix_expr_parts(a, V, U_offset, exp_function))
 
         # If all arguments have the same singularity point, return 1 singularity with the widest range
         range = [item for (Vmin, Vmax, _, _, _) in new_expr_parts for item in (Vmin, Vmax)]
@@ -177,14 +179,15 @@ def _fixe_expr_parts(expr, V, U_offset, exp_function):
             is_piecewise = False
             for Vmin, Vmax, sp, ex, has_piecewise in new_expr_parts:
                 is_piecewise = is_piecewise or has_piecewise or Vmin is not None
-                expr_parts.append(_generate_piecewise(ex, V, sp, Vmin, Vmax))
+                expr_parts.append(_generate_piecewise(ex, V, sp, Vmin, Vmax) if sp is not None else ex)
             return (None, None, None, Add(*expr_parts), is_piecewise)
 
     elif isinstance(expr, Pow) and expr.args[1] == -1.0 and len(expr.args) == 2:  # 1/A
         # Find singularities in A and adjust result to represent 1 / A
-        Vmin, Vmax, sp, ex, has_piecewise = _fixe_expr_parts(expr.args[0], V, U_offset, exp_function)
+        Vmin, Vmax, sp, ex, has_piecewise = _fix_expr_parts(expr.args[0], V, U_offset, exp_function)
         has_piecewise = has_piecewise or Vmin is not None
-        return (None, None, None, ONE / _generate_piecewise(ex, V, sp, Vmin, Vmax), has_piecewise)
+        return (None, None, None, ONE / (_generate_piecewise(ex, V, sp, Vmin, Vmax) if sp is not None else ex),
+                has_piecewise)
 
     elif isinstance(expr, Mul):  # A * B * ...
         (Vmin, Vmax, sp) = _get_singularity(check_U_expr, V, U_offset, exp_function)  # Find the singularity point
@@ -194,9 +197,9 @@ def _fixe_expr_parts(expr, V, U_offset, exp_function):
             expr_parts = []
             is_piecewise = False
             for sub_ex in expr.args:
-                Vmin, Vmax, sp, ex, has_piecewise = _fixe_expr_parts(sub_ex, V, U_offset, exp_function)
+                Vmin, Vmax, sp, ex, has_piecewise = _fix_expr_parts(sub_ex, V, U_offset, exp_function)
                 has_piecewise = is_piecewise = is_piecewise or has_piecewise or Vmin is not None
-                expr_parts.append(_generate_piecewise(ex, V, sp, Vmin, Vmax))
+                expr_parts.append(_generate_piecewise(ex, V, sp, Vmin, Vmax) if sp is not None else ex)
             return (None, None, None, Mul(*expr_parts), is_piecewise)
 
     else:  # Different type of equation e.g a number
@@ -204,24 +207,26 @@ def _fixe_expr_parts(expr, V, U_offset, exp_function):
 
 
 def _remove_singularities(expr, V, U_offset=1e-7, exp_function=exp):
-    """Removes suitable singularities and replaces it with a piecewise.
+    """
+    Removes suitable singularities and replaces it with a piecewise.
     :param: expr the expression to analyse ().
     :param: V the voltage variable
     :param: U_offset determins the offset either side of U (see get_singularity) for which the fix is used
     :param: exp_function the function representing exp
     :return: (bool, expr) as follows: (expr has changed, expr with singularities fixes if appropriate)
 
-    see :meth:`fix_singularity_equations for more details `"
+    see :meth:`remove_fixable_singularities for more details `"
     """
     if not expr.has(exp_function):
         return False, expr
-    (Vmin, Vmax, sp, ex, changed) = _fixe_expr_parts(expr, V, U_offset, exp_function)
-    ex = _generate_piecewise(ex, V, sp, Vmin, Vmax)
+    (Vmin, Vmax, sp, ex, changed) = _fix_expr_parts(expr, V, U_offset, exp_function)
+    ex = _generate_piecewise(ex, V, sp, Vmin, Vmax) if sp is not None else ex
     return changed or Vmin is not None, ex
 
 
 def remove_fixable_singularities(model, V, modifiable_parameters, U_offset=1e-7, exp_function=exp):
-    """Finds singularities in the GHK-like equations in the model and replaces them with a piecewise.
+    """
+    Finds singularities in the GHK-like equations in the model and replaces them with a piecewise.
     :param: the cellmlmanip model the model to analyse.
     :param: V the voltage variable
     :param: modifiable_parameters the variables which are modifiable in the model,
