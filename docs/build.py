@@ -5,6 +5,7 @@
 import inspect
 import os
 import subprocess
+import sys
 
 
 def doctest_sphinx(root=os.curdir):
@@ -13,6 +14,7 @@ def doctest_sphinx(root=os.curdir):
     producing errors.
     """
     print('Checking if docs can be built.')
+    sys.stdout.flush()
     p = subprocess.Popen([
         'sphinx-build',
         '-b',
@@ -29,10 +31,10 @@ def doctest_sphinx(root=os.curdir):
         except OSError:
             pass
         p.wait()
-        print('')
+        print('Build OK')
         sys.exit(1)
     if ret != 0:
-        print('FAILED')
+        print('Build FAILED')
         sys.exit(ret)
 
 
