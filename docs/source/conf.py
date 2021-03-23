@@ -58,7 +58,7 @@ intersphinx_mapping = {
     'pint': ('https://pint.readthedocs.io/en/stable/', None),
     'python': ('https://docs.python.org/3', None),
 }
-intersphinx_timeout = 10
+intersphinx_timeout = 30
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
