@@ -50,7 +50,7 @@ def _generate_piecewise(expr, V, sp, Vmin, Vmax):
 
 
 def _get_singularity(expr, V, U_offset, exp_function):
-    """ Finds singularities in equations of the form::
+    """ Finds singularities in equations of the form:
        - ``U / (exp(U) - 1.0)``
        - ``U / (1.0 - exp(U))``
        - ``(exp(U) - 1.0) / U``
