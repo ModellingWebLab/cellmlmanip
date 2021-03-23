@@ -6,11 +6,9 @@ Cellmlmanip can be installed using pip.
 For developers contributing to cellmlmanip itself, it can be downloaded and installed from source:
 ```
 git clone https://github.com/ModellingWebLab/cellmlmanip.git
-pip install -r requirements/dev.txt
-pip install -e .
+pip install -e .[test,docs]
 
 ```
-
 
 ## Testing
 
@@ -19,9 +17,11 @@ To run tests, just run
 pytest
 ```
 
+(or `python -m pytest`).
+
 ### Automated tests
 
-Automated testing is run on linux using Travis CI.
+Automated testing is run on linux using GitHub actions.
 
 ### Writing tests
 
