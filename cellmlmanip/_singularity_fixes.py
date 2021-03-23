@@ -1,6 +1,5 @@
 """
 ``remove_fixable_singularities`` specifies a method to remove fixable singularities from a model
-This represents a flattened CellML model and metadata about its variables.
 """
 from math import isclose
 
