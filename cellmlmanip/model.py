@@ -139,7 +139,7 @@ class Model(object):
         """Return a display name for the given variable.
 
         Looks for an annotation in the ontology first (or the local name from any annotation if no ontology is
-        specified), then cmeta:id if present, or the variable's name attribute if not.
+        specified), then ``cmeta:id`` if present, or the variable's ``name`` attribute if not.
 
         Dollar symbols in the name are replaced by a double underscore.
 
@@ -153,11 +153,11 @@ class Model(object):
         return var.cmeta_id if var.cmeta_id else var.name.replace('$', '__')
 
     def is_state(self, variable):
-        """Checks if the given ``variable`` is a state variable (i.e. if it's defined by an ODE)."""
+        """Checks if ``variable`` is a state variable (i.e. if it's defined by an ODE)."""
         return variable in self._ode_definition_map
 
     def is_constant(self, variable):
-        """Determine whether the given ``variable`` is a constant.
+        """Determine whether ``variable`` is a constant.
 
         This is calculated by looking at the RHS of the defining equation and checking it has no
         variable references.
@@ -171,7 +171,7 @@ class Model(object):
 
     def get_variable_by_cmeta_id(self, cmeta_id):
         """
-        Searches the model and returns the variable with the given cmeta id.
+        Searches the model and returns the variable with the given ``cmeta id``.
 
         To get variables from e.g. an oxmeta ontology term, use :meth:`get_variable_by_ontology_term`.
 
@@ -199,13 +199,11 @@ class Model(object):
     def get_variable_by_ontology_term(self, term):
         """Searches the RDF graph for a variable annotated with the given ``term`` and returns it.
 
-        Specifically, this method searches for a unique variable annotated with
-        predicate http://biomodels.net/biology-qualifiers/is and the object
-        specified by ``term``.
+        Specifically, this method searches for a unique variable annotated with predicate
+        ``http://biomodels.net/biology-qualifiers/is`` and the object specified by ``term``.
 
-        Will raise a ``KeyError`` if no variable with the given annotation is
-        found, and a ``ValueError`` if more than one variable with the given
-        annotation is found.
+        Will raise a ``KeyError`` if no variable with the given annotation is found, and a ``ValueError`` if more than
+        one variable with the given annotation is found.
 
         :param term: anything suitable as an input to :meth:`cellmlmanip.rdf.create_rdf_node`; typically either an RDF
             node already, or a tuple ``(namespace_uri, local_name)``.
@@ -240,10 +238,11 @@ class Model(object):
     def get_rdf_value(self, subject, predicate):
         """Get the value of an RDF object connected to ``subject`` by ``predicate``.
 
+        Note: expects exactly one triple to match and the result to be a literal.
+
         :param subject: the object of the triple returned
         :param predicate: the object of the triple returned
-
-        Note: expects exactly one triple to match and the result to be a literal. Its string value is returned.
+        :returns: a string
         """
         triples = self.get_rdf_annotations(subject, predicate)
         triples = tuple(self.get_rdf_annotations(subject, predicate))
@@ -264,7 +263,7 @@ class Model(object):
         If all are ``None``, then all triples are returned.
 
         The arguments can be anything valid as input to :meth:`cellmlmanip.rdf.create_rdf_node`,
-        typically a (namespace URI, local name) pair, a string or ``None``.
+        typically a (namespace URI, local name) pair, a string, or ``None``.
         """
         subject = create_rdf_node(subject)
         predicate = create_rdf_node(predicate)
@@ -274,7 +273,7 @@ class Model(object):
     def get_ontology_terms_by_variable(self, variable, namespace_uri=None):
         """
         Returns all ontology terms linked to the given ``variable`` via the
-        http://biomodels.net/biology-qualifiers/is predicate.
+        ``http://biomodels.net/biology-qualifiers/is`` predicate.
 
         :param variable: The variable to search for (as a :class:`Variable` object).
         :param namespace_uri: An optional namespace URI. If given, only terms within the given namespace will be
@@ -293,8 +292,8 @@ class Model(object):
 
     def has_ontology_annotation(self, variable, namespace_uri=None):
         """
-        Checks that there is at least one result for
-        :meth:`Model.get_ontology_terms_by_variable` with the given arguments.
+        Checks that there is at least one result for :meth:`Model.get_ontology_terms_by_variable` with the given
+        arguments.
         """
         return len(self.get_ontology_terms_by_variable(variable, namespace_uri)) != 0
 
@@ -490,8 +489,8 @@ class Model(object):
     @property
     def graph_with_sympy_numbers(self):
         """
-        A :class:`networkx.DiGraph` containing the model equations,
-        but with numbers represented as :class:`sympy.Number` objects instead of :class:`Quantity`.
+        A :class:`networkx.DiGraph` containing the model equations, but with numbers represented as
+        :class:`sympy.Number` objects instead of :class:`Quantity` objects.
         """
         if self._graph_with_sympy_numbers is not None:
             return self._graph_with_sympy_numbers
@@ -554,8 +553,8 @@ class Model(object):
         :param initial_value: An optional initial value.
         :param public_interface: An optional public interface specifier (only required when parsing CellML).
         :param private_interface: An optional private interface specifier (only required when parsing CellML).
-        :param cmeta_id: An optional string specifying a cmeta:id
-        :raises ValueError: If a variable with that name already exists, or the given cmeta_id is already taken.
+        :param cmeta_id: An optional string specifying a cmeta id
+        :raises ValueError: If a variable with that name already exists, or the given cmeta id is already taken.
         :return: A :class:`Variable` object.
         """
         # Check for clashes
@@ -671,7 +670,7 @@ class Model(object):
 
     def create_quantity(self, value, units):
         """
-        Creates and returns a :class:`Quantity` to represent a number with units in sympy expressions.
+        Creates and returns a :class:`Quantity` to represent a number with units in Sympy expressions.
 
         Use this method rather than creating quantities directly to ensure their units are compatible with those used by
         the model, so unit conversion etc. works.
