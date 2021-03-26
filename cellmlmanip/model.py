@@ -11,7 +11,7 @@ import networkx as nx
 import rdflib
 import sympy
 
-import cellmlmanip
+from . import parser
 from cellmlmanip.rdf import create_rdf_node
 from cellmlmanip.units import UnitStore
 
@@ -23,7 +23,6 @@ SYMPY_SYMBOL_DELIMITER = '$'
 
 # Float precision to use when creating sympy.Float objects
 FLOAT_PRECISION = 17
-OXMETA = 'https://chaste.comlab.ox.ac.uk/cellml/ns/oxford-metadata#'
 
 
 class Model(object):
@@ -1043,7 +1042,7 @@ class Model(object):
 
         return new_variable
 
-    def remove_fixable_singularities(self, exclude=set()):
+    def remove_fixable_singularities(self, V, exclude=set()):
         """
         Removes removable singularities from the model equations and replaces these with a piecewise.
 
@@ -1066,29 +1065,10 @@ class Model(object):
         This ensures their defining equations will remain.
         """
         from ._singularity_fixes import remove_fixable_singularities
-        assert isinstance(exclude, set), 'eclude is expected to be a set'
-        try:
-            time = [self.get_free_variable()]
-        except ValueError:
-            time = []  # model has no free variable
-
-        try:
-            # Get V
-            V = self.get_variable_by_ontology_term((OXMETA, 'membrane_voltage'))
-            # Retreive variables for which to exclude analysys to make sure their equations remain.
-            # These are: modifiable-parameters, derived quantities,
-            # annotated variables (so that they will remain findable), time (the free variable), state variables
-            annotated = set(filter(lambda q: self.has_ontology_annotation(q, OXMETA),
-                                   self.variables()))
-
-            excluded = (exclude | annotated) -\
-                set(self.get_derived_quantities(sort=False) + time) -\
-                set(self.get_state_variables(sort=False))
-
-            remove_fixable_singularities(self, V, excluded,
-                                         exp_function=cellmlmanip.parser.SIMPLE_MATHML_TO_SYMPY_CLASSES['exp'])
-        except KeyError:
-            logger.warning(self.name + ' Has no membrane_voltage tagged, cannot remove fixable singuarities.')
+        if not isinstance(exclude, set):
+            raise TypeError('exclude is expected to be a set')
+        remove_fixable_singularities(self, V, exclude,
+                                     exp_function=parser.SIMPLE_MATHML_TO_SYMPY_CLASSES['exp'])
 
 
 class Quantity(sympy.Dummy):

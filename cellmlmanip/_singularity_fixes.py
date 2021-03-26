@@ -34,17 +34,24 @@ def _generate_piecewise(expr, V, sp, Vmin, Vmax):
     f(Vmin) + (V - Vmin) / (Vmax - Vmin) * (f(Vmax) - f(Vmin))
 where ``f`` is ``expr``
 
-    :param: The expression to turn into a piecewise
-    :param: V the voltage variable.
-    :param: the value of the singularity point: the value of V for which U == 0
-    :param: the value of the lower bound: the value of V for which U - U_offset == 0
-    :param: the value of the upper bound: the value of V for which U + U_offset == 0
-    :return: expr with a singularity exception around sp, if sp is not None else return the original expr
+    :param expr: The expression to turn into a piecewise
+    :param V: The voltage variable.
+    :param sp: The value of the singularity point: the value of V for which U == 0.
+    :param Vmin: The value of the lower bound: the value of V for which U - U_offset == 0.
+    :param Vmax: The value of the upper bound: the value of V for which U + U_offset == 0.
+    :return: expr with a singularity exception around sp, if sp is not None else return the original expr.
     """
     f_Vmin = expr.xreplace({V: Vmin})
     f_Vmax = expr.xreplace({V: Vmax})
     return Piecewise((f_Vmin + ((V - Vmin) / (Vmax - Vmin)) * (f_Vmax - f_Vmin),
                       Abs(V - sp) < Abs((Vmax - Vmin) / 2)), (expr, True))
+
+
+def _float_dummies(expr):
+    """Turns floats back into Quantity dummies to be in line with the rest of the sympy equations"""
+    if expr is None:
+        return None
+    return expr.xreplace({f: cellmlmanip.Quantity(f, 'dimensionless') for f in expr.atoms(Float)})
 
 
 def _get_singularity(expr, V, U_offset, exp_function):
@@ -75,12 +82,6 @@ def _get_singularity(expr, V, U_offset, exp_function):
                                                         or (isinstance(sp, Float)
                                                             and isinstance(m[SP_wildcard], Float)
                                                             and isclose(m[SP_wildcard], sp)))
-
-    def float_dummies(expr):
-        """Turns floats back into Quantity dummies to be in line with the rest of the sympy equations"""
-        if expr is None:
-            return None
-        return expr.xreplace({f: cellmlmanip.Quantity(f, 'dimensionless') for f in expr.atoms(Float)})
 
     # the denominator is all args where a **-1
     numerator = tuple(a for a in expr.args if not isinstance(a, Pow) or a.args[1] != -1.0)
@@ -138,7 +139,7 @@ def _get_singularity(expr, V, U_offset, exp_function):
             (Vmin, Vmax, sp) = None, None, None
 
     # Put dummies back in and return the singularity point and range boundries
-    return (float_dummies(Vmin), float_dummies(Vmax), float_dummies(sp))
+    return (_float_dummies(Vmin), _float_dummies(Vmax), _float_dummies(sp))
 
 
 def _fix_expr_parts(expr, V, U_offset, exp_function):
@@ -212,13 +213,13 @@ def _fix_expr_parts(expr, V, U_offset, exp_function):
 def _remove_singularities(expr, V, U_offset=1e-7, exp_function=exp):
     """
     Removes suitable singularities and replaces it with a piecewise.
-    :param: expr the expression to analyse ().
-    :param: V the voltage variable
-    :param: U_offset determins the offset either side of U (see get_singularity) for which the fix is used
-    :param: exp_function the function representing exp
-    :return: (bool, expr) as follows: (expr has changed, expr with singularities fixes if appropriate)
+    :param expr: The expression to analyse ().
+    :param V: The voltage variable.
+    :param U_offset: Determins the offset either side of U (see get_singularity) for which the fix is used.
+    :param exp_function: The function representing exp.
+    :return: (bool, expr) as follows: (expr has changed, expr with singularities fixes if appropriate).
 
-    see :meth:`remove_fixable_singularities for more details `"
+    see :meth:`remove_fixable_singularities for more details `."
     """
     if not expr.has(exp_function):
         return False, expr
@@ -230,12 +231,12 @@ def _remove_singularities(expr, V, U_offset=1e-7, exp_function=exp):
 def remove_fixable_singularities(model, V, modifiable_parameters, U_offset=1e-7, exp_function=exp):
     """
     Finds singularities in the GHK-like equations in the model and replaces them with a piecewise.
-    :param: the cellmlmanip model the model to analyse.
-    :param: V the voltage variable
-    :param: modifiable_parameters the variables which are modifiable in the model,
-            their defining equations are excluded form the analysis
-    :param: U_offset determins the offset either side of U for which the fix is used
-    :param: exp_function the function representing exp
+    :param model: The cellmlmanip model the model to analyse.
+    :param V: The voltage variable.
+    :param modifiable_parameters: The variables which are modifiable in the model,
+            their defining equations are excluded form the analysis.
+    :param U_offset: Determins the offset either side of U for which the fix is used.
+    :param exp_function: the function representing exp.
     """
     unprocessed_eqs = {}
     # iterate over sorted variables in the model
