@@ -58,7 +58,7 @@ def _get_singularity(expr, V, U_offset, exp_function):
     - sp is the singularity point: the value of V for which U == 0
     - Vmin is the value of V for which U - U_offset == 0
     - Vmax is the value of V for which U + U_offset == 0:
-    :return: (Vmin, Vmax, singularity point)
+    :return: (Vmin, Vmax, sp)
     """
     # Create "wildcards", that act as catch-all (*) when matching expressions
     # https://docs.sympy.org/latest/modules/core.html#sympy.core.basic.Basic.match
