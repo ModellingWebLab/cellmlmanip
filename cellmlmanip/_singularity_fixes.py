@@ -19,11 +19,9 @@ from sympy import (
     solveset,
 )
 
-import cellmlmanip
-from cellmlmanip.model import FLOAT_PRECISION
+from .model import FLOAT_PRECISION, Quantity
 
-
-ONE = cellmlmanip.Quantity(1.0, 'dimensionless')
+ONE = Quantity(1.0, 'dimensionless')
 
 
 def _generate_piecewise(expr, V, sp, Vmin, Vmax):
