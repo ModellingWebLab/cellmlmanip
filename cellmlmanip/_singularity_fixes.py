@@ -35,7 +35,7 @@ def _generate_piecewise(expr, V, sp, Vmin, Vmax):
 
     :param: The expression to turn into a piecewise
     :param: V the voltage variable.
-    :param: the value of the singularity point: the value of V for whih U == 0
+    :param: the value of the singularity point: the value of V for which U == 0
     :param: the value of the lower bound: the value of V for which U - U_offset == 0
     :param: the value of the upper bound: the value of V for which U + U_offset == 0
     :return: expr with a singularity exception around sp, if sp is not None else return the original expr
