@@ -31,7 +31,7 @@ def _generate_piecewise(expr, V, sp, Vmin, Vmax):
     Generates a new (piecewise) expression based on expr with a linear interpolation when V is between Vmin and Vmax
 
     The returned expression between Vmin and Vmax is::
-    f(vs) + (f(ve) - f(vs)) * (V - vs) / (ve - vs)
+    f(Vmin) + (V - Vmin) / (Vmax - Vmin) * (f(Vmax) - f(Vmin))
 
     :param: The expression to turn into a piecewise
     :param: V the voltage variable.
