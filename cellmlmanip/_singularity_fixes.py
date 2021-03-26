@@ -55,7 +55,7 @@ def _get_singularity(expr, V, U_offset, exp_function):
        - ``(1.0 - exp(U)) / U``
 
     In addition to the singularity itself, this functions returns a lower and upper bounds as follows:
-    - sp is the singularity point: the value of V for whih U == 0
+    - sp is the singularity point: the value of V for which U == 0
     - Vmin is the value of V for which U - U_offset == 0
     - Vmax is the value of V for which U + U_offset == 0:
     :return: (Vmin, Vmax, singularity point)
