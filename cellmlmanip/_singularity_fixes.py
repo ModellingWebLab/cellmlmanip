@@ -4,6 +4,8 @@
 from math import isclose
 
 import networkx as nx
+from sympy.sets.conditionset import ConditionSet
+from sympy.sets.sets import Complement
 from sympy import (
     Abs,
     Add,
@@ -51,6 +53,12 @@ def _float_dummies(expr):
         return None
     return expr.xreplace({f: Quantity(f, 'dimensionless') for f in expr.atoms(Float)})
 
+def _solve_tuple(expr, var):
+    """Try to solve expr == 0 for var and return the result as a tuple filtering out Irraionals"""
+    result = solveset(expr, var)
+    if not isinstance(result, (Complement, ConditionSet)):
+        return tuple(filter(lambda s: not s.has(I), result))
+    return tuple()
 
 def _get_singularity(expr, V, U_offset, exp_function):
     """
@@ -89,48 +97,40 @@ def _get_singularity(expr, V, U_offset, exp_function):
     if len(denominator) == 0 or len(numerator) == 0 or not expr.has(exp_function):
         return None, None, None
 
-    (Vmin, Vmax, sp) = None, None, None
     # U might be on top, try numerator / denominator and denominator / numerator
     for num, denom in ((numerator, denominator), (denominator, numerator)):
         found_on_top = False
         for d in denom:  # Check arguments in denominator (or numerator)
-            if d.has(exp_function):
-                find_U = d.match(exp_function(U_wildcard) * -Z + 1.0)  # look for exp(U) * -Z + 1.0
-                if not check_bottom_match(find_U):
-                    find_U = d.match(exp_function(U_wildcard) * Z - 1.0)  # look for exp(U) * Z - 1.0
-                if check_bottom_match(find_U):
-                    # We found a match, since exp(U) * Z == exp(U + log(Z)) we can bring Z into the u expression
-                    u = (find_U[U_wildcard] + log(find_U[Z]))
-                    try:
-                        # Find the singularity point by solving u for V==0, excluding irrational results
-                        sp = tuple(filter(lambda s: not s.has(I), solveset(u, V)))
-                        if sp:
-                            # we found a singularity point, now find Vmin, Vmax
-                            # by solving for U_offset either side of U
-                            find_v_low = solveset(u + U_offset, V)
-                            find_v_up = solveset(u - U_offset, V)
-                            find_v_low = tuple(find_v_low)
-                            find_v_up = tuple(find_v_up)
-                            assert find_v_low and find_v_up and len(find_v_low) == len(find_v_up) == len(sp) == 1, \
-                                'Expecting exactly 1 singularity point '
-                            (Vmin, Vmax, sp) = (find_v_low[0], find_v_up[0], sp[0])
-                    except TypeError:
-                        pass  # Result could be 'ConditionSet' which is not iterable and not Real
+            (Vmin, Vmax, sp) = None, None, None
+            if not d.has(exp_function):
+                continue
+            find_U = d.match(exp_function(U_wildcard) * -Z + 1.0)  # look for exp(U) * -Z + 1.0
+            if not check_bottom_match(find_U):
+                find_U = d.match(exp_function(U_wildcard) * Z - 1.0)  # look for exp(U) * Z - 1.0
+            if check_bottom_match(find_U):
+                # We found a match, since exp(U) * Z == exp(U + log(Z)) we can bring Z into the u expression
+                u = (find_U[U_wildcard] + log(find_U[Z]))
+                # Find the singularity point by solving u for V==0, excluding irrational results
+                sp = _solve_tuple(u, V)#tuple(filter(lambda s: not s.has(I), solveset(u, V)))
+                if sp:
+                    sp = sp[0]
+                    # we found a singularity point, now find Vmin, Vmax
+                    # by solving for U_offset either side of U
+                    Vmin = _solve_tuple(u + U_offset, V)[0]
+                    Vmax = _solve_tuple(u - U_offset, V)[0]
 
-                if Vmin is not None:  # check top
-                    for n in num:  # Check arguments in numerator (or denominator)
-                        match = n.match(Z * V - Z * SP_wildcard)  # search for a multiple of V - sp
+            if Vmin is not None:  # check top
+                for n in num:  # Check arguments in numerator (or denominator)
+                    match = n.match(Z * V - Z * SP_wildcard)  # search for a multiple of V - sp
+                    found_on_top = check_top_match(match, sp)
+                    if not found_on_top:
+                        # search for a exp(multiple of V - sp)
+                        match = n.match(exp_function(Z * V - Z * SP_wildcard))
                         found_on_top = check_top_match(match, sp)
-                        if not found_on_top:
-                            # search for a exp(multiple of V - sp)
-                            match = n.match(exp_function(Z * V - Z * SP_wildcard))
-                            found_on_top = check_top_match(match, sp)
-                        if found_on_top:  # We've found a match stop looking in the other numerator arguments
-                            break
-                    if found_on_top:  # found singularity, no need to try further
+                    if found_on_top:  # We've found a match stop looking in the other numerator arguments
                         break
-                    else:
-                        (Vmin, Vmax, sp) = None, None, None
+                if found_on_top:  # found singularity, no need to try further
+                    break
         if Vmin is not None and found_on_top:  # found singularity, no need to try further
             break
         else:
@@ -153,6 +153,9 @@ def _fix_expr_parts(expr, V, U_offset, exp_function):
     see :meth:`remove_fixable_singularities for more details` "
     """
 
+    if not expr.has(exp_function):  # Expressions without exp don't have GHK-like equations
+        return (None, None, None, expr, False)
+
     if isinstance(expr, Mul):  # 1 * A --> A (remove unneeded 1 *)
         expr = Mul(*[a for a in expr.args if not str(a) in ('1.0', '1')])
 
@@ -160,10 +163,7 @@ def _fix_expr_parts(expr, V, U_offset, exp_function):
     subs_dict = {d: d.evalf(FLOAT_PRECISION) for d in expr.atoms(Quantity)}
     check_U_expr = expr.xreplace(subs_dict)
 
-    if not expr.has(exp_function):  # Expressions without exp don't have GHK-like equations
-        return (None, None, None, expr, False)
-
-    elif isinstance(expr, Add):  # A + B + ..
+    if isinstance(expr, Add):  # A + B + ..
         # The expression is an addition, find singularities in each argument
         new_expr_parts = []
         for a in expr.args:
