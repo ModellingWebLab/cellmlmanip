@@ -32,6 +32,7 @@ def _generate_piecewise(expr, V, sp, Vmin, Vmax):
 
     The returned expression between Vmin and Vmax is::
     f(Vmin) + (V - Vmin) / (Vmax - Vmin) * (f(Vmax) - f(Vmin))
+where ``f`` is ``expr``
 
     :param: The expression to turn into a piecewise
     :param: V the voltage variable.
