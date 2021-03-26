@@ -134,7 +134,7 @@ def _get_singularity(expr, V, U_offset, exp_function):
         else:
             (Vmin, Vmax, sp) = None, None, None
 
-    # Put dummies back in and return the singularity point and range bundries
+    # Put dummies back in and return the singularity point and range boundries
     return (float_dummies(Vmin), float_dummies(Vmax), float_dummies(sp))
 
 
