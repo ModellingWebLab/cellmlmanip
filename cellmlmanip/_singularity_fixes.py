@@ -83,7 +83,7 @@ def _get_singularity(expr, V, U_offset, exp_function):
     numerator = tuple(a for a in expr.args if not isinstance(a, Pow) or a.args[1] != -1.0)
     denominator = tuple(a.args[0] for a in expr.args if isinstance(a, Pow) and a.args[1] == -1.0)
 
-    # Not a devision or does not have exp
+    # Not a division or does not have exp
     if len(denominator) == 0 or len(numerator) == 0 or not expr.has(exp_function):
         return None, None, None
 
