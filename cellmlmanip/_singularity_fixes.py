@@ -60,6 +60,8 @@ def _get_singularity(expr, V, U_offset, exp_function):
     - Vmax is the value of V for which U + U_offset == 0:
     :return: (Vmin, Vmax, singularity point)
     """
+    # Create "wildcards", that act as catch-all (*) when matching expressions
+    # https://docs.sympy.org/latest/modules/core.html#sympy.core.basic.Basic.match
     Z = Wild('Z', real=True)
     U_wildcard = Wild('U_wildcard', real=True, include=[V])
     SP_wildcard = Wild('SP_wildcard', real=True)
