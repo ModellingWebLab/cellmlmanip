@@ -49,7 +49,7 @@ def _float_dummies(expr):
     """Turns floats back into Quantity dummies to be in line with the rest of the sympy equations"""
     if expr is None:
         return None
-    return expr.xreplace({f: cellmlmanip.Quantity(f, 'dimensionless') for f in expr.atoms(Float)})
+    return expr.xreplace({f: Quantity(f, 'dimensionless') for f in expr.atoms(Float)})
 
 
 def _get_singularity(expr, V, U_offset, exp_function):
@@ -157,7 +157,7 @@ def _fix_expr_parts(expr, V, U_offset, exp_function):
         expr = Mul(*[a for a in expr.args if not str(a) in ('1.0', '1')])
 
     # Turn Quantity dummies into numbers, to enable analysis
-    subs_dict = {d: d.evalf(FLOAT_PRECISION) for d in expr.atoms(cellmlmanip.Quantity)}
+    subs_dict = {d: d.evalf(FLOAT_PRECISION) for d in expr.atoms(Quantity)}
     check_U_expr = expr.xreplace(subs_dict)
 
     if not expr.has(exp_function):  # Expressions without exp don't have GHK-like equations
@@ -172,7 +172,7 @@ def _fix_expr_parts(expr, V, U_offset, exp_function):
         # If all arguments have the same singularity point, return 1 singularity with the widest range
         range = [item for (Vmin, Vmax, _, _, _) in new_expr_parts for item in (Vmin, Vmax)]
         if len(new_expr_parts) > 1 and len(set([str(sp) for (_, _, sp, _, _) in new_expr_parts])) == 1 \
-                and all(isinstance(b, cellmlmanip.Quantity) for b in range):
+                and all(isinstance(b, Quantity) for b in range):
             sp = new_expr_parts[0][2]
             Vmin, Vmax = min(range, key=lambda v: float(str(v))), max(range, key=lambda v: float(str(v)))
             return (Vmin, Vmax, sp, expr, True)
