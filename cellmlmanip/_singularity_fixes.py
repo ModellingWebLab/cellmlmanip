@@ -100,7 +100,7 @@ def _get_singularity(expr, V, U_offset, exp_function):
                     # We found a match, since exp(U) * Z == exp(U + log(Z)) we can bring Z into the u expression
                     u = (find_U[U_wildcard] + log(find_U[Z]))
                     try:
-                        # Find the singularity point by solving u for V==0, excluding irratinal results
+                        # Find the singularity point by solving u for V==0, excluding irrational results
                         sp = tuple(filter(lambda s: not s.has(I), solveset(u, V)))
                         if sp:
                             # we found a singularity point, now find Vmin, Vmax
