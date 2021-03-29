@@ -45,6 +45,8 @@ from sympy.core.mul import _keep_coeff
 from sympy.logic.boolalg import BooleanTrue
 from sympy.printing.precedence import precedence
 
+def wrong_func():
+    bla
 
 class Printer(sympy.printing.printer.Printer):
     """
@@ -117,6 +119,7 @@ class Printer(sympy.printing.printer.Printer):
 
     def __init__(self, symbol_function=None, derivative_function=None):
         super(Printer, self).__init__(None)
+        wrong_func()
 
         # Symbol and derivative handling (default)
         if symbol_function is None:
