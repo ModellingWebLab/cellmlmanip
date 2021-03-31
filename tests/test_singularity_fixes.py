@@ -1,16 +1,26 @@
 import os
-import pytest
 
+import pytest
 from sympy import (
+    Abs,
+    Float,
     Function,
+    I,
     Piecewise,
     exp,
-    log,
+    pi,
 )
 
+from cellmlmanip._singularity_fixes import (
+    _fix_expr_parts,
+    _float_dummies,
+    _generate_piecewise,
+    _get_singularity,
+    _remove_singularities,
+    _is_negative_power,
+    remove_fixable_singularities,
+)
 from cellmlmanip.model import Quantity, Variable
-from cellmlmanip.parser import Transpiler
-from cellmlmanip.printer import Printer
 
 from . import shared
 
@@ -23,10 +33,11 @@ def to_quant(val):
 
 
 V = Variable(name='V', units='millivolt')
-Z = to_quant(6.2)
-U = to_quant(2) * V + to_quant(5.0)
-SP = (-(log(Z) + to_quant(5.0)) / to_quant(2))
-P = Printer()
+CAL = Variable(name='CAL', units='millivolt')
+EXPR1 = 0.4 * V - 18.0
+EXPR2 = (-0.16 * V - 1.6) / (exp(-0.16 * V - 1.6) - 1.0)
+EXPR3 = -2.1 * (0.06 * V + 1)**2.0
+EXPR4 = (-0.26 * V - 2.6) / (exp(-0.26 * V - 2.6) - 1.0)
 
 
 class exp_(Function):
@@ -43,43 +54,132 @@ class exp_(Function):
 
 
 @pytest.fixture(scope='session')
-def fr_model():
-    return shared.load_model('faber_rudy_2000')
+def model():
+    return shared.load_model('beeler_reuter_model_1977')
 
 
-def test_fix_singularity_equations(fr_model):
-    V = fr_model.get_variable_by_ontology_term((OXMETA, 'membrane_voltage'))
-    # check piecewises in model without and with singularities fixed
-    old_piecewises = tuple(eq.lhs for eq in fr_model.equations if eq.rhs.has(Piecewise))
-    assert len(old_piecewises) == 14
-
-    fr_model.remove_fixable_singularities(V)
-    new_piecewises = tuple(eq.lhs for eq in fr_model.equations if eq.rhs.has(Piecewise))
-    assert len(new_piecewises) == 24
-
-    additional_piecewises = [v for v in new_piecewises if v not in old_piecewises]
-    assert str(additional_piecewises) == ('[_L_type_Ca_channel$I_CaCa, '
-                                          '_L_type_Ca_channel_d_gate$tau_d, '
-                                          '_fast_sodium_current_m_gate$alpha_m, '
-                                          '_L_type_Ca_channel$I_CaK, '
-                                          '_L_type_Ca_channel$I_CaNa, '
-                                          '_non_specific_calcium_activated_current$I_ns_K, '
-                                          '_non_specific_calcium_activated_current$I_ns_Na, '
-                                          '_rapid_delayed_rectifier_potassium_current_xr_gate$tau_xr, '
-                                          '_slow_delayed_rectifier_potassium_current_xs1_gate$tau_xs1, '
-                                          '_slow_delayed_rectifier_potassium_current_xs2_gate$tau_xs2]')
+def test_generate_piecewise():
+    sp, Vmin, Vmax = 10.0, 9.0, 11.0
+    f_Vmin = EXPR1.xreplace({V: Vmin})
+    f_Vmax = EXPR1.xreplace({V: Vmax})
+    pw = _generate_piecewise(EXPR1, V, sp, Vmin, Vmax)
+    assert pw == Piecewise((f_Vmin + ((V - Vmin) / (Vmax - Vmin)) * (f_Vmax - f_Vmin),
+                           Abs(V - sp) < Abs((Vmax - Vmin) / 2)), (EXPR1, True))
 
 
-def test_wrong_argument_exclude(fr_model):
-    # check piecewises in model without and with singularities fixed
+def test_float_dummies():
+    assert str(_float_dummies(12.0 * V)) == str(to_quant(Float(12.0)) * V)
+
+
+def test_is_negative_power():
+    assert not _is_negative_power(EXPR1)
+    assert _is_negative_power(1 / EXPR1)
+    assert not _is_negative_power(V**2)
+    assert _is_negative_power(1 / V**2)
+    assert not _is_negative_power(V**CAL)
+    assert not _is_negative_power(1 / V**CAL)
+
+
+def test_get_singularity():
+    expr2 = EXPR2.replace(exp, exp_)
+    sing1 = _get_singularity(EXPR2, V, 1e-7, exp)
+    sing2 = _get_singularity(expr2, V, 1e-7, exp_)
+    assert str(sing1) == str(sing2) == '(_-10.0000006250000, _-9.99999937500000, _-10.0000000000000)'
+
+
+def test_get_singularity2():
+    assert str(_get_singularity(EXPR3 / (exp(EXPR3) -1.0), V, 1e-7, exp)) == '(_-16.6666667666667, _-16.6666665666667, _-16.6666666666667)'
+
+
+def test_get_singularity_no_sing_1():
+    assert _get_singularity(EXPR2, V, 1e-7, exp_) == (None, None, None)
+
+
+def test_get_singularity_no_sing_2():
+    assert _get_singularity(CAL / (exp(CAL) -1), V, 1e-7, exp) == (None, None, None)
+
+
+def test_get_singularity_no_sing_3():
+    # test power with other variable still in
+    assert _get_singularity(5.0 * V**CAL, V, 1e-7, exp) == (None, None, None)
+
+
+def test_fix_expr_parts():
+    str(_fix_expr_parts(EXPR2, V, 1e-7, exp)) ==\
+        ('(_-10.0000006250000, _-9.99999937500000, _-10.0000000000000, '
+         '(-0.16*_V - 1.6)/(-1.0 + 0.201896517994655*exp(-0.16*_V)), True)')
+
+
+def test_fix_expr_parts_add_sing():
+    #test adding 2 singularities with same singularity point
+    expr = EXPR2 + EXPR4
+    str(_fix_expr_parts(expr, V, 1e-7, exp)) ==\
+        ('(_-10.0000006250000, _-9.99999937500000, _-10.0000000000000, '
+         '(-0.16*_V - 1.6)/(-1.0 + 0.201896517994655*exp(-0.16*_V)) + '
+         '(-0.26*_V - 2.6)/(-1.0 + 0.0742735782143339*exp(-0.26*_V)), True)')
+
+
+def test_singularity_with_variable_in():
+    expr =  (V + CAL) / (exp(V + CAL) -1)
+    assert str(_get_singularity(expr, V, 1e-7, exp)) == '(_1.00000000000000e-7 - _CAL, _-1.00000000000000e-7 - _CAL, -_CAL)'
+
+def test_multiple_singularities():
+    assert str(_get_singularity((EXPR3 + 1.0) / (exp(EXPR3 +1.0) -1.0), V, 1e-7, exp)) == '(_-16.6666667666667, _-16.6666665666667, _-16.6666666666667)'
+
+
+def test_multiply_singularities():
+    expr = EXPR2 * EXPR4
+    print(_fix_expr_parts(EXPR2, V, 1e-7, exp) )
+    print()
+    print(_fix_expr_parts(EXPR4, V, 1e-7, exp) )
+    print()
+    print(_fix_expr_parts(expr, V, 1e-7, exp) )
+    print()
+    print(_fix_expr_parts(EXPR4 * EXPR2, V, 1e-7, exp) )
+    assert False
+    assert str(_remove_singularities(EXPR2, V)) ==\
+        ('(True, Piecewise(((-_-10.0000006250000 + _V)*((-0.16*_-9.99999937500000 - 1.6)/(-1.0 + 0.201896517994655*'
+         'exp(-0.16*_-9.99999937500000)) - (-0.16*_-10.0000006250000 - 1.6)/(-1.0 + 0.201896517994655*'
+         'exp(-0.16*_-10.0000006250000)))/(-_-10.0000006250000 + _-9.99999937500000) + '
+         '(-0.16*_-10.0000006250000 - 1.6)/(-1.0 + 0.201896517994655*exp(-0.16*_-10.0000006250000)), '
+         'Abs(_-10.0000000000000 - _V) < Abs(_-10.0000006250000/2 - _-9.99999937500000/2)), '
+         '((-0.16*_V - 1.6)/(-1.0 + 0.201896517994655*exp(-0.16*_V)), True)))')
+    
+
+def test_remove_singularities():
+    assert str(_remove_singularities(EXPR2, V)) ==\
+        ('(True, Piecewise(((-_-10.0000006250000 + _V)*((-0.16*_-9.99999937500000 - 1.6)/(-1.0 + 0.201896517994655*'
+         'exp(-0.16*_-9.99999937500000)) - (-0.16*_-10.0000006250000 - 1.6)/(-1.0 + 0.201896517994655*'
+         'exp(-0.16*_-10.0000006250000)))/(-_-10.0000006250000 + _-9.99999937500000) + '
+         '(-0.16*_-10.0000006250000 - 1.6)/(-1.0 + 0.201896517994655*exp(-0.16*_-10.0000006250000)), '
+         'Abs(_-10.0000000000000 - _V) < Abs(_-10.0000006250000/2 - _-9.99999937500000/2)), '
+         '((-0.16*_V - 1.6)/(-1.0 + 0.201896517994655*exp(-0.16*_V)), True)))')
+
+
+def test_wrong_argument_exclude(model):
+    #check piecewises in model without and with singularities fixed
     with pytest.raises(TypeError, match='exclude is expected to be a set'):
-        fr_model.remove_fixable_singularities(V, exclude=[])
+        model.remove_fixable_singularities(V, exclude=[])
 
 
-def test_fix_singularity_equations2():
-    model = shared.load_model('beeler_reuter_model_1977')
+def test_remove_fixable_singularities(model):
     V = model.get_variable_by_ontology_term((OXMETA, 'membrane_voltage'))
 
+    old_piecewises = tuple(str(eq.lhs) for eq in model.equations if eq.rhs.has(Piecewise))
+    assert len(old_piecewises) == 1
+
+    remove_fixable_singularities(model, V, [])
+    new_piecewises = tuple(eq.lhs for eq in model.equations if eq.rhs.has(Piecewise))
+    assert len(new_piecewises) == 3
+
+    additional_piecewises = [v for v in new_piecewises if str(v) not in old_piecewises]
+    assert str(additional_piecewises) == '[_sodium_current_m_gate$alpha_m, _time_independent_outward_current$i_K1]'
+
+
+def test_fix_singularity_equations():
+    model = shared.load_model('beeler_reuter_model_1977')
+    V = model.get_variable_by_ontology_term((OXMETA, 'membrane_voltage'))
+   
     old_piecewises = tuple(str(eq.lhs) for eq in model.equations if eq.rhs.has(Piecewise))
     assert len(old_piecewises) == 1
 
@@ -89,29 +189,3 @@ def test_fix_singularity_equations2():
 
     additional_piecewises = [v for v in new_piecewises if str(v) not in old_piecewises]
     assert str(additional_piecewises) == '[_sodium_current_m_gate$alpha_m, _time_independent_outward_current$i_K1]'
-
-
-def test_fix_singularity_equations3():
-    # check this still works when the parser is set to generate a differente exp function
-    Transpiler.set_mathml_handler('exp', exp_)  # restore exp function
-    model = shared.load_model('bondarenko_szigeti_bett_kim_rasmusson_2004_apical')
-    V = model.get_variable_by_ontology_term((OXMETA, 'membrane_voltage'))
-    old_piecewises = tuple(str(eq.lhs) for eq in model.equations if eq.rhs.has(Piecewise))
-    assert len(old_piecewises) == 1
-    assert str([eq.rhs for eq in model.equations if str(eq.lhs) ==
-                'slow_delayed_rectifier_potassium_current$alpha_n'][0] ==
-           '_4.81333e-06*(_26.5 + _membrane$V)/(_1 - exp_(-_0.128*(_26.5 + _membrane$V)))')
-
-    model.remove_fixable_singularities(V)
-    Transpiler.set_mathml_handler('exp', exp)  # restore exp function
-
-    new_piecewises = tuple(eq.lhs for eq in model.equations if eq.rhs.has(Piecewise))
-    assert len(new_piecewises) == 2
-
-    additional_piecewises = [v for v in new_piecewises if str(v) not in old_piecewises]
-    assert str(additional_piecewises) == '[_slow_delayed_rectifier_potassium_current$alpha_n]'
-
-    expected = open(os.path.join(os.path.dirname(__file__), 'singularity.txt'), 'r').read()
-
-    assert str([eq.rhs for eq in model.equations if str(eq.lhs) ==
-                'slow_delayed_rectifier_potassium_current$alpha_n'][0]) == expected

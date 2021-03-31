@@ -19,6 +19,8 @@ from sympy import (
     exp,
     log,
     solveset,
+    solve,
+    I
 )
 
 from .model import FLOAT_PRECISION, Quantity
@@ -53,12 +55,14 @@ def _float_dummies(expr):
         return None
     return expr.xreplace({f: Quantity(f, 'dimensionless') for f in expr.atoms(Float)})
 
-def _solve_tuple(expr, var):
-    """Try to solve expr == 0 for var and return the result as a tuple filtering out Irraionals"""
-    result = solveset(expr, var)
-    if not isinstance(result, (Complement, ConditionSet)):
-        return tuple(filter(lambda s: not s.has(I), result))
-    return tuple()
+
+def _is_negative_power(expr):
+    try:
+        return isinstance(expr, Pow) and bool(expr.args[1] < 0)
+    except TypeError:  # if this is a power with variables still in it we can't determine if it's negative
+        pass
+    return False
+
 
 def _get_singularity(expr, V, U_offset, exp_function):
     """
@@ -76,26 +80,27 @@ def _get_singularity(expr, V, U_offset, exp_function):
     """
     # Create "wildcards", that act as catch-all (*) when matching expressions
     # https://docs.sympy.org/latest/modules/core.html#sympy.core.basic.Basic.match
+    P = Wild('P', real=True, exclude=[V])
     Z = Wild('Z', real=True)
     U_wildcard = Wild('U_wildcard', real=True, include=[V])
     SP_wildcard = Wild('SP_wildcard', real=True)
 
-    def check_bottom_match(m):
-        return m is not None and U_wildcard in m and Z in m and Z != 0
-
     def check_top_match(m, sp):
-        return m is not None and Z in m and Z != 0 and (sp == m[SP_wildcard]
-                                                        or (isinstance(sp, Float)
-                                                            and isinstance(m[SP_wildcard], Float)
-                                                            and isclose(m[SP_wildcard], sp)))
+        assert m is None or m[Z] != 0
+        return m is not None and \
+            (sp == m[SP_wildcard] or (isinstance(sp, Float) and 
+              isinstance(m[SP_wildcard], Float) and isclose(m[SP_wildcard], sp)))
 
     # the denominator is all args where a **-1
-    numerator = tuple(a for a in expr.args if not isinstance(a, Pow) or a.args[1] != -1.0)
-    denominator = tuple(a.args[0] for a in expr.args if isinstance(a, Pow) and a.args[1] == -1.0)
-
+    numerator = [a for a in expr.args if not _is_negative_power(a)]
+    denominator = [Pow(a.args[0], - a.args[1]) for a in expr.args if _is_negative_power(a)]
+    
     # Not a division or does not have exp
     if len(denominator) == 0 or len(numerator) == 0 or not expr.has(exp_function):
         return None, None, None
+        
+    numerator += [Mul(*numerator)]  # pattern could match entire numerator as well as any of its parts
+    denominator += [Mul(*denominator)]  # pattern could match entire denominator as well as any of its parts
 
     # U might be on top, try numerator / denominator and denominator / numerator
     for num, denom in ((numerator, denominator), (denominator, numerator)):
@@ -104,33 +109,41 @@ def _get_singularity(expr, V, U_offset, exp_function):
             (Vmin, Vmax, sp) = None, None, None
             if not d.has(exp_function):
                 continue
-            find_U = d.match(exp_function(U_wildcard) * -Z + 1.0)  # look for exp(U) * -Z + 1.0
-            if not check_bottom_match(find_U):
+            # look for exp(U) * -Z + 1.0
+            # Note: the -Z match works for finding negative nmbers because the numbers are still in Qauntities
+            # Preventing the matching engine from 
+            find_U = d.match(exp_function(U_wildcard) * -Z + 1.0)  
+            if not find_U:
                 find_U = d.match(exp_function(U_wildcard) * Z - 1.0)  # look for exp(U) * Z - 1.0
-            if check_bottom_match(find_U):
+            if find_U and find_U[Z] > 0:
                 # We found a match, since exp(U) * Z == exp(U + log(Z)) we can bring Z into the u expression
                 u = (find_U[U_wildcard] + log(find_U[Z]))
                 # Find the singularity point by solving u for V==0, excluding irrational results
-                sp = _solve_tuple(u, V)#tuple(filter(lambda s: not s.has(I), solveset(u, V)))
-                if sp:
+                sp = solve(u, V)#_solve_tuple(u,V)
+                if sp and len(sp) > 0:
+                    assert len(sp) == 1, 'the pattern matching should bring numbers added /removed outside the exp, so we should only get 1 solution ' +str(sp)
                     sp = sp[0]
-                    # we found a singularity point, now find Vmin, Vmax
-                    # by solving for U_offset either side of U
-                    Vmin = _solve_tuple(u + U_offset, V)[0]
-                    Vmax = _solve_tuple(u - U_offset, V)[0]
-
-            if Vmin is not None:  # check top
-                for n in num:  # Check arguments in numerator (or denominator)
-                    match = n.match(Z * V - Z * SP_wildcard)  # search for a multiple of V - sp
-                    found_on_top = check_top_match(match, sp)
-                    if not found_on_top:
-                        # search for a exp(multiple of V - sp)
-                        match = n.match(exp_function(Z * V - Z * SP_wildcard))
-                        found_on_top = check_top_match(match, sp)
-                    if found_on_top:  # We've found a match stop looking in the other numerator arguments
+                    Vmin = solve(u - U_offset, V)
+                    Vmax = solve(u + U_offset, V)
+                    if len(Vmin) > 0 and len (Vmax) > 0:
+                        Vmin, Vmax = min(Vmin), max(Vmax)
+                    else:  # fallback we can't solve u +/ 1e-7
+                        Vmin = sp - U_offset
+                        Vmax = sp + U_offset
+                    for n in num:  # Check arguments in numerator (or denominator)
+                        match = n.match(P * u)  # search for multiple of U
+                        found_on_top = match is not None and P in match and match[P] != 0
+                        if not found_on_top:
+                            match = n.match(Z * V - Z * SP_wildcard)  # search for a multiple of V - sp                        
+                            found_on_top = check_top_match(match, sp)
+                            if not found_on_top:
+                                # search for a exp(multiple of V - sp)
+                                match = n.match(exp_function(Z * V - Z * SP_wildcard))
+                                found_on_top = check_top_match(match, sp)
+                            if found_on_top:  # We've found a match stop looking in the other numerator arguments
+                                break
+                    if found_on_top:  # found singularity, no need to try further
                         break
-                if found_on_top:  # found singularity, no need to try further
-                    break
         if Vmin is not None and found_on_top:  # found singularity, no need to try further
             break
         else:
