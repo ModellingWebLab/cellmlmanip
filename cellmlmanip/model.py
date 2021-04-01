@@ -11,9 +11,10 @@ import networkx as nx
 import rdflib
 import sympy
 
-from . import parser
 from cellmlmanip.rdf import create_rdf_node
 from cellmlmanip.units import UnitStore
+
+from . import parser
 
 
 logger = logging.getLogger(__name__)

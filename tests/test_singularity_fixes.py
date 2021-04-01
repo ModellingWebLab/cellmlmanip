@@ -5,10 +5,8 @@ from sympy import (
     Abs,
     Float,
     Function,
-    I,
     Piecewise,
     exp,
-    pi,
 )
 
 from cellmlmanip._singularity_fixes import (
@@ -16,8 +14,8 @@ from cellmlmanip._singularity_fixes import (
     _float_dummies,
     _generate_piecewise,
     _get_singularity,
-    _remove_singularities,
     _is_negative_power,
+    _remove_singularities,
     remove_fixable_singularities,
 )
 from cellmlmanip.model import Quantity, Variable
@@ -84,24 +82,54 @@ def test_get_singularity():
     expr2 = EXPR2.replace(exp, exp_)
     sing1 = _get_singularity(EXPR2, V, 1e-7, exp)
     sing2 = _get_singularity(expr2, V, 1e-7, exp_)
-    assert str(sing1) == str(sing2) == '(_-10.0000006250000, _-9.99999937500000, _-10.0000000000000)'
+    assert str(sing1) == str(sing2) == '[(_-10.0000006250000, _-9.99999937500000, _-10.0000000000000)]'
 
 
 def test_get_singularity2():
-    assert str(_get_singularity(EXPR3 / (exp(EXPR3) -1.0), V, 1e-7, exp)) == '(_-16.6666667666667, _-16.6666665666667, _-16.6666666666667)'
+    assert str(_get_singularity(EXPR3 / (exp(EXPR3) - 1.0), V, 1e-7, exp)) == \
+        '[(_-16.6666667666667, _-16.6666665666667, _-16.6666666666667)]'
 
 
 def test_get_singularity_no_sing_1():
-    assert _get_singularity(EXPR2, V, 1e-7, exp_) == (None, None, None)
+    assert _get_singularity(EXPR2, V, 1e-7, exp_) == []
 
 
 def test_get_singularity_no_sing_2():
-    assert _get_singularity(CAL / (exp(CAL) -1), V, 1e-7, exp) == (None, None, None)
+    assert _get_singularity(CAL / (exp(CAL) - 1), V, 1e-7, exp) == []
 
 
 def test_get_singularity_no_sing_3():
     # test power with other variable still in
-    assert _get_singularity(5.0 * V**CAL, V, 1e-7, exp) == (None, None, None)
+    assert _get_singularity(5.0 * V**CAL, V, 1e-7, exp) == []
+
+
+def test_singularity_with_variable_in():
+    expr = (V + CAL) / (exp(V + CAL) - 1)
+    assert str(_get_singularity(expr, V, 1e-7, exp)) == \
+        '[(_1.00000000000000e-7 - _CAL, _-1.00000000000000e-7 - _CAL, -_CAL)]'
+
+
+def test_multiple_singularities_multiple_solutions():
+    assert str(_get_singularity((EXPR3 + 1.0) / (exp(EXPR3 + 1.0) - 1.0), V, 1e-7, exp)) == \
+        ('[(_-28.1677594223726, _-28.1677592223726, _-28.1677593223726), '
+         '(_-5.16557411096076, _-5.16557391096076, _-5.16557401096076)]')
+
+
+def test_multiply_singularities_same_singularity_point_with_var():
+    # multiply 2 expressions with the same singularity point, but different Vmin/Vmax
+    # due to the variables we can't take the wider range so we get 2 seperate singularities
+    sing1 = (V + CAL) / (exp(V + CAL) - 1)
+    sing2 = 0.1 * (V + CAL) / (exp(0.1 * (V + CAL)) - 1)
+    assert str(_get_singularity(sing1 * sing2, V, 1e-7, exp)) == \
+        ('[(_0.00000100000000000000 - _CAL, _-0.00000100000000000000 - _CAL, -_CAL), '
+         '(_1.00000000000000e-7 - _CAL, _-1.00000000000000e-7 - _CAL, -_CAL)]')
+
+
+def test_multiply_singularities_different_singularity_point():
+    sing1 = (V - 0.8) / (exp(V - 0.8) - 1.0)
+    assert str(_get_singularity(EXPR2 * sing1, V, 1e-7, exp)) == \
+        ('[(_0.800000100000000, _0.799999900000000, _0.800000000000000), '
+         '(_-10.0000006250000, _-9.99999937500000, _-10.0000000000000)]')
 
 
 def test_fix_expr_parts():
@@ -111,7 +139,7 @@ def test_fix_expr_parts():
 
 
 def test_fix_expr_parts_add_sing():
-    #test adding 2 singularities with same singularity point
+    # test adding 2 singularities with same singularity point
     expr = EXPR2 + EXPR4
     str(_fix_expr_parts(expr, V, 1e-7, exp)) ==\
         ('(_-10.0000006250000, _-9.99999937500000, _-10.0000000000000, '
@@ -119,45 +147,26 @@ def test_fix_expr_parts_add_sing():
          '(-0.26*_V - 2.6)/(-1.0 + 0.0742735782143339*exp(-0.26*_V)), True)')
 
 
-def test_singularity_with_variable_in():
-    expr =  (V + CAL) / (exp(V + CAL) -1)
-    assert str(_get_singularity(expr, V, 1e-7, exp)) == '(_1.00000000000000e-7 - _CAL, _-1.00000000000000e-7 - _CAL, -_CAL)'
+def test_multiply_singularities_same_singularity_point():
+    assert str(_fix_expr_parts(EXPR2 * EXPR4, V, 1e-7, exp)) ==\
+        ('(_-10.0000006250000, _-9.99999937500000, _-10.0000000000000, '
+         '(-0.26*_V - 2.6)*(-0.16*_V - 1.6)/((-1.0 + 0.0742735782143339*exp(-0.26*_V))*'
+         '(-1.0 + 0.201896517994655*exp(-0.16*_V))), True)')
 
-def test_multiple_singularities():
-    assert str(_get_singularity((EXPR3 + 1.0) / (exp(EXPR3 +1.0) -1.0), V, 1e-7, exp)) == '(_-16.6666667666667, _-16.6666665666667, _-16.6666666666667)'
 
+def test_multiply_singularities_different_singularity_point2():
+    sing1 = (V - 0.8) / (exp(V - 0.8) - 1.0)
+    expected = open(os.path.join(os.path.dirname(__file__), 'test_singularity.txt'), 'r').read()
+    assert str(_fix_expr_parts(EXPR2 * sing1, V, 1e-7, exp)) == expected
 
-def test_multiply_singularities():
-    expr = EXPR2 * EXPR4
-    print(_fix_expr_parts(EXPR2, V, 1e-7, exp) )
-    print()
-    print(_fix_expr_parts(EXPR4, V, 1e-7, exp) )
-    print()
-    print(_fix_expr_parts(expr, V, 1e-7, exp) )
-    print()
-    print(_fix_expr_parts(EXPR4 * EXPR2, V, 1e-7, exp) )
-    assert False
-    assert str(_remove_singularities(EXPR2, V)) ==\
-        ('(True, Piecewise(((-_-10.0000006250000 + _V)*((-0.16*_-9.99999937500000 - 1.6)/(-1.0 + 0.201896517994655*'
-         'exp(-0.16*_-9.99999937500000)) - (-0.16*_-10.0000006250000 - 1.6)/(-1.0 + 0.201896517994655*'
-         'exp(-0.16*_-10.0000006250000)))/(-_-10.0000006250000 + _-9.99999937500000) + '
-         '(-0.16*_-10.0000006250000 - 1.6)/(-1.0 + 0.201896517994655*exp(-0.16*_-10.0000006250000)), '
-         'Abs(_-10.0000000000000 - _V) < Abs(_-10.0000006250000/2 - _-9.99999937500000/2)), '
-         '((-0.16*_V - 1.6)/(-1.0 + 0.201896517994655*exp(-0.16*_V)), True)))')
-    
 
 def test_remove_singularities():
-    assert str(_remove_singularities(EXPR2, V)) ==\
-        ('(True, Piecewise(((-_-10.0000006250000 + _V)*((-0.16*_-9.99999937500000 - 1.6)/(-1.0 + 0.201896517994655*'
-         'exp(-0.16*_-9.99999937500000)) - (-0.16*_-10.0000006250000 - 1.6)/(-1.0 + 0.201896517994655*'
-         'exp(-0.16*_-10.0000006250000)))/(-_-10.0000006250000 + _-9.99999937500000) + '
-         '(-0.16*_-10.0000006250000 - 1.6)/(-1.0 + 0.201896517994655*exp(-0.16*_-10.0000006250000)), '
-         'Abs(_-10.0000000000000 - _V) < Abs(_-10.0000006250000/2 - _-9.99999937500000/2)), '
-         '((-0.16*_V - 1.6)/(-1.0 + 0.201896517994655*exp(-0.16*_V)), True)))')
+    expected = open(os.path.join(os.path.dirname(__file__), 'test_singularity2.txt'), 'r').read()
+    assert str(_remove_singularities(EXPR2, V)) == expected
 
 
 def test_wrong_argument_exclude(model):
-    #check piecewises in model without and with singularities fixed
+    # check piecewises in model without and with singularities fixed
     with pytest.raises(TypeError, match='exclude is expected to be a set'):
         model.remove_fixable_singularities(V, exclude=[])
 
@@ -179,7 +188,7 @@ def test_remove_fixable_singularities(model):
 def test_fix_singularity_equations():
     model = shared.load_model('beeler_reuter_model_1977')
     V = model.get_variable_by_ontology_term((OXMETA, 'membrane_voltage'))
-   
+
     old_piecewises = tuple(str(eq.lhs) for eq in model.equations if eq.rhs.has(Piecewise))
     assert len(old_piecewises) == 1
 

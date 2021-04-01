@@ -4,26 +4,22 @@
 from math import isclose
 
 import networkx as nx
-from sympy.sets.conditionset import ConditionSet
-from sympy.sets.sets import Complement
 from sympy import (
     Abs,
     Add,
     Eq,
     Float,
-    I,
     Mul,
     Piecewise,
     Pow,
     Wild,
     exp,
     log,
-    solveset,
     solve,
-    I
 )
 
 from .model import FLOAT_PRECISION, Quantity
+
 
 ONE = Quantity(1.0, 'dimensionless')
 
@@ -51,8 +47,6 @@ where ``f`` is ``expr``
 
 def _float_dummies(expr):
     """Turns floats back into Quantity dummies to be in line with the rest of the sympy equations"""
-    if expr is None:
-        return None
     return expr.xreplace({f: Quantity(f, 'dimensionless') for f in expr.atoms(Float)})
 
 
@@ -84,73 +78,85 @@ def _get_singularity(expr, V, U_offset, exp_function):
     Z = Wild('Z', real=True)
     U_wildcard = Wild('U_wildcard', real=True, include=[V])
     SP_wildcard = Wild('SP_wildcard', real=True)
+    singularities = []
 
-    def check_top_match(m, sp):
+    def check_U_match(m, sp):
         assert m is None or m[Z] != 0
         return m is not None and \
-            (sp == m[SP_wildcard] or (isinstance(sp, Float) and 
-              isinstance(m[SP_wildcard], Float) and isclose(m[SP_wildcard], sp)))
+            (sp == m[SP_wildcard] or (isinstance(sp, Float) and
+             isinstance(m[SP_wildcard], Float) and isclose(m[SP_wildcard], sp)))
 
+    # find all fractions and sperate numerator and denominator
     # the denominator is all args where a **-1
     numerator = [a for a in expr.args if not _is_negative_power(a)]
     denominator = [Pow(a.args[0], - a.args[1]) for a in expr.args if _is_negative_power(a)]
-    
+
     # Not a division or does not have exp
     if len(denominator) == 0 or len(numerator) == 0 or not expr.has(exp_function):
-        return None, None, None
-        
+        return []
+
     numerator += [Mul(*numerator)]  # pattern could match entire numerator as well as any of its parts
     denominator += [Mul(*denominator)]  # pattern could match entire denominator as well as any of its parts
 
     # U might be on top, try numerator / denominator and denominator / numerator
-    for num, denom in ((numerator, denominator), (denominator, numerator)):
+    for fraction_part_1, fraction_part_2 in ((numerator, denominator), (denominator, numerator)):
         found_on_top = False
-        for d in denom:  # Check arguments in denominator (or numerator)
+        for fp2 in fraction_part_2:  # Check arguments in denominator (or numerator)
             (Vmin, Vmax, sp) = None, None, None
-            if not d.has(exp_function):
+            if not fp2.has(exp_function):
                 continue
             # look for exp(U) * -Z + 1.0
-            # Note: the -Z match works for finding negative nmbers because the numbers are still in Qauntities
-            # Preventing the matching engine from 
-            find_U = d.match(exp_function(U_wildcard) * -Z + 1.0)  
+            # Works as we later reuire Z to be positive
+            find_U = fp2.match(exp_function(U_wildcard) * -Z + 1.0)
             if not find_U:
-                find_U = d.match(exp_function(U_wildcard) * Z - 1.0)  # look for exp(U) * Z - 1.0
+                find_U = fp2.match(exp_function(U_wildcard) * Z - 1.0)  # look for exp(U) * Z - 1.0
             if find_U and find_U[Z] > 0:
-                # We found a match, since exp(U) * Z == exp(U + log(Z)) we can bring Z into the u expression
+                # We found a match for exp(U) * Z -1 or exp(U) * -Z +1,
+                # since exp(U) * Z == exp(U + log(Z)) we can bring Z into the u expression
+                # Note: the top check (check_U_match) will not require Z to be positive (just not 0)
                 u = (find_U[U_wildcard] + log(find_U[Z]))
                 # Find the singularity point by solving u for V==0, excluding irrational results
-                sp = solve(u, V)#_solve_tuple(u,V)
-                if sp and len(sp) > 0:
-                    assert len(sp) == 1, 'the pattern matching should bring numbers added /removed outside the exp, so we should only get 1 solution ' +str(sp)
-                    sp = sp[0]
-                    Vmin = solve(u - U_offset, V)
-                    Vmax = solve(u + U_offset, V)
-                    if len(Vmin) > 0 and len (Vmax) > 0:
-                        Vmin, Vmax = min(Vmin), max(Vmax)
-                    else:  # fallback we can't solve u +/ 1e-7
-                        Vmin = sp - U_offset
-                        Vmax = sp + U_offset
-                    for n in num:  # Check arguments in numerator (or denominator)
-                        match = n.match(P * u)  # search for multiple of U
+                singularity_points = solve(u, V)
+                # Find Vmin, Vmax for the fix range
+                Vmin_points = solve(u - U_offset, V)
+                Vmax_points = solve(u + U_offset, V)
+                for sp in singularity_points:
+                    if len(Vmin_points) == len(Vmax_points) == 1:
+                        Vmin, Vmax = Vmin_points[0], Vmax_points[0]
+                    else:  # multiple solutions for Vmin / Vmax we don't know which to use, so revert to fixed range
+                        Vmin, Vmax = sp - U_offset, sp + U_offset
+
+                    for fp1 in fraction_part_1:  # Check arguments in numerator (or denominator)
+                        match = fp1.match(P * u)  # search for multiple of U
                         found_on_top = match is not None and P in match and match[P] != 0
                         if not found_on_top:
-                            match = n.match(Z * V - Z * SP_wildcard)  # search for a multiple of V - sp                        
-                            found_on_top = check_top_match(match, sp)
+                            match = fp1.match(Z * V - Z * SP_wildcard)  # search for a multiple of V - sp
+                            found_on_top = check_U_match(match, sp)
                             if not found_on_top:
                                 # search for a exp(multiple of V - sp)
-                                match = n.match(exp_function(Z * V - Z * SP_wildcard))
-                                found_on_top = check_top_match(match, sp)
-                            if found_on_top:  # We've found a match stop looking in the other numerator arguments
-                                break
-                    if found_on_top:  # found singularity, no need to try further
-                        break
-        if Vmin is not None and found_on_top:  # found singularity, no need to try further
-            break
-        else:
+                                match = fp1.match(exp_function(Z * V - Z * SP_wildcard))
+                                found_on_top = check_U_match(match, sp)
+                        if found_on_top:  # We've found a match stop looking in the other numerator arguments
+                            break
+                    if found_on_top:  # found singularity
+                        # If this isngularity was previously found, adjust Vmin/Vmax to widest range
+                        for sing in singularities:
+                            if sing[2] == sp:
+                                # if Vmin & Vmax are the same it's the same singularity
+                                if Vmin == sing[0] and Vmax == sing[1]:
+                                    break
+                                elif all(len(v.free_symbols) == 0 for v in (Vmin, Vmax, sing[0], sing[1])):
+                                    # if Vmin/Vmax have no variables we can pick min/max
+                                    sing[0] = min(sing[0], sing[1], Vmin, Vmax)
+                                    sing[1] = max(sing[0], sing[1], Vmin, Vmax)
+                                    break
+                        else:  # if it's a new singularity add to the list
+                            singularities.append([Vmin, Vmax, sp])
+        if not found_on_top:
             (Vmin, Vmax, sp) = None, None, None
 
     # Put dummies back in and return the singularity point and range boundries
-    return (_float_dummies(Vmin), _float_dummies(Vmax), _float_dummies(sp))
+    return [(_float_dummies(Vmin), _float_dummies(Vmax), _float_dummies(sp)) for (Vmin, Vmax, sp) in singularities]
 
 
 def _fix_expr_parts(expr, V, U_offset, exp_function):
@@ -205,8 +211,16 @@ def _fix_expr_parts(expr, V, U_offset, exp_function):
                 has_piecewise)
 
     elif isinstance(expr, Mul):  # A * B * ...
-        (Vmin, Vmax, sp) = _get_singularity(check_U_expr, V, U_offset, exp_function)  # Find the singularity point
-        if sp is not None:
+        singularities = _get_singularity(check_U_expr, V, U_offset, exp_function)  # Find the singularity point
+        range = [item for (Vmin, Vmax, _) in singularities for item in (Vmin, Vmax)]
+        # If all arguments have the same singularity point, return 1 singularity with the widest range
+        if len(singularities) == 1:
+            Vmin, Vmax, sp = singularities[0]
+            return (Vmin, Vmax, sp, expr, True)
+        elif len(singularities) > 0:  # Singularity points differ, so generate a nested piecewise
+            for Vmin, Vmax, sp in singularities[1:]:
+                expr = _generate_piecewise(expr, V, sp, Vmin, Vmax)
+            Vmin, Vmax, sp = singularities[0]
             return (Vmin, Vmax, sp, expr, True)
         else:  # Couldn't find singularity, try the expression's arguments
             expr_parts = []
