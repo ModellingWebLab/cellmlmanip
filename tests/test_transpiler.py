@@ -114,7 +114,9 @@ class TestTranspiler(object):
 
     def test_power(self):
         self.assert_equal('<apply><power/><ci>x</ci><cn>3</cn></apply>',
-                          [sympy.Symbol('x') ** 3.0])
+                          [sympy.Symbol('x') ** 3])
+        self.assert_equal('<apply><power/><ci>x</ci><cn>3.5</cn></apply>',
+                          [sympy.Symbol('x') ** 3.5])
 
     def test_ln(self):
         self.assert_equal('<apply><ln/><ci>a</ci></apply>',

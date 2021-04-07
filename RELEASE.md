@@ -1,5 +1,6 @@
 # (unreleased)
 - Added a method `Model.remove_fixable_singularities` to remove fixable singularities in the model's equations.
+- Updated the transpiler in order to represent powers of integers as integers. So for example `'<apply><power/><ci>x</ci><cn>3</cn></apply>'` is now represented as `sympy.Symbol('x') ** 3` and no longer as `sympy.Symbol('x') ** 3.0`
 
 # Release 0.2.3
 - Fixes for sympy 1.7: 
