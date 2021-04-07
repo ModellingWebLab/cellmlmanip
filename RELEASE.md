@@ -1,3 +1,6 @@
+# (unreleased)
+- Updated the transpiler in order to represent powers of integers as integers. So for example `'<apply><power/><ci>x</ci><cn>3</cn></apply>'` is now represented as `sympy.Symbol('x') ** 3` and no longer as `sympy.Symbol('x') ** 3.0`
+
 # Release 0.2.3
 - Fixes for sympy 1.7: 
     - Fixed the printer test (eval=false no longer exists but evaluate=false can still be used). 
