@@ -779,7 +779,7 @@ class Transpiler(object):
             if isinstance(exponent, (float, sympy.Float)) and float(exponent).is_integer():
                 exponent = int(exponent)
             elif isinstance(exponent, (float, sympy.Float, Quantity)) and float(exponent).is_integer():
-                exponent = Quantity(int(exponent.value), exponent.units)
+                exponent = Quantity(int(float(exponent)), exponent.units)
             return base ** exponent
         return _wrapped_power
 
