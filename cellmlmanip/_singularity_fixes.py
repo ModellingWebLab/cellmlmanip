@@ -12,15 +12,15 @@ from sympy import (
     Mul,
     Piecewise,
     Pow,
+    S,
     Wild,
     exp,
     log,
     solveset,
-    S
 )
+from sympy.codegen.rewriting import ReplaceOptim, optimize
 
 from .model import FLOAT_PRECISION, Quantity
-from sympy.codegen.rewriting import ReplaceOptim, optimize
 
 
 # For P^n make sure n is passed as int if it is actually a whole number
