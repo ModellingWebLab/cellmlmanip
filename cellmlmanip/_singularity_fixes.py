@@ -15,10 +15,18 @@ from sympy import (
     Wild,
     exp,
     log,
-    solve,
+    solveset,
+    S
 )
 
 from .model import FLOAT_PRECISION, Quantity
+from sympy.codegen.rewriting import ReplaceOptim, optimize
+
+
+# For P^n make sure n is passed as int if it is actually a whole number
+_POW_OPT = ReplaceOptim(lambda p: p.is_Pow and (isinstance(p.exp, Float) or isinstance(p.exp, float))
+                        and float(p.exp).is_integer(),
+                        lambda p: Pow(p.base, int(float(p.exp))))
 
 
 ONE = Quantity(1.0, 'dimensionless')
@@ -72,6 +80,7 @@ def _get_singularity(expr, V, U_offset, exp_function):
     - Vmax is the value of V for which U + U_offset == 0:
     :return: (Vmin, Vmax, sp)
     """
+
     # Create "wildcards", that act as catch-all (*) when matching expressions
     # https://docs.sympy.org/latest/modules/core.html#sympy.core.basic.Basic.match
     P = Wild('P', real=True, exclude=[V])
@@ -115,14 +124,17 @@ def _get_singularity(expr, V, U_offset, exp_function):
                 # since exp(U) * Z == exp(U + log(Z)) we can bring Z into the u expression
                 # Note: the top check (check_U_match) will not require Z to be positive (just not 0)
                 u = (find_U[U_wildcard] + log(find_U[Z]))
+
                 # Find the singularity point by solving u for V==0, excluding irrational results
-                singularity_points = solve(u, V)
+                singularity_points = solveset(u, V, domain=S.Reals)
+
                 # Find Vmin, Vmax for the fix range
-                Vmin_points = solve(u - U_offset, V)
-                Vmax_points = solve(u + U_offset, V)
+                Vmin_points = solveset(u - U_offset, V, domain=S.Reals)
+                Vmax_points = solveset(u + U_offset, V, domain=S.Reals)
+
                 for sp in singularity_points:
                     if len(Vmin_points) == len(Vmax_points) == 1:
-                        Vmin, Vmax = Vmin_points[0], Vmax_points[0]
+                        Vmin, Vmax = tuple(Vmin_points)[0], tuple(Vmax_points)[0]
                     else:  # multiple solutions for Vmin / Vmax we don't know which to use, so revert to fixed range
                         Vmin, Vmax = sp - U_offset, sp + U_offset
 
@@ -177,6 +189,8 @@ def _fix_expr_parts(expr, V, U_offset, exp_function):
 
     if isinstance(expr, Mul):  # 1 * A --> A (remove unneeded 1 *)
         expr = Mul(*[a for a in expr.args if not str(a) in ('1.0', '1')])
+
+    expr = optimize(expr, (_POW_OPT, ))  # make sure powers of ints are represented as ints
 
     # Turn Quantity dummies into numbers, to enable analysis
     subs_dict = {d: d.evalf(FLOAT_PRECISION) for d in expr.atoms(Quantity)}

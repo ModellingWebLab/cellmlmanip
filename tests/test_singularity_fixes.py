@@ -34,8 +34,9 @@ V = Variable(name='V', units='millivolt')
 CAL = Variable(name='CAL', units='millivolt')
 EXPR1 = 0.4 * V - 18.0
 EXPR2 = (-0.16 * V - 1.6) / (exp(-0.16 * V - 1.6) - 1.0)
-EXPR3 = -2.1 * (0.06 * V + 1)**2.0
+EXPR3 = -2.1 * (0.06 * V + 1)**2
 EXPR4 = (-0.26 * V - 2.6) / (exp(-0.26 * V - 2.6) - 1.0)
+EXPR5 = -2.1 * (0.06 * V + 1)**2.0
 
 
 class exp_(Function):
@@ -110,6 +111,7 @@ def test_singularity_with_variable_in():
 
 
 def test_multiple_singularities_multiple_solutions():
+    print(_get_singularity((EXPR3 + 1.0) / (exp(EXPR3 + 1.0) - 1.0), V, 1e-7, exp))
     assert str(_get_singularity((EXPR3 + 1.0) / (exp(EXPR3 + 1.0) - 1.0), V, 1e-7, exp)) == \
         ('[(_-28.1677594223726, _-28.1677592223726, _-28.1677593223726), '
          '(_-5.16557411096076, _-5.16557391096076, _-5.16557401096076)]')
@@ -119,9 +121,9 @@ def test_multiply_singularities_same_singularity_point_with_var():
     # multiply 2 expressions with the same singularity point, but different Vmin/Vmax
     # due to the variables we can't take the wider range so we get 2 seperate singularities
     sing1 = (V + CAL) / (exp(V + CAL) - 1)
-    sing2 = 0.1 * (V + CAL) / (exp(0.1 * (V + CAL)) - 1)
+    sing2 = 5 * (V + CAL) / (exp(5 * (V + CAL)) - 1)
     assert str(_get_singularity(sing1 * sing2, V, 1e-7, exp)) == \
-        ('[(_0.00000100000000000000 - _CAL, _-0.00000100000000000000 - _CAL, -_CAL), '
+        ('[(_2.00000000000000e-8 - _CAL, _-2.00000000000000e-8 - _CAL, -_CAL), '
          '(_1.00000000000000e-7 - _CAL, _-1.00000000000000e-7 - _CAL, -_CAL)]')
 
 
