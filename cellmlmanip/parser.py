@@ -776,8 +776,8 @@ class Transpiler(object):
         """
         def _wrapped_power(base, exponent):
             # Make sure whole powers are represented as int powers e.g. x**2 and not X**2.0
-            if (isinstance(exponent, sympy.Float) or isinstance(exponent, float)) and float(exponent).is_integer():
-                exponent = int(exponent)
+            if isinstance(exponent, (float, sympy.Float, Quantity)) and float(exponent).is_integer():
+                exponent = int(float(exponent))
             return base ** exponent
         return _wrapped_power
 
