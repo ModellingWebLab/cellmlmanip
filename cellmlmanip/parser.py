@@ -11,7 +11,7 @@ from enum import Enum
 import sympy
 from lxml import etree
 
-from cellmlmanip.model import SYMPY_SYMBOL_DELIMITER, Model
+from cellmlmanip.model import SYMPY_SYMBOL_DELIMITER, Model, Quantity
 
 
 UNIT_PREFIXES = {
