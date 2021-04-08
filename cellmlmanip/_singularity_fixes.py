@@ -19,6 +19,7 @@ from sympy import (
     solveset,
 )
 from sympy.codegen.rewriting import ReplaceOptim, optimize
+from sympy.sets import Intersection
 
 from .model import FLOAT_PRECISION, Quantity
 
@@ -64,6 +65,14 @@ def _is_negative_power(expr):
     except TypeError:  # if this is a power with variables still in it we can't determine if it's negative
         pass
     return False
+
+
+def _solve_real(u, V):
+    u = optimize(u, (_POW_OPT, ))  # make sure powers of ints are represented as ints
+    result = solveset(u, V, domain=S.Reals)
+    if isinstance(result, Intersection) and result.args[0] == S.Reals:
+        result = result.args[1]
+    return result
 
 
 def _get_singularity(expr, V, U_offset, exp_function):
@@ -119,19 +128,20 @@ def _get_singularity(expr, V, U_offset, exp_function):
             find_U = fp2.match(exp_function(U_wildcard) * -Z + 1.0)
             if not find_U:
                 find_U = fp2.match(exp_function(U_wildcard) * Z - 1.0)  # look for exp(U) * Z - 1.0
-            if find_U and find_U[Z] > 0:
+
+            # Z should be positive, we replace free symbols by 1 to be able to evaluate the sign of Z
+            if find_U and find_U[Z].xreplace({s: 1.0 for s in find_U[Z].free_symbols}) > 0:
                 # We found a match for exp(U) * Z -1 or exp(U) * -Z +1,
                 # since exp(U) * Z == exp(U + log(Z)) we can bring Z into the u expression
                 # Note: the top check (check_U_match) will not require Z to be positive (just not 0)
                 u = (find_U[U_wildcard] + log(find_U[Z]))
 
                 # Find the singularity point by solving u for V==0, excluding irrational results
-                singularity_points = solveset(u, V, domain=S.Reals)
+                singularity_points = _solve_real(u, V)
 
                 # Find Vmin, Vmax for the fix range
-                Vmin_points = solveset(u - U_offset, V, domain=S.Reals)
-                Vmax_points = solveset(u + U_offset, V, domain=S.Reals)
-
+                Vmin_points = _solve_real(u - U_offset, V)
+                Vmax_points = _solve_real(u + U_offset, V)
                 for sp in singularity_points:
                     if len(Vmin_points) == len(Vmax_points) == 1:
                         Vmin, Vmax = tuple(Vmin_points)[0], tuple(Vmax_points)[0]
@@ -189,8 +199,6 @@ def _fix_expr_parts(expr, V, U_offset, exp_function):
 
     if isinstance(expr, Mul):  # 1 * A --> A (remove unneeded 1 *)
         expr = Mul(*[a for a in expr.args if not str(a) in ('1.0', '1')])
-
-    expr = optimize(expr, (_POW_OPT, ))  # make sure powers of ints are represented as ints
 
     # Turn Quantity dummies into numbers, to enable analysis
     subs_dict = {d: d.evalf(FLOAT_PRECISION) for d in expr.atoms(Quantity)}

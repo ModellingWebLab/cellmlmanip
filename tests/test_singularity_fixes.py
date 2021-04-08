@@ -7,6 +7,7 @@ from sympy import (
     Function,
     Piecewise,
     exp,
+    log,
 )
 
 from cellmlmanip._singularity_fixes import (
@@ -16,6 +17,7 @@ from cellmlmanip._singularity_fixes import (
     _get_singularity,
     _is_negative_power,
     _remove_singularities,
+    _solve_real,
     remove_fixable_singularities,
 )
 from cellmlmanip.model import Quantity, Variable
@@ -31,7 +33,8 @@ def to_quant(val):
 
 
 V = Variable(name='V', units='millivolt')
-CAL = Variable(name='CAL', units='millivolt')
+CAL = Variable(name='CAL', units='dimensionless')
+
 EXPR1 = 0.4 * V - 18.0
 EXPR2 = (-0.16 * V - 1.6) / (exp(-0.16 * V - 1.6) - 1.0)
 EXPR3 = -2.1 * (0.06 * V + 1)**2
@@ -104,6 +107,24 @@ def test_get_singularity_no_sing_3():
     assert _get_singularity(5.0 * V**CAL, V, 1e-7, exp) == []
 
 
+def test_get_singularity_no_sing_4():
+    # test complex expressions with other variables
+    # using exp_ to rigger solveset to return an intersection with Reals (it doesn't know the result will be a real)
+    expr = (V + log(CAL)) / (exp_(V + log(CAL)) - 1.0)
+    assert str(_get_singularity(expr, V, 1e-7, exp_)) == \
+        '[(_1.00000000000000e-7 - log(_CAL), _-1.00000000000000e-7 - log(_CAL), -log(_CAL))]'
+
+
+def test_get_singularity_no_sing_5():
+    # test complex expressions with other variables
+    # using exp will mean that when matching the top it will look for
+    # exp(V + log(CAL)) which will simplify to CAL*exp(V)
+    # so it'll find a Z of CAL instead of a number
+    expr = (V + log(CAL)) / (exp(V + log(CAL)) - 1.0)
+    assert str(_get_singularity(expr, V, 1e-7, exp)) == \
+        '[(_1.00000000000000e-7 - log(_CAL), _-1.00000000000000e-7 - log(_CAL), -log(_CAL))]'
+
+
 def test_singularity_with_variable_in():
     expr = (V + CAL) / (exp(V + CAL) - 1)
     assert str(_get_singularity(expr, V, 1e-7, exp)) == \
@@ -115,6 +136,11 @@ def test_multiple_singularities_multiple_solutions():
     assert str(_get_singularity((EXPR3 + 1.0) / (exp(EXPR3 + 1.0) - 1.0), V, 1e-7, exp)) == \
         ('[(_-28.1677594223726, _-28.1677592223726, _-28.1677593223726), '
          '(_-5.16557411096076, _-5.16557391096076, _-5.16557401096076)]')
+
+
+def test_solve_real():
+    assert str(_solve_real(EXPR3, V)) == 'FiniteSet(-16.6666666666667)'
+    assert str(_solve_real(V + log(CAL), V)) == 'FiniteSet(-log(_CAL))'
 
 
 def test_multiply_singularities_same_singularity_point_with_var():
