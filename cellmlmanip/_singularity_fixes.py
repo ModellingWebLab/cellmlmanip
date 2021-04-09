@@ -68,8 +68,10 @@ def _is_negative_power(expr):
 
 
 def _solve_real(u, V):
+    """Gives the values of V for which u == 0 """
     u = optimize(u, (_POW_OPT, ))  # make sure powers of ints are represented as ints
     result = solveset(u, V, domain=S.Reals)
+    # The resul could be an intersection with Reals, if a custom exp function is used. We assume the result is real.
     if isinstance(result, Intersection) and result.args[0] == S.Reals:
         result = result.args[1]
     return result
