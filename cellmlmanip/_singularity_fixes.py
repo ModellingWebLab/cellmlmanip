@@ -112,7 +112,7 @@ def _get_singularity(expr, V, U_offset, exp_function):
              isinstance(m[SP_wildcard], Float) and isclose(m[SP_wildcard], sp)))
 
     # find all fractions and separate numerator and denominator
-    # the denominator is all args where a **-1
+    # The denominator is the set of arguments x inside a Pow(x, y) where y < 0
     numerator = [a for a in expr.args if not _is_negative_power(a)]
     denominator = [Pow(a.args[0], - a.args[1]) for a in expr.args if _is_negative_power(a)]
 
