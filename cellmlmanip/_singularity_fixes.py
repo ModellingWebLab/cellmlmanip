@@ -25,9 +25,8 @@ from .model import FLOAT_PRECISION, Quantity
 
 
 # For P^n make sure n is passed as int if it is actually a whole number
-_POW_OPT = ReplaceOptim(lambda p: p.is_Pow and (isinstance(p.exp, Float) or isinstance(p.exp, float))
-                        and float(p.exp).is_integer(),
-                        lambda p: Pow(p.base, int(float(p.exp))))
+_POW_OPT = ReplaceOptim(lambda p: p.is_Pow and isinstance(p.exp, (Float, float)) and float(p.exp).is_integer(),
+                        lambda p: Pow(p.base, int(p.exp)))
 
 
 ONE = Quantity(1.0, 'dimensionless')
@@ -39,7 +38,7 @@ def _generate_piecewise(expr, V, sp, Vmin, Vmax):
 
     The returned expression between Vmin and Vmax is::
     f(Vmin) + (V - Vmin) / (Vmax - Vmin) * (f(Vmax) - f(Vmin))
-where ``f`` is ``expr``
+    where ``f`` is ``expr``
 
     :param expr: The expression to turn into a piecewise
     :param V: The voltage variable.
@@ -47,6 +46,12 @@ where ``f`` is ``expr``
     :param Vmin: The value of the lower bound: the value of V for which U - U_offset == 0.
     :param Vmax: The value of the upper bound: the value of V for which U + U_offset == 0.
     :return: expr with a singularity exception around sp, if sp is not None else return the original expr.
+
+    *Please note:* Despite their names Vmin and Vmax are not necessarily ordered, we do not guarantee that Vmin < Vmax
+
+    U here refers to the expression in the singularity witin the patter found
+    U_offset is the offset in U specified when finding Vmin / Vmax
+    see :meth:`_fix_expr_parts`
     """
     f_Vmin = expr.xreplace({V: Vmin})
     f_Vmax = expr.xreplace({V: Vmax})
@@ -71,7 +76,9 @@ def _solve_real(u, V):
     """Gives the values of V for which u == 0 """
     u = optimize(u, (_POW_OPT, ))  # make sure powers of ints are represented as ints
     result = solveset(u, V, domain=S.Reals)
-    # The resul could be an intersection with Reals, if a custom exp function is used. We assume the result is real.
+    # The result is usually a set.
+    # However if a custom function is used sympy doesn't know if the custom function is Real,
+    # in that case the result of solveset is a sympy Intersection between the actual result and Reals.
     if isinstance(result, Intersection) and result.args[0] == S.Reals:
         result = result.args[1]
     return result
@@ -94,29 +101,41 @@ def _get_singularity(expr, V, U_offset, exp_function):
 
     # Create "wildcards", that act as catch-all (*) when matching expressions
     # https://docs.sympy.org/latest/modules/core.html#sympy.core.basic.Basic.match
-    P = Wild('P', real=True, exclude=[V])
-    Z = Wild('Z', real=True)
+    P_wildcard = Wild('P_wildcard', real=True, exclude=[V])
+    Z_wildcard = Wild('Z_wildcard', real=True)
     U_wildcard = Wild('U_wildcard', real=True, include=[V])
     SP_wildcard = Wild('SP_wildcard', real=True)
     singularities = []
 
     def check_U_match(m, sp):
-        assert m is None or m[Z] != 0
+        """
+        Checks that the match object resulting from pattern matching the expression is a valid match.
+        :param m: The match object resulting from pattern matching.
+        :param sp: The singularity point found.
+        :return: (Vmin, Vmax, sp)
+        """
+        assert m is None or m[Z_wildcard] != 0
         return m is not None and \
-            (sp == m[SP_wildcard] or (isinstance(sp, Float) and
-             isinstance(m[SP_wildcard], Float) and isclose(m[SP_wildcard], sp)))
+            (sp == m[SP_wildcard] or
+             (isinstance(sp, (Float, float)) and
+             isinstance(m[SP_wildcard], (Float, float)) and
+             isclose(m[SP_wildcard], sp)))
 
     # find all fractions and sperate numerator and denominator
     # the denominator is all args where a **-1
-    numerator = [a for a in expr.args if not _is_negative_power(a)]
-    denominator = [Pow(a.args[0], - a.args[1]) for a in expr.args if _is_negative_power(a)]
+    numerator, denominator = [], []
+    for a in expr.args:
+        if _is_negative_power(a):
+            denominator.append(Pow(a.args[0], - a.args[1]))
+        else:
+            numerator.append(a)
 
     # Not a division or does not have exp
     if len(denominator) == 0 or len(numerator) == 0 or not expr.has(exp_function):
         return []
 
-    numerator += [Mul(*numerator)]  # pattern could match entire numerator as well as any of its parts
-    denominator += [Mul(*denominator)]  # pattern could match entire denominator as well as any of its parts
+    numerator.append(Mul(*numerator))  # pattern could match entire numerator as well as any of its parts
+    denominator.append(Mul(*denominator))  # pattern could match entire denominator as well as any of its parts
 
     # U might be on top, try numerator / denominator and denominator / numerator
     for fraction_part_1, fraction_part_2 in ((numerator, denominator), (denominator, numerator)):
@@ -125,18 +144,19 @@ def _get_singularity(expr, V, U_offset, exp_function):
             (Vmin, Vmax, sp) = None, None, None
             if not fp2.has(exp_function):
                 continue
-            # look for exp(U) * -Z + 1.0
-            # Works as we later reuire Z to be positive
-            find_U = fp2.match(exp_function(U_wildcard) * -Z + 1.0)
+            # look for exp(U) * -Z_wildcard + 1.0
+            # Works as we later reuire Z_wildcard to be positive
+            find_U = fp2.match(exp_function(U_wildcard) * -Z_wildcard + 1.0)
             if not find_U:
-                find_U = fp2.match(exp_function(U_wildcard) * Z - 1.0)  # look for exp(U) * Z - 1.0
+                find_U = fp2.match(exp_function(U_wildcard) * Z_wildcard - 1.0)  # look for exp(U) * Z_wildcard - 1.0
 
-            # Z should be positive, we replace free symbols by 1 to be able to evaluate the sign of Z
-            if find_U and find_U[Z].xreplace({s: 1.0 for s in find_U[Z].free_symbols}) > 0:
-                # We found a match for exp(U) * Z -1 or exp(U) * -Z +1,
-                # since exp(U) * Z == exp(U + log(Z)) we can bring Z into the u expression
-                # Note: the top check (check_U_match) will not require Z to be positive (just not 0)
-                u = (find_U[U_wildcard] + log(find_U[Z]))
+            # Z_wildcard should be positive, we replace variables (parameters) by 1 to be able to evaluate the sign of Z_wildcard
+            assert not find_U  or len(find_U[Z_wildcard].free_symbols) == 0, str(find_U[Z_wildcard])
+            if find_U and find_U[Z_wildcard].xreplace({s: 1.0 for s in find_U[Z_wildcard].free_symbols}) > 0:
+                # We found a match for exp(U) * Z_wildcard -1 or exp(U) * -Z_wildcard +1,
+                # since exp(U) * Z_wildcard == exp(U + log(Z_wildcard)) we can bring Z_wildcard into the u expression
+                # Note: the top check (check_U_match) will not require Z_wildcard to be positive (just not 0)
+                u = (find_U[U_wildcard] + log(find_U[Z_wildcard]))
 
                 # Find the singularity point by solving u for V==0, excluding irrational results
                 singularity_points = _solve_real(u, V)
@@ -151,14 +171,14 @@ def _get_singularity(expr, V, U_offset, exp_function):
                         Vmin, Vmax = sp - U_offset, sp + U_offset
 
                     for fp1 in fraction_part_1:  # Check arguments in numerator (or denominator)
-                        match = fp1.match(P * u)  # search for multiple of U
-                        found_on_top = match is not None and P in match and match[P] != 0
+                        match = fp1.match(P_wildcard * u)  # search for multiple of U
+                        found_on_top = match is not None and P_wildcard in match and match[P_wildcard] != 0
                         if not found_on_top:
-                            match = fp1.match(Z * V - Z * SP_wildcard)  # search for a multiple of V - sp
+                            match = fp1.match(Z_wildcard * V - Z_wildcard * SP_wildcard)  # look for multiple of V - sp
                             found_on_top = check_U_match(match, sp)
                             if not found_on_top:
                                 # search for a exp(multiple of V - sp)
-                                match = fp1.match(exp_function(Z * V - Z * SP_wildcard))
+                                match = fp1.match(exp_function(Z_wildcard * V - Z_wildcard * SP_wildcard))
                                 found_on_top = check_U_match(match, sp)
                         if found_on_top:  # We've found a match stop looking in the other numerator arguments
                             break
