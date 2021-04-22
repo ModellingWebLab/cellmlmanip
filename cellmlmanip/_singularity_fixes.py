@@ -126,7 +126,7 @@ def _get_singularity(expr, V, U_offset, exp_function):
             if not fp2.has(exp_function):
                 continue
             # look for exp(U) * -Z + 1.0
-            # Works as we later reuire Z to be positive
+            # Works as we later require Z to be positive
             find_U = fp2.match(exp_function(U_wildcard) * -Z + 1.0)
             if not find_U:
                 find_U = fp2.match(exp_function(U_wildcard) * Z - 1.0)  # look for exp(U) * Z - 1.0
