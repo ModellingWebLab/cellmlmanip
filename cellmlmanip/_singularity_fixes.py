@@ -60,11 +60,16 @@ def _generate_piecewise(expr, V, sp, Vmin, Vmax):
 
 
 def _float_dummies(expr):
-    """Turns floats back into Quantity dummies to be in line with the rest of the sympy equations"""
+    """Replaces ``sympy.Float`` objects in ``expr`` with dimensionless :class:`cellmlmanip.model.Quantity` objects."""
     return expr.xreplace({f: Quantity(f, 'dimensionless') for f in expr.atoms(Float)})
 
 
 def _is_negative_power(expr):
+    """
+    Checks if ``expr`` is a sympy ``Pow`` with a negative exponent.
+
+    If the exponent contains variables the sign of the exponent can't be determined, and ``False`` is returned.
+    """
     try:
         return isinstance(expr, Pow) and bool(expr.args[1] < 0)
     except TypeError:  # if this is a power with variables still in it we can't determine if it's negative
@@ -130,7 +135,7 @@ def _get_singularity(expr, V, U_offset, exp_function):
         else:
             numerator.append(a)
 
-    # Not a division or does not have exp
+    # Second check: must be a fraction
     if len(denominator) == 0 or len(numerator) == 0 or not expr.has(exp_function):
         return []
 
@@ -150,8 +155,8 @@ def _get_singularity(expr, V, U_offset, exp_function):
             if not find_U:
                 find_U = fp2.match(exp_function(U_wildcard) * Z_wildcard - 1.0)  # look for exp(U) * Z_wildcard - 1.0
 
-            # Z_wildcard should be positive, we replace variables (parameters) by 1 to be able to evaluate the sign of Z_wildcard
-            assert not find_U  or len(find_U[Z_wildcard].free_symbols) == 0, str(find_U[Z_wildcard])
+            # Z_wildcard should be positive, we replace variables by 1 to be able to evaluate the sign of Z_wildcard
+            assert not find_U or len(find_U[Z_wildcard].free_symbols) == 0, str(find_U[Z_wildcard])
             if find_U and find_U[Z_wildcard].xreplace({s: 1.0 for s in find_U[Z_wildcard].free_symbols}) > 0:
                 # We found a match for exp(U) * Z_wildcard -1 or exp(U) * -Z_wildcard +1,
                 # since exp(U) * Z_wildcard == exp(U + log(Z_wildcard)) we can bring Z_wildcard into the u expression
