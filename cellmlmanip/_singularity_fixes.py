@@ -111,7 +111,7 @@ def _get_singularity(expr, V, U_offset, exp_function):
     numerator = [a for a in expr.args if not _is_negative_power(a)]
     denominator = [Pow(a.args[0], - a.args[1]) for a in expr.args if _is_negative_power(a)]
 
-    # Not a division or does not have exp
+    # Second check: must be a fraction
     if len(denominator) == 0 or len(numerator) == 0 or not expr.has(exp_function):
         return []
 
