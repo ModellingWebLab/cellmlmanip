@@ -55,7 +55,7 @@ where ``f`` is ``expr``
 
 
 def _float_dummies(expr):
-    """Turns floats back into Quantity dummies to be in line with the rest of the sympy equations"""
+    """Replaces any sympy ``Float`` objects in ``expr`` with (dimensionless) :class:`cellmlmanip.model.Quantity` objects."""
     return expr.xreplace({f: Quantity(f, 'dimensionless') for f in expr.atoms(Float)})
 
 
