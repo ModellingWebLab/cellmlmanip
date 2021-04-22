@@ -60,6 +60,11 @@ def _float_dummies(expr):
 
 
 def _is_negative_power(expr):
+    """
+    Checks if ``expr`` is a sympy ``Pow`` with a negative exponent.
+    
+    If the exponent contains variables the sign of the exponent can't be determined, and ``False`` is returned.
+    """
     try:
         return isinstance(expr, Pow) and bool(expr.args[1] < 0)
     except TypeError:  # if this is a power with variables still in it we can't determine if it's negative
