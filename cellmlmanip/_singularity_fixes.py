@@ -5,11 +5,13 @@ from math import isclose
 
 import networkx as nx
 from sympy import (
-    Abs,
     Add,
+    And,
     Eq,
     Float,
+    Le,
     Mul,
+    Or,
     Piecewise,
     Pow,
     S,
@@ -53,10 +55,17 @@ def _generate_piecewise(expr, V, sp, Vmin, Vmax):
     U_offset is the offset in U specified when finding Vmin / Vmax
     see :meth:`_fix_expr_parts`
     """
+    try:
+        if float(Vmax) < float(Vmin):
+            Vmin, Vmax = Vmax, Vmin
+        range_condition = And(Le(Vmin, V), Le(V, Vmax))
+    except TypeError:  # Vmax / Vmin are not a number, but contan variables
+        range_condition = Or(And(Le(Vmin, V), Le(V, Vmax)), And(Le(Vmax, V), Le(V, Vmin)))
+
     f_Vmin = expr.xreplace({V: Vmin})
     f_Vmax = expr.xreplace({V: Vmax})
     return Piecewise((f_Vmin + ((V - Vmin) / (Vmax - Vmin)) * (f_Vmax - f_Vmin),
-                      Abs(V - sp) < Abs((Vmax - Vmin) / 2)), (expr, True))
+                      range_condition), (expr, True))
 
 
 def _float_dummies(expr):
@@ -156,7 +165,6 @@ def _get_singularity(expr, V, U_offset, exp_function):
                 find_U = fp2.match(exp_function(U_wildcard) * Z_wildcard - 1.0)  # look for exp(U) * Z_wildcard - 1.0
 
             # Z_wildcard should be positive, we replace variables by 1 to be able to evaluate the sign of Z_wildcard
-            assert not find_U or len(find_U[Z_wildcard].free_symbols) == 0, str(find_U[Z_wildcard])
             if find_U and find_U[Z_wildcard].xreplace({s: 1.0 for s in find_U[Z_wildcard].free_symbols}) > 0:
                 # We found a match for exp(U) * Z_wildcard -1 or exp(U) * -Z_wildcard +1,
                 # since exp(U) * Z_wildcard == exp(U + log(Z_wildcard)) we can bring Z_wildcard into the u expression
