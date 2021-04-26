@@ -2,9 +2,11 @@ import os
 
 import pytest
 from sympy import (
-    Abs,
+    And,
     Float,
     Function,
+    Le,
+    Or,
     Piecewise,
     exp,
     log,
@@ -61,12 +63,28 @@ def model():
 
 
 def test_generate_piecewise():
-    sp, Vmin, Vmax = 10.0, 9.0, 11.0
+    sp, Vmin, Vmax = 10.0, 11.0, 9.0
+    pw = _generate_piecewise(EXPR1, V, sp, Vmin, Vmax)
+    Vmin, Vmax = Vmax, Vmin  # also checking Vmin/Vmax are sorted correctly
+
     f_Vmin = EXPR1.xreplace({V: Vmin})
     f_Vmax = EXPR1.xreplace({V: Vmax})
-    pw = _generate_piecewise(EXPR1, V, sp, Vmin, Vmax)
+    range_condition = And(Le(Vmin, V), Le(V, Vmax))
+
     assert pw == Piecewise((f_Vmin + ((V - Vmin) / (Vmax - Vmin)) * (f_Vmax - f_Vmin),
-                           Abs(V - sp) < Abs((Vmax - Vmin) / 2)), (EXPR1, True))
+                           range_condition), (EXPR1, True))
+
+
+def test_generate_piecewise2():
+    sp, Vmin, Vmax = 10.0, 9.0 + CAL, 11.0 + CAL
+    pw = _generate_piecewise(EXPR1, V, sp, Vmin, Vmax)
+
+    f_Vmin = EXPR1.xreplace({V: Vmin})
+    f_Vmax = EXPR1.xreplace({V: Vmax})
+    range_condition = Or(And(Le(Vmin, V), Le(V, Vmax)), And(Le(Vmax, V), Le(V, Vmin)))
+
+    assert pw == Piecewise((f_Vmin + ((V - Vmin) / (Vmax - Vmin)) * (f_Vmax - f_Vmin),
+                           range_condition), (EXPR1, True))
 
 
 def test_float_dummies():
