@@ -110,6 +110,11 @@ def _get_singularity(expr, V, U_offset, exp_function):
     - sp is the singularity point: the value of V for which U == 0
     - Vmin is the value of V for which U - U_offset == 0
     - Vmax is the value of V for which U + U_offset == 0:
+
+    *Please Note:* If U contains any non-V variables, the analysis assumes these to be positive (e.g. concentrations)
+                   it is theoretically possible such variables mean a singularity is found where there is none.
+                   E.g. if such variables make U evaluate to 0.
+
     :return: (Vmin, Vmax, sp)
     """
 
@@ -165,6 +170,8 @@ def _get_singularity(expr, V, U_offset, exp_function):
                 find_U = fp2.match(exp_function(U_wildcard) * Z_wildcard - 1.0)  # look for exp(U) * Z_wildcard - 1.0
 
             # Z_wildcard should be positive, we replace variables by 1 to be able to evaluate the sign of Z_wildcard
+            # Please note: a limitation of this approach is that any variables in Z_wildcard
+            # could have values that mean the singularity does not occur, such as 0
             if find_U and find_U[Z_wildcard].xreplace({s: 1.0 for s in find_U[Z_wildcard].free_symbols}) > 0:
                 # We found a match for exp(U) * Z_wildcard -1 or exp(U) * -Z_wildcard +1,
                 # since exp(U) * Z_wildcard == exp(U + log(Z_wildcard)) we can bring Z_wildcard into the u expression
@@ -313,12 +320,24 @@ def _remove_singularities(expr, V, U_offset=1e-7, exp_function=exp):
 def remove_fixable_singularities(model, V, modifiable_parameters, U_offset=1e-7, exp_function=exp):
     """
     Finds singularities in the GHK-like equations in the model and replaces them with a piecewise.
+    It finds singularities in equations of the form:
+       - ``U / (exp(U) - 1.0)``
+       - ``U / (1.0 - exp(U))``
+       - ``(exp(U) - 1.0) / U``
+       - ``(1.0 - exp(U)) / U``
+
     :param model: The cellmlmanip model the model to analyse.
     :param V: The voltage variable.
     :param modifiable_parameters: The variables which are modifiable in the model,
             their defining equations are excluded form the analysis.
     :param U_offset: Determins the offset either side of U for which the fix is used.
     :param exp_function: the function representing exp.
+
+    *Please Note:* As much as possible varaibles are substituted for their values during the analysis.
+                   However state variables and parameters will not be substituted (as these can change)
+                   If U contains parameters or state variables, the analysis assumes these to be positive
+                   it is theoretically possible such variables mean a singularity is found where there is none.
+                   E.g. if such variables make U evaluate to 0.
     """
     unprocessed_eqs = {}
     # iterate over sorted variables in the model
