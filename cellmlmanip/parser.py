@@ -40,7 +40,7 @@ UNIT_PREFIXES = {
 
 
 class XmlNs(Enum):
-    """Enumerates known namespaces used in CellML documents."""
+    """Namespaces in CellML documents"""
     CELLML = 'http://www.cellml.org/cellml/1.0#'
     CMETA = 'http://www.cellml.org/metadata/1.0#'
     MATHML = 'http://www.w3.org/1998/Math/MathML'
@@ -48,20 +48,18 @@ class XmlNs(Enum):
 
 
 def with_ns(ns_enum, name):
-    """Returns an ElementTree-friendly name with namespace in brackets."""
+    """Returns an ElementTree-friendly name with namespace in brackets"""
     return '{%s}%s' % (ns_enum.value, name)
 
 
 def _dump_node(node):
-    """Pretty-prints an XML node."""
+    """Pretty-print an XML node."""
     return etree.tostring(node, pretty_print=True).decode()
 
 
 class _Component:
-    """
-    This hold information about a CellML component. It's for internal-use only. Once the parser
-    has created the flattened cellmlmanip.Model instance, components are no longer used.
-    """
+    """This hold information about a CellML component. It's for internal-use only. Once the parser
+    has created the flattened cellmlmanip.Model instance, components are no longer used"""
     def __init__(self, name):
         self.name = name
         self.parent = None
@@ -88,10 +86,10 @@ class _Component:
 
 
 class Parser(object):
-    """Handles parsing of CellML files."""
+    """Handles parsing of CellML files"""
 
     def __init__(self, filepath):
-        """Initialises an instance of Parser.
+        """Initialise an instance of Parser
 
         :param filepath: the full filepath to the CellML model file
         """
@@ -105,7 +103,8 @@ class Parser(object):
 
     def parse(self, unit_store=None):
         """
-        The main method that reads the XML file and extracts the relevant parts of the CellML model definition.
+        The main method that reads the XML file and extracts the relevant parts of the CellML model
+        definition.
 
         :param unit_store: Optional :class:`cellmlmanip.units.UnitStore` instance; if given the model will share the
             underlying registry so that conversions between model units and those from the provided store work.
@@ -524,10 +523,13 @@ class Parser(object):
 
     def transform_constants(self):
         """
-        Standardises the representation of constants in this model.
+        Standardise handling of 'constants'.
 
-        "Constants" are taken to be all constant-valued variables.
-        After calling this, only state variables will have an ``initial_value`` attribute.
+        Once this has been called, the only variables with an initial_value attribute will be state variables,
+        and the initial value will do what it implies - hold the value the state variable should take at t=0.
+
+        Non state variables with an initial value are treated as constants. For consistent processing later on we add
+        equations defining them, and remove the initial_value attribute.
         """
         state_vars = set(self.model.get_state_variables())
         for var in set(self.model.variables()):
@@ -558,7 +560,7 @@ class Parser(object):
 
 class Transpiler(object):
     """
-    Handles conversion of MathML to Sympy exprerssions.
+    Handles conversion of MathmL to Sympy exprerssions.
 
     :param symbol_generator: An optional method to create expressions for symbols.
         Must have signature ``f(name) -> sympy.Basic``.
@@ -604,11 +606,11 @@ class Transpiler(object):
 
     @staticmethod
     def set_mathml_handler(mathml_operator, operator_class):
-        """Change how the transpiler handles a given ``mathml_operator``.
+        """Change how the transpiler handles a given mathml_operator.
 
-        :param mathml_operator: The name of a MathML operator e.g. ``exp``, ``true`` etc.
+        :param mathml_operator: The name of a MathML operator e.g. 'exp', 'true' etc.
         :param operator_class: A class that can handle the given operator e.g. ``sympy.exp``, or a function that creates
-            and returns a Sympy object given the operands as arguments.
+            and returns a sympy object given the operands as arguments.
         """
         SIMPLE_MATHML_TO_SYMPY_CLASSES[mathml_operator] = operator_class
 
@@ -622,11 +624,11 @@ class Transpiler(object):
         return self.parse_tree(tree)
 
     def parse_tree(self, math_element):
-        """Accepts a ``<math>`` element and returns equivalent SymPy expressions.
+        """Accepts a <math> element and returns equivalent SymPy expressions.
 
-        Note: ``math_element`` must be the ``<math>`` ``Element`` and not the root ``ElementTree``.
+        Note: math_element must be the <math> ``Element``, not the root ``ElementTree``.
 
-        :param math_element: An ``etree.Element`` object representing a ``<math>`` element.
+        :param math_element: <math> ``etree.Element`` object
         :return: A list of SymPy expressions.
         """
         return self.transpile(math_element)
@@ -637,7 +639,7 @@ class Transpiler(object):
         Descends the given MathML element node, calling the corresponding handler for child
         elements, and returns the appropriate SymPy expression.
 
-        :param element: an ``etree.Element`` containing MathML
+        :param element: an etree ``Element`` of parsed MathML
         :return: a list of SymPy expressions
         """
         # Collect the parsed expression(s) (i.e. SymPy output) into list
@@ -658,7 +660,7 @@ class Transpiler(object):
     # TOKEN ELEMENTS ###############################################################################
 
     def _ci_handler(self, node):
-        """MathML: https://www.w3.org/TR/MathML2/chapter4.html#contm.ci
+        """MathML:  https://www.w3.org/TR/MathML2/chapter4.html#contm.ci
         SymPy: http://docs.sympy.org/latest/modules/core.html#id17
         """
         identifier = node.text.strip()
