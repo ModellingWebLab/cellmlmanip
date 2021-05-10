@@ -59,7 +59,7 @@ def _generate_piecewise(expr, V, sp, Vmin, Vmax):
         if float(Vmax) < float(Vmin):
             Vmin, Vmax = Vmax, Vmin
         range_condition = And(Le(Vmin, V), Le(V, Vmax))
-    except TypeError:  # Vmax / Vmin are not a number, but contan variables
+    except TypeError:  # Vmax / Vmin are not a number, but contain variables
         range_condition = Or(And(Le(Vmin, V), Le(V, Vmax)), And(Le(Vmax, V), Le(V, Vmin)))
 
     f_Vmin = expr.xreplace({V: Vmin})
