@@ -15,7 +15,6 @@ meter = [length] = metre
 mole = [substance]
 radian = []
 second = [time]
-celsius = []
 
 # derived units (table 2 in 5.2.1 of spec.)
 becquerel = hertz

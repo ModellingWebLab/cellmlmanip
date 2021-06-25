@@ -207,6 +207,10 @@ class TestModelFunctions():
             'Derivative(_Ca_handling_by_the_SR$F2, _environment$time), '\
             'Derivative(_Ca_handling_by_the_SR$F3, _environment$time)]'
 
+    def test_unsupported_unit(self, aslanidi_model):
+        with pytest.raises(KeyError):
+            aslanidi_model.units.get_unit('celsius')
+
     def test_get_equations_for(self):
         """
         Tests Model.get_equations_for().
@@ -534,20 +538,20 @@ class TestModelFunctions():
     def test_add_variable(self, local_model):
         """ Tests the Model.add_variable() method. """
         model = local_model
-        assert len(model.variables()) == 4
+        assert len(model.variables()) == 3
         with pytest.raises(KeyError):
             model.get_variable_by_name('newvar') is None
 
         newvar = model.add_variable('newvar', 'mV')
         assert newvar.model is model
         assert newvar.is_real
-        assert len(model.variables()) == 5
+        assert len(model.variables()) == 4
         assert model.get_variable_by_name('newvar')
 
         # Variable can't be added twice
         model.add_variable('varvar1', 'mV')
         model.add_variable('varvar2', 'mV')
-        assert len(model.variables()) == 7
+        assert len(model.variables()) == 6
         with pytest.raises(ValueError, match='already exists'):
             model.add_variable('varvar1', 'mV')
 

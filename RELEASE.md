@@ -1,5 +1,5 @@
 # Release 0.3.0
-- Added a method `Model.remove_fixable_singularities` to remove fixable singularities in the model's equations.
+- Added a better error message for unsupported unit celsius.
 
 # Release 0.2.3
 - Fixes for sympy 1.7: 

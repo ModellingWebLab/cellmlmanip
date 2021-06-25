@@ -125,7 +125,6 @@ class TestUnits:
         # Make sure 1e6 doesn't get a prefix in it
         store.add_unit('Ms', 'second * 1e6')
         store.add_unit('ks', 'second * 1.e3')
-        store.add_unit('kCelsius', 'celsius * 1.e3')
 
         # Duplicate unit definition
         with pytest.raises(ValueError):
@@ -142,6 +141,10 @@ class TestUnits:
         # Pluralising is not switched on
         with pytest.raises(pint.errors.UndefinedUnitError):
             store.add_unit('ms', 'meters')
+
+        # Unsupported unit
+        with pytest.raises(ValueError):
+            store.add_unit('celsius', 'kelvin; offset: 273.15 = °C = celsius = degC = degreeC')
 
     def test_add_base_unit(self, store):
         """Tests UnitStore.add_base_unit()."""
