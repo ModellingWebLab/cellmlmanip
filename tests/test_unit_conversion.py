@@ -86,7 +86,7 @@ class TestUnitConversion:
 
     # original state for local_model
     def _original_state_local_model(self, local_model):
-        assert len(local_model.variables()) == 3
+        assert len(local_model.variables()) == 4
         symbol_a = local_model.get_variable_by_cmeta_id('sv11')
         symbol_t = local_model.get_variable_by_cmeta_id('time')
         assert symbol_a.initial_value == 2.0
@@ -192,7 +192,7 @@ class TestUnitConversion:
         # change mV to V
         newvar = local_model.convert_variable(original_var, volt_unit, DataDirectionFlow.INPUT)
         assert newvar != original_var
-        assert len(local_model.variables()) == 5
+        assert len(local_model.variables()) == 6
         symbol_a = local_model.get_variable_by_cmeta_id('sv11')
         assert symbol_a.initial_value == 0.002
         assert symbol_a.units == local_model.units.get_unit('volt')
@@ -264,7 +264,7 @@ class TestUnitConversion:
 
         # change ms to s
         local_model.convert_variable(original_var, second_unit, DataDirectionFlow.INPUT)
-        assert len(local_model.variables()) == 5
+        assert len(local_model.variables()) == 6
         symbol_a = local_model.get_variable_by_cmeta_id('sv11')
         assert symbol_a.initial_value == 2.0
         assert symbol_a.units == local_model.units.get_unit('mV')
@@ -637,7 +637,7 @@ class TestUnitConversion:
 
         # change mV to V
         local_model.convert_variable(original_var, volt_unit, DataDirectionFlow.OUTPUT)
-        assert len(local_model.variables()) == 4
+        assert len(local_model.variables()) == 5
         symbol_a = local_model.get_variable_by_cmeta_id('sv11')
         assert symbol_a.initial_value is None
         assert symbol_a.units == local_model.units.get_unit('volt')
@@ -688,7 +688,7 @@ class TestUnitConversion:
 
         # change ms to s
         local_model.convert_variable(original_var, second_unit, DataDirectionFlow.OUTPUT)
-        assert len(local_model.variables()) == 4
+        assert len(local_model.variables()) == 5
         symbol_a = local_model.get_variable_by_cmeta_id('sv11')
         assert symbol_a.initial_value == 2.0
         assert symbol_a.units == local_model.units.get_unit('mV')

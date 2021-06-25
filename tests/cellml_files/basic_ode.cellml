@@ -18,6 +18,7 @@
     </units>
     <component name="environment">
         <variable cmeta:id="time" name="time" public_interface="out" units="ms"/>
+        <variable cmeta:id="temp" name="temp" public_interface="out" units="celsius"/>
     </component>
     <component name="env_ode">
         <!-- d(sv1)/d(time) = 1, sv1(0) = 2 -->

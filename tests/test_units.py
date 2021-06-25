@@ -125,6 +125,7 @@ class TestUnits:
         # Make sure 1e6 doesn't get a prefix in it
         store.add_unit('Ms', 'second * 1e6')
         store.add_unit('ks', 'second * 1.e3')
+        store.add_unit('kCelsius', 'celsius * 1.e3')
 
         # Duplicate unit definition
         with pytest.raises(ValueError):

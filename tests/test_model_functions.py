@@ -534,20 +534,20 @@ class TestModelFunctions():
     def test_add_variable(self, local_model):
         """ Tests the Model.add_variable() method. """
         model = local_model
-        assert len(model.variables()) == 3
+        assert len(model.variables()) == 4
         with pytest.raises(KeyError):
             model.get_variable_by_name('newvar') is None
 
         newvar = model.add_variable('newvar', 'mV')
         assert newvar.model is model
         assert newvar.is_real
-        assert len(model.variables()) == 4
+        assert len(model.variables()) == 5
         assert model.get_variable_by_name('newvar')
 
         # Variable can't be added twice
         model.add_variable('varvar1', 'mV')
         model.add_variable('varvar2', 'mV')
-        assert len(model.variables()) == 6
+        assert len(model.variables()) == 7
         with pytest.raises(ValueError, match='already exists'):
             model.add_variable('varvar1', 'mV')
 
