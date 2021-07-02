@@ -216,7 +216,7 @@ class UnitStore(object):
         :returns: A :class:`Unit` object.
         :raises KeyError: If the unit is not defined in this unit store.
         """
-        if name in self._unsupported_units:
+        if name in _UNSUPPORTED_UNITS:
             raise KeyError('Unit ' + str(name) + 'is not currently supported by cellmlmanip.')
         elif name not in self._known_units:
             raise KeyError('Unknown unit ' + str(name) + '.')
