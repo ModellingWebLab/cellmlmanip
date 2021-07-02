@@ -142,6 +142,10 @@ class TestUnits:
         with pytest.raises(pint.errors.UndefinedUnitError):
             store.add_unit('ms', 'meters')
 
+        # Unsupported unit
+        with pytest.raises(ValueError):
+            store.add_unit('celsius', 'kelvin; offset: 273.15 = °C = celsius = degC = degreeC')
+
     def test_add_base_unit(self, store):
         """Tests UnitStore.add_base_unit()."""
 

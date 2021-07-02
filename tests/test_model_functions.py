@@ -207,6 +207,10 @@ class TestModelFunctions():
             'Derivative(_Ca_handling_by_the_SR$F2, _environment$time), '\
             'Derivative(_Ca_handling_by_the_SR$F3, _environment$time)]'
 
+    def test_unsupported_unit(self, aslanidi_model):
+        with pytest.raises(KeyError):
+            aslanidi_model.units.get_unit('celsius')
+
     def test_get_equations_for(self):
         """
         Tests Model.get_equations_for().

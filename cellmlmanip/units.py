@@ -29,7 +29,7 @@ _CELLML_UNITS = {
     'ampere', 'candela', 'kelvin', 'kilogram', 'meter', 'mole', 'second',
 
     # Derived SI units
-    'becquerel', 'celsius', 'coulomb', 'farad', 'gray', 'henry', 'hertz', 'joule',
+    'becquerel', 'coulomb', 'farad', 'gray', 'henry', 'hertz', 'joule',
     'lumen', 'lux', 'newton', 'ohm', 'pascal', 'radian', 'siemens', 'sievert',
     'steradian', 'tesla', 'volt', 'watt', 'weber',
     'katal',
@@ -40,6 +40,10 @@ _CELLML_UNITS = {
     # Aliases
     'metre', 'litre',
 }
+
+# Names of units that are in the cellml spec but we currently do not support.
+_UNSUPPORTED_UNITS = {'celsius'}
+
 
 _TRIG_FUNCTIONS = {
     'arccos', 'arccosh',
@@ -149,8 +153,10 @@ class UnitStore(object):
         """
         if name in _CELLML_UNITS:
             raise ValueError('Cannot redefine CellML unit <%s>.' % name)
-        if name in self._known_units:
+        elif name in self._known_units:
             raise ValueError('Cannot redefine unit <%s>.' % name)
+        elif name in _UNSUPPORTED_UNITS:
+            raise ValueError('Unit <%s> is not currently supported by cellmlmanip.' % name)
 
         # Add prefix to name
         qname = self._prefix_name(name)
@@ -208,7 +214,9 @@ class UnitStore(object):
         :returns: A :class:`Unit` object.
         :raises KeyError: If the unit is not defined in this unit store.
         """
-        if name not in self._known_units:
+        if name in _UNSUPPORTED_UNITS:
+            raise KeyError('Unit ' + str(name) + 'is not currently supported by cellmlmanip.')
+        elif name not in self._known_units:
             raise KeyError('Unknown unit ' + str(name) + '.')
 
         return getattr(self._registry, self._prefix_name(name))
