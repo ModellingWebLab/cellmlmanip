@@ -157,7 +157,7 @@ class UnitStore(object):
             raise ValueError('Cannot redefine CellML unit <%s>.' % name)
         elif name in self._known_units:
             raise ValueError('Cannot redefine unit <%s>.' % name)
-        elif name in self._unsupported_units:
+        elif name in _UNSUPPORTED_UNITS:
             raise ValueError('Unit <%s> is not currently supported by cellmlmanip.' % name)
 
         # Add prefix to name
