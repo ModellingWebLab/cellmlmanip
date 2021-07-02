@@ -41,6 +41,7 @@ _CELLML_UNITS = {
     'metre', 'litre',
 }
 
+# Names of units that are in the cellml spec but we currently do not support.
 _UNSUPPORTED_UNITS = {'celsius'}
 
 
@@ -130,9 +131,6 @@ class UnitStore(object):
         # Names of units known to this unit store (including CellML predefined ones). Stored as the user sees them, so
         # without the prefix to make them unique in the registry.
         self._known_units = set(_CELLML_UNITS)
-
-        # Names of units that are in the cellml spec but we currently do not support.
-        self._unsupported_units = set(_UNSUPPORTED_UNITS)
 
         # Create a unit calculator
         self._calculator = UnitCalculator(self)
