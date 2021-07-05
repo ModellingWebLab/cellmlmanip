@@ -215,9 +215,9 @@ class UnitStore(object):
         :raises KeyError: If the unit is not defined in this unit store.
         """
         if name in _UNSUPPORTED_UNITS:
-            raise KeyError('Unit ' + str(name) + 'is not currently supported by cellmlmanip.')
+            raise KeyError('Unit <' + str(name) + '> is not currently supported by cellmlmanip.')
         elif name not in self._known_units:
-            raise KeyError('Unknown unit ' + str(name) + '.')
+            raise KeyError('Unknown unit <' + str(name) + '>.')
 
         return getattr(self._registry, self._prefix_name(name))
 
