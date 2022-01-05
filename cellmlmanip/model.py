@@ -711,7 +711,7 @@ class Model(object):
 
     def add_rdf(self, rdf):
         """Takes an RDF string and stores it in the model's RDF graph."""
-        self.rdf.parse(StringIO(rdf))
+        self.rdf.parse(StringIO(rdf), format='xml')
 
     def transfer_cmeta_id(self, source, target):
         """
