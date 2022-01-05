@@ -157,7 +157,7 @@ def test_multiple_singularities_multiple_solutions():
 
 
 def test_solve_real():
-    assert str(_solve_real(EXPR3, V)) == 'FiniteSet(-16.6666666666667)'
+    assert str(_solve_real(EXPR3, V)) == '{-16.6666666666667}'
     assert str(_solve_real(V + log(CAL), V)) == 'FiniteSet(-log(_CAL))'
 
 
