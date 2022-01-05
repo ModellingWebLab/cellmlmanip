@@ -1,3 +1,6 @@
+# Release 0.3.2
+- Bug fix for parsing error created by version 6 of rdflib. This fix is backwards compatible with version 5 and does not change anything else.
+ 
 # Release 0.3.1
 - Added a better error message for unsupported unit celsius.
 
