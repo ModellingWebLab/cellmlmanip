@@ -1,5 +1,5 @@
 # Release 0.3.3
-- Minor performance upgrade using caching on fixing singularites. No functionality changes.
+- Minor performance upgrade for `Model.remove_fixable_singularities` using caching on fixing singularites. No functionality changes.
 
 # Release 0.3.2
 - Bug fix for parsing error created by version 6 of rdflib. This fix is backwards compatible with version 5 and does not change anything else.
