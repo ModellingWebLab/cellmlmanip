@@ -35,7 +35,7 @@ _POW_OPT = ReplaceOptim(lambda p: p.is_Pow and isinstance(p.exp, (Float, float))
 ONE = Quantity(1.0, 'dimensionless')
 
 
-@lru_cache
+@lru_cache(maxsize=None)
 def _generate_piecewise(expr, V, sp, Vmin, Vmax):
     """
     Generates a new (piecewise) expression based on expr with a linear interpolation when V is between Vmin and Vmax
@@ -100,7 +100,7 @@ def _solve_real(u, V):
     return result
 
 
-@lru_cache
+@lru_cache(maxsize=None)
 def _get_singularity(expr, V, U_offset, exp_function):
     """
     Finds singularities in equations of the form:
