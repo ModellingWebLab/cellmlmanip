@@ -1,6 +1,7 @@
 """
 ``remove_fixable_singularities`` specifies a method to remove fixable singularities from a model
 """
+from functools import lru_cache
 from math import isclose
 
 import networkx as nx
@@ -34,6 +35,7 @@ _POW_OPT = ReplaceOptim(lambda p: p.is_Pow and isinstance(p.exp, (Float, float))
 ONE = Quantity(1.0, 'dimensionless')
 
 
+@lru_cache(maxsize=128)
 def _generate_piecewise(expr, V, sp, Vmin, Vmax):
     """
     Generates a new (piecewise) expression based on expr with a linear interpolation when V is between Vmin and Vmax
@@ -98,6 +100,7 @@ def _solve_real(u, V):
     return result
 
 
+@lru_cache(maxsize=128)
 def _get_singularity(expr, V, U_offset, exp_function):
     """
     Finds singularities in equations of the form:

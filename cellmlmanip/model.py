@@ -192,7 +192,6 @@ class Model(object):
             cmeta_id = cmeta_id[1:]
 
         # Get variable by cmeta id string
-        assert isinstance(cmeta_id, str)
         try:
             return self._cmeta_id_to_variable[cmeta_id]
         except KeyError:
