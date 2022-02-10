@@ -28,7 +28,7 @@ setup(
 
     packages=find_packages(exclude=('tests', 'docs')),
     include_package_data=True,
-    python_requires='>=3.5',
+    python_requires='>=3.6',
     install_requires=[
         'lxml>=4',
         'networkx>=2.1',
