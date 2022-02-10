@@ -1,3 +1,6 @@
+# (Unreleased)
+- Dropped support for python 3.5 as it is end of life.
+
 # Release 0.3.3
 - Minor performance upgrade for `Model.remove_fixable_singularities` using caching on fixing singularites. No functionality changes.
 
