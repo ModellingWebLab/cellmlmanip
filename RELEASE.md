@@ -1,5 +1,6 @@
-# (Unreleased)
+# Release 0.3.4
 - Dropped support for python 3.5 as it is end of life.
+- Made behind teh scenes change to singularity fixing code to ensure it works with Sympy 1.10 (no functionality changed)
 
 # Release 0.3.3
 - Minor performance upgrade for `Model.remove_fixable_singularities` using caching on fixing singularites. No functionality changes.
