@@ -188,7 +188,7 @@ class TestTranspiler(object):
                           '<piece><cn>30</cn><apply><gt/><ci>x</ci><cn>2</cn></apply></piece>'
                           '<otherwise><cn>0</cn></otherwise>'
                           '</piecewise>',
-                          [sympy.Piecewise((10.0, x > 0.), (20.9, x > 1.), (30.0, x > 2.), (0.0, True))])
+                          [sympy.Piecewise((10.0, x > 0.), (20.0, x > 1.0), (30.0, x > 2.0), (0.0, True))])
 
     def test_piece_error(self):
         self.assert_raises('<piece><cn>0</cn></piece>', ValueError, match='Need exactly 2 children')
