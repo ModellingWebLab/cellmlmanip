@@ -175,7 +175,8 @@ def _get_singularity(expr, V, U_offset, exp_function):
             # Z_wildcard should be positive, we replace variables by 1 to be able to evaluate the sign of Z_wildcard
             # Please note: a limitation of this approach is that any variables in Z_wildcard
             # could have values that mean the singularity does not occur, such as 0
-            if find_U and find_U[Z_wildcard].xreplace({s: 1.0 for s in find_U[Z_wildcard].free_symbols}) > 0:
+            if find_U and find_U[Z_wildcard].xreplace({s: 1.0 for s in find_U[Z_wildcard].free_symbols}) \
+                    .replace(exp_function, exp) > 0:
                 # We found a match for exp(U) * Z_wildcard -1 or exp(U) * -Z_wildcard +1,
                 # since exp(U) * Z_wildcard == exp(U + log(Z_wildcard)) we can bring Z_wildcard into the u expression
                 # Note: the top check (check_U_match) will not require Z_wildcard to be positive (just not 0)
