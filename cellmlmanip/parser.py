@@ -905,9 +905,8 @@ class Transpiler(object):
 
         return handler
 
-
 # These MathML tags map directly to Sympy classes and don't require any extra handling
-SIMPLE_MATHML_TO_SYMPY_CLASSES = {
+_SIMPLE_MATHML_TO_SYMPY_CLASSES = {
     'abs': sympy.Abs,
     'and': sympy.And,
     'arccos': sympy.acos,
@@ -959,6 +958,9 @@ SIMPLE_MATHML_TO_SYMPY_CLASSES = {
     'true': sympy.true,
     'xor': sympy.Xor,
 }
+
+# MathML tags, to SYmpy mappings that can be changes (copy to allow original mapping to be accesible)
+SIMPLE_MATHML_TO_SYMPY_CLASSES = _SIMPLE_MATHML_TO_SYMPY_CLASSES.copy()
 
 # MathML relation elements that are n-ary operators
 MATHML_NARY_RELATIONS = {'eq', 'leq', 'lt', 'geq', 'gt'}
