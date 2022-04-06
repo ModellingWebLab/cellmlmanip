@@ -177,10 +177,10 @@ class TestTranspiler(object):
     def test_piecewise(self):
         x = sympy.Symbol('x')
         self.assert_equal('<piecewise>'
-                          '<piece><cn>0</cn><apply><lt/><ci>x</ci><cn>0</cn></apply></piece>'
+                          '<piece><cn>0.0</cn><apply><lt/><ci>x</ci><cn>0.0</cn></apply></piece>'
                           '<otherwise><ci>x</ci></otherwise>'
                           '</piecewise>',
-                          [sympy.Piecewise((0, x < 0.0), (x, True))])
+                          [sympy.Piecewise((0.0, x < 0.0), (x, True))])
 
         self.assert_equal('<piecewise>'
                           '<piece><cn>10</cn><apply><gt/><ci>x</ci><cn>0</cn></apply></piece>'
@@ -188,7 +188,7 @@ class TestTranspiler(object):
                           '<piece><cn>30</cn><apply><gt/><ci>x</ci><cn>2</cn></apply></piece>'
                           '<otherwise><cn>0</cn></otherwise>'
                           '</piecewise>',
-                          [sympy.Piecewise((10, x > 0.), (20, x > 1.), (30, x > 2.), (0, True))])
+                          [sympy.Piecewise((10.0, x > 0.), (20.0, x > 1.0), (30.0, x > 2.0), (0.0, True))])
 
     def test_piece_error(self):
         self.assert_raises('<piece><cn>0</cn></piece>', ValueError, match='Need exactly 2 children')

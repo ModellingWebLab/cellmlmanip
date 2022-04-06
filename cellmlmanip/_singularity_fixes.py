@@ -24,6 +24,7 @@ from sympy import (
 from sympy.codegen.rewriting import ReplaceOptim, optimize
 from sympy.sets import Intersection
 
+from . import parser
 from .model import FLOAT_PRECISION, Quantity
 
 
@@ -33,6 +34,27 @@ _POW_OPT = ReplaceOptim(lambda p: p.is_Pow and isinstance(p.exp, (Float, float))
 
 
 ONE = Quantity(1.0, 'dimensionless')
+
+ONE = Quantity(1.0, 'dimensionless')
+
+
+def subs_parsed_math_funcs(expr):
+    """ Substitutes math functions that have been changed with sympy functions so we can calculate the value
+    :param expr: sympy expression
+
+    Example:
+    >> str(expr)
+    '2.0 * exp_(V)'
+    >> subs_parsed_math_funcs(expr)
+    '2.0 * exp(V)'
+
+    :return: expr with all placeholder functions replaced by sympy functions.
+    """
+    for tag, sympy_func in parser.SIMPLE_MATHML_TO_SYMPY_CLASSES.items():
+        func_to_replace_with = parser._SIMPLE_MATHML_TO_SYMPY_CLASSES.get(tag, sympy_func)
+        if sympy_func != func_to_replace_with:  # skip replacing with the same function
+            expr = expr.replace(sympy_func, func_to_replace_with)
+    return expr
 
 
 @lru_cache(maxsize=128)
@@ -175,7 +197,8 @@ def _get_singularity(expr, V, U_offset, exp_function):
             # Z_wildcard should be positive, we replace variables by 1 to be able to evaluate the sign of Z_wildcard
             # Please note: a limitation of this approach is that any variables in Z_wildcard
             # could have values that mean the singularity does not occur, such as 0
-            if find_U and find_U[Z_wildcard].xreplace({s: 1.0 for s in find_U[Z_wildcard].free_symbols}) > 0:
+            if find_U and subs_parsed_math_funcs(find_U[Z_wildcard])\
+                    .xreplace({s: 1.0 for s in find_U[Z_wildcard].free_symbols}) > 0:
                 # We found a match for exp(U) * Z_wildcard -1 or exp(U) * -Z_wildcard +1,
                 # since exp(U) * Z_wildcard == exp(U + log(Z_wildcard)) we can bring Z_wildcard into the u expression
                 # Note: the top check (check_U_match) will not require Z_wildcard to be positive (just not 0)
