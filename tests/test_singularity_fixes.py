@@ -8,10 +8,12 @@ from sympy import (
     Le,
     Or,
     Piecewise,
+    Symbol,
     exp,
     log,
 )
 
+from cellmlmanip import parser
 from cellmlmanip._singularity_fixes import (
     _fix_expr_parts,
     _float_dummies,
@@ -21,6 +23,7 @@ from cellmlmanip._singularity_fixes import (
     _remove_singularities,
     _solve_real,
     remove_fixable_singularities,
+    subs_parsed_math_funcs,
 )
 from cellmlmanip.model import Quantity, Variable
 
@@ -60,6 +63,15 @@ class exp_(Function):
 @pytest.fixture(scope='session')
 def model():
     return shared.load_model('beeler_reuter_model_1977')
+
+
+def test_subs_parsed_math_funcs():
+    v = Symbol('v')
+    parser.SIMPLE_MATHML_TO_SYMPY_CLASSES['exp'] = exp_
+    expr = 1 / (exp_(v) - 1.0)
+    sustituted = subs_parsed_math_funcs(expr)
+    parser.SIMPLE_MATHML_TO_SYMPY_CLASSES['exp'] = exp
+    assert sustituted == 1 / (exp(v) - 1.0)
 
 
 def test_generate_piecewise():

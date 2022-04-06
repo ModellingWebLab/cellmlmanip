@@ -905,6 +905,7 @@ class Transpiler(object):
 
         return handler
 
+
 # These MathML tags map directly to Sympy classes and don't require any extra handling
 _SIMPLE_MATHML_TO_SYMPY_CLASSES = {
     'abs': sympy.Abs,

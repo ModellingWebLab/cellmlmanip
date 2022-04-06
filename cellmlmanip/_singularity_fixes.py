@@ -3,7 +3,6 @@
 """
 from functools import lru_cache
 from math import isclose
-from . import parser
 
 import networkx as nx
 from sympy import (
@@ -25,6 +24,7 @@ from sympy import (
 from sympy.codegen.rewriting import ReplaceOptim, optimize
 from sympy.sets import Intersection
 
+from . import parser
 from .model import FLOAT_PRECISION, Quantity
 
 
@@ -51,8 +51,11 @@ def subs_parsed_math_funcs(expr):
     :return: expr with all placeholder functions replaced by sympy functions.
     """
     for tag, sympy_func in parser.SIMPLE_MATHML_TO_SYMPY_CLASSES.items():
-        expr = expr.replace(sympy_func, parser._SIMPLE_MATHML_TO_SYMPY_CLASSES.get(tag, sympy_func))
+        func_to_replace_with = parser._SIMPLE_MATHML_TO_SYMPY_CLASSES.get(tag, sympy_func)
+        if sympy_func != func_to_replace_with:  # skip replacing with the same function
+            expr = expr.replace(sympy_func, func_to_replace_with)
     return expr
+
 
 @lru_cache(maxsize=128)
 def _generate_piecewise(expr, V, sp, Vmin, Vmax):
