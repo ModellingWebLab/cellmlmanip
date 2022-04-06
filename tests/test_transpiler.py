@@ -177,10 +177,10 @@ class TestTranspiler(object):
     def test_piecewise(self):
         x = sympy.Symbol('x')
         self.assert_equal('<piecewise>'
-                          '<piece><cn>0</cn><apply><lt/><ci>x</ci><cn>0</cn></apply></piece>'
+                          '<piece><cn>0.0</cn><apply><lt/><ci>x</ci><cn>0.0</cn></apply></piece>'
                           '<otherwise><ci>x</ci></otherwise>'
                           '</piecewise>',
-                          [sympy.Piecewise((0.0, x < 0), (x, True))])
+                          [sympy.Piecewise((0.0, x < 0.0), (x, True))])
 
         self.assert_equal('<piecewise>'
                           '<piece><cn>10</cn><apply><gt/><ci>x</ci><cn>0</cn></apply></piece>'
