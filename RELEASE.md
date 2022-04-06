@@ -1,9 +1,6 @@
-# Release 0.3.5
-- Updated how substitution of functions that were changed in the parser are handled during analysis for fixing singularities, in order to make sure it workes with sympy 1.10
-
 # Release 0.3.4
+- Updated how substitution of functions that were changed in the parser are handled during analysis for fixing singularities, in order to make sure it workes with sympy 1.10
 - Dropped support for python 3.5 as it is end of life.
-- Made behind the scenes change to singularity fixing code to ensure it works with Sympy 1.10 (no functionality changed)
 
 # Release 0.3.3
 - Minor performance upgrade for `Model.remove_fixable_singularities` using caching on fixing singularites. No functionality changes.
