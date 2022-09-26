@@ -39,6 +39,17 @@ UNIT_PREFIXES = {
 }
 
 
+# Work around for sympy issue dealing with relationals in equations that er passed to Piecewise
+# see https://github.com/sympy/sympy/issues/24086
+# and https://github.com/ModellingWebLab/cellmlmanip/issues/350
+sympy.Eq.is_Boolean = True
+sympy.Ne.is_Boolean = True
+sympy.Ge.is_Boolean = True
+sympy.Le.is_Boolean = True
+sympy.Gt.is_Boolean = True
+sympy.Lt.is_Boolean = True
+
+
 class XmlNs(Enum):
     """Namespaces in CellML documents"""
     CELLML = 'http://www.cellml.org/cellml/1.0#'
