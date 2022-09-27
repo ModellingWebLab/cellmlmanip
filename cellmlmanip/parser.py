@@ -207,8 +207,8 @@ class Parser(object):
 
             # unit is defined in terms of known units - ok to add to model
             if add_now:
-                definition = self._make_pint_unit_definition(unit_name, unit_elements)
-                self.model.units.add_unit(unit_name, definition)
+                definition, offset = self._make_pint_unit_definition(unit_name, unit_elements)
+                self.model.units.add_unit(unit_name, definition, offset)
                 units_found.add(unit_name)
                 iteration = 0
             else:
@@ -230,6 +230,7 @@ class Parser(object):
         """
         full_unit_expr = []
 
+        offset = None
         # For each of the <unit> elements for this unit definition
         for unit_element in unit_attributes:
 
@@ -253,11 +254,14 @@ class Parser(object):
             if 'multiplier' in unit_element:
                 expr = '(%s * %s)' % (unit_element['multiplier'], expr)
 
+            if 'offset' in unit_element:
+                offset = unit_element['offset']
+
             # Collect/add this particular <unit> definition
             full_unit_expr.append(expr)
 
         # Join together all the parts of the unit expression and return
-        return '*'.join(full_unit_expr)
+        return '*'.join(full_unit_expr), offset
 
     def _add_components(self, model):
         """

@@ -140,7 +140,7 @@ class UnitStore(object):
         self.Unit = self._registry.Unit
         self.Quantity = self._registry.Quantity
 
-    def add_unit(self, name, expression):
+    def add_unit(self, name, expression, offset=None):
         """Adds a unit called ``name`` to the unit store, as defined by the string ``expression``.
 
         For example::
@@ -168,9 +168,15 @@ class UnitStore(object):
         # To test if this is a dimensionless unit, parse the string as a Quantity and check if it's dimensionless
         quantity = self._registry.parse_expression(expression)
         if quantity.units == self._registry.dimensionless:
+            #  offsets are not supported for dimensionless
+            if offset is not None:
+                raise NotSupportedErrorOffsetsDimensionless(expression + '; offset: ' + offset)
             definition = UnitDefinition(qname, '', (), ScaleConverter(quantity.to(self._registry.dimensionless)))
         else:
             definition = qname + '=' + expression
+            #  if we have an offset, add that to the definition now
+            if offset is not None:
+                definition += '; offset: ' + offset
 
         # Add to registry
         self._registry.define(definition)
@@ -290,6 +296,10 @@ class UnitStore(object):
         """
         assert isinstance(quantity, self._registry.Quantity)
         assert isinstance(unit, self._registry.Unit)
+        #  Trying to convert dimensionless gives an error but we can convert to it
+        if quantity.units == self._registry.dimensionless:
+            quantity, unit = 1 * unit, quantity.units
+            return 1 / quantity.to(unit)
         return quantity.to(unit)
 
     def add_conversion_rule(self, from_unit, to_unit, rule):
@@ -895,3 +905,15 @@ class UnitConversionError(UnitError):
     def __init__(self, expression, from_units, to_units):
         self.expression = expression
         self.message = 'Cannot convert units from {} to {}'.format(from_units, to_units)
+
+
+class NotSupportedErrorOffsetsDimensionless(UnitError):
+    """Represents failure to convert between incompatible units.
+
+    :param expression: the Sympy expression in which the error occurred
+    :param from_unit: the units the expression is in
+    :param to_unit: the units we tried to convert to
+    """
+    def __init__(self, expression):
+        self.expression = expression
+        self.message = 'Offsets for dimensionless units are not supported'

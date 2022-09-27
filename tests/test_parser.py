@@ -5,6 +5,7 @@ import pytest
 import sympy
 
 from cellmlmanip import parser
+from cellmlmanip.units import NotSupportedErrorOffsetsDimensionless
 
 from .shared import check_left_right_units_equal, load_model
 
@@ -331,3 +332,37 @@ class TestParser(object):
                 sympy.Eq(Ax, zero)]
         model_eqs = sorted(map(str, model.equations))
         assert model_eqs == sorted(map(str, set(eqs1))) or model_eqs == sorted(map(str, set(eqs2)))
+
+    def test_dimensionless_exp(self):
+        model = load_model('dimensionless_exp.cellml')
+        assert sorted(map(str, model.variables())) == ['A$x', 'B$y']
+        dimensionless = model.units.get_unit('dimensionless')
+        hyper_dimensionless = model.units.get_unit('hyper_dimensionless')
+        cf1 = model.units.convert(1 * dimensionless, hyper_dimensionless)
+        cf2 = model.units.convert(1 * hyper_dimensionless, dimensionless)
+        assert cf1 == cf2 == 1
+
+    def test_dimensionless_multiplier(self):
+        model = load_model('dimensionless_multiplier.cellml')
+        assert sorted(map(str, model.variables())) == ['A$x', 'B$y']
+        dimensionless = model.units.get_unit('dimensionless')
+        halves = model.units.get_unit('halves')
+        cf1 = model.units.convert(1 * dimensionless, halves)
+        cf2 = model.units.convert(1 * halves, dimensionless)
+        assert cf1 == 1 / cf2, str([cf1, cf2])
+
+    def test_dimensionless_offset(self):
+        with pytest.raises(NotSupportedErrorOffsetsDimensionless):
+            load_model('dimensionless_offset.cellml')
+
+    def test_offset(self):
+        model = load_model('test_offset.cellml')
+        assert sorted(map(str, model.variables())) == ['A$x', 'B$y']
+        meter = model.units.get_unit('meter')
+        offsetmeter = model.units.get_unit('offsetmeter')
+        to_offset = (1 * meter).to(offsetmeter)
+        to_meter = (1 * offsetmeter).to(meter)
+        assert to_offset.to(meter) == 1 * meter
+        assert to_meter.to(offsetmeter) == 1 * offsetmeter
+        assert to_offset.magnitude == -9.0
+        assert to_meter.magnitude == 11.0
