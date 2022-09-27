@@ -321,7 +321,9 @@ class TestParser(object):
         # and https://github.com/ModellingWebLab/cellmlmanip/issues/350
         model = load_model('parsing_err_bool_in_cond.cellml')
         assert sorted(map(str, model.variables())) == ['A$iffalse', 'A$iftrue', 'A$x']
-        assert sorted(map(str, model.equations)) == \
-            ['Eq(_A$iffalse, Piecewise((_1, Eq(False, Eq(_0, _A$x))), (_0, True)))',
-             'Eq(_A$iftrue, Piecewise((_1, Eq(True, Eq(_0, _A$x))), (_0, True)))',
-             'Eq(_A$x, _0)']
+
+        zero, one, Ax, iffalse, iftrue = sympy.symbols('_0, _1, _A$x, _A$iffalse, _A$iftrue')
+        eqs = [sympy.Eq(iffalse, sympy.Piecewise((one, sympy.Eq(False, sympy.Eq(zero, Ax))), (zero, True))),
+               sympy.Eq(iftrue, sympy.Piecewise((one, sympy.Eq(True, sympy.Eq(zero, Ax))), (zero, True))),
+               sympy.Eq(Ax, zero)]
+        assert str(set(model.equations)) == str(set(eqs))
