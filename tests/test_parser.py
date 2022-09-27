@@ -314,3 +314,14 @@ class TestParser(object):
         with pytest.raises(ValueError, match=(r'Target already assigned to environment\$time '
                                               r'before assignment to environment\$time')):
             load_model('test_wrong_connections')
+
+    def test_piecewise_booleans_error(self):
+        # Testing a model with a boolean in expression being passed to Piecewise
+        # see https://github.com/sympy/sympy/issues/24086
+        # and https://github.com/ModellingWebLab/cellmlmanip/issues/350
+        model = load_model('parsing_err_bool_in_cond.cellml')
+        assert sorted(map(str, model.variables())) == ['A$iffalse', 'A$iftrue', 'A$x']
+        assert sorted(map(str, model.equations)) == \
+            ['Eq(_A$iffalse, Piecewise((_1, Eq(False, Eq(_0, _A$x))), (_0, True)))',
+             'Eq(_A$iftrue, Piecewise((_1, Eq(True, Eq(_0, _A$x))), (_0, True)))',
+             'Eq(_A$x, _0)']

@@ -42,7 +42,7 @@ class TestModelFunctions():
         names = ['env_ode$sv1', 'environment$time']
         for v in graph1:
             if not v.is_Derivative:
-                assert (v.name in names)
+                assert v.name in names
             else:
                 for a in v._args:
                     if a.is_Dummy:
@@ -50,7 +50,7 @@ class TestModelFunctions():
                     else:
                         for b in a._args:
                             if b.is_Dummy:
-                                assert (b.name in names)
+                                assert b.name in names
 
     def test_graph_for_dae(self):
         """ Checks if writing a DAE in a model raises an exceptions. """
