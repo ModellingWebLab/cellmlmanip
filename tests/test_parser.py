@@ -314,3 +314,20 @@ class TestParser(object):
         with pytest.raises(ValueError, match=(r'Target already assigned to environment\$time '
                                               r'before assignment to environment\$time')):
             load_model('test_wrong_connections')
+
+    def test_piecewise_booleans_error(self):
+        # Testing a model with a boolean in expression being passed to Piecewise
+        # see https://github.com/sympy/sympy/issues/24086
+        # and https://github.com/ModellingWebLab/cellmlmanip/issues/350
+        model = load_model('parsing_err_bool_in_cond.cellml')
+        assert sorted(map(str, model.variables())) == ['A$iffalse', 'A$iftrue', 'A$x']
+
+        zero, one, Ax, iffalse, iftrue = sympy.symbols('_0, _1, _A$x, _A$iffalse, _A$iftrue')
+        eqs1 = [sympy.Eq(iffalse, sympy.Piecewise((one, sympy.Eq(False, sympy.Eq(zero, Ax))), (zero, True))),
+                sympy.Eq(iftrue, sympy.Piecewise((one, sympy.Eq(True, sympy.Eq(zero, Ax))), (zero, True))),
+                sympy.Eq(Ax, zero)]
+        eqs2 = [sympy.Eq(iffalse, sympy.Piecewise((one, sympy.Eq(False, sympy.Eq(Ax, zero))), (zero, True))),
+                sympy.Eq(iftrue, sympy.Piecewise((one, sympy.Eq(True, sympy.Eq(Ax, zero))), (zero, True))),
+                sympy.Eq(Ax, zero)]
+        model_eqs = sorted(map(str, model.equations))
+        assert model_eqs == sorted(map(str, set(eqs1))) or model_eqs == sorted(map(str, set(eqs2)))

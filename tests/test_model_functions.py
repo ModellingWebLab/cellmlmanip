@@ -38,19 +38,19 @@ class TestModelFunctions():
         """ Tests that the graph property for Model has been constructed correctly. """
 
         graph1 = basic_model.graph
-        assert(len(graph1.nodes) == 3)
+        assert len(graph1.nodes) == 3
         names = ['env_ode$sv1', 'environment$time']
         for v in graph1:
             if not v.is_Derivative:
-                assert (v.name in names)
+                assert v.name in names
             else:
                 for a in v._args:
                     if a.is_Dummy:
-                        assert(a.name in names)
+                        assert a.name in names
                     else:
                         for b in a._args:
                             if b.is_Dummy:
-                                assert (b.name in names)
+                                assert b.name in names
 
     def test_graph_for_dae(self):
         """ Checks if writing a DAE in a model raises an exceptions. """

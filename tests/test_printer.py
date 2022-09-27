@@ -230,15 +230,10 @@ class TestPrinter(object):
         assert p.doprint(False) == 'False'
         assert p.doprint(sp.Eq(x, x)) == 'True'
         assert p.doprint(sp.Ne(x, x)) == 'False'
-        assert (
-            p.doprint(sp.And(sp.Eq(x, y), sp.Eq(x, z))) == 'x == y and x == z')
-        assert (
-            p.doprint(sp.And(sp.Eq(x, y), sp.Eq(x, z), sp.Eq(x, 2))) ==
-            'x == 2 and x == y and x == z')
+        assert p.doprint(sp.And(sp.Eq(x, y), sp.Eq(x, z))) == 'x == y and x == z'
+        assert p.doprint(sp.And(sp.Eq(x, y), sp.Eq(x, z), sp.Eq(x, 2))) == 'x == 2 and x == y and x == z'
         assert p.doprint(sp.Or(sp.Eq(x, y), sp.Eq(x, z))) == 'x == y or x == z'
-        assert (
-            p.doprint(sp.Or(sp.Eq(x, y), sp.Eq(x, z), sp.Eq(x, 2))) ==
-            'x == 2 or x == y or x == z')
+        assert p.doprint(sp.Or(sp.Eq(x, y), sp.Eq(x, z), sp.Eq(x, 2))) == 'x == 2 or x == y or x == z'
         a, b, c = x > 2, x > y, x > z
         assert p.doprint(a & b) == 'x > 2 and x > y'
         # 1 or (0 and 0) = 1 = 1 or 0 and 0 -- and binds stronger
@@ -250,11 +245,9 @@ class TestPrinter(object):
 
         # Piecewise expressions
         e = sp.Piecewise((0, x > 0), (1, x > 1), (2, True))
-        assert (
-            p.doprint(e) == '((0) if (x > 0) else ((1) if (x > 1) else (2)))')
+        assert p.doprint(e) == '((0) if (x > 0) else ((1) if (x > 1) else (2)))'
         e = sp.Piecewise((0, x > 0), (1, x > 1), (2, True), (3, x > 3))
-        assert (
-            p.doprint(e) == '((0) if (x > 0) else ((1) if (x > 1) else (2)))')
+        assert p.doprint(e) == '((0) if (x > 0) else ((1) if (x > 1) else (2)))'
         # Sympy filters out False statements
         e = sp.Piecewise(
             (0, x > 0), (1, x != x), (2, True), (3, x > 3),
@@ -272,9 +265,7 @@ class TestPrinter(object):
     def test_long_expression(self, p, x, y, z):
 
         # Longer expressions
-        assert (
-            p.doprint((x + y) / (2 + z / sp.exp(x - y))) ==
-            '(x + y) / (2 + z * math.exp(y - x))')
+        assert p.doprint((x + y) / (2 + z / sp.exp(x - y))) == '(x + y) / (2 + z * math.exp(y - x))'
         assert p.doprint((y + sp.sin(x))**-1) == '1 / (y + math.sin(x))'
 
     def test_unsupported_sympy_items(self, p, x):

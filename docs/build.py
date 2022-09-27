@@ -51,7 +51,7 @@ if __name__ == '__main__':
         path = os.path.abspath(os.path.dirname(inspect.getfile(frame)))
     finally:
         # Always manually delete frame: https://docs.python.org/2/library/inspect.html#the-interpreter-stack
-        del(frame)
+        del frame
     path = os.path.relpath(path, os.getcwd())
 
     # Run
