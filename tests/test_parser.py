@@ -323,7 +323,11 @@ class TestParser(object):
         assert sorted(map(str, model.variables())) == ['A$iffalse', 'A$iftrue', 'A$x']
 
         zero, one, Ax, iffalse, iftrue = sympy.symbols('_0, _1, _A$x, _A$iffalse, _A$iftrue')
-        eqs = [sympy.Eq(iffalse, sympy.Piecewise((one, sympy.Eq(False, sympy.Eq(zero, Ax))), (zero, True))),
-               sympy.Eq(iftrue, sympy.Piecewise((one, sympy.Eq(True, sympy.Eq(zero, Ax))), (zero, True))),
-               sympy.Eq(Ax, zero)]
-        assert sorted(map(str, model.equations)) == sorted(map(str, set(eqs)))
+        eqs1 = [sympy.Eq(iffalse, sympy.Piecewise((one, sympy.Eq(False, sympy.Eq(zero, Ax))), (zero, True))),
+                sympy.Eq(iftrue, sympy.Piecewise((one, sympy.Eq(True, sympy.Eq(zero, Ax))), (zero, True))),
+                sympy.Eq(Ax, zero)]
+        eqs2 = [sympy.Eq(iffalse, sympy.Piecewise((one, sympy.Eq(False, sympy.Eq(Ax, zero))), (zero, True))),
+                sympy.Eq(iftrue, sympy.Piecewise((one, sympy.Eq(True, sympy.Eq(Ax, zero))), (zero, True))),
+                sympy.Eq(Ax, zero)]
+        model_eqs = sorted(map(str, model.equations))
+        assert model_eqs == sorted(map(str, set(eqs1))) or model_eqs == sorted(map(str, set(eqs2)))
