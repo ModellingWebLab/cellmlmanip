@@ -326,4 +326,4 @@ class TestParser(object):
         eqs = [sympy.Eq(iffalse, sympy.Piecewise((one, sympy.Eq(False, sympy.Eq(zero, Ax))), (zero, True))),
                sympy.Eq(iftrue, sympy.Piecewise((one, sympy.Eq(True, sympy.Eq(zero, Ax))), (zero, True))),
                sympy.Eq(Ax, zero)]
-        assert str(set(model.equations)) == str(set(eqs))
+        assert sorted(map(str, model.equations)) == sorted(map(str, set(eqs)))
