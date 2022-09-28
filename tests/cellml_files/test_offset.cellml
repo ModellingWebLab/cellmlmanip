@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- cellmlmanip test: error should be raised if non-zero offset is used -->
+<model name="unit_conversion_dimensionless_offset"
+       xmlns="http://www.cellml.org/cellml/1.0#">
+  <units name="offsetmeter">
+    <unit units="meter" offset="10" />
+  </units>
+  <component name="A">
+    <variable name="x" units="offsetmeter" initial_value="3" public_interface="out" />
+  </component>
+</model>

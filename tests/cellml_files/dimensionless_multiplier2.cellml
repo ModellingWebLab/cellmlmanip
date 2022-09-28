@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Testing more dimensionless unit with multiplier -->
+<model name="unit_conversion_dimensionless_multiplier_1"
+       xmlns="http://www.cellml.org/cellml/1.0#">
+  <units name="half_meter">
+    <unit units="meter" multiplier="0.5" />
+  </units>
+</model>
