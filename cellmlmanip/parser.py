@@ -277,6 +277,8 @@ class Parser(object):
         for element in component_elements:
             # component are only kept in parser to resolve relationships and connections
             name = element.get('name')
+            if name in self.components:
+                raise ValueError(f'Duplicate component name {name}, component names must be unique!')
             self.components[name] = _Component(name)
 
             # process the <variable> tags in this component

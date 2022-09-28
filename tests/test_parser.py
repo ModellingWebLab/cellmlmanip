@@ -376,3 +376,8 @@ class TestParser(object):
         meter = model.units.get_unit('meter')
         offsetmeter = model.units.get_unit('offsetmeter')
         assert model.units.is_equivalent(meter, offsetmeter)
+
+    def test_duplicate_component_name(self):
+        with pytest.raises(ValueError) as value_info:
+            load_model('test_duplicate_component_names.cellml')
+        assert 'Duplicate component name c1, component names must be unique!' in str(value_info.value)
