@@ -2,7 +2,7 @@
 - Fixed a bug in the parser where equations in a piecewise containing a boolean caused parsing errors.
   see https://github.com/ModellingWebLab/cellmlmanip/issues/350
 
-- Fixes errors dealing with dimensionless units which have an offset, multiplier or exponent and added a warbing for other offset units to indicate that these are not supported.
+- Fixes errors dealing with dimensionless units which have a multiplier or exponent and added an error for offset units (where the offset is not 0) as those are not supported.
   see https://github.com/ModellingWebLab/cellmlmanip/issues/351
 
 # Release 0.3.4
