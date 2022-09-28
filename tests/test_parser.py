@@ -333,5 +333,6 @@ class TestParser(object):
         assert model_eqs == sorted(map(str, set(eqs1))) or model_eqs == sorted(map(str, set(eqs2)))
 
     def test_duplicate_component_name(self):
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError) as value_info:
             load_model('test_duplicate_component_names.cellml')
+        assert 'Duplicate component name c1, component names must be unique!' in str(value_info.value)
