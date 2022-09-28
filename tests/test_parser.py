@@ -362,3 +362,11 @@ class TestParser(object):
         meter = model.units.get_unit('meter')
         offsetmeter = model.units.get_unit('offsetmeter')
         assert model.units.is_equivalent(meter, offsetmeter)
+
+    def test_offset_0(self, caplog):
+        model = load_model('test_offset_0.cellml')
+        assert 'Offsets in unit definitions are not supported and are ignored!' not in caplog.text
+        assert sorted(map(str, model.variables())) == ['A$x', 'B$y']
+        meter = model.units.get_unit('meter')
+        offsetmeter = model.units.get_unit('offsetmeter')
+        assert model.units.is_equivalent(meter, offsetmeter)

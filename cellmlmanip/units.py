@@ -174,7 +174,7 @@ class UnitStore(object):
             definition = UnitDefinition(qname, '', (), ScaleConverter(quantity.to(self._registry.dimensionless)))
         else:
             definition = qname + '=' + expression
-            if offset is not None:  # just warn and ignore
+            if offset is not None and offset.strip() != '0':  # just warn and ignore
                 logger.warning('Offsets in unit definitions are not supported and are ignored!')
 
         # Add to registry
