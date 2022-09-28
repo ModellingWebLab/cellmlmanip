@@ -331,3 +331,7 @@ class TestParser(object):
                 sympy.Eq(Ax, zero)]
         model_eqs = sorted(map(str, model.equations))
         assert model_eqs == sorted(map(str, set(eqs1))) or model_eqs == sorted(map(str, set(eqs2)))
+
+    def test_err_connect_to_non_existing_component(self):
+        with pytest.raises(ValueError):
+            load_model('err_connect_to_non_existing_component.cellml')

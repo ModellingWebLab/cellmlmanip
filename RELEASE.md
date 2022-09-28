@@ -1,6 +1,7 @@
 # (unreleased)
 - Fixed a bug in the parser where equations in a piecewise containing a boolean caused parsing errors.
   see https://github.com/ModellingWebLab/cellmlmanip/issues/350
+- Added error message when trying to connect components that do not exist.
 
 # Release 0.3.4
 - Updated how substitution of functions that were changed in the parser are handled during analysis for fixing singularities, in order to make sure it workes with sympy 1.10
