@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- cellmlmaniptest: offset of 0 is ignored: does not affect parsing or unit equivalence when connections are made -->
+<model name="unit_conversion_dimensionless_offset"
+       xmlns="http://www.cellml.org/cellml/1.0#">
+  <units name="offsetmeter">
+    <unit units="meter" offset=" 0 " />
+  </units>
+  <component name="A">
+    <variable name="x" units="meter" initial_value="3" public_interface="out" />
+  </component>
+  <component name="B">
+    <variable name="y" units="offsetmeter" public_interface="in" />
+  </component>
+  <connection>
+    <map_components component_1="A" component_2="B" />
+    <map_variables variable_1="x" variable_2="y" />
+  </connection>
+</model>

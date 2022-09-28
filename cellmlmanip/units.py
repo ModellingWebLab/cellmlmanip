@@ -290,6 +290,10 @@ class UnitStore(object):
         """
         assert isinstance(quantity, self._registry.Quantity)
         assert isinstance(unit, self._registry.Unit)
+        #  Trying to convert FROM dimensionless gives an error but we can convert TO it
+        if quantity.units == self._registry.dimensionless:
+            quantity, unit = 1 * unit, quantity.units
+            return quantity.magnitude / quantity.to(unit)
         return quantity.to(unit)
 
     def add_conversion_rule(self, from_unit, to_unit, rule):
