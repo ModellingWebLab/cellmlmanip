@@ -335,3 +335,8 @@ class TestParser(object):
     def test_duplicate_unit_definition(self):
         with pytest.raises(ValueError):
             load_model('test_duplicate_unit_definition.cellml')
+
+    def test_duplicate_component_name(self):
+        with pytest.raises(ValueError) as value_info:
+            load_model('test_duplicate_component_names.cellml')
+        assert 'Duplicate component name c1, component names must be unique!' in str(value_info.value)
