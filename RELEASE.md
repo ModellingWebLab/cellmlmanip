@@ -3,6 +3,7 @@
   see https://github.com/ModellingWebLab/cellmlmanip/issues/350
 - Added an error for duplicate unit definitions.
 - Added an error for duplicate component names.
+
 # Release 0.3.4
 - Updated how substitution of functions that were changed in the parser are handled during analysis for fixing singularities, in order to make sure it workes with sympy 1.10
 - Dropped support for python 3.5 as it is end of life.
