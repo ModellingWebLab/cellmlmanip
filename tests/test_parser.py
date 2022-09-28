@@ -351,11 +351,6 @@ class TestParser(object):
         assert cf1 == 2
         assert cf2 == 0.5
 
-        cf1 = model.units.convert(2 * dimensionless, halves).magnitude
-        cf2 = model.units.convert(2 * halves, dimensionless).magnitude
-        assert cf1 == 2
-        assert cf2 == 0.5
-
     def test_dimensionless_multiplier2(self):
         model = load_model('dimensionless_multiplier2.cellml')
         meter = model.units.get_unit('meter')
