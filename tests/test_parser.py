@@ -332,6 +332,6 @@ class TestParser(object):
         model_eqs = sorted(map(str, model.equations))
         assert model_eqs == sorted(map(str, set(eqs1))) or model_eqs == sorted(map(str, set(eqs2)))
 
-    def test_test_duplicate_unit_definition(self):
+    def test_duplicate_unit_definition(self):
         with pytest.raises(ValueError):
             load_model('test_duplicate_unit_definition.cellml')
