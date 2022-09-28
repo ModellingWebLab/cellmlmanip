@@ -337,6 +337,16 @@ class TestParser(object):
             load_model('test_duplicate_unit_definition.cellml')
         assert 'Duplicate unit definition wooster, unit names need to be unique!' in str(value_info)
 
+    def test_err_connect_to_non_existing_component(self):
+        with pytest.raises(ValueError) as value_info:
+            load_model('err_connect_to_non_existing_component.cellml')
+        assert 'Cannot connect components that do not exist: c!' in str(value_info.value)
+
+    def test_err_connect_to_non_existing_component2(self):
+        with pytest.raises(ValueError) as value_info:
+            load_model('err_connect_to_non_existing_component2.cellml')
+        assert 'Cannot connect components that do not exist: q!' in str(value_info.value)
+
     def test_duplicate_component_name(self):
         with pytest.raises(ValueError) as value_info:
             load_model('test_duplicate_component_names.cellml')

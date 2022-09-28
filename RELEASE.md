@@ -2,6 +2,7 @@
 - Fixed a bug in the parser where equations in a piecewise containing a boolean caused parsing errors.
   see https://github.com/ModellingWebLab/cellmlmanip/issues/350
 - Added an error for duplicate unit definitions.
+- Added error message when trying to connect components that do not exist.
 - Added an error for duplicate component names.
 
 # Release 0.3.4
