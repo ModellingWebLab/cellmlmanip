@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- CellML Test Suite. https://github.com/MichaelClerx/cellml-validation -->
+<!-- CellML 1.0, 3.4.2.2: Component names must be unique -->
+<model name="component_name_duplicate"
+       xmlns="http://www.cellml.org/cellml/1.0#">
+  <component name="c1" />
+  <component name="c1" />
+</model>
