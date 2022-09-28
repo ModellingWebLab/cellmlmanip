@@ -332,6 +332,11 @@ class TestParser(object):
         model_eqs = sorted(map(str, model.equations))
         assert model_eqs == sorted(map(str, set(eqs1))) or model_eqs == sorted(map(str, set(eqs2)))
 
+    def test_duplicate_unit_definition(self):
+        with pytest.raises(ValueError) as value_info:
+            load_model('test_duplicate_unit_definition.cellml')
+        assert 'Duplicate unit definition wooster, unit names need to be unique!' in str(value_info)
+
     def test_dimensionless_exp(self):
         model = load_model('dimensionless_exp.cellml')
         assert sorted(map(str, model.variables())) == ['A$x', 'B$y']

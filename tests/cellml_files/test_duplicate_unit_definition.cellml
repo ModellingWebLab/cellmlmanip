@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Testing duplicate unit definitions -->
+<model name="units_name_duplicate_1"
+       xmlns="http://www.cellml.org/cellml/1.0#">
+  <units name="wooster">
+    <unit units="volt" />
+  </units>
+  <units name="wooster">
+    <unit units="volt" />
+  </units>
+</model>
