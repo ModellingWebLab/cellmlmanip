@@ -335,7 +335,7 @@ class TestParser(object):
     def test_duplicate_unit_definition(self):
         with pytest.raises(ValueError) as value_info:
             load_model('test_duplicate_unit_definition.cellml')
-        assert 'Duplicate unit definition wooster, unit definitions need to be unique!' in str(value_info)
+        assert 'Duplicate unit definition wooster, unit names need to be unique!' in str(value_info)
 
     def test_duplicate_component_name(self):
         with pytest.raises(ValueError) as value_info:

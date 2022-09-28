@@ -209,7 +209,7 @@ class Parser(object):
             if add_now:
                 definition = self._make_pint_unit_definition(unit_name, unit_elements)
                 if self.model.units.is_defined(unit_name):
-                    raise ValueError(f'Duplicate unit definition {unit_name}, unit names need to be unique')
+                    raise ValueError(f'Duplicate unit definition {unit_name}, unit names need to be unique!')
                 self.model.units.add_unit(unit_name, definition)
                 units_found.add(unit_name)
                 iteration = 0
