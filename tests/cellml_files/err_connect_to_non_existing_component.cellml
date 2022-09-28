@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- CellML Test Suite. https://github.com/MichaelClerx/cellml-validation -->
+<!-- CellML 1.0, 3.4.5.2: A map_components attribute component_1 must refer to
+                          an existing component. -->
+<model name="map_components_component_1_nonexistent"
+       xmlns="http://www.cellml.org/cellml/1.0#">
+  <connection>
+    <map_components component_1="c" component_2="b" />
+    <map_variables variable_1="x" variable_2="x" />
+  </connection>
+  <component name="a">
+    <variable name="x" units="newton" public_interface="out" />
+  </component>
+  <component name="b">
+    <variable name="x" units="newton" public_interface="in" />
+  </component>
+</model>

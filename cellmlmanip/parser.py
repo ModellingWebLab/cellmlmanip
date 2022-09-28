@@ -436,6 +436,10 @@ class Parser(object):
             comp_1, comp_2 = (map_components.attrib.get('component_1'),
                               map_components.attrib.get('component_2'))
 
+            if comp_1 not in self.components:
+                raise ValueError(f'Cannot connect components that do not exist: {comp_1}!')
+            if comp_2 not in self.components:
+                raise ValueError(f'Cannot connect components that do not exist: {comp_2}!')
             # go through all tags
             for child in connection.findall(with_ns(XmlNs.CELLML, 'map_variables')):
                 connections_to_process.append(
