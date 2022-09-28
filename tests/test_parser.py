@@ -337,8 +337,8 @@ class TestParser(object):
         assert sorted(map(str, model.variables())) == ['A$x', 'B$y']
         dimensionless = model.units.get_unit('dimensionless')
         hyper_dimensionless = model.units.get_unit('hyper_dimensionless')
-        cf1 = model.units.convert(1 * dimensionless, hyper_dimensionless)
-        cf2 = model.units.convert(1 * hyper_dimensionless, dimensionless)
+        cf1 = model.units.convert(1 * dimensionless, hyper_dimensionless).magnitude
+        cf2 = model.units.convert(1 * hyper_dimensionless, dimensionless).magnitude
         assert cf1 == cf2 == 1
 
     def test_dimensionless_multiplier(self):
@@ -346,17 +346,33 @@ class TestParser(object):
         assert sorted(map(str, model.variables())) == ['A$x', 'B$y']
         dimensionless = model.units.get_unit('dimensionless')
         halves = model.units.get_unit('halves')
-        cf1 = model.units.convert(1 * dimensionless, halves)
-        cf2 = model.units.convert(1 * halves, dimensionless)
-        assert cf1 == 1 / cf2, str([cf1, cf2])
+        cf1 = model.units.convert(1 * dimensionless, halves).magnitude
+        cf2 = model.units.convert(1 * halves, dimensionless).magnitude
+        assert cf1 == 2
+        assert cf2 == 0.5
+
+        cf1 = model.units.convert(2 * dimensionless, halves).magnitude
+        cf2 = model.units.convert(2 * halves, dimensionless).magnitude
+        assert cf1 == 2
+        assert cf2 == 0.5
+
+    def test_dimensionless_multiplier2(self):
+        model = load_model('dimensionless_multiplier2.cellml')
+        meter = model.units.get_unit('meter')
+        half_meter = model.units.get_unit('half_meter')
+        cf1 = model.units.convert(2 * meter, half_meter).magnitude
+        cf2 = model.units.convert(3 * half_meter, meter).magnitude
+        assert cf1 == 4.0
+        assert cf2 == 1.5
 
     def test_dimensionless_offset(self):
         with pytest.raises(ValueError):
             load_model('dimensionless_offset.cellml')
 
     def test_offset(self, caplog):
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError) as value_info:
             load_model('test_offset.cellml')
+        assert 'Offsets in units are not supported!' in str(value_info)
 
     def test_offset_0(self, caplog):
         model = load_model('test_offset_0.cellml')

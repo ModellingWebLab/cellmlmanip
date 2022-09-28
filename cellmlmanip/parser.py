@@ -253,7 +253,8 @@ class Parser(object):
             if 'multiplier' in unit_element:
                 expr = '(%s * %s)' % (unit_element['multiplier'], expr)
 
-            if 'offset' in unit_element and unit_element['offset'].strip() != '0':
+            if 'offset' in unit_element and (not unit_element['offset'].strip().isnumeric() or
+                                             int(unit_element['offset']) != 0):
                 raise ValueError('Offsets in units are not supported!')
 
             # Collect/add this particular <unit> definition

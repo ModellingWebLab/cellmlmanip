@@ -293,7 +293,7 @@ class UnitStore(object):
         #  Trying to convert dimensionless gives an error but we can convert to it
         if quantity.units == self._registry.dimensionless:
             quantity, unit = 1 * unit, quantity.units
-            return 1 / quantity.to(unit)
+            return quantity.magnitude / quantity.to(unit)
         return quantity.to(unit)
 
     def add_conversion_rule(self, from_unit, to_unit, rule):
