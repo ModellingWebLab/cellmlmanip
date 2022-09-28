@@ -5,7 +5,7 @@ import pytest
 import sympy
 
 from cellmlmanip import parser
-from cellmlmanip.units import NotSupportedErrorOffsetsDimensionless
+from cellmlmanip.units import OffsetNotSupportedError
 
 from .shared import check_left_right_units_equal, load_model
 
@@ -352,17 +352,13 @@ class TestParser(object):
         assert cf1 == 1 / cf2, str([cf1, cf2])
 
     def test_dimensionless_offset(self):
-        with pytest.raises(NotSupportedErrorOffsetsDimensionless):
+        with pytest.raises(OffsetNotSupportedError):
             load_model('dimensionless_offset.cellml')
 
-    def test_offset(self):
+    def test_offset(self, caplog):
         model = load_model('test_offset.cellml')
+        assert 'Offsets in unit definitions are not supported and are ignored!' in caplog.text
         assert sorted(map(str, model.variables())) == ['A$x', 'B$y']
         meter = model.units.get_unit('meter')
         offsetmeter = model.units.get_unit('offsetmeter')
-        to_offset = (1 * meter).to(offsetmeter)
-        to_meter = (1 * offsetmeter).to(meter)
-        assert to_offset.to(meter) == 1 * meter
-        assert to_meter.to(offsetmeter) == 1 * offsetmeter
-        assert to_offset.magnitude == -9.0
-        assert to_meter.magnitude == 11.0
+        assert model.units.is_equivalent(meter, offsetmeter)

@@ -168,15 +168,14 @@ class UnitStore(object):
         # To test if this is a dimensionless unit, parse the string as a Quantity and check if it's dimensionless
         quantity = self._registry.parse_expression(expression)
         if quantity.units == self._registry.dimensionless:
-            #  offsets are not supported for dimensionless
+            # offsets are not supported for dimensionless
             if offset is not None:
-                raise NotSupportedErrorOffsetsDimensionless(expression + '; offset: ' + offset)
+                raise OffsetNotSupportedError(expression + '; offset: ' + offset)
             definition = UnitDefinition(qname, '', (), ScaleConverter(quantity.to(self._registry.dimensionless)))
         else:
             definition = qname + '=' + expression
-            #  if we have an offset, add that to the definition now
-            if offset is not None:
-                definition += '; offset: ' + offset
+            if offset is not None:  # just warn and ignore
+                logger.warning('Offsets in unit definitions are not supported and are ignored!')
 
         # Add to registry
         self._registry.define(definition)
@@ -907,7 +906,7 @@ class UnitConversionError(UnitError):
         self.message = 'Cannot convert units from {} to {}'.format(from_units, to_units)
 
 
-class NotSupportedErrorOffsetsDimensionless(UnitError):
+class OffsetNotSupportedError(UnitError):
     """Represents failure to convert between incompatible units.
 
     :param expression: the Sympy expression in which the error occurred
