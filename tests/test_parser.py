@@ -396,3 +396,8 @@ class TestParser(object):
         with pytest.raises(ValueError) as value_info:
             load_model('test_duplicate_component_names.cellml')
         assert 'Duplicate component name c1, component names must be unique!' in str(value_info.value)
+
+    def test_units_in_components(self):
+        with pytest.raises(ValueError) as value_info:
+            load_model('units_in_components.cellml')
+        assert 'Defining units inside components is not supported (found in component A).' in str(value_info.value)

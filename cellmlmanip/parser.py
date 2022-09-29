@@ -325,7 +325,17 @@ class Parser(object):
                                                            attributes['name'])
 
             # look up units
-            attributes['units'] = self.model.units.get_unit(attributes['units'])
+            try:
+                attributes['units'] = self.model.units.get_unit(attributes['units'])
+            except KeyError:
+                # Raise error if component units are defined, causing his lookup key error
+                units_in_comp_xpath = with_ns(XmlNs.CELLML, 'component') + '/' + with_ns(XmlNs.CELLML, 'units')
+                units_in_components = component_element.getroottree().getroot().findall(units_in_comp_xpath)
+                if len(units_in_components) != 0:
+                    raise ValueError('Defining units inside components is not supported (found in component ' +
+                                     component_element.get('name') + ').')
+                else:  # else pass on KeyError
+                    raise
 
             # model.add_variable() returns sympy dummy created for this variable - keep it
             variable_lookup_symbol[attributes['name']] = self.model.add_variable(**attributes)
