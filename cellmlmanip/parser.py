@@ -133,6 +133,16 @@ class Parser(object):
 
         # <model> root node - initialise the model object
         model_xml = tree.getroot()
+
+        # Raise error if component units are defined
+        units_in_comp_xpath = with_ns(XmlNs.CELLML, 'component') + '/' + with_ns(XmlNs.CELLML, 'units')
+        units_in_components = model_xml.findall(units_in_comp_xpath)
+        if len(units_in_components) != 0:
+            msg = 'Defining units inside components is not supported (found in component'
+            msg += 's ' if len(units_in_components) > 1 else ' '
+            msg += ', '.join([e.getparent().get('name') for e in units_in_components]) + ').'
+            raise ValueError(msg)
+
         self.model = Model(model_xml.get('name'),
                            model_xml.get(with_ns(XmlNs.CMETA, 'id')),
                            unit_store=unit_store)
@@ -288,12 +298,6 @@ class Parser(object):
 
             # to speed up parsing, we store the maths to add to perform adding later when we know how variables connect
             component_variables.append((element, variable_to_symbol))
-
-            # Raise error if component units are defined
-            component_units = element.findall(with_ns(XmlNs.CELLML, 'units'))
-            if component_units:
-                raise ValueError(
-                    'Defining units inside components is not supported (found in component ' + name + ').')
 
             # Raise error if reactions are defined
             reactions = element.findall(with_ns(XmlNs.CELLML, 'reaction'))
