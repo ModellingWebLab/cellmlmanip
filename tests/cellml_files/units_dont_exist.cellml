@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Unit definitions inside components should give an error -->
+<model name="variable_units_component"
+       xmlns="http://www.cellml.org/cellml/1.0#">
+  <component name="A">
+    <variable name="a" units="oranges" />
+  </component>
+</model>

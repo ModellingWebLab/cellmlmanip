@@ -401,3 +401,8 @@ class TestParser(object):
         with pytest.raises(ValueError) as value_info:
             load_model('units_in_components.cellml')
         assert 'Defining units inside components is not supported (found in component A).' in str(value_info.value)
+
+    def test_units_dont_exist(self):
+        with pytest.raises(KeyError) as value_info:
+            load_model('units_dont_exist.cellml')
+        assert 'Unknown unit <oranges>.' in str(value_info.value)
