@@ -369,7 +369,7 @@ class TestParser(object):
         with pytest.raises(ValueError):
             load_model('dimensionless_offset.cellml')
 
-    def test_offset(self, caplog):
+    def test_offset(self):
         with pytest.raises(ValueError) as value_info:
             load_model('test_offset.cellml')
         assert 'Offsets in units are not supported!' in str(value_info)
@@ -402,7 +402,13 @@ class TestParser(object):
             load_model('units_in_components.cellml')
         assert 'Defining units inside components is not supported (found in component A).' in str(value_info.value)
 
-    def test_units_in_components2(self):
-        with pytest.raises(ValueError) as value_info:
-            load_model('units_in_components2.cellml')
-        assert 'Defining units inside components is not supported (found in components A, B).' in str(value_info.value)
+    def test_boolean_in_inequality(self):
+        with pytest.raises(TypeError) as value_info:
+            load_model('boolean_in_inequality.cellml')
+        assert "Boolean not allowed in inequality: 1.0 <class 'sympy.core.relational.GreaterThan'> True" \
+            in str(value_info.value)
+
+    def test_boolean_in_inequality2(self, caplog):
+        load_model('boolean_in_inequality2.cellml')
+        assert ("WARNING  cellmlmanip.parser:parser.py:933 Boolean used in part of (in)equality equation is this "
+               "intentional?: 1.0 <class 'sympy.core.relational.Equality'> True") in caplog.text

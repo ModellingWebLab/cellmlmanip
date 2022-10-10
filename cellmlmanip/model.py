@@ -629,6 +629,7 @@ class Model(object):
         :param equation: A :class:`sympy.Eq` object.
         :param check_duplicates: whether to check that the equation's LHS is not already defined
         """
+        print(equation, type(equation))
         assert isinstance(equation, sympy.Eq), 'The argument `equation` must be a sympy.Eq.'
         lhs = equation.lhs
         if lhs.is_Derivative:

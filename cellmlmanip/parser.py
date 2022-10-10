@@ -4,6 +4,7 @@ stores model information in the :class:`cellmlmanip.model.Model` class. MathML e
 is handled by RDFLib.
 """
 import itertools
+import logging
 import os
 from collections import deque
 from enum import Enum
@@ -12,6 +13,9 @@ import sympy
 from lxml import etree
 
 from cellmlmanip.model import SYMPY_SYMBOL_DELIMITER, Model
+
+
+logger = logging.getLogger(__name__)
 
 
 UNIT_PREFIXES = {
@@ -731,7 +735,7 @@ class Transpiler(object):
         """https://www.w3.org/TR/MathML2/chapter4.html#contm.apply
         """
         result = self.transpile(node)
-
+        print(result)
         if len(result) > 1:
             expression = result[0](*(result[1:]))
         else:
@@ -907,6 +911,9 @@ class Transpiler(object):
         :param sympy_relation: handle for binary Sympy relation (Eq, Le, Lt, Ge, Gt)
         :return: callback used by the apply_handler to handle n-ary relations
         """
+        def is_bool(expr):
+            return isinstance(expr, (sympy.logic.boolalg.BooleanTrue, sympy.logic.boolalg.BooleanFalse))
+
         def _wrapper_relational(*expressions):
             # If the MathML relation is chaining more than 2 expressions
             if len(expressions) > 2:
@@ -915,6 +922,17 @@ class Transpiler(object):
                 for first, second in zip(expressions[:-1], expressions[1:]):
                     relations.append(sympy_relation(first, second))
                 return sympy.And(*relations)
+
+            if sympy_relation in (sympy.Ge, sympy.Le, sympy.Gt, sympy.Lt) and\
+                    any(map(is_bool, expressions)):
+                raise TypeError(f'Boolean not allowed in inequality: {expressions[0]} '
+                                f'{sympy_relation} {expressions[1]}')
+
+            if sympy_relation in (sympy.Eq, sympy.Ne) and any(map(is_bool, expressions))\
+                    and not all(map(is_bool, expressions)):
+                logger.warning(f'Boolean used in part of (in)equality equation is this intentional?: '
+                               f'{expressions[0]} {sympy_relation} {expressions[1]}')
+
             return sympy_relation(*expressions)
         return _wrapper_relational
 
