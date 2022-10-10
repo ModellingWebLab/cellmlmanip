@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Testing boolans in inequality gives an error -->
+<!-- Testing boolans in inequality gives a warning when inequality is !== or == and either side is a boolean but not both-->
 <model name="boolean_compare_geq_operand_error"
        xmlns="http://www.cellml.org/cellml/1.0#"
        xmlns:cellml="http://www.cellml.org/cellml/1.0#">
