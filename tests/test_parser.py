@@ -412,3 +412,27 @@ class TestParser(object):
         load_model('boolean_in_inequality2.cellml')
         assert ("Boolean used in part of (in)equality equation is this intentional?: "
                 "1.0 <class 'sympy.core.relational.Equality'> True") in caplog.text
+
+    def test_boolean_in_derivative(self):
+        with pytest.raises(TypeError) as value_info:
+            load_model('boolean_in_derivative.cellml')
+        print(value_info)
+        assert ("Boolean not allowed in inequality: Derivative(_A$V, _A$time) "
+                "<class 'sympy.core.relational.Equality'> True") in str(value_info.value)
+
+    def test_boolean_in_derivative2(self):
+        with pytest.raises(TypeError) as value_info:
+            load_model('boolean_in_derivative2.cellml')
+        print(value_info)
+        assert "Boolean not allowed in a Derivative equation: dTrue / dA$time" in str(value_info.value)
+
+    def test_boolean_in_derivative3(self):
+        with pytest.raises(TypeError) as value_info:
+            load_model('boolean_in_derivative3.cellml')
+        print(value_info)
+        assert 'The degree of a derivative cannot be a boolean:  dA$V / d[_A$time, True]' in str(value_info.value)
+
+    def test_boolean_in_derivative4(self):
+        with pytest.raises(TypeError) as value_info:
+            load_model('boolean_in_derivative4.cellml')
+        assert 'The degree of a derivative cannot be a variable:  dA$V / d[_A$time, _A$x]' in str(value_info.value)

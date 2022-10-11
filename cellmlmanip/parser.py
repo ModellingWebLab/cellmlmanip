@@ -12,7 +12,7 @@ from enum import Enum
 import sympy
 from lxml import etree
 
-from cellmlmanip.model import SYMPY_SYMBOL_DELIMITER, Model
+from cellmlmanip.model import SYMPY_SYMBOL_DELIMITER, Model, Variable
 
 
 logger = logging.getLogger(__name__)
@@ -845,11 +845,22 @@ class Transpiler(object):
         operator taking qualifiers
         """
         def _wrapped_diff(x_symbol, y_symbol, evaluate=False):
+            if self._is_bool(x_symbol) or self._is_bool(y_symbol):
+                raise TypeError(f'Boolean not allowed in a Derivative equation: d{y_symbol} / d{x_symbol}')
             # if bound variable element <bvar> contains <degree>, argument x_symbol is a list,
             # otherwise, it is a symbol
             if isinstance(x_symbol, list) and len(x_symbol) == 2:
                 bound_variable = x_symbol[0]
-                order = int(x_symbol[1])
+                try:
+                    order = int(x_symbol[1])
+                except TypeError:
+                    if self._is_bool(x_symbol[1]):
+                        raise TypeError(f'The degree of a derivative cannot be a boolean:  d{y_symbol} / d{x_symbol}')
+                    elif isinstance(x_symbol[1], Variable):
+                        raise TypeError(f'The degree of a derivative cannot be a variable:  d{y_symbol} / d{x_symbol}')
+                    else:
+                        raise
+
                 deriv = sympy.Derivative(y_symbol, bound_variable, order, evaluate=evaluate)
             # Otherwise, first degree derivative
             else:
@@ -910,9 +921,6 @@ class Transpiler(object):
         :param sympy_relation: handle for binary Sympy relation (Eq, Le, Lt, Ge, Gt)
         :return: callback used by the apply_handler to handle n-ary relations
         """
-        def is_bool(expr):
-            return isinstance(expr, (sympy.logic.boolalg.BooleanTrue, sympy.logic.boolalg.BooleanFalse))
-
         def _wrapper_relational(*expressions):
             # If the MathML relation is chaining more than 2 expressions
             if len(expressions) > 2:
@@ -923,14 +931,18 @@ class Transpiler(object):
                 return sympy.And(*relations)
 
             if sympy_relation in (sympy.Ge, sympy.Le, sympy.Gt, sympy.Lt) and\
-                    any(map(is_bool, expressions)):
+                    any(map(self._is_bool, expressions)):
                 raise TypeError(f'Boolean not allowed in inequality: {expressions[0]} '
                                 f'{sympy_relation} {expressions[1]}')
 
-            if sympy_relation in (sympy.Eq, sympy.Ne) and any(map(is_bool, expressions))\
-                    and not all(map(is_bool, expressions)):
-                logger.warning(f'Boolean used in part of (in)equality equation is this intentional?: '
-                               f'{expressions[0]} {sympy_relation} {expressions[1]}')
+            if sympy_relation in (sympy.Eq, sympy.Ne) and any(map(self._is_bool, expressions))\
+                    and not all(map(self._is_bool, expressions)):
+                if any(map(lambda e: isinstance(e, sympy.Derivative), expressions)):
+                    raise TypeError(f'Boolean not allowed in inequality: {expressions[0]} '
+                                    f'{sympy_relation} {expressions[1]}')
+                else:
+                    logger.warning(f'Boolean used in part of (in)equality equation is this intentional?: '
+                                   f'{expressions[0]} {sympy_relation} {expressions[1]}')
 
             return sympy_relation(*expressions)
         return _wrapper_relational
@@ -948,6 +960,11 @@ class Transpiler(object):
             return self._get_nary_relation_callback(handler)
 
         return handler
+
+    def _is_bool(self, expr):
+        """This function checks whether expr is a boolean (True/False).
+        """
+        return isinstance(expr, (sympy.logic.boolalg.BooleanTrue, sympy.logic.boolalg.BooleanFalse))
 
 
 # These MathML tags map directly to Sympy classes and don't require any extra handling
