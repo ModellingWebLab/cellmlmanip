@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- CellML Test Suite. https://github.com/MichaelClerx/cellml-validation -->
-<!-- CellML 1.0, 5.5.2: A derivative's degree can't be true -->
+<!-- Test degree of derivative as boolean -->
 <model name="boolean_derivatives_2"
        xmlns="http://www.cellml.org/cellml/1.0#"
        xmlns:cellml="http://www.cellml.org/cellml/1.0#">

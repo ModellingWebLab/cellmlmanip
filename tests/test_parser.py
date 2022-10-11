@@ -424,15 +424,10 @@ class TestParser(object):
         with pytest.raises(TypeError) as value_info:
             load_model('boolean_in_derivative2.cellml')
         print(value_info)
-        assert "Boolean not allowed in a Derivative equation: dTrue / dA$time" in str(value_info.value)
+        assert "Boolean not allowed in a Derivative: dTrue / dA$time" in str(value_info.value)
 
     def test_boolean_in_derivative3(self):
         with pytest.raises(TypeError) as value_info:
             load_model('boolean_in_derivative3.cellml')
         print(value_info)
-        assert 'The degree of a derivative cannot be a boolean:  dA$V / d[_A$time, True]' in str(value_info.value)
-
-    def test_boolean_in_derivative4(self):
-        with pytest.raises(TypeError) as value_info:
-            load_model('boolean_in_derivative4.cellml')
-        assert 'The degree of a derivative cannot be a variable:  dA$V / d[_A$time, _A$x]' in str(value_info.value)
+        assert 'The degree of a derivative must be an int: dA$V / d[_A$time, True]' in str(value_info.value)

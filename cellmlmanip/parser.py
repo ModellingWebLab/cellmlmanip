@@ -12,7 +12,7 @@ from enum import Enum
 import sympy
 from lxml import etree
 
-from cellmlmanip.model import SYMPY_SYMBOL_DELIMITER, Model, Variable
+from cellmlmanip.model import SYMPY_SYMBOL_DELIMITER, Model
 
 
 logger = logging.getLogger(__name__)
@@ -846,7 +846,7 @@ class Transpiler(object):
         """
         def _wrapped_diff(x_symbol, y_symbol, evaluate=False):
             if self._is_bool(x_symbol) or self._is_bool(y_symbol):
-                raise TypeError(f'Boolean not allowed in a Derivative equation: d{y_symbol} / d{x_symbol}')
+                raise TypeError(f'Boolean not allowed in a Derivative: d{y_symbol} / d{x_symbol}')
             # if bound variable element <bvar> contains <degree>, argument x_symbol is a list,
             # otherwise, it is a symbol
             if isinstance(x_symbol, list) and len(x_symbol) == 2:
@@ -854,12 +854,7 @@ class Transpiler(object):
                 try:
                     order = int(x_symbol[1])
                 except TypeError:
-                    if self._is_bool(x_symbol[1]):
-                        raise TypeError(f'The degree of a derivative cannot be a boolean:  d{y_symbol} / d{x_symbol}')
-                    elif isinstance(x_symbol[1], Variable):
-                        raise TypeError(f'The degree of a derivative cannot be a variable:  d{y_symbol} / d{x_symbol}')
-                    else:
-                        raise
+                    raise TypeError(f'The degree of a derivative must be an int: d{y_symbol} / d{x_symbol}')
 
                 deriv = sympy.Derivative(y_symbol, bound_variable, order, evaluate=evaluate)
             # Otherwise, first degree derivative
