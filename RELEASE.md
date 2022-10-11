@@ -7,7 +7,7 @@
 - Fixed errors dealing with dimensionless units which have a multiplier or exponent, and added an error for offset units (where the offset is not 0) as those are not supported.
   see https://github.com/ModellingWebLab/cellmlmanip/issues/351
 - Improved error reporting: When a unit is defined inside a component and used it now throws a ValueError indicating units in components are not supported. Previously a confusing KeyError was thrown, which suggested the unit was not found. 
-- Added a better error message for inequalities <, >, <=, >= when one or both sides are a boolan. Added a warning for == and != when one side is a boolean, but not the other.
+- Added a better error message for inequalities <, >, <=, >= when one or both sides are a boolean. Added a warning for == and != when one side is a boolean, but not the other.
 
 # Release 0.3.4
 - Updated how substitution of functions that were changed in the parser are handled during analysis for fixing singularities, in order to make sure it workes with sympy 1.10
