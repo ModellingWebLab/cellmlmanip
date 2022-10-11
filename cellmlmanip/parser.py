@@ -735,7 +735,6 @@ class Transpiler(object):
         """https://www.w3.org/TR/MathML2/chapter4.html#contm.apply
         """
         result = self.transpile(node)
-        print(result)
         if len(result) > 1:
             expression = result[0](*(result[1:]))
         else:
