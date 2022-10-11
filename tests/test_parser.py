@@ -410,5 +410,5 @@ class TestParser(object):
 
     def test_boolean_in_inequality2(self, caplog):
         load_model('boolean_in_inequality2.cellml')
-        assert ("WARNING  cellmlmanip.parser:parser.py:933 Boolean used in part of (in)equality equation is this "
-               "intentional?: 1.0 <class 'sympy.core.relational.Equality'> True") in caplog.text
+        assert ("Boolean used in part of (in)equality equation is this intentional?: "
+                "1.0 <class 'sympy.core.relational.Equality'> True") in caplog.text
