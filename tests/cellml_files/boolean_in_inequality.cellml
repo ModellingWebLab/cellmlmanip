@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Testing boolans in inequality gives an error -->
+<model name="boolean_compare_geq_operand_error"
+       xmlns="http://www.cellml.org/cellml/1.0#"
+       xmlns:cellml="http://www.cellml.org/cellml/1.0#">
+  <component name="A">
+    <variable name="x" units="dimensionless" />
+    <math xmlns="http://www.w3.org/1998/Math/MathML">
+      <apply>
+        <eq/>
+        <ci>x</ci>
+        <piecewise>
+          <piece>
+            <cn cellml:units="dimensionless">1</cn>
+            <apply>
+              <geq />
+              <cn cellml:units="dimensionless">1</cn>
+              <true />
+            </apply>
+          </piece>
+          <otherwise>
+            <cn cellml:units="dimensionless">0</cn>
+          </otherwise>
+        </piecewise>
+      </apply>
+    </math>
+  </component>
+</model>
