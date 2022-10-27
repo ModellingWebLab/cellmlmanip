@@ -1,4 +1,5 @@
-# (unreleased)
+# Relsease 0.3.5
+- Pinned Pint version to be > 0.9 and < 0.20 since 0.20 has changed the location and number of arguments of the ScaleConverter and UnitDefinition classes
 - Fixed a bug in the parser where equations in a piecewise containing a boolean caused parsing errors.
   see https://github.com/ModellingWebLab/cellmlmanip/issues/350
 - Added an error for duplicate unit definitions.
