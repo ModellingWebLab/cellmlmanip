@@ -12,9 +12,20 @@ from operator import mul
 
 import pint
 import sympy
-from pint.facets.plain.definitions import ScaleConverter
-from pint.facets.plain.definitions import UnitDefinition
-from pint.errors import DimensionalityError
+try:
+    from pint.facets.plain.definitions import ScaleConverter
+except ModuleNotFoundError:
+    from pint.converters import ScaleConverter
+
+try:
+    from pint.facets.plain.definitions import UnitDefinition
+except ModuleNotFoundError:
+    from pint.definitions import UnitDefinition
+
+try:
+    from pint.errors import DimensionalityError
+except ModuleNotFoundError:
+    from pint.errors import DimensionalityError
 
 from . import model
 
