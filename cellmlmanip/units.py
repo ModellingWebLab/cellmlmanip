@@ -12,7 +12,7 @@ from operator import mul
 
 import pint
 import sympy
-from pint.converters import ScaleConverter
+from pint.facets.plain.definitions import ScaleConverter
 from pint.definitions import UnitDefinition
 from pint.errors import DimensionalityError
 
