@@ -30,6 +30,8 @@ setup(
     include_package_data=True,
     python_requires='>=3.6',
     install_requires=[
+        'libxml2-dev',
+        'libxslt1-dev',
         'lxml>=4',
         'networkx>=2.1',
         'Pint>=0.9, <0.20',
