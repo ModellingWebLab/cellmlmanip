@@ -137,21 +137,26 @@ class Model(object):
             derived_quantities.sort(key=lambda var: var.order_added)
         return derived_quantities
 
-    def get_display_name(self, var, ontology=None):
+    def get_display_name(self, var, ontology=None, exclude_terms=None):
         """Return a display name for the given variable.
 
         Looks for an annotation in the ontology first (or the local name from any annotation if no ontology is
-        specified), then ``cmeta:id`` if present, or the variable's ``name`` attribute if not.
+        specified), skipping any terms in exclude_tags,
+        then ``cmeta:id`` if present, or the variable's ``name`` attribute if not.
 
         Dollar symbols in the name are replaced by a double underscore.
 
         :param var: the variable for which to get the display name.
         :param ontology: the base URL of an ontology if only annotations within that ontology should be considered
+        :param exclude_terms: a collection of terms
+               that should be skipped when searching the ontology for a variable name.
 
         :return: the display name for the variable according to the algorithm above
         """
         if self.has_ontology_annotation(var, ontology):
-            return self.get_ontology_terms_by_variable(var, ontology)[-1]
+            for term in reversed(self.get_ontology_terms_by_variable(var, ontology)):
+                if exclude_terms is None or term not in exclude_terms:
+                    return term
         return var.cmeta_id if var.cmeta_id else var.name.replace('$', '__')
 
     def is_state(self, variable):
