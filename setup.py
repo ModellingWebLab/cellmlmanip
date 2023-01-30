@@ -30,7 +30,7 @@ setup(
     include_package_data=True,
     python_requires='>=3.6',
     install_requires=[
-        'lxml>=4',
+        'lxml>=4.6.5, <5',
         'networkx>=2.1',
         'Pint>=0.9, <0.20',
         'rdflib>=4',
