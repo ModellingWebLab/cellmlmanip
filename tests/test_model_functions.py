@@ -107,13 +107,18 @@ class TestModelFunctions():
         # Has no annotation but does have a cmeta:id
         var = simple_ode_model.get_variable_by_name('single_ode_rhs_computed_var$a')
         assert var.cmeta_id == 'a2'
-        assert simple_ode_model.get_display_name(var, ontology=OXMETA) == var.cmeta_id
+        assert simple_ode_model.get_display_name(var, OXMETA) == var.cmeta_id
         assert simple_ode_model.get_display_name(var) == var.cmeta_id
 
         # Has no cmeta:id
         var = simple_ode_model.get_variable_by_name('single_ode_rhs_const_var$time')
         assert var.cmeta_id is None
         assert simple_ode_model.get_display_name(var) == var.name.replace('$', '__')
+
+        # Check excluded tags work
+        var = simple_ode_model.get_variable_by_name('single_independent_ode$sv1')
+        assert var.cmeta_id == 'sv11'
+        assert simple_ode_model.get_display_name(var, OXMETA, set({'sodium_reversal_potential'})) == 'sv11'
 
     def test_get_state_variables(self, basic_model):
         """ Tests Model.get_state_variables() works on a simple model. """
