@@ -1,4 +1,4 @@
-# Relsease 0.3.5
+# Relsease 0.3.6
 - Added the ability to exclude a collection of tags from being used as variable names, by adding the `exclude_terms` parameter to  `model.get_display_name`. This can be used for example to prevent ontology annotation that can be used multiple times from appearing as the display name of a variable.
 
 # Relsease 0.3.5
