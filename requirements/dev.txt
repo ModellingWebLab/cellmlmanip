@@ -12,11 +12,8 @@ chardet==4.0.0
     # via requests
 click==7.1.2
     # via pip-tools
-codecov==2.1.11
-    # via -r test.in
 coverage==5.4
     # via
-    #   codecov
     #   pytest-cov
 decorator==4.4.2
     # via networkx
@@ -74,7 +71,6 @@ pytest==6.2.2
 rdflib==5.0.0
     # via -r base.in
 requests==2.25.1
-    # via codecov
 six==1.15.0
     # via
     #   isodate
