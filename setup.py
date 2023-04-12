@@ -41,7 +41,6 @@ setup(
             'sphinx>=2.0',
         ],
         'test': [
-            'codecov',
             'flake8',
             'isort',
             'pytest>=6.0',
