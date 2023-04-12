@@ -12,8 +12,6 @@ chardet==4.0.0
     # via requests
 click==7.1.2
     # via pip-tools
-codecov==2.1.11
-    # via -r test.in
 coverage==5.4
     # via
     #   codecov
