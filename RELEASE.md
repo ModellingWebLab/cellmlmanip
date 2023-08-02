@@ -1,7 +1,7 @@
-# Relsease 0.3.6
+# Release 0.3.6
 - Added the ability to exclude a collection of tags from being used as variable names, by adding the `exclude_terms` parameter to  `model.get_display_name`. This can be used for example to prevent ontology annotation that can be used multiple times from appearing as the display name of a variable.
 
-# Relsease 0.3.5
+# Release 0.3.5
 - Pinned Pint version to be > 0.9 and < 0.20 since 0.20 has changed the location and number of arguments of the ScaleConverter and UnitDefinition classes
 - Fixed a bug in the parser where equations in a piecewise containing a boolean caused parsing errors.
   see https://github.com/ModellingWebLab/cellmlmanip/issues/350
