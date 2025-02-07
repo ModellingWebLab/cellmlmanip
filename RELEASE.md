@@ -1,3 +1,8 @@
+# Release 0.3.7
+- Added support for Python 3.12 and 3.13.
+- Dropped support for Python 3.6, 3.7 and 3.8 as they are at end of life.
+- Pinned sympy to be < 1.13. See https://github.com/ModellingWebLab/cellmlmanip/issues/376.
+
 # Release 0.3.6
 - Added the ability to exclude a collection of tags from being used as variable names, by adding the `exclude_terms` parameter to  `model.get_display_name`. This can be used for example to prevent ontology annotation that can be used multiple times from appearing as the display name of a variable.
 

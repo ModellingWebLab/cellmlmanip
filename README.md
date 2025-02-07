@@ -12,7 +12,7 @@ Users install `cellmlmanip` using pip.
 pip install cellmlmanip
 ```
 
-Cellmlmanip is tested and developed on Python 3.5 and higher.
+Cellmlmanip is tested and developed on Python 3.9 and higher.
 
 ## Release notes
 For release notes see [RELEASE.md](./RELEASE.md)
