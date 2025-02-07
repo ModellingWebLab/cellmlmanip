@@ -34,7 +34,7 @@ setup(
         'networkx>=2.1',
         'Pint>=0.9, <0.20',
         'rdflib>=4',
-        'sympy>=1.4',
+        'sympy>=1.4, <1.13',
     ],
     extras_require={
         'docs': [
