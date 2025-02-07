@@ -1,6 +1,5 @@
-lxml>4.2.1
-pint==0.9 ; python_version < '3.8'
-pint==0.10 ; python_version >= '3.8'
-rdflib
-networkx
-sympy
+lxml>=4.7
+pint>=0.9, <0.20
+rdflib>=4
+networkx>=2.1
+sympy>=1.4, <1.13
