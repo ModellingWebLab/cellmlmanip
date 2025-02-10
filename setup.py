@@ -28,13 +28,13 @@ setup(
 
     packages=find_packages(exclude=('tests', 'docs')),
     include_package_data=True,
-    python_requires='>=3.6',
+    python_requires='>=3.9',
     install_requires=[
-        'lxml>=4.6.5, <5',
+        'lxml>=4.7',
         'networkx>=2.1',
         'Pint>=0.9, <0.20',
         'rdflib>=4',
-        'sympy>=1.4',
+        'sympy>=1.4, <1.13',
     ],
     extras_require={
         'docs': [

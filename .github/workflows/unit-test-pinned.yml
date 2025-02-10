@@ -2,21 +2,21 @@ name: Pinned requirements
 on: [pull_request]
 jobs:
   unit-test-pinned:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
 
     steps:
     - name: Check out repository
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
 
-    - name: Set up Python 3.6
-      uses: actions/setup-python@v2
+    - name: Set up Python 3.9
+      uses: actions/setup-python@v5
       with:
-        python-version: 3.6
+        python-version: 3.9
 
     - name: Install pinned dependencies
       run: |
         python --version
-        python -m pip install --upgrade pip setuptools wheel
+        python -m pip install --upgrade pip
         python -m pip install -r requirements/test.txt
 
     - name: Install
