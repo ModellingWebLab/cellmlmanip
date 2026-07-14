@@ -193,7 +193,7 @@ class TestParser(object):
             p.parse()
 
         match = ("Cannot convert from 'second' ([time]) to "
-                 "'volt' ([length] ** 2 * [mass] / [current] / [time] ** 3)")
+                 "'volt' ([mass] * [length] ** 2 / [time] ** 3 / [current])")
 
         assert match in str(dim_error.value)
 
