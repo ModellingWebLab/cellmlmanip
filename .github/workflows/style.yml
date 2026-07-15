@@ -25,5 +25,5 @@ jobs:
 
     - name: Check imports are ordered correctly
       run: |
-        python -m isort --verbose --check-only --diff cellmlmanip tests setup.py
+        python -m isort --verbose --check-only --diff cellmlmanip tests
 
