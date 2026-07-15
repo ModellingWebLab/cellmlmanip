@@ -136,7 +136,6 @@ class UnitStore(object):
         self._calculator = UnitCalculator(self)
 
         # Expose the Unit and Quantity classes
-        # TODO Might not be needed in 0.10 anymore
         self.Unit = self._registry.Unit
         self.Quantity = self._registry.Quantity
 
@@ -164,7 +163,6 @@ class UnitStore(object):
         # Add prefixes inside expression
         expression = _WORD.sub(self._prefix_expression, expression)
 
-        # Dimensionless units can't be created using a string expression.
         # To test if this is a dimensionless unit, parse the string as a Quantity and check if it's dimensionless
         quantity = self._registry.parse_expression(expression)
         if quantity.units == self._registry.dimensionless:
@@ -277,10 +275,6 @@ class UnitStore(object):
         cf = self.convert(1 * from_unit, to_unit).magnitude
         if isinstance(cf, numbers.Number) and math.isclose(cf, 1.0):
             return 1
-        elif isinstance(cf, sympy.Mul) and 1.0 in cf.args:  # pragma: no cover
-            # We get an ugly artefact whereby pint gives us a 1.0*cf as conversion factor; remove the 1.0
-            # But only on older pint, e.g. 3.9
-            return sympy.Mul(*[a for a in cf.args if a != 1.0])
         return cf
 
     def convert(self, quantity, unit):
