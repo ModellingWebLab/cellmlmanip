@@ -1,5 +1,5 @@
 lxml>=4.7
 pint>=0.24, <0.26
-rdflib>=4
-networkx>=2.1
+rdflib>=6.2
+networkx>=2.7
 sympy>=1.10, <1.15
