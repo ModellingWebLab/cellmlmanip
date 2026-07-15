@@ -24,7 +24,7 @@ jobs:
         python -m pytest --cov --cov-config=.coveragerc
 
     - name: Submit report to codecov
-      uses: codecov/codecov-action@v5
+      uses: codecov/codecov-action@v7
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
       if: success()
