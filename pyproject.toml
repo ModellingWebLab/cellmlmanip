@@ -27,9 +27,9 @@ classifiers = [
 dependencies = [
     "lxml>=4.7",
     "networkx>=2.1",
-    "Pint>=0.24, <0.26",
+    "Pint>=0.24, <0.26",  # Occasional breaking changes in minor versions
     "rdflib>=4",
-    "sympy>=1.4, <1.13",
+    "sympy>=1.10, <1.15",  # Occasional breaking changes in minor versions
 ]
 dynamic = ["version"]
 

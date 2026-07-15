@@ -54,7 +54,7 @@ pytest-cov==7.1.0
     # via -r test.in
 rdflib==7.6.0
     # via -r base.in
-sympy==1.12.1
+sympy==1.14.0
     # via -r base.in
 tomli==2.4.1
     # via
