@@ -1,3 +1,8 @@
+# Release 0.3.8
+- Migrated to Pint >= 0.24 (the `ScaleConverter` and `UnitDefinition` classes moved to `pint.facets.plain` and changed argument signatures). This reverses the `Pint < 0.20` pin introduced in 0.3.5 and restores compatibility with numpy 2.x, which older Pint versions could not import.
+- Added support for Python 3.14.
+- Dropped support for Python 3.9 as Pint >= 0.24 requires Python >= 3.10.
+
 # Release 0.3.7
 - Added support for Python 3.12 and 3.13.
 - Dropped support for Python 3.6, 3.7 and 3.8 as they are at end of life.

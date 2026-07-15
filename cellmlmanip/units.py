@@ -12,9 +12,9 @@ from operator import mul
 
 import pint
 import sympy
-from pint.converters import ScaleConverter
-from pint.definitions import UnitDefinition
 from pint.errors import DimensionalityError
+from pint.facets.plain import ScaleConverter, UnitDefinition
+from pint.util import UnitsContainer
 
 from . import model
 
@@ -168,7 +168,9 @@ class UnitStore(object):
         # To test if this is a dimensionless unit, parse the string as a Quantity and check if it's dimensionless
         quantity = self._registry.parse_expression(expression)
         if quantity.units == self._registry.dimensionless:
-            definition = UnitDefinition(qname, '', (), ScaleConverter(quantity.to(self._registry.dimensionless)))
+            definition = UnitDefinition(
+                qname, None, (), ScaleConverter(quantity.to(self._registry.dimensionless).magnitude),
+                UnitsContainer())
         else:
             definition = qname + '=' + expression
 
