@@ -1,3 +1,70 @@
 [build-system]
 requires = ["setuptools>=64", "wheel"]
 build-backend = "setuptools.build_meta"
+
+[project]
+name = "cellmlmanip"
+description = "CellML loading and model equation manipulation"
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [
+    {name = "Asif U Tamuri"},
+    {name = "Sarah M Keating"},
+    {name = "Maurice Hendrix"},
+    {name = "Michael Clerx"},
+    {name = "Jonathan Cooper", email = "j.p.cooper@ucl.ac.uk"},
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "License :: OSI Approved :: BSD License",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    "lxml>=4.7",
+    "networkx>=2.1",
+    "Pint>=0.24, <0.26",
+    "rdflib>=4",
+    "sympy>=1.4, <1.13",
+]
+dynamic = ["version"]
+
+[project.optional-dependencies]
+docs = [
+    "sphinx>=2.0",
+]
+test = [
+    "flake8",
+    "isort",
+    "pytest>=6.0",
+    "pytest-cov",
+]
+
+[project.urls]
+Homepage = "https://github.com/ModellingWebLab/cellmlmanip"
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.dynamic]
+version = {file = "cellmlmanip/version.txt"}
+
+[tool.setuptools.packages.find]
+exclude = ["tests*", "docs*"]
+
+[tool.isort]
+line_length = 120
+multi_line_output = 3
+# ^ Vertical Hanging Indent
+force_grid_wrap = 4
+# ^ Don't allow more than 3 imports on a single line
+lines_after_imports = 2
+order_by_type = true
+include_trailing_comma = true
+force_single_line = false
+default_section = "THIRDPARTY"
+known_first_party = ["cellmlmanip"]
