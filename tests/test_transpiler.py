@@ -34,7 +34,7 @@ class TestTranspiler(object):
 
     def test_number(self):
         self.assert_equal('<cn>1</cn>',
-                          [sympy.Number(1)])
+                          [sympy.Number(1.0)])
 
     def test_ignore_comment(self):
         self.assert_equal('<!-- ignore this -->', [])

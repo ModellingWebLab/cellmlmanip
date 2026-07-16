@@ -24,7 +24,7 @@ pyparsing==3.3.2
     # via rdflib
 rdflib==7.6.0
     # via -r base.in
-sympy==1.12.1
+sympy==1.14.0
     # via -r base.in
 typing-extensions==4.16.0
     # via
