@@ -10,7 +10,6 @@ from sympy import (
     And,
     Eq,
     Float,
-    Integer,
     Le,
     Mul,
     Or,
