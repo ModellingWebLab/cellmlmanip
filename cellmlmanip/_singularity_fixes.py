@@ -293,8 +293,7 @@ def _fix_expr_parts(expr, V, U_offset, exp_function):
                 expr_parts.append(_generate_piecewise(ex, V, sp, Vmin, Vmax) if sp is not None else ex)
             return (None, None, None, Add(*expr_parts), is_piecewise)
 
-    # 1/A
-    elif isinstance(expr, Pow) and len(expr.args) == 2 and expr.args[1].is_number and float(expr.args[1]) == -1.0:
+    elif isinstance(expr, Pow) and len(expr.args) == 2 and (expr.args[1] + S.One).is_zero:  # 1/A
         # Find singularities in A and adjust result to represent 1 / A
         Vmin, Vmax, sp, ex, has_piecewise = _fix_expr_parts(expr.args[0], V, U_offset, exp_function)
         has_piecewise = has_piecewise or Vmin is not None
