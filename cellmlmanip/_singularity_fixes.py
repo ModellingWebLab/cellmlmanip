@@ -158,7 +158,7 @@ def _get_singularity(expr, V, U_offset, exp_function):
         :param sp: The singularity point found.
         :return: (Vmin, Vmax, sp)
         """
-        assert m is None or m[Z_wildcard] != 0
+        assert m is None or not m[Z_wildcard].is_zero
         return m is not None and \
             (sp == m[SP_wildcard] or
              (isinstance(sp, (Float, float)) and
@@ -218,7 +218,7 @@ def _get_singularity(expr, V, U_offset, exp_function):
 
                     for fp1 in fraction_part_1:  # Check arguments in numerator (or denominator)
                         match = fp1.match(P_wildcard * u)  # search for multiple of U
-                        found_on_top = match is not None and P_wildcard in match and match[P_wildcard] != 0
+                        found_on_top = match is not None and P_wildcard in match and not match[P_wildcard].is_zero
                         if not found_on_top:
                             match = fp1.match(Z_wildcard * V - Z_wildcard * SP_wildcard)  # look for multiple of V - sp
                             found_on_top = check_U_match(match, sp)
@@ -293,8 +293,7 @@ def _fix_expr_parts(expr, V, U_offset, exp_function):
                 expr_parts.append(_generate_piecewise(ex, V, sp, Vmin, Vmax) if sp is not None else ex)
             return (None, None, None, Add(*expr_parts), is_piecewise)
 
-    # 1/A
-    elif isinstance(expr, Pow) and len(expr.args) == 2 and expr.args[1].is_number and float(expr.args[1]) == -1.0:
+    elif isinstance(expr, Pow) and len(expr.args) == 2 and (expr.args[1] + S.One).is_zero:  # 1/A
         # Find singularities in A and adjust result to represent 1 / A
         Vmin, Vmax, sp, ex, has_piecewise = _fix_expr_parts(expr.args[0], V, U_offset, exp_function)
         has_piecewise = has_piecewise or Vmin is not None
