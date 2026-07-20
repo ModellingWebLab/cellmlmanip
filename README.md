@@ -1,4 +1,4 @@
-![Build status](https://github.com/ModellingWebLab/cellmlmanip/actions/workflows/unit-test.yml/badge.svg) [![Documentation Status](https://readthedocs.org/projects/cellmlmanip/badge/?version=latest)](https://cellmlmanip.readthedocs.io/en/latest/?badge=latest) [![Coverage Status](https://codecov.io/gh/ModellingWebLab/cellmlmanip/branch/develop/graph/badge.svg)](https://codecov.io/gh/ModellingWebLab/cellmlmanip/)
+![Build status](https://github.com/ModellingWebLab/cellmlmanip/actions/workflows/unit-test.yml/badge.svg) [![Documentation Status](https://readthedocs.org/projects/cellmlmanip/badge/?version=latest)](https://cellmlmanip.readthedocs.io/en/latest/?badge=latest) [![Coverage Status](https://codecov.io/gh/ModellingWebLab/cellmlmanip/branch/master/graph/badge.svg)](https://codecov.io/gh/ModellingWebLab/cellmlmanip/)
 
 # cellmlmanip
 CellML loading and model equation manipulation library
@@ -12,7 +12,7 @@ Users install `cellmlmanip` using pip.
 pip install cellmlmanip
 ```
 
-Cellmlmanip is tested and developed on Python 3.9 and higher.
+Cellmlmanip is tested and developed on Python 3.10 and higher.
 
 ## Release notes
 For release notes see [RELEASE.md](./RELEASE.md)

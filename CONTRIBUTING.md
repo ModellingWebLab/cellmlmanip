@@ -30,7 +30,7 @@ As in the main code, docstrings and comments should be added to clarify the inte
 
 ## Coding style
 
-We aim to be [PEP8](https://www.python.org/dev/peps/pep-0008/) compliant, with a slightly more relaxed attitude towards line length. Lines up to 100 chars are allowed if it means better readability.
+We aim to be [PEP8](https://www.python.org/dev/peps/pep-0008/) compliant, with a slightly more relaxed attitude towards line length. Lines up to 120 chars are allowed if it means better readability.
 
 ### flake8
 
@@ -53,18 +53,18 @@ This will stop the commit from happening if flake8 checks do not pass.
 
 ### isort
 
-`isort` keeps imports in the [PEP8 recommended order](https://www.python.org/dev/peps/pep-0008/#id23) (flake8 / pep8 tools don't handle this). It can be run manually by typing in `isort -rc .` in `cellmlmanip/` and this should generate no errors.
+`isort` keeps imports in the [PEP8 recommended order](https://www.python.org/dev/peps/pep-0008/#id23) (flake8 / pep8 tools don't handle this). It can be run manually by typing in `isort .` in `cellmlmanip/` and this should generate no errors.
 
 There is a git pre-commit hook for this too, the process is a little more manual than for flake8:
 
-https://github.com/timothycrosley/isort#git-hook
+https://github.com/PyCQA/isort#git-hook
 
 
 ## Documentation
 
 Documentation is generated from the docstrings in the code, and files in the ``docs`` directory.
-Both are written using [reStructuredText](http://docutils.sourceforge.net/docs/user/rst/quickref.html).
-This is then compiled into HTML (or other formats) using [Sphinx](http://www.sphinx-doc.org/en/stable/).
+Both are written using [reStructuredText](https://docutils.sourceforge.io/docs/user/rst/quickref.html).
+This is then compiled into HTML (or other formats) using [Sphinx](https://www.sphinx-doc.org/en/stable/).
 We use [readthedocs.org](https://readthedocs.org) to do this automatically, with the result visible at [https://cellmlmanip.readthedocs.io](https://cellmlmanip.readthedocs.io).
 
 ### Building the documentation locally
