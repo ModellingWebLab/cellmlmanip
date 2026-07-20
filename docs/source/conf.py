@@ -28,7 +28,7 @@ import cellmlmanip
 
 # If your documentation needs a minimal Sphinx version, state it here.
 #
-needs_sphinx = '2.0'
+needs_sphinx = '7.0'
 
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
@@ -52,7 +52,7 @@ autodoc_default_options = {
 
 # Where to find documentation for projects we use
 intersphinx_mapping = {
-    'networkx': ('https://networkx.github.io/documentation/stable/', None),
+    'networkx': ('https://networkx.org/documentation/stable/', None),
     'rdflib': ('https://rdflib.readthedocs.io/en/stable/', None),
     'sympy': ('https://docs.sympy.org/latest/', None),
     'pint': ('https://pint.readthedocs.io/en/stable/', None),
